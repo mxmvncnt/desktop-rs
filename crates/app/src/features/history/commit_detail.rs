@@ -18,14 +18,13 @@ impl Workspace {
         if r.multi_indices().len() >= 2 {
             return MultiSelectPane::new(repo.clone()).into_any_element();
         }
-        let Some(commit) = r.selected_commit.and_then(|ix| r.commits.get(ix)).cloned() else {
+        // Show the loaded commit (not the just-clicked one) so header, files
+        // and diff change together instead of in separate steps.
+        let shown = r.commit_shown.as_ref().and_then(|s| r.commits.iter().find(|c| c.sha == s.sha));
+        let Some(commit) = shown.or_else(|| r.selected_commit.and_then(|ix| r.commits.get(ix))).cloned() else {
             return div().flex_1().into_any_element();
         };
-        let file_key = r
-            .selected_commit_file
-            .and_then(|ix| r.commit_files.get(ix))
-            .map(|f| f.path.clone())
-            .unwrap_or_default();
+        let file_key = r.commit_shown.as_ref().and_then(|s| s.path.clone()).unwrap_or_default();
         let (diff, hl, n_files) = (r.commit_diff.clone(), r.commit_hl.clone(), r.commit_files.len());
         let diff_key = SharedString::from(format!("commit-diff-{}-{file_key}", commit.sha));
         let header = CommitHeader::new(commit, n_files, DiffOptionsButton::new(cx.entity()), self.commit_msg.height, cx.entity());

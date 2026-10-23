@@ -14,7 +14,7 @@ impl RepoModel {
     pub fn expand_diff(&mut self, target: ExpandTarget, e: gd_git::Expansion, cx: &mut Context<Self>) {
         let (current, path) = match target {
             ExpandTarget::Commit => {
-                let path = self.selected_commit_file.and_then(|i| self.commit_files.get(i)).map(|f| f.path.clone());
+                let path = self.commit_shown.as_ref().and_then(|s| s.path.clone());
                 (self.commit_diff.clone(), path)
             }
             ExpandTarget::Changes => (self.change_diff.clone(), self.selected_path()),

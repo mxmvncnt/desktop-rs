@@ -66,6 +66,14 @@ pub enum RepoEvent {
 
 impl gpui::EventEmitter<RepoEvent> for RepoModel {}
 
+/// Identity of the loaded commit detail (see `RepoModel::commit_shown`).
+#[derive(Clone, PartialEq)]
+pub struct ShownCommit {
+    pub sha: String,
+    /// Path of the file whose diff is loaded, if any.
+    pub path: Option<String>,
+}
+
 pub struct RepoModel {
     pub repo: Repository,
     pub tab: Tab,
@@ -114,6 +122,9 @@ pub struct RepoModel {
     pub commit_files: Vec<FileChange>,
     pub selected_commit_file: Option<usize>,
     pub commit_diff: Option<Arc<Diff>>,
+    /// Which commit/file `commit_files` + `commit_diff` belong to. Lags behind
+    /// the selection while a load is in flight, so the pane switches in one go.
+    pub commit_shown: Option<ShownCommit>,
     pub commit_hl: Option<Arc<DiffHighlight>>,
     pub(super) commit_gen: u64,
     pub(super) _commit_task: Option<Task<()>>,
@@ -180,6 +191,7 @@ impl RepoModel {
             commit_files: Vec::new(),
             selected_commit_file: None,
             commit_diff: None,
+            commit_shown: None,
             commit_hl: None,
             commit_gen: 0,
             _commit_task: None,

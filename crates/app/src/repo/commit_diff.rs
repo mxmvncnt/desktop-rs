@@ -6,7 +6,7 @@ use std::sync::Arc;
 use gd_git::Diff;
 use gpui::{AppContext, Context};
 
-use super::state::RepoModel;
+use super::state::{RepoModel, ShownCommit};
 use crate::features::diff::ExpandTarget;
 
 impl RepoModel {
@@ -22,6 +22,7 @@ impl RepoModel {
         self.commit_gen += 1;
         let generation = self.commit_gen;
         let sha = commit.sha.clone();
+        let loaded_sha = sha.clone();
         let repo = self.repo.clone();
         let opts = self.diff_options;
         self._commit_task = Some(cx.spawn(async move |this, cx| {
@@ -43,7 +44,7 @@ impl RepoModel {
                     Ok((files, diff)) => {
                         this.selected_commit_file = (!files.is_empty()).then_some(0);
                         this.commit_files = files;
-                        this.set_commit_diff(diff, cx);
+                        this.set_commit_diff(loaded_sha, diff, cx);
                     }
                     Err(e) => this.error = Some(e.to_string()),
                 }
@@ -65,6 +66,7 @@ impl RepoModel {
         self.commit_gen += 1;
         let generation = self.commit_gen;
         let (sha, file, repo) = (commit.sha.clone(), file.clone(), self.repo.clone());
+        let loaded_sha = sha.clone();
         let opts = self.diff_options;
         self._commit_task = Some(cx.spawn(async move |this, cx| {
             let res = cx
@@ -78,7 +80,7 @@ impl RepoModel {
                     return;
                 }
                 match res {
-                    Ok(d) => this.set_commit_diff(Some(d), cx),
+                    Ok(d) => this.set_commit_diff(loaded_sha, Some(d), cx),
                     Err(e) => this.error = Some(e.to_string()),
                 }
                 cx.notify();
@@ -88,7 +90,8 @@ impl RepoModel {
         cx.notify();
     }
 
-    fn set_commit_diff(&mut self, diff: Option<(Diff, String)>, cx: &mut Context<Self>) {
+    fn set_commit_diff(&mut self, sha: String, diff: Option<(Diff, String)>, cx: &mut Context<Self>) {
+        self.commit_shown = Some(ShownCommit { sha, path: diff.as_ref().map(|(_, p)| p.clone()) });
         self.commit_hl = None;
         self._commit_hl_task = None;
         match diff {

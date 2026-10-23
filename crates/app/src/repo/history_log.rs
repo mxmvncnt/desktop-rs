@@ -56,6 +56,7 @@ impl RepoModel {
             } else {
                 self.commit_files.clear();
                 self.commit_diff = None;
+                self.commit_shown = None;
                 self.commit_hl = None;
             }
         }
