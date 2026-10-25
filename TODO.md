@@ -6,5 +6,3 @@
   - add documentations for humans
 - bundle as flatpak
 - bundle for macos
-- fixes:
-  - when the commit message input is over the limit and we start typing and it scrolls automatically, it jumps up on one keypress and down on the second
