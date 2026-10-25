@@ -1,4 +1,4 @@
-app-id: io.github.mxmvncnt.DesktopRs
+app-id: io.github.mxmvncnt.desktop-rs
 runtime: org.freedesktop.Platform
 runtime-version: '24.08'
 sdk: org.freedesktop.Sdk
@@ -10,8 +10,6 @@ finish-args:
   - --socket=wayland
   - --socket=fallback-x11
   - --device=dri
-  # Repositories live anywhere in the user's home, and git needs the user's config/SSH agent.
-  - --filesystem=home
   - --share=network
   - --socket=ssh-auth
 build-options:
@@ -28,8 +26,10 @@ modules:
     build-commands:
       - cargo build --release --locked -p desktop-rs
       - install -Dm755 target/release/desktop-rs -t /app/bin
-      - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.DesktopRs.desktop -t /app/share/applications
-      - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.DesktopRs.metainfo.xml -t /app/share/metainfo
+      - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.desktop-rs.desktop -t /app/share/applications
+      - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.desktop-rs.metainfo.xml -t /app/share/metainfo
+      # Uncomment once build-aux/flatpak/desktop-rs-logo.png exists (512x512 PNG).
+      # - install -Dm644 build-aux/flatpak/desktop-rs-logo.png /app/share/icons/hicolor/512x512/apps/io.github.mxmvncnt.desktop-rs.png
     sources:
       - type: dir
         path: ../..
