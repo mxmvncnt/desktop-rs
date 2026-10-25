@@ -17,6 +17,24 @@ build-options:
   env:
     CARGO_HOME: /run/build/desktop-rs/cargo
 modules:
+  # desktop-rs shells out to `git` (crates/git), and the runtime doesn't ship it.
+  - name: git
+    buildsystem: simple
+    build-commands:
+      - make configure
+      - ./configure --prefix=/app NO_PERL=1 NO_TCLTK=1 NO_GETTEXT=1 NO_INSTALL_HARDLINKS=1
+      - make all -j${FLATPAK_BUILDER_N_JOBS:-4} NO_PERL=1 NO_TCLTK=1 NO_GETTEXT=1 NO_INSTALL_HARDLINKS=1
+      - make strip install NO_PERL=1 NO_TCLTK=1 NO_GETTEXT=1 NO_INSTALL_HARDLINKS=1
+    sources:
+      - type: archive
+        url: https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.56.0.tar.xz
+        sha256: 26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3
+    cleanup:
+      - /share/git-core/templates
+      - /share/git-gui
+      - /share/gitk
+      - /share/gitweb
+
   - name: desktop-rs
     buildsystem: simple
     build-options:
