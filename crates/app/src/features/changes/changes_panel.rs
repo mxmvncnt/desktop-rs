@@ -30,7 +30,7 @@ impl ChangesPanel {
         let r = repo.read(cx);
         let selection = SelectionSummary::of(r);
         let amending = ws.amending(cx);
-        let summary_ok = !ws.summary.read(cx).as_str().trim().is_empty();
+        let summary_ok = !ws.commit_message(cx).0.is_empty();
         let button = CommitButton::of(r, selection.included, amending, summary_ok);
         let last: Option<LastCommit> = r.undoable_commit().cloned().filter(|_| !amending);
         let ws_entity = cx.entity();
@@ -40,7 +40,7 @@ impl ChangesPanel {
             ws: ws_entity.clone(),
             stashes: StashPanel::new(repo, ws_entity.clone(), cx),
             undo: last.map(|c| UndoStrip::new(c, ws_entity.clone())),
-            commit_box: CommitBox::new(button, ws.summary.clone(), ws.description.clone(), ws_entity),
+            commit_box: CommitBox::new(button, ws.message.clone(), ws.sidebar_width(), ws_entity),
         }
     }
 }

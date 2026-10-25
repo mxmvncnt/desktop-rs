@@ -11,7 +11,7 @@
 //! ```
 //! Views: `changes` (default), `theme:<id>:<dark|light>[:settings]`, `changes@N` (N-th file selected), `history`, `repos`, `branches`, `new-branch`, `new-branch-base`,
 //! `clone`, `welcome`, `watch` (headless file-watcher check, no PNG), `context-menu`,
-//! `header-menu`, `discard-dialog`, `split`, `split-history`, `select[-split][-wrap|-hscroll]` (preset text selection), `split-ws`, `hide-ws`, `diff-options-menu`, `undo-strip`,
+//! `header-menu`, `commit-long`, `discard-dialog`, `split`, `split-history`, `select[-split][-wrap|-hscroll]` (preset text selection), `split-ws`, `hide-ws`, `diff-options-menu`, `undo-strip`,
 //! `sidebar-wide`, `stash-list`, `stash-detail`, `stash-detail-untracked`, `pr-preview`, `pr-preview-menu`, `stash-all`, `stash-menu`, `stash-dialog`, `stash-drop-dialog`,
 //! `switch-branch-dialog`,
 //! `merge-dialog`, `squash-dialog`, `rebase-dialog`, `branch-menu`, `branch-menu-current`, `delete-dialog`,
@@ -273,6 +273,12 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                         }
                     }
                     "conflict-menu" => ws.open_file_menu(0, gpui::point(px(120.0), px(150.0)), window, cx),
+                    // Multi-line, wrapping message typed into the commit box.
+                    "commit-long" => {
+                        let body = (1..=12).map(|i| format!("Line {i} of a long description that wraps around the box")).collect::<Vec<_>>().join("\n");
+                        let summary = "A fairly long summary supercalifragilisticexpialidocious_unbreakable_identifier_name_here_and_more";
+                        ws.set_commit_message(summary, &body, cx);
+                    }
                     "undo-strip" => {
                         if let Some(r) = &ws.repo {
                             r.update(cx, |r, cx| {

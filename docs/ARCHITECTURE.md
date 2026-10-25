@@ -378,6 +378,15 @@ Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Carg
   fades are captured at opacity 0.
 - `import`/`grim` aren't available on the dev machine. Use `--snapshot` to see the UI.
 
+- **Auto-height wrapping text inputs need a definite width.** With `w_full` gpui-ce also
+  measures the editable text at max-content width and its layout cache then paints that
+  unwrapped layout. `CommitBox` passes the sidebar width in pixels instead.
+- **Long words are broken by a vendored `gpui_ce_parley`** (`vendor/gpui_ce_parley`, wired up
+  by `[patch]` in the root `Cargo.toml`). It is the pinned rev's crate plus one line:
+  `OverflowWrap::Anywhere` in `text_system.rs`. Re-vendor it when bumping the GPUI-CE pin.
+- gpui-ce only scrolls an input to the caret on caret movement, so typing past the commit box's
+  max height does not follow the caret (see the reverted `c22f88d`).
+
 ## GPUI-CE pin
 
 `Cargo.toml` pins `rev = 9a82fba4…` (2026-10-18). To bump it, change the rev

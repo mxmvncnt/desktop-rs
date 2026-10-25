@@ -6,37 +6,46 @@ use gpui_elements::editable_text::EditableTextState;
 
 use super::amend_notice::AmendNotice;
 use super::state::CommitButton;
-use crate::shared::text_field::text_field;
 use crate::workspace::Workspace;
+
+const PADDING: f32 = 12.0;
+/// The message input grows up to this height, then scrolls.
+const MAX_INPUT_HEIGHT: f32 = 200.0;
+const SIDEBAR_BORDER: f32 = 1.0;
 
 #[derive(IntoElement)]
 pub struct CommitBox {
     button: CommitButton,
-    summary: Entity<EditableTextState>,
-    description: Entity<EditableTextState>,
+    message: Entity<EditableTextState>,
+    /// Sidebar width, to give the input a definite width (see `message_input`).
+    sidebar_width: f32,
     ws: Entity<Workspace>,
 }
 
 impl CommitBox {
     pub fn new(
         button: CommitButton,
-        summary: Entity<EditableTextState>,
-        description: Entity<EditableTextState>,
+        message: Entity<EditableTextState>,
+        sidebar_width: f32,
         ws: Entity<Workspace>,
     ) -> Self {
-        Self { button, summary, description, ws }
+        Self { button, message, sidebar_width, ws }
     }
 
-    fn description_input(&self, theme: &Theme) -> impl IntoElement {
-        gpui_elements::editable_text::text_area("description")
-            .state(self.description.downgrade())
-            .placeholder("Description")
+    fn message_input(&self, theme: &Theme) -> impl IntoElement {
+        let placeholder = self.button.default_summary.as_deref().unwrap_or("Commit message (required)");
+        gpui_elements::editable_text::text_area("message")
+            .state(self.message.downgrade())
+            .placeholder(placeholder.to_string())
             .placeholder_color(theme.text_faint)
             .selection_color(theme.selection)
             .caret_color(theme.caret)
             .caret_blink_interval_500ms()
-            .w_full()
-            .h(px(88.0))
+            // A definite width: with `w_full` gpui-ce also measures the text at max-content
+            // width, and its layout cache then paints that unwrapped layout.
+            .w(px(self.sidebar_width - SIDEBAR_BORDER - 2.0 * PADDING))
+            .min_h(px(64.0))
+            .max_h(px(MAX_INPUT_HEIGHT))
             .px(px(10.0))
             .py(px(8.0))
             .rounded(px(gd_ui::theme::CONTROL_RADIUS + 1.0))
@@ -45,6 +54,8 @@ impl CommitBox {
             .border_color(theme.border)
             .text_size(px(13.0))
             .text_color(theme.text)
+            .flex_col()
+            .whitespace_normal()
             .overflow_y_scroll()
     }
 }
@@ -66,12 +77,11 @@ impl RenderOnce for CommitBox {
             .flex_col()
             .flex_none()
             .gap(px(8.0))
-            .p(px(12.0))
+            .p(px(PADDING))
             .border_t_1()
             .border_color(theme.border)
             .children(amend_notice)
-            .child(text_field("summary", &self.summary, self.button.default_summary.as_deref().unwrap_or("Summary (required)"), cx))
-            .child(self.description_input(&theme))
+            .child(self.message_input(&theme))
             .child(commit)
     }
 }

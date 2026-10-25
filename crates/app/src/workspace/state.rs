@@ -60,8 +60,8 @@ pub struct Workspace {
     /// Error shown when no repository is open (e.g. bad path on startup).
     pub startup_error: Option<String>,
 
-    pub summary: Entity<EditableTextState>,
-    pub description: Entity<EditableTextState>,
+    /// Commit message: first line is the summary, the rest the description.
+    pub message: Entity<EditableTextState>,
     pub filter: Entity<EditableTextState>,
     pub name_input: Entity<EditableTextState>,
     pub url_input: Entity<EditableTextState>,

@@ -20,10 +20,9 @@ impl Workspace {
         let Some(repo) = self.repo.clone() else { return };
         let root = repo.read(cx).repo.root().to_path_buf();
         self.history_ui.amend = Some(AmendState { root });
-        self.summary.update(cx, |s, cx| s.emplace(&commit.summary, cx));
-        self.description.update(cx, |s, cx| s.emplace(&commit.body, cx));
+        self.set_commit_message(&commit.summary, &commit.body, cx);
         repo.update(cx, |r, cx| r.set_tab(Tab::Changes, cx));
-        window.focus(&self.summary.focus_handle(cx), cx);
+        window.focus(&self.message.focus_handle(cx), cx);
         cx.notify();
     }
 
@@ -40,8 +39,7 @@ impl Workspace {
             return false;
         }
         let Some(repo) = self.repo.clone() else { return true };
-        let summary = self.summary.read(cx).as_str().to_string();
-        let description = self.description.read(cx).as_str().to_string();
+        let (summary, description) = self.commit_message(cx);
         if summary.trim().is_empty() || repo.read(cx).history_blocked() {
             return true;
         }
@@ -53,7 +51,6 @@ impl Workspace {
     }
 
     fn clear_commit_box(&mut self, cx: &mut Context<Self>) {
-        self.summary.update(cx, |s, cx| s.emplace("", cx));
-        self.description.update(cx, |s, cx| s.emplace("", cx));
+        self.message.update(cx, |s, cx| s.emplace("", cx));
     }
 }

@@ -17,8 +17,7 @@ impl Workspace {
             return;
         }
         let Some(repo) = self.repo.clone() else { return };
-        let mut summary = self.summary.read(cx).as_str().to_string();
-        let description = self.description.read(cx).as_str().to_string();
+        let (mut summary, description) = self.commit_message(cx);
         if !repo.read(cx).has_included() {
             return;
         }
@@ -30,8 +29,7 @@ impl Workspace {
             }
         }
         repo.update(cx, |r, cx| r.commit(summary, description, cx));
-        self.summary.update(cx, |s, cx| s.emplace("", cx));
-        self.description.update(cx, |s, cx| s.emplace("", cx));
+        self.message.update(cx, |s, cx| s.emplace("", cx));
         self.focus(window, cx);
     }
 

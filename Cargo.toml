@@ -28,6 +28,10 @@ smol = "2"
 notify = "8"
 dirs = "6"
 
+# Vendored copy of gpui-ce's text layout crate that breaks long words (vendor/gpui_ce_parley).
+[patch."https://github.com/gpui-ce/gpui-ce"]
+gpui_ce_parley = { path = "vendor/gpui_ce_parley" }
+
 [profile.dev]
 # Keep debug builds snappy to iterate on while still optimizing deps,
 # so the UI is representative of real performance during development.

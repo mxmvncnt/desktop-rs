@@ -1,0 +1,24 @@
+[package]
+name = "gpui_ce_parley"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+# Vendored from gpui-ce 9a82fba (crates/gpui_ce_parley) with one change: text breaks
+# inside words that are wider than the line (`OverflowWrap::Anywhere`). See docs/ARCHITECTURE.md.
+
+[features]
+default = ["system-fonts"]
+system-fonts = ["fontique/system", "parley/system"]
+fontconfig-dlopen = ["fontique/fontconfig-dlopen"]
+
+[dependencies]
+anyhow = "1.0.86"
+fontique = { version = "0.11.1", default-features = false, features = ["std"] }
+gpui = { git = "https://github.com/gpui-ce/gpui-ce", rev = "9a82fba4e5f1f9194a5489b7a417d164083dd67a", package = "gpui-ce", default-features = false }
+parking_lot = "0.12.1"
+parley = { version = "0.11", default-features = false, features = ["std", "complex-scripts"] }
+skrifa = { version = "0.44.0", features = ["std"] }
+swash = "0.2.6"
+unicode-segmentation = "1.10"

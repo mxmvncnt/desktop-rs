@@ -59,20 +59,15 @@ impl Workspace {
 
     fn on_repo_event(&mut self, ev: &RepoEvent, cx: &mut Context<Self>) {
         match ev {
-            RepoEvent::CommitUndone { summary, description } => self.fill_commit_inputs(summary, description, cx),
+            RepoEvent::CommitUndone { summary, description } => self.set_commit_message(summary, description, cx),
             RepoEvent::SwitchBranchWithChanges(branch) => self.open_switch_dialog(branch.clone(), cx),
             RepoEvent::PreparedMessage { summary, description } => {
                 // A merge paused: show git's prepared message unless the user typed one.
-                if self.summary.read(cx).as_str().trim().is_empty() {
-                    self.fill_commit_inputs(summary, description, cx);
+                if self.message.read(cx).as_str().trim().is_empty() {
+                    self.set_commit_message(summary, description, cx);
                 }
             }
         }
-    }
-
-    fn fill_commit_inputs(&mut self, summary: &str, description: &str, cx: &mut Context<Self>) {
-        self.summary.update(cx, |s, cx| s.emplace(summary, cx));
-        self.description.update(cx, |s, cx| s.emplace(description, cx));
     }
 
     pub fn remove_repository(&mut self, ix: usize, cx: &mut Context<Self>) {

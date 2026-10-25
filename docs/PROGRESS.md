@@ -90,7 +90,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 
 - ✅ Desktop layout: toolbar (repo ▾, branch ▾, contextual Publish/Pull/Push/Fetch), sidebar tabs, main diff.
 - ✅ Changes list: checkboxes, select-all (mixed state), status glyphs, ↑/↓.
-- ✅ Commit box: summary, description, `Commit to <branch>` (Ctrl+Enter), enabled only when valid.
+- ✅ Commit box: one auto-growing, wrapping message input (first line = summary, rest = description; `features/changes/message.rs`), `Commit to <branch>` (Ctrl+Enter), enabled only when valid.
   - Exactly one file selected: empty summary shows `Create/Update/Delete x` / `Rename a to b` as placeholder and the commit uses it (`RepoModel::default_summary`).
   - Committing keeps the selection (no empty frame): the status refresh moves it to the file now at the same row and the old diff stays until the new one loads.
 - ✅ Virtualized diff with gutters, hunk headers, add/del washes, truncation notice.

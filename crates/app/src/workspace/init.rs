@@ -23,12 +23,11 @@ fn text_state(cx: &mut App) -> Entity<EditableTextState> {
 
 impl Workspace {
     pub fn new(open_path: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let summary = text_state(cx);
-        let description = text_state(cx);
+        let message = text_state(cx);
         let filter = text_state(cx);
         let name_input = text_state(cx);
         let url_input = text_state(cx);
-        let mut subs = input_subscriptions([&summary, &filter, &name_input, &url_input], cx);
+        let mut subs = input_subscriptions([&message, &filter, &name_input, &url_input], cx);
         subs.extend(window_subscriptions(window, cx));
 
         let mut this = Self {
@@ -51,8 +50,7 @@ impl Workspace {
             branch_ui: BranchUi::new(cx),
             startup_error: None,
             corner_radius: 0.0,
-            summary,
-            description,
+            message,
             filter,
             name_input,
             new_branch_base: None,

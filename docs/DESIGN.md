@@ -6,7 +6,7 @@
   (Publish branch, Pull n, Push n, or Fetch).
 - Sidebar (300px): segmented `Changes (n) | History` tabs.
   - Changes: an "all files" checkbox, then a file list (checkbox, dim dir, bright name,
-    colored status glyph), then the commit box (summary, description,
+    colored status glyph), then the commit box (one growing message box,
     `Commit to <branch>` primary button).
   - History: a commit list (summary over `author • relative time`).
 - Main: the diff for the selected file. For History, a commit header

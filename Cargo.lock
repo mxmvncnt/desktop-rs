@@ -2445,7 +2445,6 @@ dependencies = [
 [[package]]
 name = "gpui_ce_parley"
 version = "0.1.0"
-source = "git+https://github.com/gpui-ce/gpui-ce?rev=9a82fba4e5f1f9194a5489b7a417d164083dd67a#9a82fba4e5f1f9194a5489b7a417d164083dd67a"
 dependencies = [
  "anyhow",
  "fontique",
