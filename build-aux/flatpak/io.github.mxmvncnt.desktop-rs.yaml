@@ -46,8 +46,8 @@ modules:
       - install -Dm755 target/release/desktop-rs -t /app/bin
       - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.desktop-rs.desktop -t /app/share/applications
       - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.desktop-rs.metainfo.xml -t /app/share/metainfo
-      # Placeholder logo: replace build-aux/flatpak/desktop-rs-logo.png (512x512 PNG).
-      - install -Dm644 build-aux/flatpak/desktop-rs-logo.png /app/share/icons/hicolor/512x512/apps/io.github.mxmvncnt.desktop-rs.png
+      # Flatpak rejects icons over 512x512; desktop-rs-logo-512.png is a downscaled copy of desktop-rs-logo.png.
+      - install -Dm644 build-aux/flatpak/desktop-rs-logo-512.png /app/share/icons/hicolor/512x512/apps/io.github.mxmvncnt.desktop-rs.png
     sources:
       - type: dir
         path: ../..
