@@ -10,7 +10,7 @@ jobs:
     name: Build (x86_64)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/andyholmes/flatter/rust:24.08
+      image: ghcr.io/andyholmes/flatter/rust:25.08
       options: --privileged
     steps:
       - uses: actions/checkout@v4
