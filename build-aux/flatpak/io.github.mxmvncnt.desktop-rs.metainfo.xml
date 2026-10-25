@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.mxmvncnt.desktop-rs</id>
+  <name>desktop-rs</name>
+  <summary>A Rust + GPUI rewrite of GitHub Desktop</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <launchable type="desktop-id">io.github.mxmvncnt.desktop-rs.desktop</launchable>
+  <url type="homepage">https://github.com/mxmvncnt/desktop-rs</url>
+  <description>
+    <p>A fast, native Git client written in Rust with GPUI.</p>
+  </description>
+</component>

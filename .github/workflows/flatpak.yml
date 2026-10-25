@@ -1,0 +1,38 @@
+name: Flatpak
+
+# Only runs when a release is published from the GitHub UI.
+on:
+  release:
+    types: [published]
+
+jobs:
+  flatpak:
+    name: Build (x86_64)
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/andyholmes/flatter/freedesktop:24.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and create the Flatpak repository
+        uses: andyholmes/flatter@main
+        with:
+          files: build-aux/flatpak/io.github.mxmvncnt.desktop-rs.yaml
+          arch: x86_64
+          upload-bundles: true
+          upload-pages-artifact: true
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: flatpak
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,58 @@
+app-id: io.github.mxmvncnt.desktop-rs
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: desktop-rs
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --share=network
+  - --socket=ssh-auth
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/desktop-rs/cargo
+modules:
+  # desktop-rs shells out to `git` (crates/git), and the runtime doesn't ship it.
+  - name: git
+    buildsystem: simple
+    build-commands:
+      - make configure
+      - ./configure --prefix=/app NO_PERL=1 NO_TCLTK=1 NO_GETTEXT=1 NO_INSTALL_HARDLINKS=1
+      - make all -j${FLATPAK_BUILDER_N_JOBS:-4} NO_PERL=1 NO_TCLTK=1 NO_GETTEXT=1 NO_INSTALL_HARDLINKS=1
+      - make strip install NO_PERL=1 NO_TCLTK=1 NO_GETTEXT=1 NO_INSTALL_HARDLINKS=1
+    sources:
+      - type: archive
+        url: https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.56.0.tar.xz
+        sha256: 26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3
+    cleanup:
+      - /share/git-core/templates
+      - /share/git-gui
+      - /share/gitk
+      - /share/gitweb
+
+  - name: desktop-rs
+    buildsystem: simple
+    build-options:
+      # Cargo (incl. the gpui-ce git dependency) is fetched at build time.
+      build-args:
+        - --share=network
+    build-commands:
+      - cargo build --release --locked -p desktop-rs
+      - install -Dm755 target/release/desktop-rs -t /app/bin
+      - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.desktop-rs.desktop -t /app/share/applications
+      - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.desktop-rs.metainfo.xml -t /app/share/metainfo
+      # Uncomment once build-aux/flatpak/desktop-rs-logo.png exists (512x512 PNG).
+      # - install -Dm644 build-aux/flatpak/desktop-rs-logo.png /app/share/icons/hicolor/512x512/apps/io.github.mxmvncnt.desktop-rs.png
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - .git
+          - .worktrees
+          - .ref
