@@ -1,0 +1,40 @@
+app-id: io.github.mxmvncnt.DesktopRs
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: desktop-rs
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Repositories live anywhere in the user's home, and git needs the user's config/SSH agent.
+  - --filesystem=home
+  - --share=network
+  - --socket=ssh-auth
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/desktop-rs/cargo
+modules:
+  - name: desktop-rs
+    buildsystem: simple
+    build-options:
+      # Cargo (incl. the gpui-ce git dependency) is fetched at build time.
+      build-args:
+        - --share=network
+    build-commands:
+      - cargo build --release --locked -p desktop-rs
+      - install -Dm755 target/release/desktop-rs -t /app/bin
+      - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.DesktopRs.desktop -t /app/share/applications
+      - install -Dm644 build-aux/flatpak/io.github.mxmvncnt.DesktopRs.metainfo.xml -t /app/share/metainfo
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - .git
+          - .worktrees
+          - .ref

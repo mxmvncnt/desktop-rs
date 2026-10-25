@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=desktop-rs
+Comment=Git client
+Exec=desktop-rs
+Icon=io.github.mxmvncnt.DesktopRs
+Terminal=false
+Categories=Development;RevisionControl;
+StartupWMClass=desktop-rs
