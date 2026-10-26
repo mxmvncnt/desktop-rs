@@ -12,9 +12,8 @@ pub struct MergePreview {
     pub ahead: u32,
     /// Commits reachable from HEAD but not from `branch` (`branch..HEAD`).
     pub behind: u32,
-    /// Files that would conflict, when both sides diverged and
-    /// `git merge-tree --write-tree` is available.
-    pub conflicts: Option<Vec<String>>,
+    /// Files that would conflict (only checked when both sides diverged).
+    pub conflicts: Vec<String>,
 }
 
 /// Default subject of a squash-merge commit.
@@ -23,36 +22,29 @@ pub fn default_squash_summary(branch: &str, current: &str) -> String {
 }
 
 impl Repository {
-    pub(crate) fn count(&self, range: &str) -> Result<u32> {
-        let out = self.git().args(["rev-list", "--count", range, "--"]).run()?;
-        out.trim().parse().map_err(|_| GitError::Invalid(out))
-    }
-
-    /// Number of commits `branch` has that HEAD lacks (`git rev-list --count HEAD..branch`).
+    /// Number of commits `branch` has that HEAD lacks (`HEAD..branch`).
     pub fn commits_ahead(&self, branch: &str) -> Result<u32> {
-        self.count(&format!("HEAD..{branch}"))
+        let repo = self.repo()?;
+        let head = repo.head()?.peel_to_commit()?.id();
+        let (ahead, _) = repo.graph_ahead_behind(repo.revparse_single(branch)?.peel_to_commit()?.id(), head)?;
+        Ok(ahead as u32)
     }
 
     pub fn merge_preview(&self, branch: &str) -> Result<MergePreview> {
-        let ahead = self.commits_ahead(branch)?;
-        let behind = self.count(&format!("{branch}..HEAD"))?;
-        let conflicts = if ahead > 0 && behind > 0 {
-            self.git()
-                .args(["merge-tree", "--write-tree", "--name-only", "--no-messages", "HEAD", branch])
-                .allow_exit_one()
-                .run()
-                .ok()
-                .map(|out| {
-                    out.lines()
-                        .skip(1)
-                        .take_while(|l| !l.is_empty())
-                        .map(String::from)
-                        .collect()
-                })
-        } else {
-            Some(Vec::new())
-        };
-        Ok(MergePreview { branch: branch.to_string(), ahead, behind, conflicts })
+        let repo = self.repo()?;
+        let head = repo.head()?.peel_to_commit()?;
+        let other = repo.revparse_single(branch)?.peel_to_commit()?;
+        let (ahead, behind) = repo.graph_ahead_behind(other.id(), head.id())?;
+        let mut conflicts = Vec::new();
+        if ahead > 0 && behind > 0 {
+            for conflict in repo.merge_commits(&head, &other, None)?.conflicts()? {
+                let conflict = conflict?;
+                if let Some(entry) = conflict.our.or(conflict.their).or(conflict.ancestor) {
+                    conflicts.push(String::from_utf8_lossy(&entry.path).into_owned());
+                }
+            }
+        }
+        Ok(MergePreview { branch: branch.to_string(), ahead: ahead as u32, behind: behind as u32, conflicts })
     }
 
     fn current_branch_name(&self) -> String {

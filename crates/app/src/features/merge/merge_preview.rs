@@ -70,16 +70,17 @@ impl MergePreviewLine {
         if p.ahead == 0 {
             return None;
         }
-        match &p.conflicts {
-            Some(c) if !c.is_empty() => Some(note(
+        let n = p.conflicts.len();
+        if n > 0 {
+            Some(note(
                 Icon::Warning,
                 theme.warning,
-                format!("{} conflicted file{} expected. You'll resolve them next.", c.len(), plural(c.len() as u32)),
-            )),
-            Some(_) if p.behind > 0 && self.mode != MergeMode::Rebase => {
-                Some(note(Icon::Check, theme.success, "No conflicts expected.".to_string()))
-            }
-            _ => None,
+                format!("{n} conflicted file{} expected. You'll resolve them next.", plural(n as u32)),
+            ))
+        } else if p.behind > 0 && self.mode != MergeMode::Rebase {
+            Some(note(Icon::Check, theme.success, "No conflicts expected.".to_string()))
+        } else {
+            None
         }
     }
 }
