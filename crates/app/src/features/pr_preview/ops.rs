@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use gd_git::{BranchKind, Comparison, Diff, FileChange};
+use gd_git::{BranchKind, Comparison, Diff};
 use gpui::{AppContext, Context};
 
 use crate::features::diff::highlight_diff;
@@ -104,7 +104,6 @@ impl RepoModel {
     }
 
     fn apply_pr_loaded(&mut self, l: Loaded, cx: &mut Context<Self>) {
-        self.pr.loaded_base = l.base.clone();
         self.pr.remote_url = l.remote_url;
         if self.pr.base.is_none() {
             self.pr.base = l.base;
@@ -125,7 +124,9 @@ impl RepoModel {
         let (repo, opts) = (self.repo.clone(), self.diff_options);
         self.pr.task = Some(cx.spawn(async move |this, cx| {
             let res = cx
-                .background_spawn(async move { pr_file_diff(&repo, &merge_base, &file, opts) })
+                .background_spawn(async move {
+                    repo.compare_file_diff(&merge_base, "HEAD", &file, opts).map(|d| (d, file.path.clone()))
+                })
                 .await;
             this.update(cx, |this, cx| {
                 if this.pr.gen_ != generation {
@@ -164,13 +165,4 @@ impl RepoModel {
             .ok();
         }));
     }
-}
-
-fn pr_file_diff(
-    repo: &gd_git::Repository,
-    merge_base: &str,
-    file: &FileChange,
-    opts: gd_git::DiffOptions,
-) -> gd_git::Result<(Diff, String)> {
-    repo.compare_file_diff(merge_base, "HEAD", file, opts).map(|d| (d, file.path.clone()))
 }
