@@ -2,7 +2,7 @@
 //! branch management used by the branch context menu.
 
 use crate::progress::OpOutcome;
-use crate::{GitError, Repository, Result};
+use crate::{message, GitError, Repository, Result};
 
 /// What merging (or rebasing onto) `branch` would do, computed without
 /// touching the working tree.
@@ -98,8 +98,7 @@ impl Repository {
             Some(s) if !s.is_empty() => s.to_string(),
             _ => default_squash_summary(branch, &self.current_branch_name()),
         };
-        let message = format!("{subject}\n\n{}", subjects.trim());
-        self.git().args(["commit", "-q", "-F", "-"]).stdin(message).run()?;
+        self.git().args(["commit", "-q", "-F", "-"]).stdin(message(&subject, &subjects)).exec()?;
         Ok(OpOutcome::Done)
     }
 
@@ -119,18 +118,12 @@ impl Repository {
         if summary.trim().is_empty() {
             return Err(GitError::Invalid("commit summary is empty".into()));
         }
-        for chunk in paths.chunks(500) {
-            self.git()
-                .args(["add", "-A", "--"])
-                .args(chunk.iter().map(String::as_str))
-                .run()?;
-        }
-        let mut message = summary.trim().to_string();
-        if !description.trim().is_empty() {
-            message.push_str("\n\n");
-            message.push_str(description.trim());
-        }
-        self.git().no_editor().args(["commit", "-q", "-F", "-"]).stdin(message).exec()
+        self.stage(paths, &[])?;
+        self.git()
+            .no_editor()
+            .args(["commit", "-q", "-F", "-"])
+            .stdin(message(summary, description))
+            .exec()
     }
 
     // ---- conflict resolution --------------------------------------------

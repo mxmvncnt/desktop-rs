@@ -13,7 +13,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::{GitError, OpOutcome, Repository, Result};
+use crate::{message, GitError, OpOutcome, Repository, Result};
 
 /// How `git reset` treats the index and working tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -194,20 +194,12 @@ impl Repository {
         }
         self.ensure_idle("amend")?;
         self.git().args(["reset", "-q", "--", "."]).run()?;
-        for chunk in paths.chunks(500) {
-            self.git().args(["add", "-A", "--"]).args(chunk.iter().map(String::as_str)).run()?;
-        }
-        self.stage_partial(partial)?;
-        let mut message = summary.trim().to_string();
-        if !description.trim().is_empty() {
-            message.push_str("\n\n");
-            message.push_str(description.trim());
-        }
+        self.stage(paths, partial)?;
         self.git()
             .args(["commit", "-q", "--amend", "--allow-empty", "-F", "-"])
-            .stdin(message)
-            .run()?;
-        Ok(self.git().args(["rev-parse", "HEAD"]).run()?.trim().to_string())
+            .stdin(message(summary, description))
+            .exec()?;
+        self.head_sha()
     }
 
     // ---- squash / reorder -------------------------------------------------

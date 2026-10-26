@@ -147,28 +147,28 @@ impl Repository {
                 .args(["rm", "-q", "-r", "--cached", "--ignore-unmatch", "--", "."])
                 .run();
         }
-        for chunk in paths.chunks(500) {
-            self.git()
-                .args(["add", "-A", "--"])
-                .args(chunk.iter().map(String::as_str))
-                .run()?;
-        }
-        self.stage_partial(partial)?;
-        let mut message = summary.trim().to_string();
-        if !description.trim().is_empty() {
-            message.push_str("\n\n");
-            message.push_str(description.trim());
-        }
+        self.stage(paths, partial)?;
         self.git()
             .args(["commit", "-q", "-F", "-"])
-            .stdin(message)
-            .run()?;
-        Ok(self
-            .git()
-            .args(["rev-parse", "HEAD"])
-            .run()?
-            .trim()
-            .to_string())
+            .stdin(message(summary, description))
+            .exec()?;
+        self.head_sha()
+    }
+
+    /// Stage `paths` (adds, edits and deletions) and the selected lines of
+    /// `partial` files. Paths go through stdin, so the list length is unbounded.
+    pub(crate) fn stage(&self, paths: &[String], partial: &[PartialFile]) -> Result<()> {
+        if !paths.is_empty() {
+            self.git()
+                .args(["add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul"])
+                .stdin(paths.join("\0"))
+                .exec()?;
+        }
+        self.stage_partial(partial)
+    }
+
+    pub(crate) fn head_sha(&self) -> Result<String> {
+        Ok(self.git().args(["rev-parse", "HEAD"]).run()?.trim().to_string())
     }
 
     /// Discard working-tree changes for `paths`. Untracked files are deleted.
@@ -377,6 +377,14 @@ impl Repository {
         std::fs::metadata(self.common_git_dir().join("FETCH_HEAD"))
             .and_then(|m| m.modified())
             .ok()
+    }
+}
+
+/// Commit message: the trimmed summary, then the description after a blank line.
+pub(crate) fn message(summary: &str, description: &str) -> String {
+    match description.trim() {
+        "" => summary.trim().to_string(),
+        d => format!("{}\n\n{d}", summary.trim()),
     }
 }
 
