@@ -6,7 +6,8 @@ use gpui::{AppContext as _, Context, Entity};
 use gpui_elements::editable_text::EditableTextState;
 
 use super::model::{self, Account, Provider, normalize_host};
-use super::state::{AccountForm, StatusLine, register_credentials};
+use super::state::{AccountForm, register_credentials};
+use super::status_text::StatusText;
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -72,7 +73,7 @@ impl Workspace {
                     Self::set_input(input, &text, cx);
                 }
             }
-            Err(e) => self.accounts_ui.identity.message = Some(StatusLine::err(e.to_string())),
+            Err(e) => self.accounts_ui.identity.message = Some(StatusText::err(e.to_string())),
         }
         cx.notify();
     }
@@ -110,8 +111,8 @@ impl Workspace {
             this.update(cx, |this, cx| {
                 this.load_identity(cx);
                 this.accounts_ui.identity.message = Some(match res {
-                    Ok(()) => StatusLine::ok(done),
-                    Err(e) => StatusLine::err(e.to_string()),
+                    Ok(()) => StatusText::ok(done),
+                    Err(e) => StatusText::err(e.to_string()),
                 });
                 cx.notify();
             })
@@ -197,6 +198,9 @@ impl Workspace {
     pub(super) fn remove_account(&mut self, cx: &mut Context<Self>) {
         let Some(id) = self.accounts_ui.form.as_ref().and_then(|f| f.editing.clone()) else { return };
         self.accounts_ui.accounts.retain(|a| a.id != id);
+        if let Err(e) = model::store_token(&id, "") {
+            log::error!("cannot remove token from keyring: {e}");
+        }
         self.persist_accounts();
         self.accounts_ui.form = None;
         cx.notify();
@@ -209,7 +213,7 @@ impl Workspace {
         cx.notify();
     }
 
-    /// Save to disk (small files) and refresh the git credential registry.
+    /// Save to disk and the keyring, and refresh the git credential registry.
     fn persist_accounts(&mut self) {
         model::save(&self.accounts_ui.accounts);
         register_credentials(&self.accounts_ui.accounts);

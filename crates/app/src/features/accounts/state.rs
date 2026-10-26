@@ -6,22 +6,7 @@ use gpui::{App, AppContext, Entity, Task};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::model::{self, Account, Provider};
-
-/// A one-line result shown under a section.
-#[derive(Clone, Debug)]
-pub struct StatusLine {
-    pub text: String,
-    pub error: bool,
-}
-
-impl StatusLine {
-    pub fn ok(text: impl Into<String>) -> Self {
-        Self { text: text.into(), error: false }
-    }
-    pub fn err(text: impl Into<String>) -> Self {
-        Self { text: text.into(), error: true }
-    }
-}
+use super::status_text::StatusText;
 
 /// The add/edit account form (its text lives in [`AccountInputs`]).
 #[derive(Clone, Debug)]
@@ -39,7 +24,7 @@ pub struct IdentityState {
     pub global: Identity,
     pub local: Identity,
     pub effective: Option<EffectiveIdentity>,
-    pub message: Option<StatusLine>,
+    pub message: Option<StatusText>,
 }
 
 #[derive(Clone)]

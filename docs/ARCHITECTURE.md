@@ -176,14 +176,15 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 
 ## File watcher and refresh coalescing
 
-- `RepoModel::new` starts `RepoWatcher` (`watcher.rs`): one OS thread owning the
-  `notify` watcher; blocks on an mpsc channel when idle (no polling). It does a
-  trailing debounce (300ms quiet, 2s max) and sends one tick (`bool` = git
+- `RepoModel::new` starts `RepoWatcher` (`watcher.rs`): a `notify-debouncer-full` debouncer
+  (owns the thread, idle = no polling; 300ms per-event delay, no max wait, so a long burst yields a
+  few ticks rather than one). The handler filters events and sends one tick (`bool` = git
   metadata changed) over a `smol` channel to a foreground task in the model.
-  Dropping the model drops `RepoWatcher`, which sends `Stop`; the thread exits and the watches go away.
-- Watches: root non-recursive, each top-level dir recursively (except `.git`,
-  `target`, `node_modules`), git dir non-recursive + `refs/` recursive. New
-  top-level dirs get a watch on their Create event. Not one recursive root watch:
+  Dropping the model drops `RepoWatcher`, which drops the debouncer (thread stops, watches go away).
+- Watches: root non-recursive, each top-level dir recursively (except `.git` and what the
+  repo's `.gitignore` / `info/exclude` ignores, via the `ignore` crate; nested `.gitignore`s are
+  not read), git dir non-recursive + `refs/` recursive. New top-level dirs get a watch on their
+  Create event (the handler `try_lock`s the shared debouncer). Not one recursive root watch:
   that would cover `.git/objects` and build dirs.
 - **Gotcha:** inotify reports `Access(Open)` for reads, and our own `git status`
   opens every file and `.git/index`. Only Create/Modify/Remove/Any events count,
@@ -262,8 +263,8 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 
 ## Diff options and split view (`features/diff/`: `diff_options_menu.rs`, `split_diff.rs`, `split_row.rs`)
 
-- Options are app-wide and persisted in `Settings` (`diff_split`, `diff_ignore_whitespace`, `diff_wrap`), stored in a
-  separate `display` file (`key=value`) so old `repositories` files load unchanged.
+- Options are app-wide and persisted in `Settings` (`diff_split`, `diff_ignore_whitespace`, `diff_wrap`), stored in
+  `settings.toml` (serde + toml, `#[serde(default)]` so missing keys are fine).
 - `gd_git::DiffOptions { ignore_whitespace }` is passed to `working_diff`/`commit_diff` (`-w`).
   `RepoModel::diff_options` holds it; `set_diff_options` reloads the visible change/commit diff via the
   normal generation counters (old diff stays on screen until the new one lands). `Workspace::apply_diff_options` pushes settings in;

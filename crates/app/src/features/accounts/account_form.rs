@@ -87,7 +87,7 @@ impl RenderOnce for AccountForm {
             .child(FieldRow::new("Username", "account-username", &inp.username, "octocat"))
             .child(FieldRow::new("Personal access token", "account-token", &inp.token, token_hint))
             .child(div().text_size(px(12.0)).text_color(theme.text_faint).child("The token is shown while typing and is not validated online."))
-            .children(self.form.error.as_deref().map(StatusText::error))
+            .children(self.form.error.as_deref().map(StatusText::err))
             .child(self.buttons())
     }
 }
