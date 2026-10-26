@@ -10,3 +10,4 @@ gd-syntax.workspace = true
 gpui.workspace = true
 anyhow.workspace = true
 log.workspace = true
+rust-embed.workspace = true
