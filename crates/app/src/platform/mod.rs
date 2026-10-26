@@ -2,7 +2,7 @@
 //! rest of the app only talks to it through this module:
 //!
 //! - `Chrome`, `caption_buttons`, `titlebar_drag`, `frame`: window chrome
-//! //! - `configure_window(&mut WindowOptions)`: platform window options
+//! - `configure_window(&mut WindowOptions)`: platform window options
 //! - `SECONDARY`, `REFRESH_KEY`, `QUIT_KEY`: shortcut modifier and keys
 
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
