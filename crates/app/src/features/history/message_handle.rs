@@ -64,5 +64,3 @@ impl RenderOnce for MessageHandle {
             )
     }
 }
-
-pub(super) use MessageDrag as Drag;

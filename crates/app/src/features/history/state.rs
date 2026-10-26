@@ -48,7 +48,7 @@ pub struct HistoryUi {
     pub menu_gen: usize,
     pub dialog: Option<HistoryDialog>,
     /// Commit box is amending the last commit of this repository.
-    pub amend: Option<AmendState>,
+    pub amend: Option<PathBuf>,
     /// Inputs shared by the dialogs (squash message, branch / tag name).
     pub msg_summary: Entity<EditableTextState>,
     pub msg_desc: Entity<EditableTextState>,
@@ -56,10 +56,6 @@ pub struct HistoryUi {
     /// Search box above the commit list.
     pub search: Entity<EditableTextState>,
     _subs: Vec<Subscription>,
-}
-
-pub struct AmendState {
-    pub root: PathBuf,
 }
 
 impl HistoryUi {

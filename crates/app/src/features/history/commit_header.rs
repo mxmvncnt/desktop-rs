@@ -4,7 +4,7 @@ use gd_git::Commit;
 use gd_ui::{Icon, Theme, icon};
 use gpui::{AnyElement, App, DragMoveEvent, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
-use super::message_handle::{Drag, MessageHandle};
+use super::message_handle::{MessageDrag, MessageHandle};
 use super::message_resize::MSG_DEFAULT_MAX;
 use crate::workspace::Workspace;
 use crate::shared::commit_authors::{authors_text, body_without_trailers};
@@ -71,7 +71,7 @@ impl CommitHeader {
         div()
             .flex()
             .flex_col()
-            .on_drag_move(move |e: &DragMoveEvent<Drag>, _, cx| {
+            .on_drag_move(move |e: &DragMoveEvent<MessageDrag>, _, cx| {
                 let y = e.event.position.y.as_f32();
                 ws.update(cx, |this, cx| this.drag_commit_message_to(y, shown, cx))
             })
