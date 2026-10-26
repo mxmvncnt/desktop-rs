@@ -189,7 +189,7 @@ impl Workspace {
             }
             None => list.push(Account { id: model::new_id(), provider: form.provider, name, host, username, token: typed_token }),
         }
-        self.persist_accounts(cx);
+        self.persist_accounts();
         self.accounts_ui.form = None;
         cx.notify();
     }
@@ -197,7 +197,7 @@ impl Workspace {
     pub(super) fn remove_account(&mut self, cx: &mut Context<Self>) {
         let Some(id) = self.accounts_ui.form.as_ref().and_then(|f| f.editing.clone()) else { return };
         self.accounts_ui.accounts.retain(|a| a.id != id);
-        self.persist_accounts(cx);
+        self.persist_accounts();
         self.accounts_ui.form = None;
         cx.notify();
     }
@@ -210,7 +210,7 @@ impl Workspace {
     }
 
     /// Save to disk (small files) and refresh the git credential registry.
-    fn persist_accounts(&mut self, _cx: &mut Context<Self>) {
+    fn persist_accounts(&mut self) {
         model::save(&self.accounts_ui.accounts);
         register_credentials(&self.accounts_ui.accounts);
     }
