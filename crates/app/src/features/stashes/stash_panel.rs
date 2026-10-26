@@ -1,6 +1,6 @@
 //! The collapsible "Stashes (N)" panel in the Changes sidebar.
 
-use gd_ui::{Button, Theme};
+use gd_ui::Theme;
 use gpui::{AnyElement, App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 use super::stash_list::StashList;
@@ -28,11 +28,11 @@ impl RenderOnce for StashPanel {
         let st = &r.stashes;
         let branch = r.status.as_ref().and_then(|s| s.branch.clone());
         let visible = st.visible(branch.as_deref());
-        let (shown, total, collapsed, all) = (visible.len(), st.list.len(), st.collapsed, st.all_branches);
+        let (shown, collapsed, all) = (visible.len(), st.collapsed, st.all_branches);
         let body: Option<AnyElement> = if collapsed {
             None
         } else if shown == 0 {
-            Some(empty_hint(&self.repo, total, &theme).into_any_element())
+            Some(empty_hint(&theme).into_any_element())
         } else {
             Some(StashList::new(self.repo.clone(), self.ws, visible, branch, all).into_any_element())
         };
@@ -47,23 +47,15 @@ impl RenderOnce for StashPanel {
     }
 }
 
-/// Shown when the branch filter hides every stash.
-fn empty_hint(repo: &Entity<RepoModel>, total: usize, theme: &Theme) -> impl IntoElement + use<> {
-    let repo = repo.clone();
+/// Shown when the branch filter hides every stash; the header's filter
+/// button switches to "All branches".
+fn empty_hint(theme: &Theme) -> impl IntoElement + use<> {
     div()
         .flex()
-        .items_center()
-        .justify_between()
+        .justify_center()
         .px(px(14.0))
         .pb(px(10.0))
         .text_size(px(12.0))
         .text_color(theme.text_faint)
         .child("No stashes on this branch")
-        .child(
-            Button::new("stash-show-all")
-                .ghost()
-                .compact()
-                .label(format!("Show all ({total})"))
-                .on_click(move |_, _, cx| repo.update(cx, |r, cx| r.toggle_stash_filter(cx))),
-        )
 }
