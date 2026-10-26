@@ -251,8 +251,20 @@ impl Repository {
     }
 
     pub fn pull(&self) -> Result<()> {
-        self.git().args(["pull", "--ff"]).network().run()?;
+        self.git().args(["pull", "--ff", "--no-edit"]).network().run()?;
         Ok(())
+    }
+
+    /// Fetch, then push only if the remote has no commits we lack. Returns
+    /// `false` (without pushing) when the branch is behind its upstream, so
+    /// the caller can offer a pull first.
+    pub fn push_if_up_to_date(&self, branch: &str) -> Result<bool> {
+        self.fetch()?;
+        if self.status()?.ahead_behind.behind > 0 {
+            return Ok(false);
+        }
+        self.push(branch, true)?;
+        Ok(true)
     }
 
     /// Push the current branch, setting upstream on first push like Desktop's

@@ -84,6 +84,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 - ✅ discard changes (tracked and untracked); undo last commit (soft reset); `ignore` (append to `.gitignore`, `escape_ignore` helper).
 - ✅ branches list, checkout (local, or remote → tracking branch), create, delete
 - ✅ fetch / pull / push, plus publish (`--set-upstream`)
+  - Push fetches first (`push_if_up_to_date`); if the remote is ahead it skips the push, so the toolbar shows Pull (merge via `pull --ff --no-edit`), then Push once behind == 0.
 - ✅ paged log, commit file list
 
 ### UI

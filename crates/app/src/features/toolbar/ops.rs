@@ -17,20 +17,24 @@ impl RepoModel {
         };
         self.run(
             move |r| match op {
-                RemoteOp::Fetch => r.fetch(),
-                RemoteOp::Pull => r.pull(),
-                RemoteOp::Push => r.push(&branch, has_upstream),
+                RemoteOp::Fetch => r.fetch().map(|_| true),
+                RemoteOp::Pull => r.pull().map(|_| true),
+                // Fetch first: if the remote moved, skip the push so the
+                // refreshed toolbar offers Pull, then Push after the merge.
+                RemoteOp::Push if has_upstream => r.push_if_up_to_date(&branch),
+                RemoteOp::Push => r.push(&branch, false).map(|_| true),
             },
-            move |this, _, _| this.notice = Some(done_message(op).into()),
+            move |this, done, _| this.notice = Some(done_message(op, done).into()),
             cx,
         );
     }
 }
 
-fn done_message(op: RemoteOp) -> &'static str {
-    match op {
-        RemoteOp::Fetch => "Fetched from remote",
-        RemoteOp::Pull => "Pulled from remote",
-        RemoteOp::Push => "Pushed to remote",
+fn done_message(op: RemoteOp, done: bool) -> &'static str {
+    match (op, done) {
+        (RemoteOp::Push, false) => "Remote has new commits: pull to merge them, then push",
+        (RemoteOp::Fetch, _) => "Fetched from remote",
+        (RemoteOp::Pull, _) => "Pulled from remote",
+        (RemoteOp::Push, true) => "Pushed to remote",
     }
 }
