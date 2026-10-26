@@ -24,7 +24,7 @@ pub fn default_squash_summary(branch: &str, current: &str) -> String {
 }
 
 impl Repository {
-    fn count(&self, range: &str) -> Result<u32> {
+    pub(crate) fn count(&self, range: &str) -> Result<u32> {
         let out = self.git().args(["rev-list", "--count", range, "--"]).run()?;
         out.trim().parse().map_err(|_| GitError::Parse(out))
     }

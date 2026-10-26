@@ -62,11 +62,8 @@ impl Repository {
             .map_err(|_| GitError::Io(format!("{head} and {base} have no common history")))?
             .trim()
             .to_string();
-        let count = |range: String| -> Result<u32> {
-            Ok(self.git().args(["rev-list", "--count"]).arg(range).run()?.trim().parse().unwrap_or(0))
-        };
-        let ahead = count(format!("{base}..{head}"))?;
-        let behind = count(format!("{head}..{base}"))?;
+        let ahead = self.count(&format!("{base}..{head}"))?;
+        let behind = self.count(&format!("{head}..{base}"))?;
         let out = self
             .git()
             .args(["diff", "--name-status", "-z", "-M", "--no-ext-diff"])
