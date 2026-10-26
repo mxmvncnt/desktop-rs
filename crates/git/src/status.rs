@@ -2,6 +2,7 @@
 
 use git2::{Status, StatusOptions};
 
+use crate::refs::upstream_ref;
 use crate::{Repository, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -63,11 +64,7 @@ impl Repository {
         let head = repo.find_reference("HEAD")?;
         st.branch = head.symbolic_target()?.and_then(|t| t.strip_prefix("refs/heads/")).map(String::from);
         st.head_oid = head.resolve().ok().and_then(|h| h.target()).map(|oid| oid.to_string());
-        let upstream = st
-            .branch
-            .as_ref()
-            .and_then(|b| repo.branch_upstream_name(&format!("refs/heads/{b}")).ok())
-            .and_then(|n| n.as_str().ok().map(String::from));
+        let upstream = st.branch.as_ref().and_then(|b| upstream_ref(&repo, &format!("refs/heads/{b}")));
         if let Some(upstream) = upstream {
             st.upstream = upstream.strip_prefix("refs/remotes/").map(String::from);
             if let (Some(local), Ok(remote)) = (&st.head_oid, repo.refname_to_id(&upstream)) {
