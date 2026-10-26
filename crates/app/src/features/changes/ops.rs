@@ -4,7 +4,7 @@
 use gd_git::{FileChange, FileStatus};
 use gpui::Context;
 
-use crate::repo::{LastCommit, RepoEvent, RepoModel};
+use crate::repo::{LastCommit, Op, RepoEvent, RepoModel};
 use crate::shared::plural::plural;
 
 impl RepoModel {
@@ -62,13 +62,12 @@ impl RepoModel {
         let partial = self.partial_files();
         let n = paths.len() + partial.len();
         let branch = self.branch_name();
-        self.committing = true;
-        cx.notify();
         if self.merging() {
             return self.commit_merge(summary, description, cx);
         }
         let message = (summary.clone(), description.clone());
         self.run(
+            Op { committing: true, ..Op::default() },
             move |r| r.commit_partial(&summary, &description, &paths, &partial),
             move |this, _sha, _| {
                 this.last_commit = Some(LastCommit {
@@ -97,6 +96,7 @@ impl RepoModel {
     /// Append gitignore `patterns` to `.gitignore`, then refresh.
     pub fn ignore(&mut self, patterns: Vec<String>, notice: String, cx: &mut Context<Self>) {
         self.run(
+            Op::default(),
             move |r| r.ignore(&patterns),
             move |this, _, _| this.notice = Some(notice),
             cx,
@@ -104,13 +104,14 @@ impl RepoModel {
     }
 
     pub fn discard(&mut self, changes: Vec<FileChange>, cx: &mut Context<Self>) {
-        self.run(move |r| r.discard(&changes), |_, _, _| {}, cx);
+        self.run(Op::default(), move |r| r.discard(&changes), |_, _, _| {}, cx);
     }
 
     /// Soft-reset HEAD~1 and hand the message back via [`RepoEvent::CommitUndone`].
     pub fn undo_last_commit(&mut self, cx: &mut Context<Self>) {
         let last = self.last_commit.take();
         self.run(
+            Op::default(),
             |r| r.undo_last_commit(),
             move |this, _, cx| {
                 this.reset_history_selection();

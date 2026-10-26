@@ -24,4 +24,5 @@ mod refresh;
 mod run;
 mod state;
 
+pub use run::Op;
 pub use state::{LastCommit, RemoteOp, RepoEvent, RepoModel, Tab};

@@ -8,7 +8,7 @@ use gd_git::{Diff, Stash};
 use gpui::{AppContext, Context};
 
 use crate::features::diff::highlight_diff;
-use crate::repo::RepoModel;
+use crate::repo::{Op, RepoModel};
 use crate::shared::plural::plural;
 
 impl RepoModel {
@@ -167,6 +167,7 @@ impl RepoModel {
     pub fn stash_push(&mut self, message: String, paths: Vec<String>, cx: &mut Context<Self>) {
         let n = paths.len();
         self.run(
+            Op::default(),
             move |r| r.stash_push(&message, &paths),
             move |this, sha, cx| {
                 this.notice = Some(if n == 0 { "Stashed all changes".into() } else { format!("Stashed {n} path{}", plural(n as u32)) });
@@ -183,6 +184,7 @@ impl RepoModel {
 
     pub fn stash_apply(&mut self, sha: String, cx: &mut Context<Self>) {
         self.run(
+            Op::default(),
             move |r| r.stash_apply(&sha),
             |this, _, _| this.notice = Some("Applied stash (kept in the list)".into()),
             cx,
@@ -191,6 +193,7 @@ impl RepoModel {
 
     pub fn stash_pop(&mut self, sha: String, cx: &mut Context<Self>) {
         self.run(
+            Op::default(),
             move |r| r.stash_pop(&sha),
             |this, _, cx| {
                 this.notice = Some("Restored stash".into());
@@ -203,6 +206,7 @@ impl RepoModel {
 
     pub fn stash_drop(&mut self, sha: String, cx: &mut Context<Self>) {
         self.run(
+            Op::default(),
             move |r| r.stash_drop(&sha),
             |this, _, cx| {
                 this.notice = Some("Discarded stash".into());
@@ -215,6 +219,7 @@ impl RepoModel {
 
     pub fn stash_rename(&mut self, stash: Stash, message: String, cx: &mut Context<Self>) {
         self.run(
+            Op::default(),
             move |r| r.stash_rename(&stash.sha, stash.branch.as_deref(), &message),
             |this, _, cx| this.reload_stashes(cx),
             cx,
@@ -232,6 +237,7 @@ impl RepoModel {
         let from = self.branch_name();
         let message = format!("Changes left on {from} when switching to {}", branch.name);
         self.run(
+            Op::default(),
             move |r| {
                 let sha = r.stash_push(&message, &[])?;
                 if let Err(e) = r.checkout(&branch) {
