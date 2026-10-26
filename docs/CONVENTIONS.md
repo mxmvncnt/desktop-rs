@@ -59,7 +59,8 @@ Prefer a well-maintained crate over hand-rolled platform/utility code
 (config dirs, debouncing, serialization, time formatting, opening URLs, trash...).
 Hand-roll only when a crate is too restrictive, and write down why.
 Exception: git writes and network ops keep shelling out to the `git` CLI
-(hooks, credential helpers, LFS, SSH behave exactly like the CLI).
+(hooks, credential helpers, LFS, SSH behave exactly like the CLI). Git **reads** use `git2`
+(one `Repository::repo()` per call); never parse CLI text.
 
 ## Feature folder example: stashes
 

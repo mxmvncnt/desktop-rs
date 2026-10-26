@@ -21,13 +21,16 @@ guessing APIs. To recreate them:
 
 ## Git layer (`crates/git`)
 
-- Like Desktop's `dugite`, it **shells out to the system `git`** (`exec.rs`).
+- **Reads use `git2`** (libgit2, `vendored-libgit2`, nothing to install): status, branches, log
+  (revwalk paging), trailers, tree diffs, stash list, `repo.state()`, merge preview, remotes, tags,
+  blob reads, config reads. `Repository::repo()` opens a fresh `git2::Repository` per call, because
+  libgit2 caches the index and a read right after a CLI write must see it. libgit2 does not honor
+  `GIT_CONFIG_GLOBAL` (tests point it at a temp dir with `git2::opts::set_search_path`).
+- **Writes and network shell out to the system `git`** (`exec.rs`), like Desktop's `dugite`.
   Hooks, credential helpers, LFS, config, and SSH all behave as they do on the CLI.
-  It sets `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0`, and `core.quotepath=false`.
+  It sets `GIT_OPTIONAL_LOCKS=0`. No CLI text is parsed, so there is no locale/quotepath pinning.
   Network ops set `GIT_TERMINAL_PROMPT=0`, so credentials must come from a helper or ssh-agent.
-  (An auth UI is still to do.)
-- It only parses machine formats: `status --porcelain=v2 -z`,
-  `log -z` with `%x1f` separators, `for-each-ref` with `%00`, `show --name-status -z`.
+  (An auth UI is still to do.) `portal_layout` keeps Flatpak document-portal folders working for CLI calls.
 - **All functions block.** Call them only from a background executor.
 - Commit model (`Repository::commit`): reset the index to HEAD, `add -A` the
   checked paths, then `commit -F -`. This matches Desktop's checkbox semantics.
@@ -36,16 +39,18 @@ guessing APIs. To recreate them:
   can index row `i` in O(1) from a `uniform_list`. Parsing is capped at 50k lines (`truncated`).
 - `crates/git/tests/*.rs` exercise the write paths against scratch repos (`tests/common` has the
   tempdir + `sh` helpers): `cargo test -p gd-git`. Index staging goes through
-  `git add --pathspec-from-file=- --pathspec-file-nul` (no ARG_MAX chunking). Remote URL parsing lives in `remote.rs`.
+  `git add --pathspec-from-file=- --pathspec-file-nul` (no ARG_MAX chunking). Remote URL parsing lives in `remote.rs`
+  (hand-rolled: scp-style URLs are not parseable by the `url` crate, and `gix-url` is far heavier than 15 lines).
 
 ## Stashes (`gd-git/src/stash.rs`, `app/src/features/stashes/`)
 
-- Listing: `git stash list -z --format=%H%x1f%h%x1f%ct%x1f%cd%x1f%gs` with `--date=format-local`. `%gs` is
+- Listing: `stash_foreach` (index, reflog subject, oid); the list date is formatted with `chrono` from the commit's
+  recorded offset. The subject is
   `WIP on <branch>: <sha> <subject>` (no user message) or `On <branch>: <msg>`; `parse_subject` extracts branch/message
   (`(no branch)` = detached). Stashes are identified by sha, never by index: write ops re-resolve `stash@{n}` from the sha
   right before running (indices shift when others are dropped).
 - Layout: tracked changes = `git diff S^1 S`; untracked files (`-u`) live in the parentless third parent `S^3`
-  (`ls-tree -r` for the list, `git show S^3 -- path` for the diff). Untracked entries get `FileStatus::Untracked`.
+  (tree walk for the list, blob read of `S^3:path` for the diff). Untracked entries get `FileStatus::Untracked`.
 - Push uses `-u` always; pathspec pushes pass `--literal-pathspecs` (paths like `notes [1].md`). Gotcha: the global
   `--literal-pathspecs` breaks `-u` cleanup when no pathspec is given, so it is only passed with paths.
 - `exec.rs` now falls back to stdout for the error text when stderr is empty (`stash apply` prints CONFLICT lines on stdout).
@@ -59,7 +64,7 @@ guessing APIs. To recreate them:
 ## Diff engine (`crates/git/src/engine.rs`, the `similar` crate)
 
 - git only _fetches_ the two versions (`Side::{Empty, Blob{rev,path}, Worktree(path)}` via
-  `Repository::read_side`: `cat-file blob rev:path`, or the filesystem). The diff is computed
+  `Repository::read_side`: blob `rev:path`, or the filesystem). The diff is computed
   in-process (`engine::diff_texts`: Myers via `capture_diff_slices_deadline` with an 800ms deadline,
   `group_diff_ops(…, 3)` for hunks). Working, commit and stash diffs all go through
   `Repository::diff_sides`.
@@ -207,7 +212,7 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
   Changes menu code is untouched; `workspace/actions.rs` routes Esc/Enter/arrows to it first.
 - Every op goes through `RepoModel::hist_run`, a thin wrapper over the merge branch's `run_op` (one at a time, then `refresh`). Menu items are
   disabled while an op, remote op, commit, or stopped merge/rebase/cherry-pick/revert is active.
-- Unpushed: `rev-list @{upstream}..HEAD`, or `HEAD --not --remotes` without upstream; empty with no remotes.
+- Unpushed: revwalk from HEAD hiding the upstream ref, or hiding `refs/remotes/*` without upstream; empty with no remotes.
 - Squash: adjacent, linear commits only. The squashed commit is built with `commit-tree` (newest tree, oldest's
   parent). If the run ends at HEAD, `update-ref` moves the branch (working tree and index untouched).
   Otherwise `rebase --autostash --onto <new> <newest>` replays the later commits; they apply cleanly
@@ -223,7 +228,7 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
 
 ## Merge, rebase and conflicts
 
-- `gd-git`: `progress.rs` (`Repository::in_progress() -> Option<InProgress>`: Merge/Squash/Rebase/CherryPick/Revert, read from MERGE_HEAD, `rebase-merge/`, `rebase-apply/`, CHERRY_PICK_HEAD, REVERT_HEAD, SQUASH_MSG+unmerged; `continue_operation`, `abort_operation`, `prepared_message`) and `merge.rs` (`merge`, `merge_squash`, `rebase`, `merge_preview`, `commit_merge`, `resolve_with`, `mark_resolved`, branch rename/delete-remote/create-from). Operations return `OpOutcome::{Done, UpToDate, Conflicts}`; a pause is not an error. `Git::no_editor()` sets GIT_EDITOR=true for `--continue`.
+- `gd-git`: `progress.rs` (`Repository::in_progress() -> Option<InProgress>`: Merge/Squash/Rebase/CherryPick/Revert, from `repo.state()`, MERGE_HEAD, `rebase-merge/` step files (libgit2 `open_rebase` rejects git's own rebases), CHERRY_PICK_HEAD, REVERT_HEAD, SQUASH_MSG+`index.has_conflicts()`; `continue_operation`, `abort_operation`, `prepared_message`) and `merge.rs` (`merge`, `merge_squash`, `rebase`, `merge_preview`, `commit_merge`, `resolve_with`, `mark_resolved`, branch rename/delete-remote/create-from). Operations return `OpOutcome::{Done, UpToDate, Conflicts}`; a pause is not an error. `Git::no_editor()` sets GIT_EDITOR=true for `--continue`.
 - The watcher already covers `rebase-*` (git dir top level) and MERGE_HEAD etc.
 - App: `RepoModel.merge: MergeState` (`features/merge/state.rs`, ops in `features/merge/ops.rs`), loaded in every refresh in the background. `RepoModel::run_op` is the busy-flag write helper. A newly paused merge-like op emits `RepoEvent::PreparedMessage` (fills the commit box if empty). While merge-like ops are paused, `commit` uses `commit_merge` (no index reset).
 - Views: `features/merge/` (`MergeUi` = `Workspace.merge_ui`: `merge_dialog` + `merge_candidate_list` + `merge_preview`, `in_progress_banner`, `conflict_hint` above the diff, `conflict_menu`/`conflict_menu_rows`, `handlers`/`conflict_handlers`) and `features/branches/` (`BranchUi` = `Workspace.branch_ui`: `branch_menu`/`branch_menu_rows`, `branch_dialog` for rename/delete/create-from, `ops`, `handlers`). Esc/Enter/arrows are routed in workspace/actions.rs and menus to both. Conflicted file rows route to the conflict menu in `open_file_menu`.

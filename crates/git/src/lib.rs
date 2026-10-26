@@ -1,13 +1,12 @@
 //! `gd-git` — the git layer for desktop-rs.
 //!
 //! Design (see `docs/ARCHITECTURE.md` §Git layer):
-//! - Shells out to the user's `git` binary, the same strategy as the Electron
-//!   app's `dugite`. Hooks, credential helpers, config and LFS behave exactly
-//!   like the CLI, and we avoid libgit2's partial feature coverage.
+//! - Reads go through `git2` (libgit2) and return typed data. Writes and network
+//!   operations shell out to the user's `git` binary, the same strategy as the
+//!   Electron app's `dugite`, so hooks, credential helpers, config and LFS behave
+//!   exactly like the CLI. No CLI output is parsed.
 //! - Every function is **blocking**. The UI runs them on GPUI's background
 //!   executor (`cx.background_spawn`) and never on the main thread.
-//! - Machine-readable formats only (`status --porcelain=v2 -z`, NUL-separated
-//!   `log` formats) so parsing is cheap and locale-independent.
 
 mod credentials;
 mod diff;

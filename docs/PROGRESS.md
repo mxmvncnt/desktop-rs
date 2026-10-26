@@ -78,7 +78,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 ### Git operations (`gd-git`, all verified by `examples/smoke.rs`)
 
 - ✅ open / init / clone
-- ✅ status (porcelain v2: branch, upstream, ahead/behind, renames, conflicts, untracked)
+- ✅ status (libgit2 `statuses`: branch, upstream, ahead/behind, renames, conflicts, untracked)
 - ✅ working diff (tracked, untracked, unborn HEAD) and commit diff
 - ✅ commit selected files (checkbox semantics) with summary and description
 - ✅ discard changes (tracked and untracked); undo last commit (soft reset); `ignore` (append to `.gitignore`, `escape_ignore` helper).
@@ -138,7 +138,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
    - Known gaps: stashes dropped externally are noticed on the next full refresh (focus/F5/any op), since `git stash drop` of a non-top entry only rewrites the reflog; no auto-restore of the switch-stash when returning to the branch; "Stash selected files" is always enabled in the menu (notice if none checked).
    - Snapshot views: `stash-list`, `stash-all`, `stash-detail`, `stash-detail-untracked`, `stash-menu`, `stash-dialog`, `stash-drop-dialog`, `switch-branch-dialog`. Test: `cargo test -p gd-git --test stash` (the old `--keep` scratch-repo mode is gone: build snapshot repos with plain `git`).
 6. ✅ Merge / squash / rebase into current branch; operation-in-progress banner; conflict resolution; branch context menu.
-   - Branch popover footer "Merge into current branch…" (ctrl+shift+M): dialog with Merge | Squash and merge | Rebase modes, filter, ↑/↓/Enter, Desktop-style preview line ("This will merge N commits from X into Y" / "up to date", plus expected conflicts via `git merge-tree`), computed in the background.
+   - Branch popover footer "Merge into current branch…" (ctrl+shift+M): dialog with Merge | Squash and merge | Rebase modes, filter, ↑/↓/Enter, Desktop-style preview line ("This will merge N commits from X into Y" / "up to date", plus expected conflicts via libgit2 `merge_commits`), computed in the background.
    - New-branch popover has a "Based on" selector (current branch by default, any local/remote branch via `pickers/new_branch_base*.rs`); uses `create_branch_from` (`--no-track`). Snapshot view `new-branch-base`.
    - Squash tab has a "Squash commit summary" field (default "Squash merge X into Y", reset when the highlighted branch changes); `merge_squash(branch, Some(summary))` uses it as the subject, body lists the squashed commits. Modal/menu backdrops `.occlude()` so nothing behind is clickable.
    - Right-click a branch: merge, rebase onto, create from, rename, copy name, delete (also offers deleting the remote branch). Conflicted file rows: Use ours / Use theirs / Mark as resolved / Open in default editor.
