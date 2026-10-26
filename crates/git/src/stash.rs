@@ -36,15 +36,15 @@ pub struct Stash {
 impl Stash {
     /// What to show as the title.
     pub fn title(&self) -> String {
-        if !self.message.is_empty() {
-            self.message.clone()
-        } else {
-            match &self.branch {
-                Some(b) => format!("WIP on {b}"),
-                None => "WIP on (no branch)".into(),
-            }
-        }
+        if self.message.is_empty() { subject(self.branch.as_deref(), "") } else { self.message.clone() }
     }
+}
+
+/// Reflog subject git (and `stash_rename`) writes: `WIP on <branch>` without
+/// a message, `On <branch>: <msg>` with one.
+fn subject(branch: Option<&str>, message: &str) -> String {
+    let branch = branch.unwrap_or("(no branch)");
+    if message.is_empty() { format!("WIP on {branch}") } else { format!("On {branch}: {message}") }
 }
 
 /// Split a reflog subject into `(branch, message)`.
@@ -180,12 +180,7 @@ impl Repository {
     /// the top of the list and its list date becomes now (the commit date is
     /// unchanged). Returns the sha (unchanged).
     pub fn stash_rename(&self, sha: &str, branch: Option<&str>, message: &str) -> Result<()> {
-        let subject = match (message.trim(), branch) {
-            ("", Some(b)) => format!("WIP on {b}"),
-            ("", None) => "WIP on (no branch)".to_string(),
-            (m, Some(b)) => format!("On {b}: {m}"),
-            (m, None) => format!("On (no branch): {m}"),
-        };
+        let subject = subject(branch, message.trim());
         let old = self.stash_index(sha)?;
         self.git().args(["stash", "store", "-m", &subject, sha]).run()?;
         // The old entry shifted down by one after the store.
