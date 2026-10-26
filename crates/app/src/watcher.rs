@@ -98,10 +98,10 @@ impl RepoWatcher {
                     hit = Some(hit.unwrap_or(false) || full);
                     // A new top-level directory needs its own recursive watch.
                     if matches!(ev.kind, EventKind::Create(_)) && p.parent() == Some(handler_paths.root.as_path()) {
-                        if let Ok(mut guard) = handler_slot.try_lock() {
-                            if let Some(d) = guard.as_mut() {
-                                watch_top_level(d, &handler_paths, p);
-                            }
+                        if let Ok(mut guard) = handler_slot.try_lock()
+                            && let Some(d) = guard.as_mut()
+                        {
+                            watch_top_level(d, &handler_paths, p);
                         }
                     }
                 }
