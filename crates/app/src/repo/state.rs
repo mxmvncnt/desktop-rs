@@ -92,7 +92,7 @@ pub struct RepoModel {
     pub(super) change_diff_gen: u64,
     /// What `change_diff` was loaded for, so a reload of the same unchanged
     /// file keeps the (possibly expanded) diff on screen.
-    pub(super) change_diff_key: Option<(String, DiffOptions)>,
+    pub change_diff_key: Option<(String, DiffOptions)>,
     pub(super) _change_diff_task: Option<Task<()>>,
 
     // ---- refresh coalescing / live updates ----
@@ -127,7 +127,8 @@ pub struct RepoModel {
     pub commit_shown: Option<ShownCommit>,
     pub commit_hl: Option<Arc<DiffHighlight>>,
     pub(super) commit_gen: u64,
-    pub(super) _commit_task: Option<Task<()>>,
+    /// Generation of the newest commit load applied; older results are dropped.
+    pub(super) commit_applied_gen: u64,
     pub(super) _commit_hl_task: Option<Task<()>>,
     pub(super) hl_cache: HighlightCache,
     /// Push status, tags, multi-select (see `features/history`).
@@ -194,7 +195,7 @@ impl RepoModel {
             commit_shown: None,
             commit_hl: None,
             commit_gen: 0,
-            _commit_task: None,
+            commit_applied_gen: 0,
             _commit_hl_task: None,
             hl_cache: HighlightCache::default(),
             history: Default::default(),
