@@ -1,5 +1,5 @@
 //! Arrow / Enter routing across every open menu and dialog. Esc is routed in
-//! workspace.rs.
+//! `workspace/actions.rs`.
 
 use gpui::{Context, Window};
 

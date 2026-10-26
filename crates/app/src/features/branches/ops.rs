@@ -48,8 +48,7 @@ impl RepoModel {
                 move |r| r.create_branch(&n, Some(&b))
             },
             move |this, _, _| {
-                this.commits.clear();
-                this.selected_commit = None;
+                this.reset_history_selection();
                 this.notice = Some(format!("Created {name} from {base}"));
             },
             cx,
@@ -70,8 +69,7 @@ impl RepoModel {
         self.run(
             move |r| r.checkout(&branch),
             |this, _, _| {
-                this.commits.clear();
-                this.selected_commit = None;
+                this.reset_history_selection();
                 this.last_commit = None;
             },
             cx,

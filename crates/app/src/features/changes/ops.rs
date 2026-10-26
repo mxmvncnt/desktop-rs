@@ -5,6 +5,7 @@ use gd_git::{FileChange, FileStatus};
 use gpui::Context;
 
 use crate::repo::{LastCommit, RepoEvent, RepoModel};
+use crate::shared::plural::plural;
 
 impl RepoModel {
     pub fn included_paths(&self) -> Vec<String> {
@@ -17,7 +18,11 @@ impl RepoModel {
 
     /// Name used when the summary is left empty and exactly one file is
     /// selected: "Create x" / "Update x" / "Delete x" / "Rename a to b".
-    pub fn default_summary(&self) -> Option<String> {
+    /// Never while amending or merging.
+    pub fn default_summary(&self, amending: bool) -> Option<String> {
+        if amending || self.merging() {
+            return None;
+        }
         let mut selected = self.changes().iter().filter(|c| !self.excluded.contains(&c.path));
         let c = selected.next()?;
         if selected.next().is_some() {
@@ -59,7 +64,7 @@ impl RepoModel {
         let branch = self.branch_name();
         self.committing = true;
         cx.notify();
-        if self.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes()) {
+        if self.merging() {
             return self.commit_merge(summary, description, cx);
         }
         let message = (summary.clone(), description.clone());
@@ -77,7 +82,7 @@ impl RepoModel {
                 });
                 this.notice = Some(format!(
                     "Committed {n} file{}",
-                    if n == 1 { "" } else { "s" }
+                    plural(n as u32)
                 ));
                 // Keep the selection: the status refresh moves it to the next
                 // file and the old diff stays up until the new one is loaded,
@@ -108,8 +113,7 @@ impl RepoModel {
         self.run(
             |r| r.undo_last_commit(),
             move |this, _, cx| {
-                this.commits.clear();
-                this.selected_commit = None;
+                this.reset_history_selection();
                 if let Some(c) = last {
                     cx.emit(RepoEvent::CommitUndone {
                         summary: c.summary,

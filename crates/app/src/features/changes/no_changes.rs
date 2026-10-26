@@ -1,10 +1,13 @@
 //! "No local changes" pane with push / pull / open-folder suggestions.
 
+use std::path::Path;
+
 use gd_ui::{Icon, Theme, motion};
 use gpui::{App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use crate::repo::RepoModel;
 use crate::shared::suggestion_card::SuggestionCard;
+use crate::shared::file_url::file_url;
 use crate::shared::plural::plural;
 
 #[derive(IntoElement)]
@@ -67,7 +70,7 @@ impl NoChanges {
                 "View the files of your repository",
                 self.root.clone(),
                 "Open folder",
-                move |_, _, cx| cx.open_url(&format!("file://{root}")),
+                move |_, _, cx| cx.open_url(&file_url(Path::new(&root))),
             ))
     }
 }

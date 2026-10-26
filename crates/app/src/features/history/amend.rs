@@ -3,14 +3,13 @@
 use gd_git::Commit;
 use gpui::{Context, Focusable, Window};
 
-use super::state::AmendState;
 use crate::repo::Tab;
 use crate::workspace::Workspace;
 
 impl Workspace {
     pub fn amending(&self, cx: &gpui::App) -> bool {
         match (&self.history_ui.amend, &self.repo) {
-            (Some(a), Some(r)) => a.root == r.read(cx).repo.root(),
+            (Some(root), Some(r)) => root == r.read(cx).repo.root(),
             _ => false,
         }
     }
@@ -19,7 +18,7 @@ impl Workspace {
     pub fn start_amend(&mut self, commit: Commit, window: &mut Window, cx: &mut Context<Self>) {
         let Some(repo) = self.repo.clone() else { return };
         let root = repo.read(cx).repo.root().to_path_buf();
-        self.history_ui.amend = Some(AmendState { root });
+        self.history_ui.amend = Some(root);
         self.set_commit_message(&commit.summary, &commit.body, cx);
         repo.update(cx, |r, cx| r.set_tab(Tab::Changes, cx));
         window.focus(&self.message.focus_handle(cx), cx);

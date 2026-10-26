@@ -23,23 +23,12 @@ pub enum RemoteOp {
 }
 
 /// How much a refresh reloads.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum RefreshScope {
     /// Worktree status only (files edited).
     Status,
     /// Also branches, stashes, push state and history (git metadata changed).
     Full,
-}
-
-impl RefreshScope {
-    pub fn from_metadata_changed(changed: bool) -> Self {
-        if changed { Self::Full } else { Self::Status }
-    }
-
-    /// The wider of the two.
-    pub fn or(self, other: Self) -> Self {
-        if self == Self::Full || other == Self::Full { Self::Full } else { Self::Status }
-    }
 }
 
 /// The commit made in this session, offered for undo (Desktop's strip above
@@ -218,11 +207,30 @@ impl RepoModel {
         }
     }
 
+    pub fn current_branch(&self) -> Option<&str> {
+        self.status.as_ref()?.branch.as_deref()
+    }
+
+    /// A merge-like operation is paused and the next commit finishes it.
+    pub fn merging(&self) -> bool {
+        self.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes())
+    }
+
+    pub fn selected_change_file(&self) -> Option<&FileChange> {
+        self.selected_change.and_then(|ix| self.changes().get(ix))
+    }
+
+    /// The history list is stale after the branch moved.
+    pub(crate) fn reset_history_selection(&mut self) {
+        self.commits.clear();
+        self.selected_commit = None;
+    }
+
     /// The undoable commit, only while still on the branch it was made on.
     pub fn undoable_commit(&self) -> Option<&LastCommit> {
         self.last_commit
             .as_ref()
-            .filter(|c| self.status.as_ref().and_then(|s| s.branch.as_deref()) == Some(c.branch.as_str()))
+            .filter(|c| self.current_branch() == Some(c.branch.as_str()))
     }
 
     pub fn changes(&self) -> &[FileChange] {

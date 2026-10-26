@@ -27,7 +27,7 @@ impl RepoModel {
     pub(super) fn load_change_diff(&mut self, cx: &mut Context<Self>) {
         self.change_diff_gen += 1;
         let generation = self.change_diff_gen;
-        let Some(change) = self.selected_change.and_then(|ix| self.changes().get(ix)).cloned() else {
+        let Some(change) = self.selected_change_file().cloned() else {
             self.change_diff = None;
             self.change_hl = None;
             self._change_hl_task = None;

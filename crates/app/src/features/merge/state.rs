@@ -72,7 +72,7 @@ pub enum ConflictAction {
 }
 
 /// Everything the merge feature adds to `Workspace`. A plain struct (not an
-/// `Entity`): Esc/Enter/arrow routing in workspace.rs/menus.rs reads `menu`/`dialog`.
+/// `Entity`): Esc/Enter/arrow routing in `workspace/actions.rs` and `menus/key_routing.rs` reads `menu`/`dialog`.
 pub struct MergeUi {
     pub dialog: Option<MergeDialog>,
     pub menu: Option<ConflictMenu>,
@@ -107,11 +107,5 @@ impl MergeUi {
             preview_task: None,
             _subs: subs,
         }
-    }
-
-    /// Whether the root should carry the "Menu" key context (↑/↓/Enter/Esc
-    /// reach the workspace instead of an input).
-    pub fn wants_menu_context(&self) -> bool {
-        self.menu.is_some()
     }
 }

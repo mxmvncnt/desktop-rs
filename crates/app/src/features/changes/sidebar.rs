@@ -2,7 +2,7 @@
 
 use gd_ui::{Theme, divider};
 use gpui::{
-    App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+    AnyElement, App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
 };
 
 use super::changes_panel::ChangesPanel;
@@ -12,15 +12,10 @@ use crate::features::history::CommitList;
 use crate::repo::{RepoModel, Tab};
 use crate::workspace::Workspace;
 
-enum SidebarBody {
-    Changes(ChangesPanel),
-    History(CommitList),
-}
-
 #[derive(IntoElement)]
 pub struct Sidebar {
     tabs: SidebarTabs,
-    body: SidebarBody,
+    body: AnyElement,
     corner_radius: f32,
     width: f32,
     handle: SidebarHandle,
@@ -31,8 +26,8 @@ impl Sidebar {
         let r = repo.read(cx);
         let (tab, count) = (r.tab, r.changes().len());
         let body = match tab {
-            Tab::Changes => SidebarBody::Changes(ChangesPanel::new(ws, repo, cx)),
-            Tab::History => SidebarBody::History(CommitList::new(repo.clone(), cx.entity(), ws.history_scroll.clone(), ws.history_ui.search.clone())),
+            Tab::Changes => ChangesPanel::new(ws, repo, cx).into_any_element(),
+            Tab::History => CommitList::new(repo.clone(), cx.entity(), ws.history_scroll.clone(), ws.history_ui.search.clone()).into_any_element(),
         };
         Self { tabs: SidebarTabs::new(tab, count, repo.clone()), body, corner_radius: ws.corner_radius,
             width: ws.sidebar_width(),
@@ -58,10 +53,7 @@ impl RenderOnce for Sidebar {
             .child(div().p(px(8.0)).child(self.tabs))
             .child(divider(cx))
             .child(self.handle)
-            .child(match self.body {
-                SidebarBody::Changes(p) => p.into_any_element(),
-                SidebarBody::History(l) => l.into_any_element(),
-            })
+            .child(self.body)
     }
 }
 

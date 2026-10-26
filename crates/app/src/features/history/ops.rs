@@ -5,7 +5,7 @@
 //! All git work goes through [`RepoModel::hist_run`], which runs off-thread,
 //! reports errors via `RepoModel::error`, and refreshes status + history +
 //! push state afterwards. Operations that stop on conflicts leave the git
-//! operation in progress (see `Repository::history_op_in_progress`).
+//! operation in progress (see `Repository::in_progress`).
 
 use gd_git::{Repository, ResetMode};
 use gpui::{AppContext, Context};

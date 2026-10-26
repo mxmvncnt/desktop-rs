@@ -85,7 +85,7 @@ impl RenderOnce for PickerShell {
             let ws = ws.clone();
             move |cx: &mut App| {
                 cx.stop_propagation();
-                ws.update(cx, |this, cx| this.step_picker(delta, cx))
+                ws.update(cx, |this, cx| this.step_popover_selection(delta, cx))
             }
         };
         let (down, up, next, prev) = (step(1), step(-1), step(1), step(-1));

@@ -7,7 +7,7 @@ use std::time::{Instant, SystemTime};
 use gd_git::{Branch, InProgress, Repository, WorkingStatus};
 use gpui::{AppContext, Context};
 
-use super::state::{RefreshScope, RepoModel, Tab};
+use super::state::{RefreshScope, RepoEvent, RepoModel, Tab};
 use crate::watcher::RepoWatcher;
 
 /// Everything one refresh reads from git (gathered off the UI thread).
@@ -51,7 +51,7 @@ impl RepoModel {
                 while let Ok(more) = rx.try_recv() {
                     metadata_changed |= more;
                 }
-                let scope = RefreshScope::from_metadata_changed(metadata_changed);
+                let scope = if metadata_changed { RefreshScope::Full } else { RefreshScope::Status };
                 let alive = this
                     .update(cx, |this, cx| {
                         this.last_watch_refresh = Some(Instant::now());
@@ -76,7 +76,7 @@ impl RepoModel {
     /// branches and history (git metadata changed); otherwise only status.
     pub fn request_refresh(&mut self, scope: RefreshScope, cx: &mut Context<Self>) {
         if self.refreshing {
-            self.pending_refresh = Some(self.pending_refresh.map_or(scope, |p| p.or(scope)));
+            self.pending_refresh = Some(self.pending_refresh.map_or(scope, |p| p.max(scope)));
             return;
         }
         self.refreshing = true;
@@ -129,7 +129,7 @@ impl RepoModel {
             && self.merge.in_progress.as_ref().map(std::mem::discriminant) != new.as_ref().map(std::mem::discriminant);
         self.merge.in_progress = new;
         if let (true, Some((summary, description))) = (newly, msg) {
-            cx.emit(crate::features::merge::message_event(summary, description));
+            cx.emit(RepoEvent::PreparedMessage { summary, description });
         }
     }
 

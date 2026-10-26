@@ -10,7 +10,7 @@
 
 use gd_ui::{Icon, Theme, icon, theme::ink};
 use gpui::{
-    AnyElement, App, Decorations, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    AnyElement, App, CursorStyle, Decorations, InteractiveElement, IntoElement, MouseButton, ParentElement,
     ResizeEdge, StatefulInteractiveElement, Styled, Tiling, Window, WindowButton,
     WindowButtonLayout, div, hsla, millis, prelude::*, px,
 };
@@ -246,33 +246,28 @@ pub fn frame(content: AnyElement, chrome: Chrome, window: &mut Window, cx: &App)
                     window.start_window_resize(edge);
                 })
         };
-        let px_ = |v: f32| px(v);
         let e = RESIZE_EDGE;
-        let mut edges: Vec<AnyElement> = Vec::new();
-        if top {
-            edges.push(strip(ResizeEdge::Top).top(px_(o)).left(px_(o + c)).right(px_(o + c)).h(px_(e)).cursor_ns_resize().into_any_element());
-        }
-        if bottom {
-            edges.push(strip(ResizeEdge::Bottom).bottom(px_(o)).left(px_(o + c)).right(px_(o + c)).h(px_(e)).cursor_ns_resize().into_any_element());
-        }
-        if left {
-            edges.push(strip(ResizeEdge::Left).left(px_(o)).top(px_(o + c)).bottom(px_(o + c)).w(px_(e)).cursor_ew_resize().into_any_element());
-        }
-        if right {
-            edges.push(strip(ResizeEdge::Right).right(px_(o)).top(px_(o + c)).bottom(px_(o + c)).w(px_(e)).cursor_ew_resize().into_any_element());
-        }
-        if top && left {
-            edges.push(strip(ResizeEdge::TopLeft).top(px_(o)).left(px_(o)).size(px_(c)).cursor_nwse_resize().into_any_element());
-        }
-        if top && right {
-            edges.push(strip(ResizeEdge::TopRight).top(px_(o)).right(px_(o)).size(px_(c)).cursor_nesw_resize().into_any_element());
-        }
-        if bottom && left {
-            edges.push(strip(ResizeEdge::BottomLeft).bottom(px_(o)).left(px_(o)).size(px_(c)).cursor_nesw_resize().into_any_element());
-        }
-        if bottom && right {
-            edges.push(strip(ResizeEdge::BottomRight).bottom(px_(o)).right(px_(o)).size(px_(c)).cursor_nwse_resize().into_any_element());
-        }
+        // (shown, edge, cursor, [top, left, right, bottom] offsets, width, height)
+        let strips = [
+            (top, ResizeEdge::Top, CursorStyle::ResizeUpDown, [Some(o), Some(o + c), Some(o + c), None], None, Some(e)),
+            (bottom, ResizeEdge::Bottom, CursorStyle::ResizeUpDown, [None, Some(o + c), Some(o + c), Some(o)], None, Some(e)),
+            (left, ResizeEdge::Left, CursorStyle::ResizeLeftRight, [Some(o + c), Some(o), None, Some(o + c)], Some(e), None),
+            (right, ResizeEdge::Right, CursorStyle::ResizeLeftRight, [Some(o + c), None, Some(o), Some(o + c)], Some(e), None),
+            (top && left, ResizeEdge::TopLeft, CursorStyle::ResizeUpLeftDownRight, [Some(o), Some(o), None, None], Some(c), Some(c)),
+            (top && right, ResizeEdge::TopRight, CursorStyle::ResizeUpRightDownLeft, [Some(o), None, Some(o), None], Some(c), Some(c)),
+            (bottom && left, ResizeEdge::BottomLeft, CursorStyle::ResizeUpRightDownLeft, [None, Some(o), None, Some(o)], Some(c), Some(c)),
+            (bottom && right, ResizeEdge::BottomRight, CursorStyle::ResizeUpLeftDownRight, [None, None, Some(o), Some(o)], Some(c), Some(c)),
+        ];
+        let edges = strips.into_iter().filter(|s| s.0).map(|(_, edge, cursor, [t, l, r, b], w, h)| {
+            strip(edge)
+                .cursor(cursor)
+                .when_some(t, |d, v| d.top(px(v)))
+                .when_some(l, |d, v| d.left(px(v)))
+                .when_some(r, |d, v| d.right(px(v)))
+                .when_some(b, |d, v| d.bottom(px(v)))
+                .when_some(w, |d, v| d.w(px(v)))
+                .when_some(h, |d, v| d.h(px(v)))
+        });
         root = root.children(edges);
     }
     root.into_any_element()

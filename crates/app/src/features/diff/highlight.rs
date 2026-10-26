@@ -1,5 +1,5 @@
 //! Syntax highlights for a loaded [`Diff`]. Computed off-thread after the diff
-//! loads (see `RepoModel::start_highlight`); the view renders plain text until
+//! loads (see `RepoModel::spawn_highlight`); the view renders plain text until
 //! the result arrives, then swaps colors in without changing layout.
 //!
 //! Strategy: reconstruct each side of the diff and highlight it separately.

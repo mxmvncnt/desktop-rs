@@ -18,7 +18,7 @@ impl Workspace {
         if r.stashes.viewing {
             return self.render_stash_detail(repo, cx);
         }
-        let Some(change) = r.selected_change.and_then(|ix| r.changes().get(ix)).cloned() else {
+        let Some(change) = r.selected_change_file().cloned() else {
             return NoChanges::new(r).into_any_element();
         };
         let diff = r.change_diff.clone();

@@ -26,12 +26,10 @@ impl Workspace {
     }
 
     pub(crate) fn show_notice(&mut self, msg: String, cx: &mut Context<Self>) {
-        if let Some(repo) = &self.repo {
-            repo.update(cx, |r, cx| {
-                r.notice = Some(msg);
-                cx.notify()
-            });
-        }
+        self.with_repo(cx, |r, cx| {
+            r.notice = Some(msg);
+            cx.notify()
+        });
     }
 
     pub(crate) fn dismiss_notices(&mut self, cx: &mut Context<Self>) {
