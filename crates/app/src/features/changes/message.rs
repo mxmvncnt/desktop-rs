@@ -23,4 +23,19 @@ impl Workspace {
         let text = join(summary, description);
         self.message.update(cx, |s, cx| s.emplace(&text, cx));
     }
+
+    /// gpui-ce caches the input's layout by text version, not by placeholder,
+    /// so an empty box would keep painting the previous placeholder (e.g. the
+    /// last commit's "Update x"). Re-emplacing "" bumps the version.
+    pub(crate) fn sync_message_placeholder(&mut self, cx: &mut Context<Self>) {
+        let Some(repo) = &self.repo else { return };
+        let placeholder = super::state::default_summary(repo.read(cx), self.amending(cx));
+        if placeholder == self.message_placeholder {
+            return;
+        }
+        self.message_placeholder = placeholder;
+        if self.message.read(cx).as_str().is_empty() {
+            self.message.update(cx, |s, cx| s.emplace("", cx));
+        }
+    }
 }

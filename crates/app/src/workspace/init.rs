@@ -51,6 +51,7 @@ impl Workspace {
             startup_error: None,
             corner_radius: 0.0,
             message,
+            message_placeholder: None,
             filter,
             name_input,
             new_branch_base: None,

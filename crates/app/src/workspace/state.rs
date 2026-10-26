@@ -62,6 +62,8 @@ pub struct Workspace {
 
     /// Commit message: first line is the summary, the rest the description.
     pub message: Entity<EditableTextState>,
+    /// Placeholder last shown in `message` (see `sync_message_placeholder`).
+    pub(crate) message_placeholder: Option<String>,
     pub filter: Entity<EditableTextState>,
     pub name_input: Entity<EditableTextState>,
     pub url_input: Entity<EditableTextState>,

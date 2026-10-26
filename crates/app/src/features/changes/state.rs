@@ -40,10 +40,16 @@ pub struct CommitButton {
     pub default_summary: Option<String>,
 }
 
+/// Summary used when the box is left empty; never while amending or merging.
+pub fn default_summary(r: &RepoModel, amending: bool) -> Option<String> {
+    let merging = r.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes());
+    if amending || merging { None } else { r.default_summary() }
+}
+
 impl CommitButton {
     pub fn of(r: &RepoModel, included: usize, amending: bool, summary_typed: bool) -> Self {
         let merging = r.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes());
-        let default_summary = if amending || merging { None } else { r.default_summary() };
+        let default_summary = default_summary(r, amending);
         let summary_ok = summary_typed || default_summary.is_some();
         let committing = r.committing;
         let conflicts = r.conflict_count();

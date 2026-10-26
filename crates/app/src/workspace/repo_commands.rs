@@ -22,8 +22,7 @@ impl Workspace {
             return;
         }
         if summary.trim().is_empty() {
-            let merging = repo.read(cx).merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes());
-            match repo.read(cx).default_summary().filter(|_| !merging) {
+            match crate::features::changes::default_summary(repo.read(cx), false) {
                 Some(d) => summary = d,
                 None => return,
             }

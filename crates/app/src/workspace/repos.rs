@@ -50,7 +50,10 @@ impl Workspace {
         model.update(cx, |m, _| {
             m.diff_options.ignore_whitespace = self.settings.diff_ignore_whitespace
         });
-        self.repo_sub = Some(cx.observe(&model, |this, model, cx| observe_notices(this, model, cx)));
+        self.repo_sub = Some(cx.observe(&model, |this, model, cx| {
+            this.sync_message_placeholder(cx);
+            observe_notices(this, model, cx)
+        }));
         self.repo_event_sub = Some(cx.subscribe(&model, |this, _, ev: &RepoEvent, cx| this.on_repo_event(ev, cx)));
         self.repo = Some(model);
         self.menu = None;
