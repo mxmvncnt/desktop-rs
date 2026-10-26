@@ -3,7 +3,7 @@
 
 use crate::diff::{Diff, DiffOptions, Side};
 use crate::history_ops::split_remote;
-use crate::stash::parse_name_status;
+use crate::name_status::parse_name_status;
 use crate::{FileChange, FileStatus, GitError, Repository, Result};
 
 /// What a PR from `head` into `base` would contain (`git diff base...head`).

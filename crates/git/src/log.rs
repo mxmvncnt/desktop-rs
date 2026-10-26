@@ -1,6 +1,7 @@
 //! History: commit list and per-commit file lists.
 
-use crate::{FileChange, FileStatus, Repository, Result};
+use crate::name_status::parse_name_status;
+use crate::{FileChange, Repository, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Commit {
@@ -106,32 +107,7 @@ impl Repository {
                 sha,
             ])
             .run()?;
-        let mut fields = out.split('\0').filter(|s| !s.is_empty());
-        let mut files = Vec::new();
-        while let Some(code) = fields.next() {
-            let code = code.trim_start_matches('\n');
-            let status = match code.as_bytes().first() {
-                Some(b'A') => FileStatus::New,
-                Some(b'D') => FileStatus::Deleted,
-                Some(b'R') => FileStatus::Renamed,
-                Some(b'C') => FileStatus::Copied,
-                Some(b'T') => FileStatus::TypeChanged,
-                Some(b'U') => FileStatus::Conflicted,
-                _ => FileStatus::Modified,
-            };
-            let first = fields.next().unwrap_or_default().to_string();
-            let (path, old_path) = if matches!(status, FileStatus::Renamed | FileStatus::Copied) {
-                (fields.next().unwrap_or_default().to_string(), Some(first))
-            } else {
-                (first, None)
-            };
-            files.push(FileChange {
-                path,
-                old_path,
-                status,
-            });
-        }
-        Ok(files)
+        Ok(parse_name_status(&out))
     }
 }
 

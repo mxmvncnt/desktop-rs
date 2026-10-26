@@ -9,6 +9,7 @@
 //! - untracked files = the tree of `S^3` (a root commit: `git show S^3`)
 
 use crate::diff::{Diff, Side};
+use crate::name_status::parse_name_status;
 use crate::{FileChange, FileStatus, GitError, Repository, Result};
 
 const SEP: char = '\u{1f}';
@@ -256,30 +257,6 @@ impl Repository {
         };
         self.diff_sides(&old, &new, Default::default())
     }
-}
-
-pub(crate) fn parse_name_status(out: &str) -> Vec<FileChange> {
-    let mut fields = out.split('\0').filter(|s| !s.is_empty());
-    let mut files = Vec::new();
-    while let Some(code) = fields.next() {
-        let status = match code.as_bytes().first() {
-            Some(b'A') => FileStatus::New,
-            Some(b'D') => FileStatus::Deleted,
-            Some(b'R') => FileStatus::Renamed,
-            Some(b'C') => FileStatus::Copied,
-            Some(b'T') => FileStatus::TypeChanged,
-            Some(b'U') => FileStatus::Conflicted,
-            _ => FileStatus::Modified,
-        };
-        let first = fields.next().unwrap_or_default().to_string();
-        let (path, old_path) = if matches!(status, FileStatus::Renamed | FileStatus::Copied) {
-            (fields.next().unwrap_or_default().to_string(), Some(first))
-        } else {
-            (first, None)
-        };
-        files.push(FileChange { path, old_path, status });
-    }
-    files
 }
 
 /// Make conflict failures recognisable and actionable in the UI.

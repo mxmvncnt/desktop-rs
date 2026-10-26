@@ -18,6 +18,7 @@ mod history_ops;
 mod identity;
 mod log;
 mod merge;
+mod name_status;
 mod partial;
 mod pr_preview;
 mod progress;
