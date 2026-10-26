@@ -46,8 +46,6 @@ pub fn parse_co_authors(body: &str) -> Vec<CoAuthor> {
     out
 }
 
-pub type CommitFile = FileChange;
-
 const SEP: char = '\u{1f}';
 
 impl Repository {
@@ -94,7 +92,7 @@ impl Repository {
 
     /// Files changed by `sha` (against its first parent; root commits against
     /// the empty tree).
-    pub fn commit_files(&self, sha: &str) -> Result<Vec<CommitFile>> {
+    pub fn commit_files(&self, sha: &str) -> Result<Vec<FileChange>> {
         let out = self
             .git()
             .args([
