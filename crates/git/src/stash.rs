@@ -144,7 +144,7 @@ impl Repository {
     /// Apply a stash, keeping it. Conflicts leave the working tree in the
     /// conflicted state and return an error mentioning them.
     pub fn stash_apply(&self, sha: &str) -> Result<()> {
-        self.git().args(["stash", "apply", sha]).exec().map_err(tag_conflict)
+        self.git().args(["stash", "apply", sha]).exec().map_err(|e| self.tag_conflict(e))
     }
 
     /// Apply and drop. On conflicts git keeps the stash (so nothing is lost).
@@ -154,7 +154,7 @@ impl Repository {
             .args(["stash", "pop"])
             .arg(format!("stash@{{{ix}}}"))
             .exec()
-            .map_err(tag_conflict)
+            .map_err(|e| self.tag_conflict(e))
     }
 
     pub fn stash_drop(&self, sha: &str) -> Result<()> {
@@ -213,16 +213,16 @@ impl Repository {
     }
 }
 
-/// Make conflict failures recognisable and actionable in the UI.
-fn tag_conflict(e: GitError) -> GitError {
-    match e {
-        GitError::Failed { args, stderr } if stderr.contains("CONFLICT") => GitError::Failed {
-            args,
-            stderr: format!(
-                "The stash was applied with conflicts. Resolve them in your working tree.\n{stderr}"
-            ),
-        },
-        e => e,
+impl Repository {
+    /// Make conflict failures recognisable and actionable in the UI.
+    fn tag_conflict(&self, e: GitError) -> GitError {
+        match e {
+            GitError::Failed { args, stderr } if self.has_unmerged() => GitError::Failed {
+                args,
+                stderr: format!("The stash was applied with conflicts. Resolve them in your working tree.\n{stderr}"),
+            },
+            e => e,
+        }
     }
 }
 

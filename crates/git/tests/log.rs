@@ -66,3 +66,22 @@ fn tree_changes_for_commit_and_comparison() {
     assert_eq!((cmp.ahead, cmp.behind, cmp.files.len()), (1, 0, 3));
     assert_eq!(cmp.merge_base, root.sha);
 }
+
+#[test]
+fn blob_sides_read_missing_paths_as_empty() {
+    let tmp = common::tempdir();
+    let dir = tmp.path().join("repo");
+    let repo = Repository::init(&dir).unwrap();
+    sh(&dir, &["config", "user.email", "t@x.io"]);
+    sh(&dir, &["config", "user.name", "T"]);
+    std::fs::write(dir.join("f"), "one\ntwo\n").unwrap();
+    sh(&dir, &["add", "."]);
+    sh(&dir, &["commit", "-qm", "root"]);
+    let root = repo.log(0, 1).unwrap().remove(0);
+    let file = repo.commit_files(&root.sha).unwrap().remove(0);
+    let diff = repo.commit_diff(&root.sha, &file, Default::default()).unwrap();
+    assert_eq!((diff.added, diff.deleted), (2, 0));
+    let blob = |rev: &str, path: &str| repo.read_side(&Side::Blob { rev: rev.into(), path: path.into() }).unwrap();
+    assert_eq!(blob("HEAD", "f"), b"one\ntwo\n");
+    assert!(blob("HEAD", "missing").is_empty());
+}

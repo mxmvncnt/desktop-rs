@@ -1,5 +1,7 @@
 //! Merge / squash / rebase into the current branch, and conflict resolution.
 
+use std::path::Path;
+
 use crate::progress::OpOutcome;
 use crate::{message, GitError, Repository, Result};
 
@@ -123,15 +125,12 @@ impl Repository {
     /// Resolve `path` with our side (`ours`) or theirs, then stage it. If that
     /// side deleted the file, the file is removed instead.
     pub fn resolve_with(&self, path: &str, theirs: bool) -> Result<()> {
-        let side = if theirs { "--theirs" } else { "--ours" };
-        match self.git().args(["checkout", side, "--", path]).run() {
-            Ok(_) => {
-                self.git().args(["add", "-A", "--", path]).run()?;
-            }
-            Err(GitError::Failed { stderr, .. }) if stderr.contains("does not have") => {
-                self.git().args(["rm", "-q", "--", path]).run()?;
-            }
-            Err(e) => return Err(e),
+        let stage = if theirs { 3 } else { 2 };
+        if self.repo()?.index()?.get_path(Path::new(path), stage).is_some() {
+            self.git().args(["checkout", if theirs { "--theirs" } else { "--ours" }, "--", path]).run()?;
+            self.git().args(["add", "-A", "--", path]).run()?;
+        } else {
+            self.git().args(["rm", "-q", "--", path]).run()?;
         }
         Ok(())
     }

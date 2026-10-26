@@ -98,7 +98,7 @@ pub struct Diff {
 pub enum Side {
     /// The file doesn't exist on this side (added / deleted).
     Empty,
-    /// `git cat-file blob <rev>:<path>`. A path missing at `rev` reads as empty.
+    /// The blob at `<rev>:<path>`. A path missing at `rev` reads as empty.
     Blob { rev: String, path: String },
     /// The working-tree file (symlinks read as their target, like git).
     Worktree(String),
@@ -144,16 +144,7 @@ impl Repository {
 
     /// Diff of one file within a commit (against its first parent).
     pub fn commit_diff(&self, sha: &str, file: &FileChange, opts: DiffOptions) -> Result<Diff> {
-        let has_parent = self
-            .git()
-            .args(["rev-parse", "--verify", "-q"])
-            .arg(format!("{sha}^1"))
-            .run()
-            .is_ok();
-        let (mut old, new) = blob_sides(&format!("{sha}^1"), sha, file);
-        if !has_parent {
-            old = Side::Empty;
-        }
+        let (old, new) = blob_sides(&format!("{sha}^1"), sha, file);
         self.diff_sides(&old, &new, opts)
     }
 
@@ -161,18 +152,12 @@ impl Repository {
     pub fn read_side(&self, side: &Side) -> Result<Vec<u8>> {
         match side {
             Side::Empty => Ok(Vec::new()),
-            Side::Blob { rev, path } => {
-                match self.git().args(["cat-file", "blob"]).arg(format!("{rev}:{path}")).run_bytes() {
-                    Ok(b) => Ok(b),
-                    // Path absent at that revision (e.g. staged-new file vs HEAD).
-                    Err(crate::GitError::Failed { stderr, .. })
-                        if stderr.contains("does not exist") || stderr.contains("Not a valid object") =>
-                    {
-                        Ok(Vec::new())
-                    }
-                    Err(e) => Err(e),
-                }
-            }
+            Side::Blob { rev, path } => match self.repo()?.revparse_single(&format!("{rev}:{path}")) {
+                Ok(object) => Ok(object.peel_to_blob()?.content().to_vec()),
+                // Path (or parent commit) absent at that revision, e.g. staged-new file vs HEAD.
+                Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(Vec::new()),
+                Err(e) => Err(e.into()),
+            },
             Side::Worktree(path) => {
                 let p = self.root().join(path);
                 let meta = std::fs::symlink_metadata(&p).map_err(|e| crate::GitError::Io(format!("{path}: {e}")))?;
