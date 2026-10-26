@@ -238,7 +238,7 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
 - Why tree-sitter over syntect: parse is incremental-grade fast (18k rows in ~125 ms), queries
   are shared with zeron, and the palette maps 1:1 to `HighlightKind`. Cost: ~16 grammar crates
   of C code (longer cold build, a few MB of binary).
-- `gd-ui::theme::SyntaxPalette` (zeron dark: indigo keywords/functions, emerald strings,
+- `gd-ui::theme::SyntaxPalette` (7 base colors mapped in `color()`: indigo keywords/functions, emerald strings,
   amber numbers/types, pink macros). Variable/parameter/operator/punctuation are drawn in the
   row's own color (no run) to cut noise and run count.
 - App flow: after a diff loads, `RepoModel::spawn_highlight` runs `highlight_diff` via
@@ -293,15 +293,12 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
 
 ## UI kit (`crates/ui`)
 
-- `theme.rs`: zeron's dark tokens, verbatim (oklch → sRGB helper included).
-  Use `Theme::of(cx)`, `ink(a)` for translucent white washes, and `hairline(a)` for lines.
-- Themes: `Theme::dark()` / `Theme::light()`; `Workspace::apply_theme` resolves the setting and does
-  `cx.set_global(Theme::for_mode(light))`. `ink()`/`hairline()` are free functions (no `cx`), so they read a
-  global flag set by `for_mode` (white washes on dark, black on light). Never hardcode `white()`/`black()`;
-  use theme tokens or `ink()`, and check new UI with both `changes` and `changes-light` snapshots.
+- `theme.rs`: the token struct. Use `Theme::of(cx)` and `theme.ink(a)` for translucent washes (white on
+  dark, black on light, decided by `theme.light`). Never hardcode `white()`/`black()`; use theme tokens or
+  `theme.ink()`, and check new UI with both `changes` and `changes-light` snapshots.
 - Color themes (`themes.rs`): data-driven `COLOR_THEMES` (zeron default, Nord, Tokyo Night, VS Code, Catppuccin,
-  Solarized). Each family has a dark and a light `Palette` (hex values incl. syntax colors); `Theme::from_palette`
-  derives washes/diff colors. The System/Light/Dark mode picks the variant, so every family needs both. Add a theme =
+  Solarized). Each family has a dark and a light `Palette` (hex values incl. the 7 syntax base colors); `Theme::from_palette`
+  (the only constructor, zeron included) derives washes/diff colors. The System/Light/Dark mode picks the variant, so every family needs both. Add a theme =
   add two consts + one table entry. Persisted as `color_theme=<id>` in `display`; `Workspace::apply_theme` calls
   `Theme::for_family`. Snapshot view `theme:<id>:<dark|light>[:settings]`.
 - `motion.rs`: the zeron motion catalog (`fade_in` 500ms ease-out-quint with 4px rise,
@@ -318,7 +315,7 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
   the owner renders them only while open and handles keys.
 - `assets.rs`: embedded Solar icons and Geist fonts. To add an icon, copy the
   SVG from `.ref/zeron/crates/ui/assets/icons/` into `crates/ui/assets/icons/`
-  and add a line to the `icons!` macro.
+  and add a line to the `icons!` macro. `rust-embed` embeds the folder.
 
 ## Platform code (`app/src/platform/`)
 
