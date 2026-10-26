@@ -30,9 +30,29 @@ jobs:
     permissions:
       pages: write
       id-token: write
+      contents: write # attach the .flatpakref to the release
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Attach .flatpakref to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          cat > desktop-rs.flatpakref <<EOF
+          [Flatpak Ref]
+          Name=io.github.mxmvncnt.desktop-rs
+          Branch=master
+          Title=desktop-rs
+          IsRuntime=false
+          Url=${PAGE_URL%/}/
+          RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
+          EOF
+          cat desktop-rs.flatpakref
+          gh release upload "$TAG" desktop-rs.flatpakref --clobber
