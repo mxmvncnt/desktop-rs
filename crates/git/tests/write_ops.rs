@@ -1,10 +1,11 @@
-//! Manual smoke check of write operations on a scratch repo:
-//!   cargo run -p gd-git --example smoke -- <scratch-dir-inside-project>
+mod common;
+
 use gd_git::*;
 
-fn main() {
-    let dir = std::path::PathBuf::from(std::env::args().nth(1).expect("scratch dir"));
-    let _ = std::fs::remove_dir_all(&dir);
+#[test]
+fn write_ops() {
+    let tmp = common::tempdir();
+    let dir = tmp.path().join("repo");
     let repo = Repository::init(&dir).unwrap();
     std::fs::write(dir.join("a.txt"), "a\n").unwrap();
     std::fs::write(dir.join("b.txt"), "b\n").unwrap();
@@ -60,7 +61,7 @@ fn main() {
     let left: Vec<_> = repo.status().unwrap().files.into_iter().map(|f| f.path).collect();
     println!("after ignore: {left:?}");
     assert!(!left.iter().any(|p| p.ends_with(".log") || p.ends_with(".tmp")));
-    repo.create_branch("feature/x").unwrap();
+    repo.create_branch("feature/x", None).unwrap();
     println!("branches: {:?}", repo.branches().unwrap().iter().map(|b| (&b.name, b.is_head)).collect::<Vec<_>>());
     let log = repo.log(0, 10).unwrap();
     println!("log: {:?}", log.iter().map(|c| (&c.summary, &c.body)).collect::<Vec<_>>());

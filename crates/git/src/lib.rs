@@ -30,11 +30,6 @@ mod status;
 pub use credentials::{HostCredential, set_credentials};
 pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity};
 
-#[doc(hidden)]
-pub fn credential_env_for_tests() -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
-    credentials::env()
-}
-
 pub use diff::{Side, Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};
 pub use exec::GitError;
 pub use expand::{EXPANSION_STEP, Expansion, expand, expandable, gap_above, gap_below};

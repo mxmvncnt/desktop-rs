@@ -1,18 +1,12 @@
-//! Smoke check of stash operations on a scratch repo:
-//!   cargo run -p gd-git --example stash_smoke -- <scratch-dir-inside-project>
-//! Leaves the repo behind (with several stashes) for snapshot renders:
-//! pass `--keep` as a second argument to skip the destructive tail (apply/pop/drop).
+mod common;
+
+use common::sh;
 use gd_git::*;
 
-fn sh(dir: &std::path::Path, args: &[&str]) {
-    let ok = std::process::Command::new("git").args(args).current_dir(dir).status().unwrap().success();
-    assert!(ok, "git {args:?} failed");
-}
-
-fn main() {
-    let dir = std::path::PathBuf::from(std::env::args().nth(1).expect("scratch dir"));
-    let keep = std::env::args().nth(2).as_deref() == Some("--keep");
-    let _ = std::fs::remove_dir_all(&dir);
+#[test]
+fn stash() {
+    let tmp = common::tempdir();
+    let dir = tmp.path().join("repo");
     let repo = Repository::init(&dir).unwrap();
     sh(&dir, &["config", "user.name", "Test"]);
     sh(&dir, &["config", "user.email", "t@example.com"]);
@@ -45,10 +39,10 @@ fn main() {
     repo.discard(&repo.status().unwrap().files).unwrap();
 
     // 4. Another branch.
-    repo.create_branch("feature/x").unwrap();
+    repo.create_branch("feature/x", None).unwrap();
     std::fs::write(dir.join("feature.txt"), "feature work\n").unwrap();
     let d = repo.stash_push("Feature WIP", &[]).unwrap();
-    repo.create_branch("feature/y").unwrap();
+    repo.create_branch("feature/y", None).unwrap();
     std::fs::write(dir.join("file1.txt"), "line 1\nother\n").unwrap();
     std::fs::create_dir_all(dir.join("dir with space")).unwrap();
     std::fs::write(dir.join("dir with space/f.txt"), "x\n").unwrap();
@@ -86,11 +80,6 @@ fn main() {
     assert_eq!(list[0].sha, b);
     assert_eq!(list[0].message, "Renamed WIP");
     assert_eq!(list.len(), 5);
-
-    if keep {
-        println!("kept {} stashes", list.len());
-        return;
-    }
 
     // Apply keeps it, restores untracked too.
     repo.stash_apply(&a).unwrap();

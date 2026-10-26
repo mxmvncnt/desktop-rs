@@ -1,19 +1,8 @@
-//! Merge / squash / rebase / conflict smoke test on a scratch repo:
-//!   cargo run -p gd-git --example merge_smoke -- <scratch-dir-inside-project>
-//! Leaves the repository in a conflicted merge when the last argument is `--keep-conflict`
-//! (used to prepare the `conflict-banner` snapshot repo).
+mod common;
+
+use common::sh;
 use gd_git::*;
 use std::path::Path;
-
-fn sh(dir: &Path, args: &[&str]) {
-    let st = std::process::Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .env("LC_ALL", "C")
-        .output()
-        .unwrap();
-    assert!(st.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&st.stderr));
-}
 
 fn write_commit(dir: &Path, file: &str, text: &str, msg: &str) {
     std::fs::write(dir.join(file), text).unwrap();
@@ -21,10 +10,10 @@ fn write_commit(dir: &Path, file: &str, text: &str, msg: &str) {
     sh(dir, &["commit", "-qm", msg]);
 }
 
-fn main() {
-    let dir = std::path::PathBuf::from(std::env::args().nth(1).expect("scratch dir"));
-    let keep = std::env::args().any(|a| a == "--keep-conflict");
-    let _ = std::fs::remove_dir_all(&dir);
+#[test]
+fn merge() {
+    let tmp = common::tempdir();
+    let dir = tmp.path().join("repo");
     let repo = Repository::init(&dir).unwrap();
     sh(&dir, &["checkout", "-q", "-b", "main"]);
     sh(&dir, &["config", "user.email", "t@example.com"]);
@@ -113,10 +102,6 @@ fn main() {
     println!("prepared message: {:?}", repo.prepared_message());
     assert_ne!(repo.continue_operation(&ip).ok(), Some(OpOutcome::Done), "continue must not finish while conflicted");
     assert!(repo.in_progress().is_some());
-    if keep {
-        println!("left in conflicted merge state at {}", dir.display());
-        return;
-    }
     repo.resolve_with("app.txt", false).unwrap();
     repo.resolve_with("other.txt", true).unwrap();
     assert_eq!(std::fs::read_to_string(dir.join("app.txt")).unwrap(), "one\nFROM-MAIN\nthree\n");
@@ -168,7 +153,7 @@ fn main() {
     sh(&dir, &["checkout", "-q", "main"]);
 
     // 9. Branch management.
-    repo.create_branch_from("from-ff", "ff").unwrap();
+    repo.create_branch("from-ff", Some("ff")).unwrap();
     sh(&dir, &["checkout", "-q", "main"]);
     repo.rename_branch("from-ff", "renamed").unwrap();
     let names: Vec<_> = repo.branches().unwrap().into_iter().map(|b| b.name).collect();

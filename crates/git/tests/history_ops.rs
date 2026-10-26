@@ -1,16 +1,9 @@
-//! Exercises every History-tab git operation on scratch repos:
-//!   cargo run -p gd-git --example history_ops -- <scratch-dir-inside-project>
-//! Creates `<dir>/remote.git` (bare) and `<dir>/work` (clone) and asserts.
 use std::path::Path;
-use std::process::Command;
 
+mod common;
+
+use common::sh;
 use gd_git::*;
-
-fn sh(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git").current_dir(dir).args(args).output().unwrap();
-    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
-    String::from_utf8_lossy(&out.stdout).trim().to_string()
-}
 
 fn commit(dir: &Path, file: &str, content: &str, msg: &str) -> String {
     std::fs::write(dir.join(file), content).unwrap();
@@ -23,10 +16,10 @@ fn summaries(repo: &Repository) -> Vec<String> {
     repo.log(0, 50).unwrap().into_iter().map(|c| c.summary).collect()
 }
 
-fn main() {
-    let base = std::path::PathBuf::from(std::env::args().nth(1).expect("scratch dir"));
-    let _ = std::fs::remove_dir_all(&base);
-    std::fs::create_dir_all(&base).unwrap();
+#[test]
+fn history_ops() {
+    let tmp = common::tempdir();
+    let base = tmp.path().to_path_buf();
     let remote = base.join("remote.git");
     let work = base.join("work");
     sh(&base, &["init", "-q", "--bare", "-b", "main", "remote.git"]);
@@ -101,7 +94,7 @@ fn main() {
     println!("checkout commit (detached) OK");
 
     // ---- create branch from commit ----
-    repo.create_branch_at("from-c5", &c5).unwrap();
+    repo.create_branch("from-c5", Some(&c5)).unwrap();
     assert_eq!(sh(&work, &["rev-parse", "HEAD"]), c5);
     sh(&work, &["checkout", "-q", "main"]);
     println!("create branch at commit OK");
