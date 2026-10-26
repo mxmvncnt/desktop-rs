@@ -8,7 +8,7 @@
 //! When the compositor hands back server decorations (KDE/X11 WMs),
 //! [`Chrome::detect`] returns `client = false` and none of this renders.
 
-use gd_ui::{Icon, Theme, icon, theme::ink};
+use gd_ui::{Icon, Theme, icon};
 use gpui::{
     AnyElement, App, CursorStyle, Decorations, InteractiveElement, IntoElement, MouseButton, ParentElement,
     ResizeEdge, StatefulInteractiveElement, Styled, Tiling, Window, WindowButton,
@@ -151,7 +151,7 @@ pub fn caption_buttons(
                     .justify_center()
                     .rounded(px(7.0))
                     .cursor_pointer()
-                    .bg(ink(0.0))
+                    .bg(theme.ink(0.0))
                     .transitions(|t| t.bg(millis(gd_ui::motion::HOVER_MS)))
                     .hover_style(move |s| s.bg(hover_bg))
                     .occlude()

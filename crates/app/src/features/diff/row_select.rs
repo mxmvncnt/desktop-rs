@@ -4,7 +4,7 @@
 
 use std::ops::Range;
 
-use gd_ui::{CheckState, Theme, theme::{DIFF_ROW_HEIGHT, ink}};
+use gd_ui::{CheckState, Theme, theme::DIFF_ROW_HEIGHT};
 use gpui::{AnyElement, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, StatefulInteractiveElement, Styled, div, prelude::*, px};
 
 use super::gutter_style::{HANDLE_W, check_mark, handle_bg};
@@ -45,7 +45,7 @@ impl RowSelect {
     ) -> AnyElement {
         let base = div().flex().flex_none().w(px(HANDLE_W));
         let Some(rows) = block else {
-            return base.bg(handle_bg()).into_any_element();
+            return base.bg(handle_bg(theme)).into_any_element();
         };
         let start = rows.start;
         let hovered = self.hovered_block == Some(start);
@@ -55,8 +55,8 @@ impl RowSelect {
         base.id(("hunk-handle", cell))
             .cursor_pointer()
             .bg(match (state, hovered) {
-                (CheckState::Unchecked, false) => ink(0.10),
-                (CheckState::Unchecked, true) => ink(0.20),
+                (CheckState::Unchecked, false) => theme.ink(0.10),
+                (CheckState::Unchecked, true) => theme.ink(0.20),
                 (_, false) => theme.accent_strong,
                 (_, true) => theme.accent,
             })

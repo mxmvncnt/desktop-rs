@@ -5,7 +5,7 @@ use gpui::{App, ClickEvent, ElementId, IntoElement, ParentElement, RenderOnce, S
 use super::{ClickHandler, icon};
 use crate::assets::Icon;
 use crate::motion::HOVER_MS;
-use crate::theme::{Theme, ink};
+use crate::theme::Theme;
 
 /// The checkbox used in the changes list.
 #[derive(IntoElement)]
@@ -50,7 +50,7 @@ impl RenderOnce for Checkbox {
             .rounded(px(4.0))
             .border_1()
             .border_color(if on { theme.solid } else { theme.border_strong })
-            .bg(if on { theme.solid } else { ink(0.0) })
+            .bg(if on { theme.solid } else { theme.ink(0.0) })
             .transitions(|t| t.bg(millis(HOVER_MS)).border_color(millis(HOVER_MS)))
             .hover_style({
                 let c = theme.text_muted;

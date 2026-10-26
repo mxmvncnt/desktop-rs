@@ -6,7 +6,7 @@ use gpui::{App, ClickEvent, ElementId, Hsla, IntoElement, ParentElement, RenderO
 use super::{ClickHandler, icon};
 use crate::assets::Icon;
 use crate::motion::HOVER_MS;
-use crate::theme::{CONTROL_RADIUS, Theme, ink};
+use crate::theme::{CONTROL_RADIUS, Theme};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ButtonStyle {
@@ -85,15 +85,10 @@ impl RenderOnce for Button {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx);
         let (bg, hover, fg): (Hsla, Hsla, Hsla) = match self.style {
-            ButtonStyle::Primary => (theme.solid, theme.text_muted, theme.on_solid),
-            ButtonStyle::Secondary => (ink(0.06), ink(0.10), theme.text),
-            ButtonStyle::Ghost => (ink(0.0), theme.element_hover, theme.text_muted),
+            ButtonStyle::Primary => (theme.solid, theme.solid_hover, theme.on_solid),
+            ButtonStyle::Secondary => (theme.ink(0.06), theme.ink(0.10), theme.text),
+            ButtonStyle::Ghost => (theme.ink(0.0), theme.element_hover, theme.text_muted),
             ButtonStyle::Danger => (theme.danger_strong, theme.danger, theme.on_accent),
-        };
-        let hover = if self.style == ButtonStyle::Primary {
-            gpui::hsla(0.0, 0.0, if crate::theme::is_light() { 0.0 } else { 1.0 }, 1.0)
-        } else {
-            hover
         };
         let hover_fg = if self.style == ButtonStyle::Ghost {
             theme.text

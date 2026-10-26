@@ -91,7 +91,7 @@ impl UnifiedRows<'_> {
     }
 
     fn header_row(&self, row: Div, h: usize, text: AnyElement, marker_color: Hsla) -> AnyElement {
-        row.child(Expander::gutter(self.exp, self.diff, h, self.gutter_w()).border_r_1().border_color(self.theme.border))
+        row.child(Expander::gutter(self.exp, self.diff, h, self.gutter_w(), self.theme).border_r_1().border_color(self.theme.border))
             .child(marker_cell("", marker_color))
             .child(text_cell(text, self.flow))
             .into_any_element()

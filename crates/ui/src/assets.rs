@@ -1,31 +1,24 @@
 //! Embedded assets: Geist fonts (OFL) and Solar icons (CC BY 4.0,
 //! "Solar Icons by 480 Design"), copied from zeron's `crates/ui/assets`.
 //!
-//! Everything is `include_bytes!`'d so the binary is self-contained and icon
-//! loads never touch the filesystem.
+//! `rust-embed` bakes `assets/` into the binary (also in debug builds), so
+//! icon loads never touch the filesystem. Adding an icon = drop the SVG in
+//! `assets/icons/` and add one line to the `icons!` list.
 
 use std::borrow::Cow;
 
 use gpui::{App, AssetSource, Result, SharedString};
+use rust_embed::RustEmbed;
 
 macro_rules! icons {
     ($($name:ident => $file:literal),+ $(,)?) => {
-        /// Icon paths, for `icon(Icon::Check)` / `svg().path(...)`.
+        /// Icon names, for `icon(Icon::Check)` / `svg().path(...)`.
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         pub enum Icon { $($name),+ }
 
         impl Icon {
-            pub const ALL: &[Icon] = &[$(Self::$name),+];
-
             pub fn path(self) -> &'static str {
                 match self { $(Self::$name => concat!("icons/", $file, ".svg")),+ }
-            }
-        }
-
-        fn load_icon(path: &str) -> Option<&'static [u8]> {
-            match path {
-                $(concat!("icons/", $file, ".svg") => Some(include_bytes!(concat!("../assets/icons/", $file, ".svg")).as_slice()),)+
-                _ => None,
             }
         }
     };
@@ -78,34 +71,25 @@ icons! {
     Tuning => "tuning",
 }
 
+#[derive(RustEmbed)]
+#[folder = "assets"]
+#[include = "icons/*.svg"]
+#[include = "fonts/*.ttf"]
 pub struct Assets;
 
 impl AssetSource for Assets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
-        Ok(load_icon(path).map(Cow::Borrowed))
+        Ok(Self::get(path).map(|f| f.data))
     }
 
-    /// GPUI-CE builds its `AssetRegistry` by enumerating `list("")` once at
-    /// startup — anything not listed here is unloadable, so list every icon.
+    /// GPUI-CE builds its `AssetRegistry` by enumerating `list("")` once at startup.
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
-        Ok(Icon::ALL
-            .iter()
-            .map(|i| i.path())
-            .filter(|p| p.starts_with(path))
-            .map(SharedString::from)
-            .collect())
+        Ok(Self::iter().filter(|p| p.starts_with(path)).map(|p| SharedString::from(p.into_owned())).collect())
     }
 }
 
 pub fn load_fonts(cx: &App) {
-    let fonts: Vec<Cow<'static, [u8]>> = vec![
-        Cow::Borrowed(include_bytes!("../assets/fonts/Geist.ttf")),
-        Cow::Borrowed(include_bytes!("../assets/fonts/Geist-Medium.ttf")),
-        Cow::Borrowed(include_bytes!("../assets/fonts/Geist-SemiBold.ttf")),
-        Cow::Borrowed(include_bytes!("../assets/fonts/Geist-Bold.ttf")),
-        Cow::Borrowed(include_bytes!("../assets/fonts/GeistMono.ttf")),
-        Cow::Borrowed(include_bytes!("../assets/fonts/GeistMono-Medium.ttf")),
-    ];
+    let fonts = Assets::iter().filter(|p| p.starts_with("fonts/")).filter_map(|p| Assets::get(&p)).map(|f| f.data).collect();
     if let Err(e) = cx.text_system().add_fonts(fonts) {
         log::error!("failed to load embedded fonts: {e:#}");
     }
