@@ -104,11 +104,8 @@ impl Git {
     fn command(&self) -> Command {
         let mut cmd = Command::new("git");
         let portal = portal_layout(&self.cwd, &self.args);
-        // Stable, parseable output regardless of user locale/config.
         cmd.current_dir(portal.as_ref().map_or(self.cwd.as_path(), |_| Path::new("/")))
-            .env("LC_ALL", "C")
             .env("GIT_OPTIONAL_LOCKS", "0")
-            .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
             .args(portal.iter().flatten())
             .args(&self.args)
             .stdout(Stdio::piped())
@@ -141,7 +138,7 @@ impl Git {
             .map(|b| String::from_utf8_lossy(&b).into_owned())
     }
 
-    pub fn run_bytes(self) -> Result<Vec<u8>, GitError> {
+    fn run_bytes(self) -> Result<Vec<u8>, GitError> {
         let start = std::time::Instant::now();
         let mut child = self
             .command()
