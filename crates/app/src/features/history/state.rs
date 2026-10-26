@@ -42,7 +42,7 @@ pub enum ClickKind {
 }
 
 /// Everything the History feature adds to `Workspace`. A plain struct (not an
-/// `Entity`): Esc/Enter/arrow routing in workspace.rs reads `menu`/`dialog`.
+/// `Entity`): Esc/Enter/arrow routing in `workspace/actions.rs` and `menus/key_routing.rs` reads `menu`/`dialog`.
 pub struct HistoryUi {
     pub menu: Option<HistoryMenu>,
     pub menu_gen: usize,

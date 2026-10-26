@@ -1,5 +1,5 @@
 //! Stash model operations on `RepoModel`: the git work runs on the background
-//! executor like the rest of `RepoModel` (see repo.rs), and stale loads are
+//! executor like the rest of `RepoModel` (see `repo/`), and stale loads are
 //! dropped by the generation counter in [`StashState`].
 
 use std::sync::Arc;
