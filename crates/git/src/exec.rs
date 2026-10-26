@@ -31,7 +31,6 @@ pub(crate) struct Git {
     args: Vec<OsString>,
     stdin: Option<String>,
     network: bool,
-    allow_exit_one: bool,
     env: Vec<(OsString, OsString)>,
 }
 
@@ -59,7 +58,6 @@ impl Git {
             args: Vec::new(),
             stdin: None,
             network: false,
-            allow_exit_one: false,
             env: Vec::new(),
         }
     }
@@ -101,13 +99,6 @@ impl Git {
     /// keep the prepared message).
     pub fn no_editor(self) -> Self {
         self.env("GIT_EDITOR", "true").env("GIT_SEQUENCE_EDITOR", "true")
-    }
-
-    /// Treat exit code 1 as success (`git diff --no-index` exits 1 when the
-    /// inputs differ).
-    pub fn allow_exit_one(mut self) -> Self {
-        self.allow_exit_one = true;
-        self
     }
 
     fn command(&self) -> Command {
@@ -171,7 +162,7 @@ impl Git {
             .collect::<Vec<_>>()
             .join(" ");
         log::debug!("git {args} ({:?})", start.elapsed());
-        if out.status.success() || (self.allow_exit_one && out.status.code() == Some(1)) {
+        if out.status.success() {
             Ok(out.stdout)
         } else {
             let mut stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();

@@ -7,9 +7,14 @@ use gd_git::{Identity, IdentitySource, Repository};
 fn identity() {
     let tmp = common::tempdir();
     let dir = tmp.path().to_path_buf();
-    // Never touch the real global config.
+    // Never touch the real global config: libgit2 reads `<dir>/.gitconfig`, the git CLI writes `$GIT_CONFIG_GLOBAL`.
     // SAFETY: single-threaded at this point.
-    unsafe { std::env::set_var("GIT_CONFIG_GLOBAL", dir.join("gitconfig")) };
+    unsafe {
+        std::env::set_var("GIT_CONFIG_GLOBAL", dir.join(".gitconfig"));
+        for level in [git2::ConfigLevel::Global, git2::ConfigLevel::XDG, git2::ConfigLevel::System] {
+            git2::opts::set_search_path(level, &dir).unwrap();
+        }
+    }
     let repo = Repository::init(dir.join("repo")).unwrap();
 
     assert_eq!(gd_git::global_identity().unwrap(), Identity::default());
