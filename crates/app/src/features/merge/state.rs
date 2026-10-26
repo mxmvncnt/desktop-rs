@@ -108,10 +108,4 @@ impl MergeUi {
             _subs: subs,
         }
     }
-
-    /// Whether the root should carry the "Menu" key context (↑/↓/Enter/Esc
-    /// reach the workspace instead of an input).
-    pub fn wants_menu_context(&self) -> bool {
-        self.menu.is_some()
-    }
 }

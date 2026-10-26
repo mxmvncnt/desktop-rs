@@ -66,7 +66,7 @@ impl Workspace {
             || self.settings_open
             || self.diff_view.menu.is_some()
             || self.stash_ui.dialog.is_some()
-            || self.merge_ui.wants_menu_context()
+            || self.merge_ui.menu.is_some()
             || self.branch_ui.wants_menu_context()
     }
 
