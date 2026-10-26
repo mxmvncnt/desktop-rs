@@ -32,6 +32,8 @@ serde = { version = "1.0.229", features = ["derive"] }
 toml = "1.1.8"
 keyring = { version = "3", features = ["async-secret-service", "async-io", "crypto-rust", "apple-native", "windows-native"] }
 uuid = { version = "1.29.0", features = ["v4"] }
+notify-debouncer-full = "0.7.0"
+ignore = "0.4.33"
 
 # Wayland/X11 backends are only meaningful (and only build) on Linux.
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
