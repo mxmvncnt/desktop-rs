@@ -8,7 +8,7 @@ use gpui::{
 };
 
 use super::{actions, state::Workspace};
-use crate::actions::WORKSPACE;
+use crate::actions::{WORKSPACE, WORKSPACE_MENU};
 use crate::features::branches::{BranchDialogView, BranchMenuView};
 use crate::features::changes::{Sidebar, SidebarResize};
 use crate::features::diff::DiffOptionsMenu;
@@ -43,7 +43,7 @@ impl Render for Workspace {
                 this.drag_sidebar_to(e.event.position.x.as_f32(), cx)
             }))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, _| { this.finish_sidebar_drag(); this.commit_msg.end_drag(); }))
-            .key_context(if self.overlay_open() { "Workspace Menu" } else { WORKSPACE })
+            .key_context(if self.overlay_open() { WORKSPACE_MENU } else { WORKSPACE })
             .track_focus(&self.focus);
         let root = actions::bind(root, cx)
             .size_full()

@@ -41,6 +41,8 @@ actions!(
 pub const WORKSPACE: &str = "Workspace";
 /// Key context added to the workspace root while a menu or dialog is open.
 pub const MENU: &str = "Menu";
+/// [`WORKSPACE`] and [`MENU`] together, space separated as gpui expects.
+pub const WORKSPACE_MENU: &str = "Workspace Menu";
 
 pub fn bind(cx: &mut App) {
     use crate::platform::{QUIT_KEY, REFRESH_KEY, SECONDARY as M};
