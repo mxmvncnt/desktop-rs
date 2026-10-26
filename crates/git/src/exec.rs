@@ -16,8 +16,14 @@ pub enum GitError {
     Io(String),
     #[error("{0}")]
     Invalid(String),
-    #[error("could not parse git output: {0}")]
-    Parse(String),
+    #[error("{0}")]
+    Lib(String),
+}
+
+impl From<git2::Error> for GitError {
+    fn from(e: git2::Error) -> Self {
+        Self::Lib(e.message().to_string())
+    }
 }
 
 pub(crate) struct Git {

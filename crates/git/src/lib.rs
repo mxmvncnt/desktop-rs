@@ -99,6 +99,11 @@ impl Repository {
             .unwrap_or_else(|| self.root.display().to_string())
     }
 
+    /// Fresh libgit2 handle for reads. Open one per call: it caches the index.
+    pub(crate) fn repo(&self) -> Result<git2::Repository> {
+        Ok(git2::Repository::open(&self.root)?)
+    }
+
     pub(crate) fn git(&self) -> Git {
         Git::new(&self.root)
     }

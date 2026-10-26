@@ -25,7 +25,7 @@ pub fn default_squash_summary(branch: &str, current: &str) -> String {
 impl Repository {
     pub(crate) fn count(&self, range: &str) -> Result<u32> {
         let out = self.git().args(["rev-list", "--count", range, "--"]).run()?;
-        out.trim().parse().map_err(|_| GitError::Parse(out))
+        out.trim().parse().map_err(|_| GitError::Invalid(out))
     }
 
     /// Number of commits `branch` has that HEAD lacks (`git rev-list --count HEAD..branch`).
