@@ -102,6 +102,10 @@ pub fn runs_for(
 /// plus a background wash over the word-level `emphasis` ranges and the
 /// selected byte range. Plain rows (no spans, emphasis or selection) stay a
 /// cheap single-run text. Also returns the text layout for hit-testing.
+///
+/// The text sits in a flex column: a block parent (the default display) would
+/// collect it into its own inline paragraph, and then the `StyledText` is never
+/// measured itself and its layout can't hit-test (GPUI-CE panics).
 pub fn line_text(
     text: &str,
     spans: &[Span],
@@ -116,7 +120,7 @@ pub fn line_text(
     if text.is_empty() || (spans.is_empty() && emphasis.is_empty() && selected.is_none()) {
         let styled = gpui::StyledText::new(text.to_string());
         let layout = styled.layout().clone();
-        return (gpui::div().text_color(fg).child(styled).into_any_element(), layout);
+        return (gpui::div().flex().flex_col().text_color(fg).child(styled).into_any_element(), layout);
     }
     let mut runs = runs_for(text, spans, fg, font, palette);
     if !emphasis.is_empty() {
@@ -127,7 +131,7 @@ pub fn line_text(
     }
     let styled = gpui::StyledText::new(text.to_string()).with_runs(runs);
     let layout = styled.layout().clone();
-    (styled.into_any_element(), layout)
+    (gpui::div().flex().flex_col().child(styled).into_any_element(), layout)
 }
 
 /// Split `runs` at emphasis edges and set `background_color` inside them.
