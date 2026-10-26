@@ -29,6 +29,33 @@ pub(crate) struct Git {
     env: Vec<(OsString, OsString)>,
 }
 
+/// Folders granted through the file-chooser portal live on the document
+/// portal's FUSE mount (`/run/flatpak/doc/<id>/<name>`) inside a Flatpak
+/// sandbox. `getcwd()` fails there, which makes git die ("unable to get
+/// current working directory") whenever it runs inside such a folder. Run it
+/// from `/` instead and point it at the repository explicitly.
+fn portal_layout(cwd: &Path, args: &[OsString]) -> Option<[OsString; 2]> {
+    if !cwd.starts_with("/run/flatpak/doc") || args.first().is_some_and(|a| a == "clone" || a == "init") {
+        return None;
+    }
+    let dot_git = cwd.join(".git");
+    // `.git` is a file (`gitdir: <path>`) in linked worktrees and submodules.
+    let git_dir = if dot_git.is_file() {
+        let text = std::fs::read_to_string(&dot_git).ok()?;
+        let target = Path::new(text.trim().strip_prefix("gitdir:")?.trim());
+        cwd.join(target)
+    } else if dot_git.is_dir() {
+        dot_git
+    } else {
+        return None;
+    };
+    let mut git_dir_arg = OsString::from("--git-dir=");
+    git_dir_arg.push(git_dir);
+    let mut work_tree_arg = OsString::from("--work-tree=");
+    work_tree_arg.push(cwd);
+    Some([git_dir_arg, work_tree_arg])
+}
+
 impl Git {
     pub fn new(cwd: &Path) -> Self {
         Self {
@@ -89,11 +116,13 @@ impl Git {
 
     fn command(&self) -> Command {
         let mut cmd = Command::new("git");
+        let portal = portal_layout(&self.cwd, &self.args);
         // Stable, parseable output regardless of user locale/config.
-        cmd.current_dir(&self.cwd)
+        cmd.current_dir(portal.as_ref().map_or(self.cwd.as_path(), |_| Path::new("/")))
             .env("LC_ALL", "C")
             .env("GIT_OPTIONAL_LOCKS", "0")
             .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
+            .args(portal.iter().flatten())
             .args(&self.args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
