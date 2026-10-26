@@ -1,23 +1,21 @@
-//! A one-line success / error note.
+//! A one-line success / error note shown under a section.
 
 use gd_ui::Theme;
 use gpui::{App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px};
 
-use super::state::StatusLine;
-
-#[derive(IntoElement)]
+#[derive(IntoElement, Clone, Debug)]
 pub struct StatusText {
     text: SharedString,
     error: bool,
 }
 
 impl StatusText {
-    pub fn new(line: &StatusLine) -> Self {
-        Self { text: line.text.clone().into(), error: line.error }
+    pub fn ok(text: impl Into<SharedString>) -> Self {
+        Self { text: text.into(), error: false }
     }
 
-    pub fn error(text: &str) -> Self {
-        Self { text: text.to_string().into(), error: true }
+    pub fn err(text: impl Into<SharedString>) -> Self {
+        Self { text: text.into(), error: true }
     }
 }
 

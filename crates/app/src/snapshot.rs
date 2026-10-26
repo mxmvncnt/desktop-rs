@@ -646,7 +646,7 @@ fn watch_check(cx: &mut HeadlessAppContext, repo: PathBuf) {
 }
 
 fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut gpui::Window, cx: &mut gpui::Context<Workspace>) {
-    use crate::features::accounts::{Account, AccountForm, Provider, StatusLine};
+    use crate::features::accounts::{Account, AccountForm, Provider, StatusText};
     use crate::features::settings::{SettingsPage, ThemeMode};
     ws.settings.theme = if view.ends_with("light") { ThemeMode::Light } else { ThemeMode::Dark };
     ws.apply_theme(window, cx);
@@ -683,7 +683,7 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut gpui::Window, cx
     ui.identity.global = global;
     ui.identity.effective = Some(gd_git::EffectiveIdentity { identity: local.clone(), source: gd_git::IdentitySource::Repository });
     ui.identity.local = local;
-    ui.identity.message = Some(StatusLine::ok("Saved to your global git config"));
+    ui.identity.message = Some(StatusText::ok("Saved to your global git config"));
     if view.ends_with("form") || view.ends_with("edit") {
         let editing = view.ends_with("edit");
         set(&inp.display_name, if editing { "Work" } else { "" }, cx);

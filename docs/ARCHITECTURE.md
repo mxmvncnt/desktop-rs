@@ -259,8 +259,8 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
 
 ## Diff options and split view (`features/diff/`: `diff_options_menu.rs`, `split_diff.rs`, `split_row.rs`)
 
-- Options are app-wide and persisted in `Settings` (`diff_split`, `diff_ignore_whitespace`, `diff_wrap`), stored in a
-  separate `display` file (`key=value`) so old `repositories` files load unchanged.
+- Options are app-wide and persisted in `Settings` (`diff_split`, `diff_ignore_whitespace`, `diff_wrap`), stored in
+  `settings.toml` (serde + toml, `#[serde(default)]` so missing keys are fine).
 - `gd_git::DiffOptions { ignore_whitespace }` is passed to `working_diff`/`commit_diff` (`-w`).
   `RepoModel::diff_options` holds it; `set_diff_options` reloads the visible change/commit diff via the
   normal generation counters (old diff stays on screen until the new one lands). `Workspace::apply_diff_options` pushes settings in;

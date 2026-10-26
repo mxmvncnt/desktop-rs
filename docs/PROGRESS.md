@@ -13,8 +13,7 @@
 
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
       per-repo override for the open repo with "in effect" line, provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
-      add/edit/remove. Metadata in `<config>/accounts`, tokens in `<config>/tokens` (0600). No keyring crate: its D-Bus tree is
-      heavy and fails headless; tokens are plain text protected by file mode only. Token input is not masked (gpui-ce
+      add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the OS keyring (`keyring` crate, service `desktop-rs`; snapshot mode uses the mock store). Token input is not masked (gpui-ce
       `text_input` has no masking) and tokens are not validated online (no HTTP client dependency).
 - [x] Credentials wired: `gd_git::set_credentials` registers tokens; every `.network()` git command gets per-host
       `credential.https://<host>.helper` via `GIT_CONFIG_COUNT/KEY/VALUE` env (secret only in the child env). HTTPS only; SSH untouched.
@@ -28,7 +27,7 @@
       Opens from the toolbar gear, `Ctrl/Cmd+,`, macOS "Settings…"; Esc/close button/backdrop closes. `settings_open` counts as
       `overlay_open`; Esc is checked first in `Dismiss`. Diff page reuses `CheckOptionRow` and the `set_diff_*` setters.
       To add a category: extend `SettingsPage` (label/icon) and add a page fn.
-- [x] Theme mode `System|Light|Dark` persisted as `theme=` in the `display` file. System follows
+- [x] Theme mode `System|Light|Dark` persisted as `theme` in `settings.toml`. System follows
       `window.appearance()` and re-applies live via `observe_window_appearance`.
 - Not done: identities/providers, ~~multiple color themes~~ (done: see ARCHITECTURE UI kit, Color themes). Snapshot views: `settings`,
   `settings-light`, `settings-diff`, `changes-light`.
@@ -163,7 +162,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
      non-UTF-8 diffs, conflicted files, while a merge commit is pending. Stash "selected files" still stashes whole files.
    - Verified: `cargo test -p gd-git` (staged_text), `smoke` example (real partial commit). Snapshot views
      `partial[@N]`, `partial-split[@N]`. Not yet clicked with a real mouse.
-8. 🟨 Split diff view and whitespace toggle done (gear button in both diff headers: Unified/Split + Hide whitespace changes, persisted in `display` settings file, `-w` via `gd_git::DiffOptions`). Image diffs still open. Split view clips long lines (no horizontal scroll). Snapshot views: `split`, `split-ws`, `split-history`, `hide-ws`, `diff-options-menu`. Split row build: 0.36 ms for an 18k-line diff (cached per loaded diff), so toggling is instant.
+8. 🟨 Split diff view and whitespace toggle done (gear button in both diff headers: Unified/Split + Hide whitespace changes, persisted in `settings.toml`, `-w` via `gd_git::DiffOptions`). Image diffs still open. Split view clips long lines (no horizontal scroll). Snapshot views: `split`, `split-ws`, `split-history`, `hide-ws`, `diff-options-menu`. Split row build: 0.36 ms for an 18k-line diff (cached per loaded diff), so toggling is instant.
 9. ⬜ Pull requests list (GitHub API); create PR; CI status.
 10. ✅ (branch `rust/history-ops`) History commit actions and push status:
 
@@ -205,7 +204,7 @@ echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new 
     by widening the diff loader's visibility.
   - `RepoModel::new` still lists every field; group them into sub-structs (`DiffState`, `HistoryLog`, `RefreshState`).
 
-- ✅ Resizable sidebar: 6px drag handle on its right edge (`features/changes/sidebar_handle.rs`, `resize.rs`), clamped 220..520, double-click resets to 300, persisted as `sidebar_width` in the `display` file. Snapshot view `sidebar-wide`.
+- ✅ Resizable sidebar: 6px drag handle on its right edge (`features/changes/sidebar_handle.rs`, `resize.rs`), clamped 220..520, double-click resets to 300, persisted as `sidebar_width` in `settings.toml`. Snapshot view `sidebar-wide`.
 
 ## Pull request preview
 - ✅ Branch > Preview Pull Request (`ctrl-alt-p`, also a card in the no-changes pane): base selector (default `origin/HEAD`), `N commits from head into base`, merge-base file list + read-only diff, "Create pull request" opens the GitHub/GitLab/Bitbucket compare URL; hints for unpublished branch / unknown host. Code: `features/pr_preview/`, `gd-git/src/pr_preview.rs`. Snapshot views: `pr-preview`, `pr-preview-menu`.
