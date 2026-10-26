@@ -49,17 +49,29 @@ impl Workspace {
         cx.notify();
     }
 
-    /// Put the picker cursor on the open repository while the repo filter is
-    /// empty (a settings index is then also a list row), else on the first row.
+    /// Put the picker cursor on the open repository / checked-out branch while
+    /// the filter is empty (a settings index is then also a list row), else on
+    /// the first row.
     /// Runs on open and on every input change, including the clear on open.
     pub(crate) fn reset_popover_selection(&mut self, cx: &mut Context<Self>) {
         let unfiltered = self.filter.read(cx).as_str().trim().is_empty();
         self.popover_selected = match self.popover {
             Some(Popover::Repositories) if unfiltered => self.settings.selected.unwrap_or(0),
+            Some(Popover::Branches) if unfiltered => self.head_branch_row(cx),
             _ => 0,
         };
         self.popover_scroll
             .scroll_to_item(self.popover_selected, ScrollStrategy::Nearest);
+    }
+
+    /// Row of the checked-out branch in the unfiltered branch list.
+    fn head_branch_row(&self, cx: &Context<Self>) -> usize {
+        let Some(repo) = &self.repo else { return 0 };
+        let r = repo.read(cx);
+        self.filtered_branches(cx)
+            .iter()
+            .position(|&i| r.branches.get(i).is_some_and(|b| b.is_head))
+            .unwrap_or(0)
     }
 
     pub fn close_popover(&mut self, window: &mut Window, cx: &mut Context<Self>) {
