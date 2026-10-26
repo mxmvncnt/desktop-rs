@@ -178,10 +178,8 @@ impl RepoModel {
             // A `-w` diff has different rows; keep the selection for later.
             return;
         }
-        if let Some(sel) = self.partial.get_mut(path) {
-            if sel.diff.source != diff.source {
-                self.partial.remove(path);
-            }
+        if self.partial.get(path).is_some_and(|sel| sel.diff.source != diff.source) {
+            self.partial.remove(path);
         }
     }
 

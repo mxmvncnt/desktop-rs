@@ -94,10 +94,10 @@ impl Workspace {
         self.popover = None;
         let paths = cx.prompt_for_paths(directory_prompt("Add repository"));
         cx.spawn(async move |this, cx| {
-            if let Ok(Ok(Some(paths))) = paths.await {
-                if let Some(path) = paths.into_iter().next() {
-                    this.update(cx, |this, cx| this.add_repository(path, cx)).ok();
-                }
+            if let Ok(Ok(Some(paths))) = paths.await
+                && let Some(path) = paths.into_iter().next()
+            {
+                this.update(cx, |this, cx| this.add_repository(path, cx)).ok();
             }
         })
         .detach();

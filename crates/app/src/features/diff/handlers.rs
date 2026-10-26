@@ -72,10 +72,8 @@ impl Workspace {
 
     /// Paired rows for `diff`, built once per loaded diff and cached.
     pub fn split_for(&mut self, diff: &Arc<Diff>) -> Arc<SplitDiff> {
-        if let Some(s) = &self.diff_view.split_cache {
-            if Arc::ptr_eq(&s.diff, diff) {
-                return s.clone();
-            }
+        if let Some(s) = self.diff_view.split_cache.as_ref().filter(|s| Arc::ptr_eq(&s.diff, diff)) {
+            return s.clone();
         }
         let s = Arc::new(SplitDiff::build(diff));
         self.diff_view.split_cache = Some(s.clone());
