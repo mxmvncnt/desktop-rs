@@ -1,4 +1,4 @@
-//! Header of the stash detail pane: title, metadata and Apply / Restore / Discard.
+//! Header of the stash detail pane: title, metadata and Close / Apply / Restore / Discard.
 
 use gd_git::Stash;
 use gd_ui::{Button, Icon, Theme, badge, icon};
@@ -80,12 +80,19 @@ impl StashHeader {
     }
 
     fn buttons(&self) -> impl IntoElement + use<> {
-        let (repo_a, repo_b, ws) = (self.repo.clone(), self.repo.clone(), self.ws.clone());
+        let (repo_a, repo_b, repo_c, ws) = (self.repo.clone(), self.repo.clone(), self.repo.clone(), self.ws.clone());
         let (sha_a, sha_b, stash) = (self.stash.sha.clone(), self.stash.sha.clone(), self.stash.clone());
         div()
             .flex()
             .flex_none()
             .gap(px(8.0))
+            .child(
+                Button::new("stash-close")
+                    .ghost()
+                    .icon(Icon::Close)
+                    .label("Close")
+                    .on_click(move |_, _, cx| repo_c.update(cx, |r, cx| r.close_stash(cx))),
+            )
             .child(
                 Button::new("stash-apply")
                     .icon(Icon::ArchiveUp)

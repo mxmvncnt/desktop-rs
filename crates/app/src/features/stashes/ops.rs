@@ -61,6 +61,12 @@ impl RepoModel {
         cx.notify();
     }
 
+    /// Leave the stash diff and go back to the working changes.
+    pub fn close_stash(&mut self, cx: &mut Context<Self>) {
+        self.stashes.viewing = false;
+        cx.notify();
+    }
+
     pub fn select_stash(&mut self, sha: String, cx: &mut Context<Self>) {
         self.stashes.viewing = true;
         if self.stashes.selected.as_deref() == Some(&sha) && !self.stashes.files.is_empty() {
