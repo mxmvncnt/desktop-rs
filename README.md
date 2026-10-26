@@ -2,7 +2,13 @@
 
 A native rewrite of [GitHub Desktop](https://github.com/desktop/desktop) in Rust, using [GPUI Community Edition](https://github.com/gpui-ce/gpui-ce)
 
-It currently compiles and works for both Linux and macOS. I dont use windows and i also dont care about it so
+## Screenshots
+
+<img width="1280" height="820" alt="Screenshot From 2026-10-25 22-26-22" src="https://github.com/user-attachments/assets/668a8f85-6893-4ce5-a301-8d1d8b6ef38e" />
+
+<img width="1280" height="820" alt="Screenshot From 2026-10-25 22-26-33" src="https://github.com/user-attachments/assets/9b4a0c94-483b-4937-9a82-e8c0e3b91abf" />
+
+<img width="1280" height="820" alt="Screenshot From 2026-10-25 22-27-00" src="https://github.com/user-attachments/assets/50ff8165-c730-498a-9509-61f1eab41756" />
 
 ## Build and run
 
