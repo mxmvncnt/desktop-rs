@@ -34,6 +34,7 @@ keyring = { version = "3", features = ["async-secret-service", "async-io", "cryp
 uuid = { version = "1.29.0", features = ["v4"] }
 notify-debouncer-full = "0.7.0"
 ignore = "0.4.33"
+lru = "0.19.0"
 
 # Wayland/X11 backends are only meaningful (and only build) on Linux.
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
