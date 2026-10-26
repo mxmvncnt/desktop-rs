@@ -121,8 +121,11 @@ guessing APIs. To recreate them:
 - `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, pending_refresh), `background_fetch.rs`, `change_diff.rs`/`commit_diff.rs` (generation counters), `diff_highlight.rs`, `expand.rs`, `history_log.rs`, `run.rs`) owns all repository state: status, selection, diff,
   history pages, commit details, branches, and in-flight ops.
   Every git call goes through `cx.background_spawn`, and results are applied with `this.update`.
-- **Stale results are dropped** with generation counters (`change_diff_gen`, A status refresh always reloads the selected diff (status list equality is not enough: re-editing a modified file leaves it identical); `apply_change_diff` drops results equal to what is shown.
+- **Stale results are dropped** with generation counters (`change_diff_gen`,
   `commit_gen`). Clicking quickly through files never shows the wrong diff.
+  A status refresh always reloads the selected diff (status list equality is not
+  enough: re-editing a modified file leaves it identical); `apply_change_diff`
+  drops results equal to what is shown.
 - `RepoModel::run(op, on_ok)` is the generic write-op helper. It runs off-thread,
   sets `error`, then refreshes status and branches.
 - Refresh triggers: file watcher, window activation (skipped if the watcher
@@ -167,9 +170,8 @@ Don't measure with raw CPU ticks on a live desktop: pointer movement over the
 window legitimately re-renders (hover transitions), which made one session chase
 a phantom regression.
 
-Known perf TODOs: split `Workspace` into child entities so typing in the commit
-box doesn't re-render the diff (it's virtualized, so it's cheap but not free);
-add syntax highlighting with a cache; add a file watcher so focus refresh isn't the only trigger.
+Known perf TODO: split `Workspace` into child entities so typing in the commit
+box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 
 ## File watcher and refresh coalescing
 
@@ -325,9 +327,9 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
 OS-specific code lives in `platform/linux/` and `platform/macos/`; `platform/mod.rs`
 re-exports the one for the target. Both expose the same surface: `Chrome`,
 `caption_buttons`, `titlebar_drag`, `frame`, `configure_window`,
-The config dir comes from the `dirs` crate (`dirs::config_dir()`) in `features/settings/model.rs`.
 and the shortcut constants `SECONDARY` (ctrl/cmd), `SECONDARY_LABEL`, `REFRESH_KEY`,
 `QUIT_KEY`. Keep OS `cfg`s out of the rest of the app; add to both modules instead.
+The config dir comes from the `dirs` crate (`dirs::config_dir()`) in `features/settings/model.rs`.
 Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Cargo.toml`.
 
 - **macOS** (not yet compiled or run, no Mac available): native frame with a transparent

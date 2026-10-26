@@ -52,7 +52,7 @@
 
 ## Status at end of session 1 (2026-10-20, overnight autonomous run)
 
-- `rust-rewrite` holds the POC plus three merged feature branches (fs-watcher,
+- `rust-rewrite` (since merged into `main`) held the POC plus three merged feature branches (fs-watcher,
   changes-actions, diff-syntax). Everything builds warning-free in dev, snapshot and release.
 - Measured (release, Linux/Wayland, small repo): **~65 MB RSS, 0 CPU ticks over
   10 s idle**. The highlighter takes ~125 ms on an 18k-line diff, in the background.
@@ -64,7 +64,7 @@
   `.worktrees/<name>` (branch `rust/<name>`), then merge with `--no-ff`
   and resolve the predictable conflicts (`repo.rs` fields, `snapshot.rs` view list, docs).
 
-Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
+Branch: `main`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 
 ## POC (session 1, 2026-10-20)
 
