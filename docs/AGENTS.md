@@ -43,8 +43,10 @@ cargo run --features snapshot -- --snapshot /tmp/desktop-rs/x.png <repo> <view>
 ```
 
 Then look at the PNG. Make test repos under `/tmp/desktop-rs/` (see PROGRESS.md for a
-script). The snapshot can only open a view, not click. For interaction states,
-add a view name to `crates/app/src/snapshot.rs` that sets up the state directly.
+script). The snapshot can't click, but it can hover (`GD_SNAPSHOT_MOUSE=x,y`) and
+drag with the left button (`GD_SNAPSHOT_DRAG=x1,y1,x2,y2`, logical window px). For
+other interaction states, add a view name to `crates/app/src/snapshot.rs` that sets
+up the state directly.
 
 ## Documentation duty
 

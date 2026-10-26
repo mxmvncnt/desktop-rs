@@ -384,6 +384,10 @@ Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Carg
 - **Long words are broken by a vendored `gpui_ce_parley`** (`vendor/gpui_ce_parley`, wired up
   by `[patch]` in the root `Cargo.toml`). It is the pinned rev's crate plus one line:
   `OverflowWrap::Anywhere` in `text_system.rs`. Re-vendor it when bumping the GPUI-CE pin.
+- **A `div` defaults to `Display::Block`, which lays its text children out as one inline
+  paragraph.** The child `StyledText` is then never measured itself, so its `TextLayout`
+  stays empty and `index_for_position` / `position_for_index` panic ("measurement has not
+  been performed"). Give a text you hit-test a flex parent (`line_text` uses `flex().flex_col()`).
 - gpui-ce only scrolls an input to the caret on caret movement, so typing past the commit box's
   max height does not follow the caret (see the reverted `c22f88d`).
 
@@ -399,7 +403,8 @@ gotchas above.
   `DiffView::text_sel`, so it is independent of virtualization. Split view selects within one `TextSide`; lines of a
   side stay monotonic in `diff.lines` order. Cleared on file change and split toggle.
 - Hit-testing: `line_text` returns the row's `StyledText` `TextLayout`; the row closures capture it and call
-  `index_for_position` (window coordinates, so h-scroll and wrapping just work). Mouse down is bound on the text cell
+  `index_for_position` (window coordinates, so h-scroll and wrapping just work). The text must sit in a flex parent
+  or its layout is never measured (see the GPUI-CE gotchas). Mouse down is bound on the text cell
   only (gutters keep line staging); `on_mouse_move` on the whole row extends the drag (`text_drag`, cleared in
   `DiffFrame` mouse-up-all).
 - Highlight = background on the selected `TextRun` range (`Theme::selection`), no extra paint elements.

@@ -15,7 +15,7 @@
 //! `sidebar-wide`, `stash-list`, `stash-detail`, `stash-detail-untracked`, `pr-preview`, `pr-preview-menu`, `stash-all`, `stash-menu`, `stash-dialog`, `stash-drop-dialog`,
 //! `switch-branch-dialog`,
 //! `merge-dialog`, `squash-dialog`, `rebase-dialog`, `branch-menu`, `branch-menu-current`, `delete-dialog`,
-//! `settings-accounts`/`-light`/`-form`/`-edit` (Accounts settings, sample data), `rename-dialog`, `expanded`/`expanded-split` (hunk expansion), `partial[@N]`/`partial-split[@N]` (line selection: file N, some rows deselected; hover with `GD_SNAPSHOT_MOUSE=x,y`), `history-menu`/`-menu-head`/`-menu-pushed`/`-multiselect`/`-multimenu`/`-squash`/`-reset`/`-cherry`/`-tag`/`-checkout`, `amend-mode` (need a repo with a remote, see PROGRESS.md), `conflict-menu` (use a conflicted repo made with `merge_smoke -- <dir> --keep-conflict`;
+//! `settings-accounts`/`-light`/`-form`/`-edit` (Accounts settings, sample data), `rename-dialog`, `expanded`/`expanded-split` (hunk expansion), `partial[@N]`/`partial-split[@N]` (line selection: file N, some rows deselected; hover with `GD_SNAPSHOT_MOUSE=x,y`; left-drag, e.g. to select diff text, with `GD_SNAPSHOT_DRAG=x1,y1,x2,y2`), `history-menu`/`-menu-head`/`-menu-pushed`/`-multiselect`/`-multimenu`/`-squash`/`-reset`/`-cherry`/`-tag`/`-checkout`, `amend-mode` (need a repo with a remote, see PROGRESS.md), `conflict-menu` (use a conflicted repo made with `merge_smoke -- <dir> --keep-conflict`;
 //! plain `changes` then shows the banner), `icons` (icon-rendering sanity check, repo arg ignored).
 
 use std::path::PathBuf;
@@ -446,6 +446,32 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                     }),
                     cx,
                 );
+            })
+            .ok();
+            cx.run_until_parked();
+        }
+    }
+    // `GD_SNAPSHOT_DRAG=x1,y1,x2,y2` (window px): press, drag and release the
+    // left button, e.g. to select diff text through the real hit-testing.
+    if let Some(&[x1, y1, x2, y2]) = std::env::var("GD_SNAPSHOT_DRAG")
+        .ok()
+        .and_then(|v| v.split(',').map(|n| n.parse::<f32>().ok()).collect::<Option<Vec<_>>>())
+        .as_deref()
+    {
+        use gpui::{MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PlatformInput, point};
+        let (from, to) = (point(px(x1), px(y1)), point(px(x2), px(y2)));
+        let left = Some(MouseButton::Left);
+        let events = [
+            PlatformInput::MouseMove(MouseMoveEvent { position: from, pressed_button: None, modifiers: Default::default() }),
+            PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: from, modifiers: Default::default(), click_count: 1, first_mouse: false }),
+            PlatformInput::MouseMove(MouseMoveEvent { position: point(px((x1 + x2) / 2.0), px((y1 + y2) / 2.0)), pressed_button: left, modifiers: Default::default() }),
+            PlatformInput::MouseMove(MouseMoveEvent { position: to, pressed_button: left, modifiers: Default::default() }),
+            PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: to, modifiers: Default::default(), click_count: 1 }),
+        ];
+        cx.run_until_parked();
+        for event in events {
+            cx.update_window(window.into(), |_, window, cx| {
+                window.dispatch_event(event, cx);
             })
             .ok();
             cx.run_until_parked();
