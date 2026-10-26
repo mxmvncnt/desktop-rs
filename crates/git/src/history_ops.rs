@@ -89,7 +89,7 @@ impl Repository {
     /// from the current branch's remote (or the default remote). `None` when
     /// there is no remote or it is not a GitHub host.
     pub fn github_web_url(&self) -> Option<String> {
-        github_web_url(&self.tracking_remote_url()?)
+        crate::remote::github_web_url(&self.tracking_remote_url()?)
     }
 
     /// Fetch URL of the current branch's remote (else `origin`, else the first remote).
@@ -346,33 +346,4 @@ impl Repository {
         let _ = std::fs::remove_file(&path);
         self.outcome_of(res)
     }
-}
-
-/// Split a git remote URL (ssh scp-style, `ssh://`, `https://`, `git://`)
-/// into a lowercase host and the repository path (no `.git`, no slashes
-/// around). `None` when the path is not `owner/repo`-shaped.
-pub(crate) fn split_remote(remote: &str) -> Option<(String, String)> {
-    let remote = remote.trim();
-    let (host, path) = if let Some((_, rest)) = remote.split_once("://") {
-        let (authority, path) = rest.split_once('/')?;
-        let host = authority.rsplit('@').next()?;
-        (host.split(':').next()?.to_string(), path.to_string())
-    } else {
-        // scp-like: [user@]host:owner/repo.git
-        let (authority, path) = remote.split_once(':')?;
-        (authority.rsplit('@').next()?.to_string(), path.to_string())
-    };
-    let path = path.trim_matches('/');
-    let path = path.strip_suffix(".git").unwrap_or(path);
-    if path.split('/').count() < 2 || path.is_empty() {
-        return None;
-    }
-    Some((host.to_ascii_lowercase(), path.to_string()))
-}
-
-/// Convert a git remote URL into the repository's GitHub web URL. Hosts must
-/// look like GitHub (`github.com`, or a GitHub Enterprise host containing "github").
-pub fn github_web_url(remote: &str) -> Option<String> {
-    let (host, path) = split_remote(remote)?;
-    host.contains("github").then(|| format!("https://{host}/{path}"))
 }

@@ -23,6 +23,7 @@ mod partial;
 mod pr_preview;
 mod progress;
 mod refs;
+mod remote;
 mod stash;
 mod status;
 
@@ -37,11 +38,12 @@ pub fn credential_env_for_tests() -> Vec<(std::ffi::OsString, std::ffi::OsString
 pub use diff::{Side, Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};
 pub use exec::GitError;
 pub use expand::{EXPANSION_STEP, Expansion, expand, expandable, gap_above, gap_below};
-pub use history_ops::{ResetMode, github_web_url};
+pub use history_ops::ResetMode;
 pub use log::{CoAuthor, Commit, parse_co_authors};
 pub use merge::{MergePreview, default_squash_summary};
 pub use partial::{PartialFile, selectable, staged_text};
-pub use pr_preview::{Comparison, Host, compare_url, host_of};
+pub use pr_preview::{Comparison, compare_url};
+pub use remote::{Host, github_web_url, host_of};
 pub use progress::{InProgress, OpOutcome};
 pub use refs::{Branch, BranchKind};
 pub use stash::Stash;

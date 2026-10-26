@@ -1,9 +1,11 @@
 //! Pull-request preview: the merge-base comparison of a head branch against a
 //! base branch, and the hosting provider's "new pull request" URL.
 
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
+
 use crate::diff::{Diff, DiffOptions, blob_sides};
-use crate::history_ops::split_remote;
 use crate::name_status::parse_name_status;
+use crate::remote::{Host, host_of, split_remote};
 use crate::{FileChange, GitError, Repository, Result};
 
 /// What a PR from `head` into `base` would contain (`git diff base...head`).
@@ -16,24 +18,6 @@ pub struct Comparison {
     /// Commits on base that head doesn't have yet (`head..base`).
     pub behind: u32,
     pub files: Vec<FileChange>,
-}
-
-/// Where a pull request can be opened.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Host {
-    GitHub,
-    GitLab,
-    Bitbucket,
-}
-
-impl Host {
-    pub fn name(self) -> &'static str {
-        match self {
-            Host::GitHub => "GitHub",
-            Host::GitLab => "GitLab",
-            Host::Bitbucket => "Bitbucket",
-        }
-    }
 }
 
 impl Repository {
@@ -80,48 +64,30 @@ impl Repository {
     }
 }
 
-/// Which provider a remote URL belongs to.
-pub fn host_of(remote: &str) -> Option<Host> {
-    let (host, _) = split_remote(remote)?;
-    if host.contains("github") {
-        Some(Host::GitHub)
-    } else if host.contains("gitlab") {
-        Some(Host::GitLab)
-    } else if host.contains("bitbucket") {
-        Some(Host::Bitbucket)
-    } else {
-        None
-    }
-}
-
 /// Browser URL that opens a new pull / merge request. `base` and `head` are
 /// branch names on the remote (no `origin/` prefix). `None` for unknown hosts.
 pub fn compare_url(remote: &str, base: &str, head: &str) -> Option<String> {
     let (host, path) = split_remote(remote)?;
     Some(match host_of(remote)? {
-        Host::GitHub => format!("https://{host}/{path}/compare/{}...{}?expand=1", enc(base, true), enc(head, true)),
+        Host::GitHub => format!("https://{host}/{path}/compare/{}...{}?expand=1", enc(base, PATH), enc(head, PATH)),
         Host::GitLab => format!(
             "https://{host}/{path}/-/merge_requests/new?merge_request%5Bsource_branch%5D={}&merge_request%5Btarget_branch%5D={}",
-            enc(head, false),
-            enc(base, false)
+            enc(head, COMPONENT),
+            enc(base, COMPONENT)
         ),
         Host::Bitbucket => {
-            format!("https://{host}/{path}/pull-requests/new?source={}&dest={}", enc(head, false), enc(base, false))
+            format!("https://{host}/{path}/pull-requests/new?source={}&dest={}", enc(head, COMPONENT), enc(base, COMPONENT))
         }
     })
 }
 
-/// Percent-encode a branch name; `keep_slash` for use in a URL path.
-fn enc(s: &str, keep_slash: bool) -> String {
-    let mut out = String::with_capacity(s.len());
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => out.push(b as char),
-            b'/' if keep_slash => out.push('/'),
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
+/// Unreserved characters stay as they are.
+const COMPONENT: &AsciiSet = &NON_ALPHANUMERIC.remove(b'-').remove(b'.').remove(b'_').remove(b'~');
+/// Like [`COMPONENT`], but keeps `/` for use in a URL path.
+const PATH: &AsciiSet = &COMPONENT.remove(b'/');
+
+fn enc(s: &str, set: &'static AsciiSet) -> String {
+    utf8_percent_encode(s, set).to_string()
 }
 
 #[cfg(test)]

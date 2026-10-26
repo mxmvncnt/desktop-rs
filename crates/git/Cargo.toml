@@ -14,3 +14,4 @@ similar.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
 log.workspace = true
+percent-encoding = "2"
