@@ -26,7 +26,10 @@ impl Workspace {
         let hint = (change.status == FileStatus::Conflicted)
             .then(|| ConflictHint::new(&change, diff.as_ref(), repo.clone(), cx));
         let header = FileHeader::new(&change, diff.as_deref(), cx.entity());
-        let diff_id = SharedString::from(format!("change-diff-{}", change.path));
+        // Key on the loaded diff's path (not the clicked one) so the fade runs
+        // when the content swaps, not on the previous file's diff.
+        let shown = r.change_diff_key.as_ref().map_or(change.path.as_str(), |(p, _)| p.as_str());
+        let diff_id = SharedString::from(format!("change-diff-{shown}"));
         div()
             .flex()
             .flex_col()

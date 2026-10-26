@@ -25,7 +25,9 @@ impl RepoModel {
         let loaded_sha = sha.clone();
         let repo = self.repo.clone();
         let opts = self.diff_options;
-        self._commit_task = Some(cx.spawn(async move |this, cx| {
+        // Detached, not stored: replacing a stored task would cancel the load
+        // in flight, so holding an arrow key would only ever show the last commit.
+        cx.spawn(async move |this, cx| {
             let res = cx
                 .background_spawn(async move {
                     let files = repo.commit_files(&sha)?;
@@ -37,9 +39,12 @@ impl RepoModel {
                 })
                 .await;
             this.update(cx, |this, cx| {
-                if this.commit_gen != generation {
+                // Late loads still show (stepping through commits) unless
+                // something newer was already applied.
+                if generation < this.commit_applied_gen {
                     return;
                 }
+                this.commit_applied_gen = generation;
                 match res {
                     Ok((files, diff)) => {
                         this.selected_commit_file = (!files.is_empty()).then_some(0);
@@ -51,7 +56,8 @@ impl RepoModel {
                 cx.notify();
             })
             .ok();
-        }));
+        })
+        .detach();
         cx.notify();
     }
 
@@ -68,7 +74,9 @@ impl RepoModel {
         let (sha, file, repo) = (commit.sha.clone(), file.clone(), self.repo.clone());
         let loaded_sha = sha.clone();
         let opts = self.diff_options;
-        self._commit_task = Some(cx.spawn(async move |this, cx| {
+        // Detached, not stored: replacing a stored task would cancel the load
+        // in flight, so holding an arrow key would only ever show the last commit.
+        cx.spawn(async move |this, cx| {
             let res = cx
                 .background_spawn(async move {
                     let path = file.path.clone();
@@ -76,9 +84,10 @@ impl RepoModel {
                 })
                 .await;
             this.update(cx, |this, cx| {
-                if this.commit_gen != generation {
+                if generation < this.commit_applied_gen {
                     return;
                 }
+                this.commit_applied_gen = generation;
                 match res {
                     Ok(d) => this.set_commit_diff(loaded_sha, Some(d), cx),
                     Err(e) => this.error = Some(e.to_string()),
@@ -86,7 +95,8 @@ impl RepoModel {
                 cx.notify();
             })
             .ok();
-        }));
+        })
+        .detach();
         cx.notify();
     }
 

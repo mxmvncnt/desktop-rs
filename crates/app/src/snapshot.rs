@@ -103,6 +103,9 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                         if let Some(r) = &ws.repo {
                             r.update(cx, |r, cx| r.set_tab(Tab::History, cx));
                         }
+                        if v == "history-search" {
+                            ws.history_ui.search.update(cx, |s, cx| s.emplace("module 3", cx));
+                        }
                     }
                     // Diff options (set directly: no settings file is written).
                     "split" | "split-history" | "hide-ws" | "split-ws" | "diff-options-menu" => {

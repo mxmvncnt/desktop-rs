@@ -53,7 +53,7 @@ impl RenderOnce for NoticeBanner {
                 SharedString::from(key),
                 gd_ui::overlay_card(cx)
                     .flex()
-                    .items_start()
+                    .items_center()
                     .gap(px(10.0))
                     .p(px(12.0))
                     .child(

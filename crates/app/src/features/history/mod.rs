@@ -19,6 +19,8 @@ mod message_handle;
 mod message_resize;
 mod multi_select;
 mod ops;
+mod search;
+mod search_box;
 mod selection;
 mod state;
 
@@ -26,6 +28,7 @@ pub use commit_list::CommitList;
 pub use commit_menu::CommitMenuView;
 pub use history_dialog::HistoryDialogView;
 pub use message_resize::MessageResize;
+pub use search::matching_commits;
 #[cfg(feature = "snapshot")]
 pub use state::{ClickKind, HistoryAction};
 pub use state::{HistoryState, HistoryUi};

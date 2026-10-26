@@ -32,7 +32,7 @@ impl Sidebar {
         let (tab, count) = (r.tab, r.changes().len());
         let body = match tab {
             Tab::Changes => SidebarBody::Changes(ChangesPanel::new(ws, repo, cx)),
-            Tab::History => SidebarBody::History(CommitList::new(repo.clone(), cx.entity(), ws.history_scroll.clone())),
+            Tab::History => SidebarBody::History(CommitList::new(repo.clone(), cx.entity(), ws.history_scroll.clone(), ws.history_ui.search.clone())),
         };
         Self { tabs: SidebarTabs::new(tab, count, repo.clone()), body, corner_radius: ws.corner_radius,
             width: ws.sidebar_width(),
