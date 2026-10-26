@@ -7,7 +7,7 @@ use std::time::{Instant, SystemTime};
 use gd_git::{Branch, InProgress, Repository, WorkingStatus};
 use gpui::{AppContext, Context};
 
-use super::state::{RefreshScope, RepoModel, Tab};
+use super::state::{RefreshScope, RepoEvent, RepoModel, Tab};
 use crate::watcher::RepoWatcher;
 
 /// Everything one refresh reads from git (gathered off the UI thread).
@@ -129,7 +129,7 @@ impl RepoModel {
             && self.merge.in_progress.as_ref().map(std::mem::discriminant) != new.as_ref().map(std::mem::discriminant);
         self.merge.in_progress = new;
         if let (true, Some((summary, description))) = (newly, msg) {
-            cx.emit(crate::features::merge::message_event(summary, description));
+            cx.emit(RepoEvent::PreparedMessage { summary, description });
         }
     }
 

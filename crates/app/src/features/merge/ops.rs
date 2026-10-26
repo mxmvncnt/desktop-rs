@@ -11,7 +11,7 @@ use gd_git::{FileStatus, OpOutcome, Repository};
 use gpui::{AppContext, Context};
 
 use super::state::{MergeMode, Resolve};
-use crate::repo::{RepoEvent, RepoModel};
+use crate::repo::RepoModel;
 
 impl MergeMode {
     fn busy_label(self) -> &'static str {
@@ -176,9 +176,4 @@ impl RepoModel {
             cx,
         );
     }
-}
-
-/// Emit the prepared message when an operation newly pauses.
-pub(crate) fn message_event(summary: String, description: String) -> RepoEvent {
-    RepoEvent::PreparedMessage { summary, description }
 }
