@@ -33,7 +33,7 @@ impl BranchMenuView {
 impl RenderOnce for BranchMenuView {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let ws = self.ws.clone();
-        let mut menu = ContextMenu::new(("merge-menu", self.menu_gen), self.position)
+        let mut menu = ContextMenu::new(("branch-menu", self.menu_gen), self.position)
             .selected(self.selected)
             .on_dismiss(move |_, cx| {
                 ws.update(cx, |this, cx| {
