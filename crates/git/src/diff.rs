@@ -5,6 +5,7 @@
 //! is a flat `Vec<DiffLine>` (hunk headers included) rather than nested hunks:
 //! row `i` of the list is `lines[i]`, O(1).
 
+use crate::engine::hunk_header;
 use crate::{FileChange, FileStatus, Repository, Result};
 
 
@@ -38,6 +39,30 @@ pub struct DiffLine {
     pub emphasis: Vec<(usize, usize)>,
 }
 
+impl DiffLine {
+    /// A numbered row (0-based line indexes); tabs are expanded once here
+    /// instead of at every paint.
+    pub(crate) fn new(kind: DiffLineKind, old_ix: Option<usize>, new_ix: Option<usize>, text: &str) -> Self {
+        DiffLine {
+            kind,
+            old_line: old_ix.map(|i| i as u32 + 1),
+            new_line: new_ix.map(|i| i as u32 + 1),
+            text: if text.contains('\t') { text.replace('\t', "    ") } else { text.to_string() },
+            emphasis: Vec::new(),
+        }
+    }
+
+    pub(crate) fn hunk(h: &DiffHunk) -> Self {
+        let text = hunk_header(h.old_start, h.old_len, h.new_start, h.new_len);
+        DiffLine { kind: DiffLineKind::Hunk, old_line: None, new_line: None, text, emphasis: Vec::new() }
+    }
+
+    pub(crate) fn no_newline() -> Self {
+        let text = "\\ No newline at end of file".into();
+        DiffLine { kind: DiffLineKind::NoNewline, old_line: None, new_line: None, text, emphasis: Vec::new() }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffHunk {
     /// Index into [`Diff::lines`] of the hunk header.
@@ -64,7 +89,7 @@ pub struct Diff {
     /// A side exceeded `engine::MAX_BYTES`; nothing was diffed.
     pub too_large: bool,
     /// Full old/new texts the diff came from (for partial staging). `None`
-    /// for binary, non-UTF-8, or parsed-from-git diffs.
+    /// for binary or non-UTF-8 files.
     pub source: Option<std::sync::Arc<crate::engine::DiffSource>>,
 }
 
