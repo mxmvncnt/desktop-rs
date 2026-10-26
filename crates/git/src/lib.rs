@@ -34,7 +34,7 @@ pub use diff::{Side, Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};
 pub use exec::GitError;
 pub use expand::{EXPANSION_STEP, Expansion, expand, expandable, gap_above, gap_below};
 pub use history_ops::ResetMode;
-pub use log::{CoAuthor, Commit, parse_co_authors};
+pub use log::{CoAuthor, Commit};
 pub use merge::{MergePreview, default_squash_summary};
 pub use partial::{PartialFile, selectable, staged_text};
 pub use pr_preview::{Comparison, compare_url};
@@ -110,10 +110,7 @@ impl Repository {
 
     /// Whether `HEAD` resolves to a commit (false in a freshly-initialized repo).
     pub fn has_head(&self) -> bool {
-        self.git()
-            .args(["rev-parse", "--verify", "-q", "HEAD"])
-            .run()
-            .is_ok()
+        self.repo().is_ok_and(|r| r.head().is_ok())
     }
 
     // ---- write operations -------------------------------------------------

@@ -24,14 +24,11 @@ pub struct CoAuthor {
     pub email: String,
 }
 
-/// Parse `Co-authored-by: Name <email>` trailers (case-insensitive key).
-pub fn parse_co_authors(body: &str) -> Vec<CoAuthor> {
+/// `Co-authored-by: Name <email>` trailers of a commit message (case-insensitive key).
+fn parse_co_authors(message: &str) -> Vec<CoAuthor> {
+    let Ok(trailers) = git2::message_trailers_strs(message) else { return Vec::new() };
     let mut out: Vec<CoAuthor> = Vec::new();
-    for line in body.lines() {
-        let Some((key, value)) = line.split_once(':') else { continue };
-        if !key.trim().eq_ignore_ascii_case("co-authored-by") {
-            continue;
-        }
+    for (_, value) in trailers.iter().filter(|(k, _)| k.eq_ignore_ascii_case("co-authored-by")) {
         let value = value.trim();
         let (name, email) = match (value.rfind('<'), value.ends_with('>')) {
             (Some(i), true) => (value[..i].trim(), value[i + 1..value.len() - 1].trim()),
@@ -46,8 +43,6 @@ pub fn parse_co_authors(body: &str) -> Vec<CoAuthor> {
     out
 }
 
-const SEP: char = '\u{1f}';
-
 impl Repository {
     /// Commits reachable from HEAD, newest first. Paged with `skip`/`limit`
     /// so the history list can load lazily as the user scrolls.
@@ -55,39 +50,26 @@ impl Repository {
         if !self.has_head() {
             return Ok(Vec::new());
         }
-        let out = self
-            .git()
-            .args([
-                "log",
-                "-z",
-                "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%s%x1f%b",
-            ])
-            .arg(format!("--skip={skip}"))
-            .arg(format!("--max-count={limit}"))
-            .arg("HEAD")
-            .run()?;
-        Ok(out
-            .split('\0')
-            .filter(|r| !r.is_empty())
-            .filter_map(|record| {
-                let f: Vec<&str> = record.splitn(8, SEP).collect();
-                if f.len() < 8 {
-                    return None;
-                }
-                let body = f[7].trim_end();
-                Some(Commit {
-                    co_authors: parse_co_authors(body),
-                    sha: f[0].trim_start_matches('\n').into(),
-                    short_sha: f[1].into(),
-                    author_name: f[2].into(),
-                    author_email: f[3].into(),
-                    time: f[4].parse().unwrap_or(0),
-                    parents: f[5].split(' ').filter(|s| !s.is_empty()).map(Into::into).collect(),
-                    summary: f[6].into(),
-                    body: body.into(),
-                })
+        let repo = self.repo()?;
+        let mut walk = repo.revwalk()?;
+        walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)?;
+        walk.push_head()?;
+        walk.skip(skip).take(limit).map(|oid| -> Result<Commit> {
+            let commit = repo.find_commit(oid?)?;
+            let message = commit.message().unwrap_or_default();
+            let author = commit.author();
+            Ok(Commit {
+                sha: commit.id().to_string(),
+                short_sha: commit.as_object().short_id()?.as_str().unwrap_or_default().to_string(),
+                author_name: author.name().unwrap_or_default().to_string(),
+                author_email: author.email().unwrap_or_default().to_string(),
+                time: author.when().seconds(),
+                summary: commit.summary().ok().flatten().unwrap_or_default().to_string(),
+                body: commit.body().ok().flatten().unwrap_or_default().trim_end().to_string(),
+                parents: commit.parent_ids().map(|p| p.to_string()).collect(),
+                co_authors: parse_co_authors(message),
             })
-            .collect())
+        }).collect()
     }
 
     /// Files changed by `sha` (against its first parent; root commits against
@@ -115,8 +97,8 @@ mod tests {
 
     #[test]
     fn parses_trailers() {
-        let b = "text\n\nCo-authored-by: Alice A <a@x.io>\nco-Authored-By: Bob <b@x.io>\nco-authored-by: Alice A <a@x.io>";
-        let c = parse_co_authors(b);
+        let m = "subject\n\ntext\n\nCo-authored-by: Alice A <a@x.io>\nco-Authored-By: Bob <b@x.io>\nco-authored-by: Alice A <a@x.io>";
+        let c = parse_co_authors(m);
         assert_eq!(c.len(), 2);
         assert_eq!((c[0].name.as_str(), c[0].email.as_str()), ("Alice A", "a@x.io"));
         assert_eq!(c[1].name, "Bob");
