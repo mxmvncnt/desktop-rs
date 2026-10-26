@@ -73,7 +73,12 @@ fn write(cwd: &Path, scope: Scope, id: &Identity) -> Result<()> {
 
 /// The global identity (`~/.gitconfig` or `$GIT_CONFIG_GLOBAL`).
 pub fn global_identity() -> Result<Identity> {
-    Ok(read(&git2::Config::open_default()?))
+    // libgit2 ignores `GIT_CONFIG_GLOBAL`, which `git config --global` (the write side) honors.
+    let config = match std::env::var_os("GIT_CONFIG_GLOBAL") {
+        Some(path) => git2::Config::open(Path::new(&path))?,
+        None => git2::Config::open_default()?,
+    };
+    Ok(read(&config))
 }
 
 pub fn set_global_identity(id: &Identity) -> Result<()> {

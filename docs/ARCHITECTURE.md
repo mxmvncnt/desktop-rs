@@ -25,7 +25,7 @@ guessing APIs. To recreate them:
   (revwalk paging), trailers, tree diffs, stash list, `repo.state()`, merge preview, remotes, tags,
   blob reads, config reads. `Repository::repo()` opens a fresh `git2::Repository` per call, because
   libgit2 caches the index and a read right after a CLI write must see it. libgit2 does not honor
-  `GIT_CONFIG_GLOBAL` (tests point it at a temp dir with `git2::opts::set_search_path`).
+  `GIT_CONFIG_GLOBAL`, so `global_identity` opens that file itself when it is set (tests and snapshots rely on it).
 - **Writes and network shell out to the system `git`** (`exec.rs`), like Desktop's `dugite`.
   Hooks, credential helpers, LFS, config, and SSH all behave as they do on the CLI.
   It sets `GIT_OPTIONAL_LOCKS=0`. No CLI text is parsed, so there is no locale/quotepath pinning.
