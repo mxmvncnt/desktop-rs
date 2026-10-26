@@ -5,6 +5,7 @@ use gpui::{
 
 use super::state::SelectionSummary;
 use crate::repo::RepoModel;
+use crate::shared::plural::plural;
 use crate::workspace::Workspace;
 
 /// "N changed files" with the select-all checkbox; right-click opens the header menu.
@@ -43,6 +44,6 @@ impl RenderOnce for ChangesHeader {
             .child(Checkbox::new("all-files", all).on_click(move |_, _, cx| {
                 repo.update(cx, |r, cx| r.set_all_included(all != CheckState::Checked, cx))
             }))
-            .child(format!("{total} changed file{}", if total == 1 { "" } else { "s" }))
+            .child(format!("{total} changed file{}", plural(total as u32)))
     }
 }

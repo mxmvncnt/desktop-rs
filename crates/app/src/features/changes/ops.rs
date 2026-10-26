@@ -5,6 +5,7 @@ use gd_git::{FileChange, FileStatus};
 use gpui::Context;
 
 use crate::repo::{LastCommit, RepoEvent, RepoModel};
+use crate::shared::plural::plural;
 
 impl RepoModel {
     pub fn included_paths(&self) -> Vec<String> {
@@ -81,7 +82,7 @@ impl RepoModel {
                 });
                 this.notice = Some(format!(
                     "Committed {n} file{}",
-                    if n == 1 { "" } else { "s" }
+                    plural(n as u32)
                 ));
                 // Keep the selection: the status refresh moves it to the next
                 // file and the old diff stays up until the new one is loaded,

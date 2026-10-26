@@ -9,6 +9,7 @@ use gpui::{AppContext, Context};
 
 use crate::features::diff::highlight_diff;
 use crate::repo::RepoModel;
+use crate::shared::plural::plural;
 
 impl RepoModel {
     /// Reload the stash list in the background (called from every full refresh).
@@ -168,7 +169,7 @@ impl RepoModel {
         self.run(
             move |r| r.stash_push(&message, &paths),
             move |this, sha, cx| {
-                this.notice = Some(if n == 0 { "Stashed all changes".into() } else { format!("Stashed {n} path{}", if n == 1 { "" } else { "s" }) });
+                this.notice = Some(if n == 0 { "Stashed all changes".into() } else { format!("Stashed {n} path{}", plural(n as u32)) });
                 this.stashes.collapsed = false;
                 this.stashes.selected = Some(sha);
                 this.stashes.viewing = false;
