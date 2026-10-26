@@ -61,7 +61,7 @@ fn main() {
             }
         }
     }
-    worst.sort_by(|a, b| b.0.cmp(&a.0));
+    worst.sort_by_key(|w| std::cmp::Reverse(w.0));
     for (_, w) in worst.iter().take(10) {
         println!("DIFF {w}");
     }

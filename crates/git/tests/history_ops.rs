@@ -117,7 +117,7 @@ fn history_ops() {
     // ---- cherry-pick (clean onto other branch + conflict) ----
     sh(&work, &["checkout", "-q", "-b", "other", &c5]);
     sh(&work, &["checkout", "-q", "main"]);
-    repo.cherry_pick(&[c6.clone()], "other").unwrap();
+    repo.cherry_pick(std::slice::from_ref(&c6), "other").unwrap();
     assert_eq!(repo.status().unwrap().branch.as_deref(), Some("other"));
     assert_eq!(summaries(&repo)[0], "c6");
     // conflict: main has f5 changed twice; other has a different f5.
@@ -126,7 +126,7 @@ fn history_ops() {
     sh(&work, &["checkout", "-q", "main"]);
     let c7 = commit(&work, "f5.txt", "main five\n", "main f5");
     sh(&work, &["checkout", "-q", "other"]);
-    assert_eq!(repo.cherry_pick(&[c7.clone()], "other").unwrap(), OpOutcome::Conflicts);
+    assert_eq!(repo.cherry_pick(std::slice::from_ref(&c7), "other").unwrap(), OpOutcome::Conflicts);
     assert!(matches!(repo.in_progress(), Some(InProgress::CherryPick { .. })));
     repo.abort_operation(&repo.in_progress().unwrap()).unwrap();
     assert!(repo.in_progress().is_none());

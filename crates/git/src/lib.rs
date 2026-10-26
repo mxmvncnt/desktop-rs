@@ -211,7 +211,7 @@ impl Repository {
             .run()?;
         for (name, _) in self.remotes()?.into_iter().filter(|(n, _)| *n != default) {
             if let Err(e) = self.git().args(["fetch", "--prune", &name]).network().run() {
-                eprintln!("fetch of remote '{name}' failed: {e}");
+                ::log::warn!("fetch of remote '{name}' failed: {e}");
             }
         }
         Ok(())
@@ -312,16 +312,7 @@ impl Repository {
     /// `.git` *file* as used by linked worktrees and submodules). Reads the
     /// filesystem only, so it is cheap and never spawns git.
     pub fn git_dir(&self) -> PathBuf {
-        let dot_git = self.root.join(".git");
-        if dot_git.is_file() {
-            if let Ok(s) = std::fs::read_to_string(&dot_git) {
-                if let Some(p) = s.trim().strip_prefix("gitdir:") {
-                    let p = PathBuf::from(p.trim());
-                    return if p.is_absolute() { p } else { self.root.join(p) };
-                }
-            }
-        }
-        dot_git
+        resolve_git_dir(&self.root)
     }
 
     /// The directory shared between linked worktrees (holds `refs`,
@@ -346,6 +337,19 @@ impl Repository {
             .and_then(|m| m.modified())
             .ok()
     }
+}
+
+/// `<root>/.git`, or the target of a `.git` *file* (`gitdir: <path>`, used by
+/// linked worktrees and submodules).
+pub(crate) fn resolve_git_dir(root: &Path) -> PathBuf {
+    let dot_git = root.join(".git");
+    if dot_git.is_file()
+        && let Ok(text) = std::fs::read_to_string(&dot_git)
+        && let Some(target) = text.trim().strip_prefix("gitdir:")
+    {
+        return root.join(target.trim());
+    }
+    dot_git
 }
 
 /// Commit message: the trimmed summary, then the description after a blank line.

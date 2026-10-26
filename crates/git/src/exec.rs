@@ -38,17 +38,10 @@ fn portal_layout(cwd: &Path, args: &[OsString]) -> Option<[OsString; 2]> {
     if !cwd.starts_with("/run/flatpak/doc") || args.first().is_some_and(|a| a == "clone" || a == "init") {
         return None;
     }
-    let dot_git = cwd.join(".git");
-    // `.git` is a file (`gitdir: <path>`) in linked worktrees and submodules.
-    let git_dir = if dot_git.is_file() {
-        let text = std::fs::read_to_string(&dot_git).ok()?;
-        let target = Path::new(text.trim().strip_prefix("gitdir:")?.trim());
-        cwd.join(target)
-    } else if dot_git.is_dir() {
-        dot_git
-    } else {
+    let git_dir = crate::resolve_git_dir(cwd);
+    if !git_dir.exists() {
         return None;
-    };
+    }
     let mut git_dir_arg = OsString::from("--git-dir=");
     git_dir_arg.push(git_dir);
     let mut work_tree_arg = OsString::from("--work-tree=");
@@ -160,12 +153,10 @@ impl Git {
             .command()
             .spawn()
             .map_err(|e| GitError::Spawn(e.to_string()))?;
-        if let Some(input) = &self.stdin {
-            if let Some(mut stdin) = child.stdin.take() {
-                stdin
-                    .write_all(input.as_bytes())
-                    .map_err(|e| GitError::Io(e.to_string()))?;
-            }
+        if let Some(input) = &self.stdin
+            && let Some(mut stdin) = child.stdin.take()
+        {
+            stdin.write_all(input.as_bytes()).map_err(|e| GitError::Io(e.to_string()))?;
         }
         let out = child
             .wait_with_output()
