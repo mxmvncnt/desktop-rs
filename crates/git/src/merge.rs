@@ -1,5 +1,4 @@
-//! Merge / squash / rebase into the current branch, conflict resolution, and
-//! branch management used by the branch context menu.
+//! Merge / squash / rebase into the current branch, and conflict resolution.
 
 use crate::progress::OpOutcome;
 use crate::{message, GitError, Repository, Result};
@@ -147,21 +146,5 @@ impl Repository {
     /// Mark `path` resolved with whatever is in the working tree.
     pub fn mark_resolved(&self, path: &str) -> Result<()> {
         self.git().args(["add", "-A", "--", path]).exec()
-    }
-
-    // ---- branch management ------------------------------------------------
-
-    pub fn rename_branch(&self, old: &str, new: &str) -> Result<()> {
-        self.git().args(["branch", "-m", old, new]).exec()
-    }
-
-    /// Delete `branch` on `remote` (`git push <remote> --delete <branch>`).
-    pub fn delete_remote_branch(&self, remote: &str, branch: &str) -> Result<()> {
-        self.git().args(["push", remote, "--delete", branch]).network().exec()
-    }
-
-    /// Create `name` at `base` (any branch or commit-ish) and switch to it.
-    pub fn create_branch_from(&self, name: &str, base: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name, base, "--no-track"]).exec()
     }
 }

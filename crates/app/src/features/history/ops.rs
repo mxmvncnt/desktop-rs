@@ -107,7 +107,7 @@ impl RepoModel {
     pub fn create_branch_at(&mut self, name: String, sha: String, cx: &mut Context<Self>) {
         self.hist_run(
             "Creating branch",
-            move |r| r.create_branch_at(&name, &sha),
+            move |r| r.create_branch(&name, Some(&sha)),
             |this, _, _| this.last_commit = None,
             cx,
         );

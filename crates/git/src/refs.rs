@@ -1,4 +1,4 @@
-//! Branch listing via `git for-each-ref`.
+//! Branches: listing via `git for-each-ref`, checkout, create, rename, delete.
 
 use crate::{Repository, Result};
 
@@ -57,5 +57,47 @@ impl Repository {
         }
         branches.sort_by_key(|b| b.kind == BranchKind::Remote);
         Ok(branches)
+    }
+
+    /// Create `name` at `base` (any branch or commit-ish; default HEAD) and switch to it.
+    pub fn create_branch(&self, name: &str, base: Option<&str>) -> Result<()> {
+        self.git()
+            .args(["checkout", "-q", "-b", name])
+            .args(base)
+            .arg("--no-track")
+            .exec()
+    }
+
+    pub fn rename_branch(&self, old: &str, new: &str) -> Result<()> {
+        self.git().args(["branch", "-m", old, new]).exec()
+    }
+
+    /// Delete `branch` on `remote` (`git push <remote> --delete <branch>`).
+    pub fn delete_remote_branch(&self, remote: &str, branch: &str) -> Result<()> {
+        self.git().args(["push", remote, "--delete", branch]).network().exec()
+    }
+
+    /// Switch to an existing local branch, or create a tracking branch for a
+    /// remote one (`origin/foo` → `foo`).
+    pub fn checkout(&self, branch: &Branch) -> Result<()> {
+        match branch.kind {
+            BranchKind::Local => self.git().args(["checkout", "-q", &branch.name]).run()?,
+            BranchKind::Remote => {
+                let local = branch
+                    .name
+                    .split_once('/')
+                    .map(|(_, rest)| rest)
+                    .unwrap_or(&branch.name);
+                self.git()
+                    .args(["checkout", "-q", "-b", local, "--track", &branch.name])
+                    .run()?
+            }
+        };
+        Ok(())
+    }
+
+    pub fn delete_branch(&self, name: &str, force: bool) -> Result<()> {
+        let flag = if force { "-D" } else { "-d" };
+        self.git().args(["branch", flag, name]).exec()
     }
 }

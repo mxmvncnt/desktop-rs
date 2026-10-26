@@ -137,11 +137,6 @@ impl Repository {
         self.git().args(["checkout", "-q", "--detach", sha]).exec()
     }
 
-    /// Create `name` at `sha` and switch to it.
-    pub fn create_branch_at(&self, name: &str, sha: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name, sha]).exec()
-    }
-
     pub fn create_tag(&self, name: &str, sha: &str) -> Result<()> {
         self.git().args(["tag", "-a", "-m", "", name, sha]).exec()
     }

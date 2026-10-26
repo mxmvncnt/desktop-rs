@@ -202,35 +202,6 @@ impl Repository {
         Ok(())
     }
 
-    /// Switch to an existing local branch, or create a tracking branch for a
-    /// remote one (`origin/foo` → `foo`).
-    pub fn checkout(&self, branch: &Branch) -> Result<()> {
-        match branch.kind {
-            BranchKind::Local => self.git().args(["checkout", "-q", &branch.name]).run()?,
-            BranchKind::Remote => {
-                let local = branch
-                    .name
-                    .split_once('/')
-                    .map(|(_, rest)| rest)
-                    .unwrap_or(&branch.name);
-                self.git()
-                    .args(["checkout", "-q", "-b", local, "--track", &branch.name])
-                    .run()?
-            }
-        };
-        Ok(())
-    }
-
-    /// Create a branch from HEAD and switch to it.
-    pub fn create_branch(&self, name: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name]).exec()
-    }
-
-    pub fn delete_branch(&self, name: &str, force: bool) -> Result<()> {
-        let flag = if force { "-D" } else { "-d" };
-        self.git().args(["branch", flag, name]).exec()
-    }
-
     pub fn fetch(&self) -> Result<()> {
         // Fetch the default remote strictly, then the others best-effort, so
         // a broken secondary remote (e.g. a mistyped `upstream` URL) doesn't

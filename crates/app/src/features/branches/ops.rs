@@ -45,7 +45,7 @@ impl RepoModel {
             "Creating…",
             {
                 let (n, b) = (name.clone(), base.clone());
-                move |r| r.create_branch_from(&n, &b)
+                move |r| r.create_branch(&n, Some(&b))
             },
             move |this, _, _| {
                 this.commits.clear();
@@ -79,6 +79,6 @@ impl RepoModel {
     }
 
     pub fn create_branch(&mut self, name: String, cx: &mut Context<Self>) {
-        self.run(move |r| r.create_branch(&name), |_, _, _| {}, cx);
+        self.run(move |r| r.create_branch(&name, None), |_, _, _| {}, cx);
     }
 }
