@@ -78,6 +78,12 @@ impl RenderOnce for CommitRow {
 
 impl CommitRow {
     fn title_line(&self, theme: &Theme) -> impl IntoElement + use<> {
+        let is_merge = self.commit.parents.len() > 1;
+        let color = match (self.selected, is_merge) {
+            (true, _) => theme.text,
+            (false, true) => theme.text_faint,
+            (false, false) => theme.text_muted,
+        };
         div()
             .flex()
             .items_center()
@@ -88,7 +94,8 @@ impl CommitRow {
                     .min_w_0()
                     .truncate()
                     .text_size(px(13.0))
-                    .text_color(if self.selected { theme.text } else { theme.text_muted })
+                    .text_color(color)
+                    .when(is_merge, |d| d.italic())
                     .child(self.commit.summary.clone()),
             )
             .children(tag_pills(&self.tags, theme))
