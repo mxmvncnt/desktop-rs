@@ -8,7 +8,7 @@
 //!
 //! Every `with_animation` element honors `App::reduce_motion` automatically.
 //! Animations are one-shot: nothing here schedules frames once settled, which
-//! matters for idle CPU (performance is a primary goal — see docs/PERFORMANCE.md).
+//! matters for idle CPU (performance is a primary goal — see docs/ARCHITECTURE.md §Performance).
 
 use std::{collections::HashSet, time::Duration};
 

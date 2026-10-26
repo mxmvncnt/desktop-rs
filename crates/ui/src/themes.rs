@@ -72,7 +72,7 @@ pub static COLOR_THEMES: &[ColorTheme] = &[
 
 impl Theme {
     /// Theme for a family id (unknown ids fall back to zeron) and resolved appearance.
-    /// Also flips `ink`/`hairline`.
+    /// Also flips `ink`.
     pub fn for_family(id: &str, light: bool) -> Self {
         set_light(light);
         Self::preview(id, light)

@@ -3,7 +3,7 @@
 //! Zeron's dark palette is a near-black elevation ladder with tiny lightness
 //! steps (#060606 → #0d0d0d → #0e → #10 → #16) plus translucent white "ink"
 //! for hover/active washes and hairlines. Keep new colors on this ladder —
-//! don't invent opaque greys, use `ink()`/`hairline()` instead.
+//! don't invent opaque greys, use `ink()` instead.
 
 use gd_syntax::HighlightKind;
 use gpui::{App, ColorExt as _, Global, Hsla, SharedString, hsla};
@@ -77,14 +77,11 @@ impl Global for Theme {}
 pub const TOOLBAR_HEIGHT: f32 = 52.0;
 pub const PANEL_RADIUS: f32 = 10.0;
 pub const CONTROL_RADIUS: f32 = 6.0;
-pub const BUBBLE_RADIUS: f32 = 16.0;
 pub const SIDEBAR_WIDTH: f32 = 300.0;
 pub const SIDEBAR_MIN_WIDTH: f32 = 220.0;
 pub const SIDEBAR_MAX_WIDTH: f32 = 520.0;
 pub const ROW_HEIGHT: f32 = 30.0;
 pub const DIFF_ROW_HEIGHT: f32 = 20.0;
-pub const TEXT_SM: f32 = 12.0;
-pub const TEXT_BASE: f32 = 13.0;
 
 impl Theme {
     pub fn dark() -> Self {
@@ -179,12 +176,6 @@ impl Theme {
         }
     }
 
-    /// Theme for the resolved appearance (also flips `ink`/`hairline`).
-    pub fn for_mode(light: bool) -> Self {
-        set_light(light);
-        if light { Self::light() } else { Self::dark() }
-    }
-
     pub fn of(cx: &App) -> &Theme {
         cx.global::<Theme>()
     }
@@ -264,7 +255,7 @@ impl SyntaxPalette {
     }
 
     pub fn dark(text: Hsla, comment: Hsla, danger: Hsla) -> Self {
-        // Same sources and 72% saturation treatment as history::graph_color.
+        // zeron's Git-graph lane hues at 72% saturation.
         Self::build(
             text,
             comment,
@@ -336,8 +327,8 @@ fn git_graph_tone(mut color: Hsla) -> Hsla {
 
 static LIGHT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// Switch `ink`/`hairline` between white (dark theme) and black (light theme) washes.
-/// `Theme::for_mode` calls this; they are free functions so call sites need no `cx`.
+/// Switch `ink` between white (dark theme) and black (light theme) washes.
+/// `Theme::for_family` calls this; `ink` is a free function so call sites need no `cx`.
 pub fn set_light(light: bool) {
     LIGHT.store(light, std::sync::atomic::Ordering::Relaxed);
 }
@@ -350,11 +341,6 @@ pub fn is_light() -> bool {
 pub fn ink(alpha: f32) -> Hsla {
     let alpha = if is_light() { alpha * 0.8 } else { alpha };
     hsla(0.0, 0.0, if is_light() { 0.0 } else { 1.0 }, alpha)
-}
-
-/// Translucent hairline for borders/dividers.
-pub fn hairline(alpha: f32) -> Hsla {
-    ink(alpha)
 }
 
 /// Modal backdrop.

@@ -1,4 +1,4 @@
-use gd_ui::theme::{self, CONTROL_RADIUS, hairline};
+use gd_ui::theme::{self, CONTROL_RADIUS, ink};
 use gd_ui::themes::COLOR_THEMES;
 use gd_ui::{Tabs, Theme};
 use gpui::{
@@ -41,7 +41,7 @@ impl AppearancePage {
             let ws = self.ws.clone();
             let id = t.id;
             let selected = t.id == self.color_theme;
-            let border = if selected { current.accent } else { hairline(0.14) };
+            let border = if selected { current.accent } else { ink(0.14) };
             let dots = [preview.accent, preview.syntax.keyword, preview.syntax.string, preview.syntax.number, preview.danger];
             div()
                 .id(format!("color-theme-{id}"))
