@@ -8,7 +8,7 @@
 //! - tracked changes = `git diff S^1 S`
 //! - untracked files = the tree of `S^3` (a root commit: `git show S^3`)
 
-use crate::diff::{Diff, Side};
+use crate::diff::{Diff, Side, blob_sides};
 use crate::name_status::parse_name_status;
 use crate::{FileChange, FileStatus, GitError, Repository, Result};
 
@@ -240,20 +240,7 @@ impl Repository {
         let (old, new) = if file.status == FileStatus::Untracked {
             (Side::Empty, Side::Blob { rev: format!("{sha}^3"), path: file.path.clone() })
         } else {
-            let old = if file.status == FileStatus::New {
-                Side::Empty
-            } else {
-                Side::Blob {
-                    rev: format!("{sha}^1"),
-                    path: file.old_path.clone().unwrap_or_else(|| file.path.clone()),
-                }
-            };
-            let new = if file.status == FileStatus::Deleted {
-                Side::Empty
-            } else {
-                Side::Blob { rev: sha.to_string(), path: file.path.clone() }
-            };
-            (old, new)
+            blob_sides(&format!("{sha}^1"), sha, file)
         };
         self.diff_sides(&old, &new, Default::default())
     }

@@ -79,6 +79,25 @@ pub enum Side {
     Worktree(String),
 }
 
+/// Sides of `file` between two revisions: empty before an added file and
+/// after a deleted one.
+pub(crate) fn blob_sides(old_rev: &str, new_rev: &str, file: &FileChange) -> (Side, Side) {
+    let old = if file.status == FileStatus::New {
+        Side::Empty
+    } else {
+        Side::Blob {
+            rev: old_rev.to_string(),
+            path: file.old_path.clone().unwrap_or_else(|| file.path.clone()),
+        }
+    };
+    let new = if file.status == FileStatus::Deleted {
+        Side::Empty
+    } else {
+        Side::Blob { rev: new_rev.to_string(), path: file.path.clone() }
+    };
+    (old, new)
+}
+
 impl Repository {
     /// Diff of a working-directory change against HEAD (index + worktree),
     /// computed in-process with `similar` (see `engine.rs`).
@@ -106,19 +125,10 @@ impl Repository {
             .arg(format!("{sha}^1"))
             .run()
             .is_ok();
-        let old = if !has_parent || file.status == FileStatus::New {
-            Side::Empty
-        } else {
-            Side::Blob {
-                rev: format!("{sha}^1"),
-                path: file.old_path.clone().unwrap_or_else(|| file.path.clone()),
-            }
-        };
-        let new = if file.status == FileStatus::Deleted {
-            Side::Empty
-        } else {
-            Side::Blob { rev: sha.to_string(), path: file.path.clone() }
-        };
+        let (mut old, new) = blob_sides(&format!("{sha}^1"), sha, file);
+        if !has_parent {
+            old = Side::Empty;
+        }
         self.diff_sides(&old, &new, opts)
     }
 

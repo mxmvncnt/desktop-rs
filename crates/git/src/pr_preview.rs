@@ -1,10 +1,10 @@
 //! Pull-request preview: the merge-base comparison of a head branch against a
 //! base branch, and the hosting provider's "new pull request" URL.
 
-use crate::diff::{Diff, DiffOptions, Side};
+use crate::diff::{Diff, DiffOptions, blob_sides};
 use crate::history_ops::split_remote;
 use crate::name_status::parse_name_status;
-use crate::{FileChange, FileStatus, GitError, Repository, Result};
+use crate::{FileChange, GitError, Repository, Result};
 
 /// What a PR from `head` into `base` would contain (`git diff base...head`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -78,16 +78,7 @@ impl Repository {
 
     /// Diff of one file of a [`Comparison`] (`merge_base` -> `head`).
     pub fn compare_file_diff(&self, merge_base: &str, head: &str, file: &FileChange, opts: DiffOptions) -> Result<Diff> {
-        let old = if file.status == FileStatus::New {
-            Side::Empty
-        } else {
-            Side::Blob { rev: merge_base.to_string(), path: file.old_path.clone().unwrap_or_else(|| file.path.clone()) }
-        };
-        let new = if file.status == FileStatus::Deleted {
-            Side::Empty
-        } else {
-            Side::Blob { rev: head.to_string(), path: file.path.clone() }
-        };
+        let (old, new) = blob_sides(merge_base, head, file);
         self.diff_sides(&old, &new, opts)
     }
 }
