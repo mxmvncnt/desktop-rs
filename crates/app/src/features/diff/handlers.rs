@@ -67,9 +67,7 @@ impl Workspace {
     /// Push the persisted options into the repository model (reloads diffs if changed).
     pub fn apply_diff_options(&mut self, cx: &mut Context<Self>) {
         let opts = DiffOptions { ignore_whitespace: self.settings.diff_ignore_whitespace };
-        if let Some(repo) = &self.repo {
-            repo.update(cx, |r, cx| r.set_diff_options(opts, cx));
-        }
+        self.with_repo(cx, |r, cx| r.set_diff_options(opts, cx));
     }
 
     /// Paired rows for `diff`, built once per loaded diff and cached.
