@@ -54,6 +54,7 @@ fn stash() {
         println!("stash@{{{}}} {} branch={:?} msg={:?} title={:?} date={} t={}", s.index, s.short_sha, s.branch, s.message, s.title(), s.date, s.time);
     }
     assert_eq!(list.len(), 5);
+    assert_eq!(list[0].date, sh(&dir, &["stash", "list", "-1", "--date=format-local:%Y-%m-%d %H:%M", "--format=%cd"]));
     assert_eq!(list[0].branch.as_deref(), Some("feature/y"));
     assert_eq!(list[4].message, "Half-done refactor");
     assert_eq!(list[3].message, "");
@@ -80,6 +81,7 @@ fn stash() {
     assert_eq!(list[0].sha, b);
     assert_eq!(list[0].message, "Renamed WIP");
     assert_eq!(list.len(), 5);
+    assert_eq!(list[0].date, sh(&dir, &["stash", "list", "-1", "--date=format-local:%Y-%m-%d %H:%M", "--format=%cd"]));
 
     // Apply keeps it, restores untracked too.
     repo.stash_apply(&a).unwrap();

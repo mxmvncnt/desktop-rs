@@ -12,8 +12,6 @@ use crate::diff::{Diff, Side, blob_sides};
 use crate::tree_diff::tree_changes;
 use crate::{FileChange, FileStatus, GitError, Repository, Result};
 
-const SEP: char = '\u{1f}';
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Stash {
     /// Position in `git stash list` (`stash@{index}`) at listing time. Shifts
@@ -70,38 +68,34 @@ pub fn parse_subject(subject: &str) -> (Option<String>, String) {
 impl Repository {
     /// All stashes, newest first.
     pub fn stash_list(&self) -> Result<Vec<Stash>> {
-        let out = self
-            .git()
-            .args([
-                "stash",
-                "list",
-                "-z",
-                "--date=format-local:%Y-%m-%d %H:%M",
-                "--format=%H%x1f%h%x1f%ct%x1f%cd%x1f%gs",
-            ])
-            .run()?;
-        Ok(out
-            .split('\0')
-            .filter(|r| !r.trim().is_empty())
-            .enumerate()
-            .filter_map(|(index, rec)| {
-                let f: Vec<&str> = rec.trim_start_matches('\n').splitn(5, SEP).collect();
-                if f.len() < 5 {
-                    return None;
-                }
-                let (branch, message) = parse_subject(f[4]);
-                Some(Stash {
+        let mut repo = self.repo()?;
+        let mut entries = Vec::new();
+        repo.stash_foreach(|index, subject, oid| {
+            entries.push((index, subject.to_string(), *oid));
+            true
+        })?;
+        entries
+            .into_iter()
+            .map(|(index, subject, oid)| {
+                let commit = repo.find_commit(oid)?;
+                let when = commit.committer().when();
+                let date = chrono::DateTime::from_timestamp(when.seconds(), 0)
+                    .zip(chrono::FixedOffset::east_opt(when.offset_minutes() * 60))
+                    .map(|(utc, offset)| utc.with_timezone(&offset).format("%Y-%m-%d %H:%M").to_string())
+                    .unwrap_or_default();
+                let (branch, message) = parse_subject(&subject);
+                Ok(Stash {
                     index,
-                    sha: f[0].into(),
-                    short_sha: f[1].into(),
-                    time: f[2].parse().unwrap_or(0),
-                    date: f[3].into(),
+                    sha: oid.to_string(),
+                    short_sha: commit.as_object().short_id()?.as_str().unwrap_or_default().to_string(),
+                    time: when.seconds(),
+                    date,
                     branch,
                     message,
-                    subject: f[4].into(),
+                    subject,
                 })
             })
-            .collect())
+            .collect()
     }
 
     /// Current `stash@{n}` index of the stash commit `sha`.
@@ -144,11 +138,7 @@ impl Repository {
     }
 
     fn stash_top(&self) -> Option<String> {
-        self.git()
-            .args(["rev-parse", "--verify", "-q", "refs/stash"])
-            .run()
-            .ok()
-            .map(|s| s.trim().to_string())
+        self.repo().ok()?.refname_to_id("refs/stash").ok().map(|oid| oid.to_string())
     }
 
     /// Apply a stash, keeping it. Conflicts leave the working tree in the
