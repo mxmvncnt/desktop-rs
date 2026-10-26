@@ -9,7 +9,7 @@
 //! - untracked files = the tree of `S^3` (a root commit: `git show S^3`)
 
 use crate::diff::{Diff, Side, blob_sides};
-use crate::name_status::parse_name_status;
+use crate::tree_diff::tree_changes;
 use crate::{FileChange, FileStatus, GitError, Repository, Result};
 
 const SEP: char = '\u{1f}';
@@ -193,40 +193,22 @@ impl Repository {
     /// Files in a stash: tracked changes first, then untracked files
     /// (status [`FileStatus::Untracked`], read from the third parent).
     pub fn stash_files(&self, sha: &str) -> Result<Vec<FileChange>> {
-        let out = self
-            .git()
-            .args(["diff", "--name-status", "-z", "-M", "--no-ext-diff"])
-            .arg(format!("{sha}^1"))
-            .arg(sha)
-            .run()?;
-        let mut files = parse_name_status(&out);
-        if self.has_untracked_parent(sha) {
-            let out = self
-                .git()
-                .args(["ls-tree", "-r", "--name-only", "-z"])
-                .arg(format!("{sha}^3"))
-                .run()?;
-            let mut untracked: Vec<String> = out
-                .split('\0')
-                .filter(|p| !p.is_empty())
-                .map(String::from)
-                .collect();
-            untracked.sort();
-            files.extend(untracked.into_iter().map(|path| FileChange {
-                path,
-                old_path: None,
-                status: FileStatus::Untracked,
-            }));
+        let repo = self.repo()?;
+        let stash = repo.revparse_single(sha)?.peel_to_commit()?;
+        let base = stash.parent(0)?.tree()?;
+        let mut files = tree_changes(&repo, Some(&base), &stash.tree()?)?;
+        if let Ok(untracked) = stash.parent(2) {
+            let mut paths = Vec::new();
+            untracked.tree()?.walk(git2::TreeWalkMode::PreOrder, |dir, entry| {
+                if entry.kind() == Some(git2::ObjectType::Blob) {
+                    paths.push(format!("{dir}{}", entry.name().unwrap_or_default()));
+                }
+                git2::TreeWalkResult::Ok
+            })?;
+            paths.sort();
+            files.extend(paths.into_iter().map(|path| FileChange { path, old_path: None, status: FileStatus::Untracked }));
         }
         Ok(files)
-    }
-
-    fn has_untracked_parent(&self, sha: &str) -> bool {
-        self.git()
-            .args(["rev-parse", "--verify", "-q"])
-            .arg(format!("{sha}^3"))
-            .run()
-            .is_ok()
     }
 
     /// Diff of one file in a stash (tracked: base `^1` vs stash; untracked

@@ -1,6 +1,6 @@
 //! History: commit list and per-commit file lists.
 
-use crate::name_status::parse_name_status;
+use crate::tree_diff::tree_changes;
 use crate::{FileChange, Repository, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -75,19 +75,10 @@ impl Repository {
     /// Files changed by `sha` (against its first parent; root commits against
     /// the empty tree).
     pub fn commit_files(&self, sha: &str) -> Result<Vec<FileChange>> {
-        let out = self
-            .git()
-            .args([
-                "show",
-                "--format=",
-                "-z",
-                "--name-status",
-                "-M",
-                "--diff-merges=first-parent",
-                sha,
-            ])
-            .run()?;
-        Ok(parse_name_status(&out))
+        let repo = self.repo()?;
+        let commit = repo.revparse_single(sha)?.peel_to_commit()?;
+        let parent = commit.parent(0).ok().map(|p| p.tree()).transpose()?;
+        tree_changes(&repo, parent.as_ref(), &commit.tree()?)
     }
 }
 

@@ -29,3 +29,40 @@ fn log_pages_and_reads_trailers() {
     assert_eq!(c.co_authors, [CoAuthor { name: "Al".into(), email: "al@x.io".into() }]);
     assert!(c.sha.starts_with(&c.short_sha));
 }
+
+#[test]
+fn tree_changes_for_commit_and_comparison() {
+    let tmp = common::tempdir();
+    let dir = tmp.path().join("repo");
+    let repo = Repository::init(&dir).unwrap();
+    sh(&dir, &["config", "user.email", "t@x.io"]);
+    sh(&dir, &["config", "user.name", "T"]);
+    sh(&dir, &["checkout", "-q", "-b", "main"]);
+    for f in ["old", "gone", "keep"] {
+        std::fs::write(dir.join(f), format!("{f}\nline\nline\nline\n")).unwrap();
+    }
+    sh(&dir, &["add", "."]);
+    sh(&dir, &["commit", "-qm", "root"]);
+    let root = repo.log(0, 1).unwrap().remove(0);
+    let files: Vec<_> = repo.commit_files(&root.sha).unwrap().into_iter().map(|f| (f.path, f.status)).collect();
+    assert_eq!(files, [("gone".into(), FileStatus::New), ("keep".into(), FileStatus::New), ("old".into(), FileStatus::New)]);
+
+    sh(&dir, &["checkout", "-q", "-b", "feat"]);
+    sh(&dir, &["mv", "old", "new"]);
+    sh(&dir, &["rm", "-q", "gone"]);
+    std::fs::write(dir.join("keep"), "changed\n").unwrap();
+    sh(&dir, &["add", "-A"]);
+    sh(&dir, &["commit", "-qm", "feat"]);
+    let got: Vec<_> = repo.commit_files("HEAD").unwrap().into_iter().map(|f| (f.path, f.old_path, f.status)).collect();
+    assert_eq!(
+        got,
+        [
+            ("gone".into(), None, FileStatus::Deleted),
+            ("keep".into(), None, FileStatus::Modified),
+            ("new".into(), Some("old".into()), FileStatus::Renamed),
+        ]
+    );
+    let cmp = repo.compare("main", "feat").unwrap();
+    assert_eq!((cmp.ahead, cmp.behind, cmp.files.len()), (1, 0, 3));
+    assert_eq!(cmp.merge_base, root.sha);
+}

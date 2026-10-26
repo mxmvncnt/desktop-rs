@@ -18,7 +18,6 @@ mod history_ops;
 mod identity;
 mod log;
 mod merge;
-mod name_status;
 mod partial;
 mod pr_preview;
 mod progress;
@@ -26,6 +25,7 @@ mod refs;
 mod remote;
 mod stash;
 mod status;
+mod tree_diff;
 
 pub use credentials::{HostCredential, set_credentials};
 pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity};
