@@ -6,6 +6,7 @@
 use gpui::{Context, Entity, InteractiveElement, ScrollStrategy, Window};
 
 use super::state::Workspace;
+use crate::features::history::matching_commits;
 use crate::repo::{RepoModel, Tab};
 
 /// Rows moved by PageUp / PageDown.
@@ -58,6 +59,7 @@ impl Workspace {
         }
         let Some(repo) = self.repo.clone() else { return };
         let list = self.effective_nav_list(repo.read(cx));
+        let query = self.history_ui.search.read(cx).as_str().to_string();
         repo.update(cx, |r, cx| match list {
             NavList::Changes => {
                 if let Some(ix) = target(r.selected_change, r.changes().len(), mv) {
@@ -66,9 +68,16 @@ impl Workspace {
                 }
             }
             NavList::Commits => {
-                if let Some(ix) = target(r.selected_commit, r.commits.len(), mv) {
+                let visible = matching_commits(&r.commits, &query);
+                let n = visible.as_ref().map_or(r.commits.len(), Vec::len);
+                let cur = r.selected_commit.and_then(|ix| match &visible {
+                    Some(v) => v.iter().position(|&i| i == ix),
+                    None => Some(ix),
+                });
+                if let Some(pos) = target(cur, n, mv) {
+                    let ix = visible.as_ref().map_or(pos, |v| v[pos]);
                     r.select_commit(ix, cx);
-                    self.history_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+                    self.history_scroll.scroll_to_item(pos, ScrollStrategy::Nearest);
                     if ix + 20 >= r.commits.len() {
                         r.load_more_history(cx);
                     }

@@ -53,6 +53,8 @@ pub struct HistoryUi {
     pub msg_summary: Entity<EditableTextState>,
     pub msg_desc: Entity<EditableTextState>,
     pub name: Entity<EditableTextState>,
+    /// Search box above the commit list.
+    pub search: Entity<EditableTextState>,
     _subs: Vec<Subscription>,
 }
 
@@ -63,12 +65,12 @@ pub struct AmendState {
 impl HistoryUi {
     pub fn new(cx: &mut Context<Workspace>) -> Self {
         let mk = |cx: &mut Context<Workspace>| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
-        let (msg_summary, msg_desc, name) = (mk(cx), mk(cx), mk(cx));
-        let subs = [&msg_summary, &msg_desc, &name]
+        let (msg_summary, msg_desc, name, search) = (mk(cx), mk(cx), mk(cx), mk(cx));
+        let subs = [&msg_summary, &msg_desc, &name, &search]
             .into_iter()
             .map(|i| cx.subscribe(i, |_: &mut Workspace, _, _: &TextChanged, cx| cx.notify()))
             .collect();
-        Self { menu: None, menu_gen: 0, dialog: None, amend: None, msg_summary, msg_desc, name, _subs: subs }
+        Self { menu: None, menu_gen: 0, dialog: None, amend: None, msg_summary, msg_desc, name, search, _subs: subs }
     }
 
     pub fn is_open(&self) -> bool {
