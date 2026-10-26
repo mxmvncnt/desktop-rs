@@ -100,7 +100,7 @@ impl MergeDialogView {
                     .rounded(px(8.0))
                     .border_1()
                     .border_color(theme.border)
-                    .bg(gd_ui::theme::ink(0.02))
+                    .bg(theme.ink(0.02))
                     .child(list),
             )
             .child(div().min_h(px(36.0)).child(status))

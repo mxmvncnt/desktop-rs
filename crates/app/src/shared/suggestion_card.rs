@@ -56,7 +56,7 @@ impl RenderOnce for SuggestionCard {
                     .items_center()
                     .justify_center()
                     .rounded(px(8.0))
-                    .bg(gd_ui::theme::ink(0.06))
+                    .bg(theme.ink(0.06))
                     .child(icon(self.icon).text_color(theme.text_muted)),
             )
             .child(

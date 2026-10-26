@@ -10,6 +10,8 @@ use gpui::{App, ColorExt as _, Global, Hsla, SharedString, hsla};
 
 #[derive(Debug, Clone)]
 pub struct Theme {
+    /// Light appearance: `ink` washes are black instead of white.
+    pub light: bool,
     // ---- neutral surfaces ----
     /// Main content plane (diff view). Deepest.
     pub bg: Hsla,
@@ -35,6 +37,7 @@ pub struct Theme {
 
     // ---- high-contrast plate (primary button) ----
     pub solid: Hsla,
+    pub solid_hover: Hsla,
     pub on_solid: Hsla,
 
     // ---- accents ----
@@ -87,6 +90,7 @@ impl Theme {
     pub fn dark() -> Self {
         let blue = oklch(0.707, 0.165, 254.624); // blue-400
         Self {
+            light: false,
             bg: grey(6),
             surface: grey(13),
             surface_raised: neutral(0.235),
@@ -102,6 +106,7 @@ impl Theme {
             text_faint: neutral(0.556),
             text_dim: grey(0x98),
             solid: neutral(0.922),
+            solid_hover: grey(255),
             on_solid: grey(0x0e),
             accent: blue,
             accent_strong: oklch(0.546, 0.245, 262.881), // blue-600
@@ -135,6 +140,7 @@ impl Theme {
         let green = oklch(0.596, 0.145, 163.225); // emerald-600
         let red = oklch(0.577, 0.245, 27.325); // red-600
         Self {
+            light: true,
             bg: grey(255),
             surface: grey(0xf6),
             surface_raised: neutral(0.94),
@@ -150,6 +156,7 @@ impl Theme {
             text_faint: neutral(0.52),
             text_dim: grey(0x6b),
             solid: neutral(0.205),
+            solid_hover: grey(0),
             on_solid: grey(0xfa),
             accent: blue,
             accent_strong: oklch(0.488, 0.243, 264.376), // blue-700
@@ -178,6 +185,11 @@ impl Theme {
 
     pub fn of(cx: &App) -> &Theme {
         cx.global::<Theme>()
+    }
+
+    /// Translucent fill for hover/active plates: white on dark, black on light.
+    pub fn ink(&self, alpha: f32) -> Hsla {
+        if self.light { hsla(0.0, 0.0, 0.0, alpha * 0.8) } else { hsla(0.0, 0.0, 1.0, alpha) }
     }
 }
 
@@ -323,24 +335,6 @@ impl SyntaxPalette {
 fn git_graph_tone(mut color: Hsla) -> Hsla {
     color.color.saturation *= 0.72;
     color
-}
-
-static LIGHT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Switch `ink` between white (dark theme) and black (light theme) washes.
-/// `Theme::for_family` calls this; `ink` is a free function so call sites need no `cx`.
-pub fn set_light(light: bool) {
-    LIGHT.store(light, std::sync::atomic::Ordering::Relaxed);
-}
-
-pub fn is_light() -> bool {
-    LIGHT.load(std::sync::atomic::Ordering::Relaxed)
-}
-
-/// Translucent fill for hover/active plates: white on dark, black on light.
-pub fn ink(alpha: f32) -> Hsla {
-    let alpha = if is_light() { alpha * 0.8 } else { alpha };
-    hsla(0.0, 0.0, if is_light() { 0.0 } else { 1.0 }, alpha)
 }
 
 /// Modal backdrop.

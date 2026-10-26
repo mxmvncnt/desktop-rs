@@ -119,6 +119,6 @@ impl RenderOnce for PickerShell {
             .child(divider(cx))
             .child(body)
             .child(divider(cx))
-            .child(div().flex().gap(px(6.0)).p(px(8.0)).bg(gd_ui::theme::ink(0.02)).child(self.footer))
+            .child(div().flex().gap(px(6.0)).p(px(8.0)).bg(theme.ink(0.02)).child(self.footer))
     }
 }

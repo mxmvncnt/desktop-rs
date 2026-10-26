@@ -3,10 +3,10 @@
 //! docs/CONVENTIONS.md).
 
 use gd_git::{Diff, DiffLineKind};
-use gd_ui::{Theme, theme::{DIFF_ROW_HEIGHT, ink}};
+use gd_ui::{Theme, theme::DIFF_ROW_HEIGHT};
 use gpui::{AnyElement, Div, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Styled, div, prelude::*, px};
 
-use super::gutter_style::{CHECK_W, check_mark, gutter_bg, line_selected_bg};
+use super::gutter_style::{CHECK_W, check_mark, line_selected_bg};
 use super::row_select::RowSelect;
 use super::state::GutterDrag;
 use crate::repo::RepoModel;
@@ -27,7 +27,7 @@ pub fn number_cell(
     let tint = match row.map(|ix| diff.lines[ix].kind) {
         Some(DiffLineKind::Add) => theme.diff_add_bg,
         Some(DiffLineKind::Delete) => theme.diff_del_bg,
-        _ => gutter_bg(),
+        _ => theme.ink(0.025),
     };
     let selectable = row.filter(|&ix| gd_git::selectable(diff, ix));
     let included = select.zip(selectable).is_some_and(|((_, r), ix)| r.row_included(ix));
@@ -93,7 +93,7 @@ fn selectable_cell(
                 d.bg(line_selected_bg()).text_color(theme.on_accent).hover_style(move |s| s.bg(hover))
             } else {
                 let hover = theme.text_muted;
-                d.bg(tint).hover_style(move |s| s.bg(ink(0.14)).text_color(hover))
+                d.bg(tint).hover_style(move |s| s.bg(theme.ink(0.14)).text_color(hover))
             }
         })
         .on_mouse_down(MouseButton::Left, move |_, _, cx| {

@@ -9,7 +9,7 @@
 
 use gpui::{ColorExt as _, Hsla, Rgba};
 
-use crate::theme::{SyntaxPalette, Theme, set_light};
+use crate::theme::{SyntaxPalette, Theme};
 
 /// Source colors of one theme variant, as `0xRRGGBB`.
 #[derive(Debug, Clone, Copy)]
@@ -72,14 +72,7 @@ pub static COLOR_THEMES: &[ColorTheme] = &[
 
 impl Theme {
     /// Theme for a family id (unknown ids fall back to zeron) and resolved appearance.
-    /// Also flips `ink`.
     pub fn for_family(id: &str, light: bool) -> Self {
-        set_light(light);
-        Self::preview(id, light)
-    }
-
-    /// Like `for_family` but without touching the global `ink` flag (for swatches).
-    pub fn preview(id: &str, light: bool) -> Self {
         match find(id).and_then(|t| t.palette(light)) {
             Some(p) => Self::from_palette(p, light),
             None if light => Self::light(),

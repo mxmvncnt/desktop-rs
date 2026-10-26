@@ -131,7 +131,7 @@ fn tag_pills(tags: &[String], theme: &Theme) -> Vec<gpui::AnyElement> {
             .px(px(6.0))
             .py(px(1.0))
             .rounded(px(5.0))
-            .bg(gd_ui::theme::ink(0.07))
+            .bg(theme.ink(0.07))
             .text_size(px(10.5))
             .text_color(theme.text_muted)
             .child(text)

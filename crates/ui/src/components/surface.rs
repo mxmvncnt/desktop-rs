@@ -5,7 +5,7 @@ use gpui::{App, Div, ElementId, SharedString, Stateful, Styled, Svg, div, millis
 
 use crate::assets::Icon;
 use crate::motion::HOVER_MS;
-use crate::theme::{Theme, ink};
+use crate::theme::Theme;
 
 pub fn icon(icon: Icon) -> Svg {
     svg().path(icon.path()).size(px(16.0)).flex_none()
@@ -28,7 +28,7 @@ pub fn pressable(id: impl Into<ElementId>, selected: bool, cx: &App) -> Stateful
     let rest = if selected {
         theme.element_active
     } else {
-        ink(0.0)
+        theme.ink(0.0)
     };
     let hover = if selected {
         theme.element_active
@@ -55,7 +55,7 @@ pub fn badge(text: impl Into<SharedString>, cx: &App) -> Div {
         .flex()
         .items_center()
         .rounded_full()
-        .bg(ink(0.08))
+        .bg(theme.ink(0.08))
         .text_size(px(11.0))
         .text_color(theme.text_muted)
         .child(text.into())
