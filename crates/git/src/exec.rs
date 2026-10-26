@@ -44,10 +44,7 @@ fn portal_layout(cwd: &Path, args: &[OsString]) -> Option<[OsString; 2]> {
     if !cwd.starts_with("/run/flatpak/doc") || args.first().is_some_and(|a| a == "clone" || a == "init") {
         return None;
     }
-    let git_dir = crate::resolve_git_dir(cwd);
-    if !git_dir.exists() {
-        return None;
-    }
+    let git_dir = git2::Repository::open(cwd).ok()?.path().to_path_buf();
     let mut git_dir_arg = OsString::from("--git-dir=");
     git_dir_arg.push(git_dir);
     let mut work_tree_arg = OsString::from("--work-tree=");

@@ -59,11 +59,10 @@ pub struct Repository {
 impl Repository {
     /// Open the repository containing `path` (any subdirectory works).
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        let out = Git::new(path.as_ref())
-            .args(["rev-parse", "--show-toplevel"])
-            .run()?;
-        let root = PathBuf::from(out.trim_end_matches(['\n', '\r']));
-        Ok(Self { root })
+        let repo = git2::Repository::discover(path)?;
+        let workdir = repo.workdir().ok_or_else(|| GitError::Invalid("bare repositories are not supported".into()))?;
+        // `workdir()` ends with a slash.
+        Ok(Self { root: workdir.components().collect() })
     }
 
     /// Initialize a new repository at `path` (creating the directory).
@@ -307,28 +306,20 @@ impl Repository {
     }
 }
 
-// ---- filesystem-level helpers (no process spawn) ----------------------------
+// ---- git directory ----------------------------------------------------------
 
 impl Repository {
     /// The repository's git directory (`<root>/.git`, or the target of a
-    /// `.git` *file* as used by linked worktrees and submodules). Reads the
-    /// filesystem only, so it is cheap and never spawns git.
+    /// `.git` *file* as used by linked worktrees and submodules).
     pub fn git_dir(&self) -> PathBuf {
-        resolve_git_dir(&self.root)
+        self.repo().map_or_else(|_| self.root.join(".git"), |r| r.path().to_path_buf())
     }
 
     /// The directory shared between linked worktrees (holds `refs`,
     /// `FETCH_HEAD`, `config`). Equal to [`git_dir`](Self::git_dir) for a
     /// normal repository.
     pub fn common_git_dir(&self) -> PathBuf {
-        let dir = self.git_dir();
-        match std::fs::read_to_string(dir.join("commondir")) {
-            Ok(s) => {
-                let p = PathBuf::from(s.trim());
-                if p.is_absolute() { p } else { dir.join(p) }
-            }
-            Err(_) => dir,
-        }
+        self.repo().map_or_else(|_| self.root.join(".git"), |r| r.commondir().to_path_buf())
     }
 
     /// When the repository last fetched, from the mtime of `FETCH_HEAD`
@@ -339,19 +330,6 @@ impl Repository {
             .and_then(|m| m.modified())
             .ok()
     }
-}
-
-/// `<root>/.git`, or the target of a `.git` *file* (`gitdir: <path>`, used by
-/// linked worktrees and submodules).
-pub(crate) fn resolve_git_dir(root: &Path) -> PathBuf {
-    let dot_git = root.join(".git");
-    if dot_git.is_file()
-        && let Ok(text) = std::fs::read_to_string(&dot_git)
-        && let Some(target) = text.trim().strip_prefix("gitdir:")
-    {
-        return root.join(target.trim());
-    }
-    dot_git
 }
 
 /// Commit message: the trimmed summary, then the description after a blank line.
