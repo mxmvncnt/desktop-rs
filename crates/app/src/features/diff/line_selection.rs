@@ -68,16 +68,16 @@ impl RepoModel {
             && !self.diff_options.ignore_whitespace
             && diff.source.is_some()
             && !diff.truncated
-            && self.merge.in_progress.as_ref().is_none_or(|p| !p.commit_finishes())
+            && !self.merging()
     }
 
     pub(crate) fn selected_path(&self) -> Option<String> {
-        self.selected_change.and_then(|ix| self.changes().get(ix)).map(|c| c.path.clone())
+        self.selected_change_file().map(|c| c.path.clone())
     }
 
     /// Whether row `ix` of the displayed working diff goes into the next commit.
     pub fn row_included(&self, ix: usize) -> bool {
-        let Some(path) = self.selected_change.and_then(|ix| self.changes().get(ix)).map(|c| &c.path) else {
+        let Some(path) = self.selected_change_file().map(|c| &c.path) else {
             return false;
         };
         if self.excluded.contains(path) {
@@ -178,10 +178,8 @@ impl RepoModel {
             // A `-w` diff has different rows; keep the selection for later.
             return;
         }
-        if let Some(sel) = self.partial.get_mut(path) {
-            if sel.diff.source != diff.source {
-                self.partial.remove(path);
-            }
+        if self.partial.get(path).is_some_and(|sel| sel.diff.source != diff.source) {
+            self.partial.remove(path);
         }
     }
 

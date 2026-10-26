@@ -127,8 +127,11 @@ guessing APIs. To recreate them:
 - `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, pending_refresh), `background_fetch.rs`, `change_diff.rs`/`commit_diff.rs` (generation counters), `diff_highlight.rs`, `expand.rs`, `history_log.rs`, `run.rs`) owns all repository state: status, selection, diff,
   history pages, commit details, branches, and in-flight ops.
   Every git call goes through `cx.background_spawn`, and results are applied with `this.update`.
-- **Stale results are dropped** with generation counters (`change_diff_gen`, A status refresh always reloads the selected diff (status list equality is not enough: re-editing a modified file leaves it identical); `apply_change_diff` drops results equal to what is shown.
+- **Stale results are dropped** with generation counters (`change_diff_gen`,
   `commit_gen`). Clicking quickly through files never shows the wrong diff.
+  A status refresh always reloads the selected diff (status list equality is not
+  enough: re-editing a modified file leaves it identical); `apply_change_diff`
+  drops results equal to what is shown.
 - `RepoModel::run(op, on_ok)` is the generic write-op helper. It runs off-thread,
   sets `error`, then refreshes status and branches.
 - Refresh triggers: file watcher, window activation (skipped if the watcher
@@ -173,20 +176,20 @@ Don't measure with raw CPU ticks on a live desktop: pointer movement over the
 window legitimately re-renders (hover transitions), which made one session chase
 a phantom regression.
 
-Known perf TODOs: split `Workspace` into child entities so typing in the commit
-box doesn't re-render the diff (it's virtualized, so it's cheap but not free);
-add syntax highlighting with a cache; add a file watcher so focus refresh isn't the only trigger.
+Known perf TODO: split `Workspace` into child entities so typing in the commit
+box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 
 ## File watcher and refresh coalescing
 
-- `RepoModel::new` starts `RepoWatcher` (`watcher.rs`): one OS thread owning the
-  `notify` watcher; blocks on an mpsc channel when idle (no polling). It does a
-  trailing debounce (300ms quiet, 2s max) and sends one tick (`bool` = git
+- `RepoModel::new` starts `RepoWatcher` (`watcher.rs`): a `notify-debouncer-full` debouncer
+  (owns the thread, idle = no polling; 300ms per-event delay, no max wait, so a long burst yields a
+  few ticks rather than one). The handler filters events and sends one tick (`bool` = git
   metadata changed) over a `smol` channel to a foreground task in the model.
-  Dropping the model drops `RepoWatcher`, which sends `Stop`; the thread exits and the watches go away.
-- Watches: root non-recursive, each top-level dir recursively (except `.git`,
-  `target`, `node_modules`), git dir non-recursive + `refs/` recursive. New
-  top-level dirs get a watch on their Create event. Not one recursive root watch:
+  Dropping the model drops `RepoWatcher`, which drops the debouncer (thread stops, watches go away).
+- Watches: root non-recursive, each top-level dir recursively (except `.git` and what the
+  repo's `.gitignore` / `info/exclude` ignores, via the `ignore` crate; nested `.gitignore`s are
+  not read), git dir non-recursive + `refs/` recursive. New top-level dirs get a watch on their
+  Create event (the handler `try_lock`s the shared debouncer). Not one recursive root watch:
   that would cover `.git/objects` and build dirs.
 - **Gotcha:** inotify reports `Access(Open)` for reads, and our own `git status`
   opens every file and `.git/index`. Only Create/Modify/Remove/Any events count,
@@ -244,7 +247,7 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
 - Why tree-sitter over syntect: parse is incremental-grade fast (18k rows in ~125 ms), queries
   are shared with zeron, and the palette maps 1:1 to `HighlightKind`. Cost: ~16 grammar crates
   of C code (longer cold build, a few MB of binary).
-- `gd-ui::theme::SyntaxPalette` (zeron dark: indigo keywords/functions, emerald strings,
+- `gd-ui::theme::SyntaxPalette` (7 base colors mapped in `color()`: indigo keywords/functions, emerald strings,
   amber numbers/types, pink macros). Variable/parameter/operator/punctuation are drawn in the
   row's own color (no run) to cut noise and run count.
 - App flow: after a diff loads, `RepoModel::spawn_highlight` runs `highlight_diff` via
@@ -265,8 +268,8 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
 
 ## Diff options and split view (`features/diff/`: `diff_options_menu.rs`, `split_diff.rs`, `split_row.rs`)
 
-- Options are app-wide and persisted in `Settings` (`diff_split`, `diff_ignore_whitespace`, `diff_wrap`), stored in a
-  separate `display` file (`key=value`) so old `repositories` files load unchanged.
+- Options are app-wide and persisted in `Settings` (`diff_split`, `diff_ignore_whitespace`, `diff_wrap`), stored in
+  `settings.toml` (serde + toml, `#[serde(default)]` so missing keys are fine).
 - `gd_git::DiffOptions { ignore_whitespace }` is passed to `working_diff`/`commit_diff` (`-w`).
   `RepoModel::diff_options` holds it; `set_diff_options` reloads the visible change/commit diff via the
   normal generation counters (old diff stays on screen until the new one lands). `Workspace::apply_diff_options` pushes settings in;
@@ -299,19 +302,16 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
 
 ## UI kit (`crates/ui`)
 
-- `theme.rs`: zeron's dark tokens, verbatim (oklch → sRGB helper included).
-  Use `Theme::of(cx)`, `ink(a)` for translucent white washes, and `hairline(a)` for lines.
-- Themes: `Theme::dark()` / `Theme::light()`; `Workspace::apply_theme` resolves the setting and does
-  `cx.set_global(Theme::for_mode(light))`. `ink()`/`hairline()` are free functions (no `cx`), so they read a
-  global flag set by `for_mode` (white washes on dark, black on light). Never hardcode `white()`/`black()`;
-  use theme tokens or `ink()`, and check new UI with both `changes` and `changes-light` snapshots.
+- `theme.rs`: the token struct. Use `Theme::of(cx)` and `theme.ink(a)` for translucent washes (white on
+  dark, black on light, decided by `theme.light`). Never hardcode `white()`/`black()`; use theme tokens or
+  `theme.ink()`, and check new UI with both `changes` and `changes-light` snapshots.
 - Color themes (`themes.rs`): data-driven `COLOR_THEMES` (zeron default, Nord, Tokyo Night, VS Code, Catppuccin,
-  Solarized). Each family has a dark and a light `Palette` (hex values incl. syntax colors); `Theme::from_palette`
-  derives washes/diff colors. The System/Light/Dark mode picks the variant, so every family needs both. Add a theme =
+  Solarized). Each family has a dark and a light `Palette` (hex values incl. the 7 syntax base colors); `Theme::from_palette`
+  (the only constructor, zeron included) derives washes/diff colors. The System/Light/Dark mode picks the variant, so every family needs both. Add a theme =
   add two consts + one table entry. Persisted as `color_theme=<id>` in `display`; `Workspace::apply_theme` calls
   `Theme::for_family`. Snapshot view `theme:<id>:<dark|light>[:settings]`.
-- `motion.rs`: the zeron motion catalog (`fade_in` 500ms expo-out with 4px rise,
-  `fade_quick`, `menu_in`, `dialog_in`, plus an exact `CubicBezier`).
+- `motion.rs`: the zeron motion catalog (`fade_in` 500ms ease-out-quint with 4px rise,
+  `fade_quick`, `menu_in`, `dialog_in`).
   Overlay hand-off: overlays call `motion::handoff(id, cx)` (and `Workspace::render` calls
   `motion::begin_frame`); an overlay that first appears while another was drawn on the previous frame
   (menu -> dialog, popover -> popover) skips its entrance and scrim fade, so nothing flashes. New overlays must do the same.
@@ -324,16 +324,16 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
   the owner renders them only while open and handles keys.
 - `assets.rs`: embedded Solar icons and Geist fonts. To add an icon, copy the
   SVG from `.ref/zeron/crates/ui/assets/icons/` into `crates/ui/assets/icons/`
-  and add a line to the `icons!` macro.
+  and add a line to the `icons!` macro. `rust-embed` embeds the folder.
 
 ## Platform code (`app/src/platform/`)
 
 OS-specific code lives in `platform/linux/` and `platform/macos/`; `platform/mod.rs`
 re-exports the one for the target. Both expose the same surface: `Chrome`,
 `caption_buttons`, `titlebar_drag`, `frame`, `configure_window`,
-The config dir comes from the `dirs` crate (`dirs::config_dir()`) in `features/settings/model.rs`.
 and the shortcut constants `SECONDARY` (ctrl/cmd), `SECONDARY_LABEL`, `REFRESH_KEY`,
 `QUIT_KEY`. Keep OS `cfg`s out of the rest of the app; add to both modules instead.
+The config dir comes from the `dirs` crate (`dirs::config_dir()`) in `features/settings/model.rs`.
 Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Cargo.toml`.
 
 - **macOS** (not yet compiled or run, no Mac available): native frame with a transparent

@@ -35,7 +35,7 @@ impl RenderOnce for UndoStrip {
                 .py(px(8.0))
                 .border_t_1()
                 .border_color(theme.border)
-                .bg(gd_ui::theme::ink(0.03))
+                .bg(theme.ink(0.03))
                 .child(icon(Icon::Check).size(px(14.0)).text_color(theme.success))
                 .child(
                     div()

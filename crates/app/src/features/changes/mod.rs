@@ -21,5 +21,4 @@ mod state;
 mod undo_strip;
 
 pub use sidebar::Sidebar;
-pub use state::default_summary;
 pub use sidebar_handle::SidebarResize;

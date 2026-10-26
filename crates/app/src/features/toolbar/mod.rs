@@ -4,6 +4,6 @@
 mod last_fetched;
 mod ops;
 mod remote_button;
-mod toolbar;
+mod toolbar_bar;
 
-pub use toolbar::Toolbar;
+pub use toolbar_bar::Toolbar;

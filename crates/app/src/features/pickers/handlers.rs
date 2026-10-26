@@ -81,13 +81,6 @@ impl Workspace {
         )
     }
 
-    /// Move the picker cursor by `delta` rows and keep it visible.
-    pub(super) fn step_picker(&mut self, delta: isize, cx: &mut Context<Self>) {
-        self.popover_selected = (self.popover_selected as isize + delta).max(0) as usize;
-        self.popover_scroll.scroll_to_item(self.popover_selected, gpui::ScrollStrategy::Nearest);
-        cx.notify();
-    }
-
     /// Enter in the repository picker: open the highlighted repository.
     pub(super) fn enter_repo_picker(&mut self, cx: &mut Context<Self>) {
         if let Some(&ix) = self.filtered_repos(cx).get(self.popover_selected) {

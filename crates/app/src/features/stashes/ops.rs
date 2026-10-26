@@ -1,5 +1,5 @@
 //! Stash model operations on `RepoModel`: the git work runs on the background
-//! executor like the rest of `RepoModel` (see repo.rs), and stale loads are
+//! executor like the rest of `RepoModel` (see `repo/`), and stale loads are
 //! dropped by the generation counter in [`StashState`].
 
 use std::sync::Arc;
@@ -9,12 +9,9 @@ use gpui::{AppContext, Context};
 
 use crate::features::diff::highlight_diff;
 use crate::repo::RepoModel;
+use crate::shared::plural::plural;
 
 impl RepoModel {
-    fn current_branch(&self) -> Option<String> {
-        self.status.as_ref().and_then(|s| s.branch.clone())
-    }
-
     /// Reload the stash list in the background (called from every full refresh).
     pub fn reload_stashes(&mut self, cx: &mut Context<Self>) {
         let repo = self.repo.clone();
@@ -166,17 +163,13 @@ impl RepoModel {
         }));
     }
 
-    fn after_stash_op(&mut self) {
-        self.stashes.viewing = false;
-    }
-
     /// Stash the working changes. `paths` empty = everything.
     pub fn stash_push(&mut self, message: String, paths: Vec<String>, cx: &mut Context<Self>) {
         let n = paths.len();
         self.run(
             move |r| r.stash_push(&message, &paths),
             move |this, sha, cx| {
-                this.notice = Some(if n == 0 { "Stashed all changes".into() } else { format!("Stashed {n} path{}", if n == 1 { "" } else { "s" }) });
+                this.notice = Some(if n == 0 { "Stashed all changes".into() } else { format!("Stashed {n} path{}", plural(n as u32)) });
                 this.stashes.collapsed = false;
                 this.stashes.selected = Some(sha);
                 this.stashes.viewing = false;
@@ -201,7 +194,7 @@ impl RepoModel {
             move |r| r.stash_pop(&sha),
             |this, _, cx| {
                 this.notice = Some("Restored stash".into());
-                this.after_stash_op();
+                this.stashes.viewing = false;
                 this.reload_stashes(cx);
             },
             cx,
@@ -213,7 +206,7 @@ impl RepoModel {
             move |r| r.stash_drop(&sha),
             |this, _, cx| {
                 this.notice = Some("Discarded stash".into());
-                this.after_stash_op();
+                this.stashes.viewing = false;
                 this.reload_stashes(cx);
             },
             cx,
@@ -236,7 +229,7 @@ impl RepoModel {
             self.checkout_now(branch, cx);
             return;
         }
-        let from = self.current_branch().unwrap_or_else(|| "(detached HEAD)".into());
+        let from = self.branch_name();
         let message = format!("Changes left on {from} when switching to {}", branch.name);
         self.run(
             move |r| {
@@ -248,8 +241,7 @@ impl RepoModel {
                 Ok(())
             },
             move |this, _, cx| {
-                this.commits.clear();
-                this.selected_commit = None;
+                this.reset_history_selection();
                 this.last_commit = None;
                 this.notice = Some(format!("Stashed your changes on {from}"));
                 this.reload_stashes(cx);

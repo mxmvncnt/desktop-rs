@@ -1,35 +1,35 @@
 //! File-system watcher for the open repository (see docs/ARCHITECTURE.md
 //! §File watcher).
 //!
-//! One OS thread per open repository owns the `notify` watcher and a trailing
-//! debounce. It blocks on a channel while idle (zero CPU) and sends a single
-//! "something changed" tick to the UI side once a burst of events has been
-//! quiet for [`DEBOUNCE`]. `bool` payload: `true` when git metadata (HEAD,
-//! index, refs, ...) changed too, so branches/history need reloading;
+//! `notify-debouncer-full` owns the OS thread and the debounce; it sleeps
+//! when idle (zero CPU). A tick is sent to the UI side once a burst of events
+//! has been quiet for [`DEBOUNCE`]. `bool` payload: `true` when git metadata
+//! (HEAD, index, refs, ...) changed too, so branches/history need reloading;
 //! `false` when only working-tree files changed.
 //!
 //! Dropping [`RepoWatcher`] stops the thread and drops the OS watches.
 //!
 //! Layout of the watches (instead of one recursive watch on the root, which
-//! would also cover `.git/objects` with its 256 fan-out dirs and `target/`):
+//! would also cover `.git/objects` with its 256 fan-out dirs and build dirs):
 //! - the root, non-recursive (to notice new top-level entries),
-//! - every top-level directory except `.git`, `target`, `node_modules`, recursively,
+//! - every top-level directory except `.git` and the ones `.gitignore` ignores,
+//!   recursively,
 //! - the git dir non-recursively plus `refs/` recursively.
 
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
-use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use gd_git::Repository;
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use notify::{EventKind, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{DebounceEventResult, Debouncer, RecommendedCache, new_debouncer};
 
 /// Quiet period after the last event before a refresh is requested.
 pub const DEBOUNCE: Duration = Duration::from_millis(300);
-/// A continuous stream of events still triggers a refresh at least this often.
-const MAX_WAIT: Duration = Duration::from_secs(2);
 
-/// Top-level directories never watched (noise; `git status` stays the truth).
-const SKIPPED_DIRS: [&str; 3] = [".git", "target", "node_modules"];
+type Deb = Debouncer<RecommendedWatcher, RecommendedCache>;
+
 /// Files directly inside the git dir whose changes matter.
 const GIT_FILES: [&str; 11] = [
     "HEAD",
@@ -45,38 +45,17 @@ const GIT_FILES: [&str; 11] = [
     "config",
 ];
 
-enum Msg {
-    Event(notify::Result<Event>),
-    Stop,
-}
-
+/// Shared with the event handler, which adds watches for new top-level dirs.
 pub struct RepoWatcher {
-    tx: mpsc::Sender<Msg>,
+    debouncer: Arc<Mutex<Option<Deb>>>,
 }
 
 impl Drop for RepoWatcher {
     fn drop(&mut self) {
-        let _ = self.tx.send(Msg::Stop);
-    }
-}
-
-impl RepoWatcher {
-    /// Start watching. Ticks arrive on the returned receiver; it closes when
-    /// the watcher thread exits.
-    pub fn start(repo: &Repository) -> (Self, smol::channel::Receiver<bool>) {
-        let (tx, rx) = mpsc::channel::<Msg>();
-        let (out_tx, out_rx) = smol::channel::unbounded::<bool>();
-        let paths = Paths {
-            root: repo.root().to_path_buf(),
-            git_dir: repo.git_dir(),
-            common_dir: repo.common_git_dir(),
-        };
-        let cb_tx = tx.clone();
-        std::thread::Builder::new()
-            .name("fs-watcher".into())
-            .spawn(move || run(paths, cb_tx, rx, out_tx))
-            .expect("spawn fs-watcher thread");
-        (Self { tx }, out_rx)
+        // Dropped outside the lock: it joins the debouncer thread, whose handler
+        // only ever `try_lock`s.
+        let debouncer = self.debouncer.lock().ok().and_then(|mut d| d.take());
+        drop(debouncer);
     }
 }
 
@@ -85,93 +64,84 @@ struct Paths {
     root: PathBuf,
     git_dir: PathBuf,
     common_dir: PathBuf,
+    ignore: Gitignore,
 }
 
-fn run(paths: Paths, cb_tx: mpsc::Sender<Msg>, rx: mpsc::Receiver<Msg>, out: smol::channel::Sender<bool>) {
-    let mut watcher: RecommendedWatcher = match notify::recommended_watcher(move |ev| {
-        let _ = cb_tx.send(Msg::Event(ev));
-    }) {
-        Ok(w) => w,
-        Err(e) => {
-            log::warn!("fs watcher unavailable: {e}");
-            return;
-        }
-    };
-    add_initial_watches(&mut watcher, &paths);
-
-    // (time of first pending event, time of last, git metadata changed)
-    let mut pending: Option<(Instant, Instant, bool)> = None;
-    loop {
-        let msg = match pending {
-            None => match rx.recv() {
-                Ok(m) => m,
-                Err(_) => return,
-            },
-            Some((first, last, full)) => {
-                let deadline = (last + DEBOUNCE).min(first + MAX_WAIT);
-                match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
-                    Ok(m) => m,
-                    Err(mpsc::RecvTimeoutError::Timeout) => {
-                        pending = None;
-                        log::debug!("fs watcher tick (full={full})");
-                        if out.send_blocking(full).is_err() {
-                            return;
-                        }
-                        continue;
+impl RepoWatcher {
+    /// Start watching. Ticks arrive on the returned receiver; it closes when
+    /// the watcher stops.
+    pub fn start(repo: &Repository) -> (Self, smol::channel::Receiver<bool>) {
+        let (out, rx) = smol::channel::unbounded::<bool>();
+        let paths = Paths {
+            root: repo.root().to_path_buf(),
+            git_dir: repo.git_dir(),
+            common_dir: repo.common_git_dir(),
+            ignore: gitignore(repo.root(), &repo.common_git_dir()),
+        };
+        let slot = Arc::new(Mutex::new(None));
+        let (handler_paths, handler_slot) = (paths.clone(), slot.clone());
+        let handler = move |result: DebounceEventResult| {
+            let events = match result {
+                Ok(events) => events,
+                Err(errors) => return log::debug!("fs watcher errors: {errors:?}"),
+            };
+            let mut hit: Option<bool> = None;
+            for ev in events {
+                log::trace!("fs event: {:?}", ev.paths);
+                // Reads (`git status` opening files) must never count as changes,
+                // otherwise our own refresh would retrigger itself.
+                if !matches!(ev.kind, EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) | EventKind::Any) {
+                    continue;
+                }
+                for p in &ev.paths {
+                    let Some(full) = classify(&handler_paths, p) else { continue };
+                    hit = Some(hit.unwrap_or(false) || full);
+                    // A new top-level directory needs its own recursive watch.
+                    if matches!(ev.kind, EventKind::Create(_))
+                        && p.parent() == Some(handler_paths.root.as_path())
+                        && let Ok(mut guard) = handler_slot.try_lock()
+                        && let Some(d) = guard.as_mut()
+                    {
+                        watch_top_level(d, &handler_paths, p);
                     }
-                    Err(mpsc::RecvTimeoutError::Disconnected) => return,
                 }
             }
-        };
-        let ev = match msg {
-            Msg::Stop => return,
-            Msg::Event(Ok(ev)) => ev,
-            Msg::Event(Err(e)) => {
-                log::debug!("fs watcher error: {e}");
-                continue;
+            if let Some(full) = hit {
+                log::debug!("fs watcher tick (full={full})");
+                let _ = out.send_blocking(full);
             }
         };
-        log::trace!("fs event: {:?}", ev.paths);
-        // Reads (`git status` opening files) must never count as changes,
-        // otherwise our own refresh would retrigger itself.
-        if !matches!(
-            ev.kind,
-            EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) | EventKind::Any
-        ) {
-            continue;
-        }
-        let mut hit: Option<bool> = None;
-        for p in &ev.paths {
-            if let Some(full) = classify(&paths, p) {
-                hit = Some(hit.unwrap_or(false) || full);
-                // A new top-level directory needs its own recursive watch.
-                if matches!(ev.kind, EventKind::Create(_)) && p.parent() == Some(paths.root.as_path()) {
-                    watch_top_level(&mut watcher, p);
-                }
+        match new_debouncer(DEBOUNCE, None, handler) {
+            Ok(mut debouncer) => {
+                add_initial_watches(&mut debouncer, &paths);
+                *slot.lock().unwrap() = Some(debouncer);
             }
+            Err(e) => log::warn!("fs watcher unavailable: {e}"),
         }
-        if let Some(full) = hit {
-            let now = Instant::now();
-            pending = Some(match pending {
-                Some((first, _, f)) => (first, now, f || full),
-                None => (now, now, full),
-            });
-        }
+        (Self { debouncer: slot }, rx)
     }
 }
 
-fn add_initial_watches(w: &mut RecommendedWatcher, p: &Paths) {
-    let _ = w.watch(&p.root, RecursiveMode::NonRecursive);
+/// The repository's own ignore rules (`.gitignore` at the root, `info/exclude`).
+fn gitignore(root: &Path, git_dir: &Path) -> Gitignore {
+    let mut builder = GitignoreBuilder::new(root);
+    builder.add(root.join(".gitignore"));
+    builder.add(git_dir.join("info/exclude"));
+    builder.build().unwrap_or_else(|_| Gitignore::empty())
+}
+
+fn add_initial_watches(d: &mut Deb, p: &Paths) {
+    let _ = d.watch(&p.root, RecursiveMode::NonRecursive);
     if let Ok(rd) = std::fs::read_dir(&p.root) {
         for entry in rd.flatten() {
-            watch_top_level(w, &entry.path());
+            watch_top_level(d, p, &entry.path());
         }
     }
     for dir in [&p.git_dir, &p.common_dir] {
-        let _ = w.watch(dir, RecursiveMode::NonRecursive);
+        let _ = d.watch(dir, RecursiveMode::NonRecursive);
         let refs = dir.join("refs");
         if refs.is_dir() {
-            let _ = w.watch(&refs, RecursiveMode::Recursive);
+            let _ = d.watch(&refs, RecursiveMode::Recursive);
         }
         if p.git_dir == p.common_dir {
             break;
@@ -179,12 +149,12 @@ fn add_initial_watches(w: &mut RecommendedWatcher, p: &Paths) {
     }
 }
 
-fn watch_top_level(w: &mut RecommendedWatcher, path: &Path) {
-    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+fn watch_top_level(d: &mut Deb, p: &Paths, path: &Path) {
     // `is_dir` follows symlinks; don't recurse through links (cycles).
     let is_real_dir = std::fs::symlink_metadata(path).map(|m| m.is_dir()).unwrap_or(false);
-    if is_real_dir && !SKIPPED_DIRS.contains(&name) {
-        let _ = w.watch(path, RecursiveMode::Recursive);
+    let ignored = path.file_name().is_some_and(|n| n == ".git" || p.ignore.matched(n, true).is_ignore());
+    if is_real_dir && !ignored {
+        let _ = d.watch(path, RecursiveMode::Recursive);
     }
 }
 
@@ -196,12 +166,7 @@ fn classify(p: &Paths, path: &Path) -> Option<bool> {
         }
     }
     let rel = path.strip_prefix(&p.root).ok()?;
-    let mut comps = rel.components().map(|c| c.as_os_str().to_str().unwrap_or(""));
-    let first = comps.next()?;
-    if first == ".git" || first == "target" {
-        return None;
-    }
-    if rel.components().any(|c| c.as_os_str() == "node_modules") {
+    if rel.starts_with(".git") || p.ignore.matched_path_or_any_parents(rel, false).is_ignore() {
         return None;
     }
     Some(false)
@@ -229,6 +194,12 @@ mod tests {
             root: "/r".into(),
             git_dir: "/r/.git".into(),
             common_dir: "/r/.git".into(),
+            ignore: {
+                let mut b = GitignoreBuilder::new("/r");
+                b.add_line(None, "target/").unwrap();
+                b.add_line(None, "node_modules/").unwrap();
+                b.build().unwrap()
+            },
         }
     }
 

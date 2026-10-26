@@ -26,8 +26,8 @@ impl Workspace {
         match (action, stash) {
             (MenuAction::StashAll, _) => self.open_stash_create(false, window, cx),
             (MenuAction::StashSelected, _) => self.open_stash_create(true, window, cx),
-            (MenuAction::StashApply, Some(s)) => self.stash_op(cx, move |r, cx| r.stash_apply(s.sha, cx)),
-            (MenuAction::StashPop, Some(s)) => self.stash_op(cx, move |r, cx| r.stash_pop(s.sha, cx)),
+            (MenuAction::StashApply, Some(s)) => self.with_repo(cx, move |r, cx| r.stash_apply(s.sha, cx)),
+            (MenuAction::StashPop, Some(s)) => self.with_repo(cx, move |r, cx| r.stash_pop(s.sha, cx)),
             (MenuAction::StashDrop, Some(s)) => self.open_stash_dialog(StashDialog::Drop(s), window, cx),
             (MenuAction::StashRename, Some(s)) => {
                 self.set_stash_input(&s.message, cx);
@@ -113,12 +113,6 @@ impl Workspace {
             self.focus(window, cx);
         }
         cx.notify();
-    }
-
-    fn stash_op(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&mut RepoModel, &mut Context<RepoModel>)) {
-        if let Some(repo) = &self.repo {
-            repo.update(cx, f);
-        }
     }
 
     fn set_stash_input(&mut self, text: &str, cx: &mut Context<Self>) {

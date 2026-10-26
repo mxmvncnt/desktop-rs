@@ -78,7 +78,7 @@ Exception: git writes and network ops keep shelling out to the `git` CLI
   the rest of the app calls.
 - Components are `#[derive(IntoElement)]` + `RenderOnce`, one per file
   (`stash_panel`, `stash_panel_header`, `stash_list`, `stash_row`,
-  `stash_header`, `stash_file_list`, `stash_file_row`, `stash_dialog`,
+  `stash_header`, `stash_file_list`, `stash_dialog`,
   `option_row`), with a `new(..)` constructor and typed props.
 - Props: data they show (cloned, e.g. `Stash`) plus `Entity<RepoModel>` for
   model calls and `Entity<Workspace>` (`cx.entity()` at the call site) for UI

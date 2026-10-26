@@ -18,7 +18,7 @@ impl Workspace {
             return div().flex_1().into_any_element();
         };
         let st = &r.stashes;
-        let here = stash.branch.is_some() && stash.branch == r.status.as_ref().and_then(|s| s.branch.clone());
+        let here = stash.branch.is_some() && stash.branch.as_deref() == r.current_branch();
         let file_key = st.selected_file.and_then(|ix| st.files.get(ix)).map(|f| f.path.clone()).unwrap_or_default();
         let (diff, hl, n_files) = (st.diff.clone(), st.hl.clone(), st.files.len());
         let diff_key = SharedString::from(format!("stash-diff-{}-{file_key}", stash.sha));

@@ -36,7 +36,7 @@ impl RenderOnce for AmendNotice {
                 .gap(px(8.0))
                 .p(px(10.0))
                 .rounded(px(gd_ui::theme::CONTROL_RADIUS + 1.0))
-                .bg(gd_ui::theme::ink(0.04))
+                .bg(theme.ink(0.04))
                 .border_1()
                 .border_color(theme.border)
                 .child(icon(glyph).size(px(14.0)).text_color(glyph_color))

@@ -19,5 +19,7 @@ pub use accounts_page::AccountsPage;
 #[cfg(feature = "snapshot")]
 pub use model::{Account, Provider};
 #[cfg(feature = "snapshot")]
-pub use state::{AccountForm, StatusLine};
+pub use state::AccountForm;
 pub use state::AccountsUi;
+#[cfg(feature = "snapshot")]
+pub use status_text::StatusText;

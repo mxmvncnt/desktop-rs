@@ -4,29 +4,23 @@ use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, 
 use crate::features::diff::CheckOptionRow;
 use crate::workspace::Workspace;
 
-/// The diff preferences the page shows.
-#[derive(Clone, Copy)]
-pub struct DiffOptionValues {
-    pub split: bool,
-    pub wrap: bool,
-    pub hide_whitespace: bool,
-}
-
 #[derive(IntoElement)]
 pub struct DiffPage {
-    values: DiffOptionValues,
+    split: bool,
+    wrap: bool,
+    hide_whitespace: bool,
     ws: Entity<Workspace>,
 }
 
 impl DiffPage {
-    pub fn new(values: DiffOptionValues, ws: Entity<Workspace>) -> Self {
-        Self { values, ws }
+    pub fn new(split: bool, wrap: bool, hide_whitespace: bool, ws: Entity<Workspace>) -> Self {
+        Self { split, wrap, hide_whitespace, ws }
     }
 
     fn display_tabs(&self) -> impl IntoElement {
         let ws = self.ws.clone();
         div().w(px(300.0)).pb(px(6.0)).child(
-            Tabs::new("settings-diff-display", usize::from(self.values.split))
+            Tabs::new("settings-diff-display", usize::from(self.split))
                 .tab("Unified", None)
                 .tab("Split", None)
                 .on_select(move |ix, _, cx| ws.update(cx, |this, cx| this.set_diff_split(ix == 1, cx))),
@@ -37,7 +31,7 @@ impl DiffPage {
 impl RenderOnce for DiffPage {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let (wrap, hide_ws) = (self.values.wrap, self.values.hide_whitespace);
+        let (wrap, hide_ws) = (self.wrap, self.hide_whitespace);
         div()
             .flex()
             .flex_col()

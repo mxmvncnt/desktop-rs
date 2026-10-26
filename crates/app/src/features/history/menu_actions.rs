@@ -60,7 +60,7 @@ impl Workspace {
         let r = repo.read(cx);
         let branches: Vec<String> =
             r.branches.iter().filter(|b| b.kind == BranchKind::Local).map(|b| b.name.clone()).collect();
-        let current = r.status.as_ref().and_then(|s| s.branch.clone());
+        let current = r.current_branch().map(str::to_owned);
         // Default to the first branch that isn't the current one.
         let selected = branches.iter().position(|b| Some(b) != current.as_ref()).unwrap_or(0);
         let target = CherryPickTarget { branches, current, selected };

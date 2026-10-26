@@ -7,7 +7,7 @@ use gpui::{App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentE
 
 use super::{Button, ButtonStyle, overlay_card};
 use crate::motion;
-use crate::theme::{Theme, ink, scrim};
+use crate::theme::{Theme, scrim};
 
 type Callback = Rc<dyn Fn(&mut Window, &mut App)>;
 
@@ -148,7 +148,7 @@ impl RenderOnce for Dialog {
                     .py(px(12.0))
                     .border_t_1()
                     .border_color(theme.border)
-                    .bg(ink(0.02))
+                    .bg(theme.ink(0.02))
                     .child(cancel_btn)
                     .child(confirm_btn),
             );

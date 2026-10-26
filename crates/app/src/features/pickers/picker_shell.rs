@@ -85,7 +85,7 @@ impl RenderOnce for PickerShell {
             let ws = ws.clone();
             move |cx: &mut App| {
                 cx.stop_propagation();
-                ws.update(cx, |this, cx| this.step_picker(delta, cx))
+                ws.update(cx, |this, cx| this.step_popover_selection(delta, cx))
             }
         };
         let (down, up, next, prev) = (step(1), step(-1), step(1), step(-1));
@@ -119,6 +119,6 @@ impl RenderOnce for PickerShell {
             .child(divider(cx))
             .child(body)
             .child(divider(cx))
-            .child(div().flex().gap(px(6.0)).p(px(8.0)).bg(gd_ui::theme::ink(0.02)).child(self.footer))
+            .child(div().flex().gap(px(6.0)).p(px(8.0)).bg(theme.ink(0.02)).child(self.footer))
     }
 }

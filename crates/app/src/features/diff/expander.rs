@@ -58,12 +58,12 @@ impl Expander {
     }
 
     /// The gutter of a hunk header (or trailing) row, `width` wide.
-    pub fn gutter(exp: Option<&Self>, diff: &Diff, h: usize, width: Pixels) -> Div {
+    pub fn gutter(exp: Option<&Self>, diff: &Diff, h: usize, width: Pixels, theme: &Theme) -> Div {
         div()
             .flex()
             .flex_none()
             .w(width)
-            .bg(handle_bg())
+            .bg(handle_bg(theme))
             .children(exp.map(|e| e.buttons(diff, h)).unwrap_or_default())
     }
 }
@@ -74,7 +74,7 @@ pub fn trailing_row(exp: Option<&Expander>, diff: &Diff, width: Pixels, flow: Te
         .bg(theme.diff_hunk_bg)
         .border_t_1()
         .border_color(theme.border)
-        .child(Expander::gutter(exp, diff, diff.hunks.len(), width).border_r_1().border_color(theme.border))
+        .child(Expander::gutter(exp, diff, diff.hunks.len(), width, theme).border_r_1().border_color(theme.border))
         .into_any_element()
 }
 

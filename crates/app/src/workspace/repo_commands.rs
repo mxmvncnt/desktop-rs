@@ -3,13 +3,18 @@
 use gpui::{Context, Window};
 
 use super::state::Workspace;
-use crate::repo::{RemoteOp, Tab};
+use crate::repo::{RemoteOp, RepoModel, Tab};
 
 impl Workspace {
-    pub fn refresh(&mut self, cx: &mut Context<Self>) {
+    /// Run `f` on the open repository, if any.
+    pub(crate) fn with_repo(&self, cx: &mut Context<Self>, f: impl FnOnce(&mut RepoModel, &mut Context<RepoModel>)) {
         if let Some(repo) = &self.repo {
-            repo.update(cx, |r, cx| r.refresh(cx));
+            repo.update(cx, f);
         }
+    }
+
+    pub fn refresh(&mut self, cx: &mut Context<Self>) {
+        self.with_repo(cx, |r, cx| r.refresh(cx));
     }
 
     pub(super) fn commit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -22,7 +27,7 @@ impl Workspace {
             return;
         }
         if summary.trim().is_empty() {
-            match crate::features::changes::default_summary(repo.read(cx), false) {
+            match repo.read(cx).default_summary(false) {
                 Some(d) => summary = d,
                 None => return,
             }
@@ -33,20 +38,14 @@ impl Workspace {
     }
 
     pub fn undo_commit(&mut self, cx: &mut Context<Self>) {
-        if let Some(repo) = &self.repo {
-            repo.update(cx, |r, cx| r.undo_last_commit(cx));
-        }
+        self.with_repo(cx, |r, cx| r.undo_last_commit(cx));
     }
 
     pub(crate) fn remote_action(&mut self, op: RemoteOp, cx: &mut Context<Self>) {
-        if let Some(repo) = &self.repo {
-            repo.update(cx, |r, cx| r.remote(op, cx));
-        }
+        self.with_repo(cx, |r, cx| r.remote(op, cx));
     }
 
     pub(super) fn set_tab(&mut self, tab: Tab, cx: &mut Context<Self>) {
-        if let Some(repo) = &self.repo {
-            repo.update(cx, |r, cx| r.set_tab(tab, cx));
-        }
+        self.with_repo(cx, |r, cx| r.set_tab(tab, cx));
     }
 }

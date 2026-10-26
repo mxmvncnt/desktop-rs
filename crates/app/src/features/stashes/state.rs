@@ -61,7 +61,7 @@ pub enum StashDialog {
 }
 
 /// The one Workspace field for stash UI. It stays a plain struct (not an
-/// `Entity`) because Esc/Enter routing in workspace.rs and menus.rs consults
+/// `Entity`) because Esc/Enter routing in `workspace/actions.rs` and `menus/key_routing.rs` consults
 /// `dialog` directly.
 pub struct StashUi {
     pub dialog: Option<StashDialog>,

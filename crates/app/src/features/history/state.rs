@@ -42,13 +42,13 @@ pub enum ClickKind {
 }
 
 /// Everything the History feature adds to `Workspace`. A plain struct (not an
-/// `Entity`): Esc/Enter/arrow routing in workspace.rs reads `menu`/`dialog`.
+/// `Entity`): Esc/Enter/arrow routing in `workspace/actions.rs` and `menus/key_routing.rs` reads `menu`/`dialog`.
 pub struct HistoryUi {
     pub menu: Option<HistoryMenu>,
     pub menu_gen: usize,
     pub dialog: Option<HistoryDialog>,
     /// Commit box is amending the last commit of this repository.
-    pub amend: Option<AmendState>,
+    pub amend: Option<PathBuf>,
     /// Inputs shared by the dialogs (squash message, branch / tag name).
     pub msg_summary: Entity<EditableTextState>,
     pub msg_desc: Entity<EditableTextState>,
@@ -56,10 +56,6 @@ pub struct HistoryUi {
     /// Search box above the commit list.
     pub search: Entity<EditableTextState>,
     _subs: Vec<Subscription>,
-}
-
-pub struct AmendState {
-    pub root: PathBuf,
 }
 
 impl HistoryUi {

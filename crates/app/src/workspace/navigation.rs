@@ -90,8 +90,7 @@ impl Workspace {
                 }
             }
             NavList::Stashes => {
-                let branch = r.status.as_ref().and_then(|s| s.branch.clone());
-                let visible = r.stashes.visible(branch.as_deref());
+                let visible = r.stashes.visible(r.current_branch());
                 let cur = r
                     .stashes
                     .selected

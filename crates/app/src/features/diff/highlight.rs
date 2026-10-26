@@ -1,5 +1,5 @@
 //! Syntax highlights for a loaded [`Diff`]. Computed off-thread after the diff
-//! loads (see `RepoModel::start_highlight`); the view renders plain text until
+//! loads (see `RepoModel::spawn_highlight`); the view renders plain text until
 //! the result arrives, then swaps colors in without changing layout.
 //!
 //! Strategy: reconstruct each side of the diff and highlight it separately.
@@ -12,6 +12,7 @@
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::num::NonZeroUsize;
 use std::ops::Range;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -20,12 +21,13 @@ use gd_git::{Diff, DiffLineKind};
 use gd_syntax::{HighlightKind, HighlightRequest, language_for_path};
 use gd_ui::theme::SyntaxPalette;
 use gpui::{Font, Hsla, TextRun};
+use lru::LruCache;
 
 /// Above this many rows or bytes of text we skip highlighting entirely.
 pub const MAX_LINES: usize = 20_000;
 pub const MAX_BYTES: usize = 2 * 1024 * 1024;
 /// Entries in the per-repository result cache.
-const CACHE_CAP: usize = 8;
+const CACHE_CAP: NonZeroUsize = NonZeroUsize::new(8).unwrap();
 
 #[derive(Debug, Clone, Copy)]
 pub struct Span {
@@ -172,26 +174,23 @@ fn overlay_background(text: &str, runs: Vec<TextRun>, ranges: &[(usize, usize)],
 
 /// Small LRU keyed by a hash of (path, diff content). Shared with the
 /// background task so re-selecting a file is a lookup, not a re-parse.
-#[derive(Clone, Default)]
-pub struct HighlightCache(Arc<Mutex<Vec<(u64, Arc<DiffHighlight>)>>>);
+#[derive(Clone)]
+pub struct HighlightCache(Arc<Mutex<LruCache<u64, Arc<DiffHighlight>>>>);
+
+impl Default for HighlightCache {
+    fn default() -> Self {
+        Self(Arc::new(Mutex::new(LruCache::new(CACHE_CAP))))
+    }
+}
 
 impl HighlightCache {
     fn get(&self, key: u64) -> Option<Arc<DiffHighlight>> {
-        let mut v = self.0.lock().ok()?;
-        let ix = v.iter().position(|(k, _)| *k == key)?;
-        let hit = v.remove(ix);
-        let out = hit.1.clone();
-        v.push(hit);
-        Some(out)
+        self.0.lock().ok()?.get(&key).cloned()
     }
 
     fn put(&self, key: u64, value: Arc<DiffHighlight>) {
-        if let Ok(mut v) = self.0.lock() {
-            v.retain(|(k, _)| *k != key);
-            if v.len() >= CACHE_CAP {
-                v.remove(0);
-            }
-            v.push((key, value));
+        if let Ok(mut cache) = self.0.lock() {
+            cache.put(key, value);
         }
     }
 }

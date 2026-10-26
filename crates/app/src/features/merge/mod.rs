@@ -18,5 +18,4 @@ pub use conflict_hint::ConflictHint;
 pub use conflict_menu::ConflictMenuView;
 pub use in_progress_banner::InProgressBanner;
 pub use merge_dialog::MergeDialogView;
-pub(crate) use ops::message_event;
 pub use state::{MergeMode, MergeState, MergeUi};

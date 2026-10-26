@@ -15,8 +15,6 @@ pub struct PrPreviewState {
     pub base: Option<String>,
     /// The base dropdown is expanded.
     pub base_menu: bool,
-    /// Base the loaded `comparison` was made against.
-    pub loaded_base: Option<String>,
     pub loading: bool,
     pub comparison: Option<Comparison>,
     pub error: Option<String>,

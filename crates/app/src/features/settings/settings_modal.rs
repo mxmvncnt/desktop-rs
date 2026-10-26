@@ -9,7 +9,7 @@ use gpui::{
 
 use crate::features::accounts::AccountsPage;
 use super::appearance_page::AppearancePage;
-use super::diff_page::{DiffOptionValues, DiffPage};
+use super::diff_page::DiffPage;
 use super::settings_nav::SettingsNav;
 use super::{SettingsPage, ThemeMode};
 use crate::workspace::Workspace;
@@ -19,7 +19,7 @@ pub struct SettingsModal {
     page: SettingsPage,
     theme: ThemeMode,
     color_theme: String,
-    diff: DiffOptionValues,
+    diff: DiffPage,
     accounts: Option<AccountsPage>,
     ws: Entity<Workspace>,
 }
@@ -32,11 +32,7 @@ impl SettingsModal {
             page: ws.settings_page,
             theme: s.theme,
             color_theme: s.color_theme_id().to_string(),
-            diff: DiffOptionValues {
-                split: s.diff_split,
-                wrap: s.diff_wrap,
-                hide_whitespace: s.diff_ignore_whitespace,
-            },
+            diff: DiffPage::new(s.diff_split, s.diff_wrap, s.diff_ignore_whitespace, cx.entity()),
             accounts: (ws.settings_page == SettingsPage::Accounts).then(|| {
                 let repo_name = ws.repo.as_ref().map(|r| r.read(cx).repo.name());
                 AccountsPage::new(&ws.accounts_ui, repo_name, cx.entity())
@@ -48,7 +44,7 @@ impl SettingsModal {
     fn body(self) -> AnyElement {
         match self.page {
             SettingsPage::Appearance => AppearancePage::new(self.theme, self.color_theme.clone(), self.ws.clone()).into_any_element(),
-            SettingsPage::Diff => DiffPage::new(self.diff, self.ws.clone()).into_any_element(),
+            SettingsPage::Diff => self.diff.into_any_element(),
             SettingsPage::Accounts => self.accounts.map_or_else(|| div().into_any_element(), IntoElement::into_any_element),
         }
     }

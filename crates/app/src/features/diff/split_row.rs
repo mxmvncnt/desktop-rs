@@ -3,7 +3,7 @@
 //! frame (hot-row exception, see docs/CONVENTIONS.md).
 
 use gd_git::DiffLineKind;
-use gd_ui::{Theme, theme::ink};
+use gd_ui::{Theme};
 use gpui::{AnyElement, Div, IntoElement, ParentElement, Pixels, Styled, div, prelude::*, px};
 
 use super::expander::{Expander, header_hunk, trailing_row};
@@ -63,7 +63,7 @@ impl SplitRows<'_> {
             .italic()
             .text_color(theme.text_faint)
             .when(ix > 0, |d| d.border_t_1().border_color(theme.border))
-            .child(Expander::gutter(self.exp, diff, h, self.exp_w).border_r_1().border_color(theme.border))
+            .child(Expander::gutter(self.exp, diff, h, self.exp_w, theme).border_r_1().border_color(theme.border))
             .child(div().pl(px(8.0)).child(line.text.clone()))
             .into_any_element()
     }
@@ -97,7 +97,7 @@ impl SplitRows<'_> {
         let theme = self.theme;
         let cell = div().flex().flex_1().min_w_0().overflow_hidden();
         if ix == NONE {
-            return (cell.bg(ink(0.025)), None);
+            return (cell.bg(theme.ink(0.025)), None);
         }
         let line = &self.split.diff.lines[ix as usize];
         let (bg, fg, marker, marker_color) = match line.kind {

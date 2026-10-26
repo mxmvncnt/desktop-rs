@@ -25,6 +25,7 @@ fn main() {
     {
         let args: Vec<String> = std::env::args().collect();
         if args.get(1).map(String::as_str) == Some("--snapshot") {
+            keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
             let out = args
                 .get(2)
                 .map(std::path::PathBuf::from)

@@ -25,7 +25,7 @@ impl RenderOnce for WhitespaceNote {
             .px(px(16.0))
             .border_b_1()
             .border_color(theme.border)
-            .bg(gd_ui::theme::ink(0.02))
+            .bg(theme.ink(0.02))
             .text_size(px(12.0))
             .text_color(theme.text_faint)
             .child(icon(Icon::EyeClosed).size(px(13.0)).text_color(theme.text_faint))

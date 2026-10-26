@@ -1,3 +1,6 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{BuildHasher, BuildHasherDefault};
+
 use gd_ui::{Icon, Theme, icon, motion};
 use gpui::{
     App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled,
@@ -42,7 +45,7 @@ impl RenderOnce for NoticeBanner {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let is_error = self.kind == NoticeKind::Error;
-        let key = format!("banner-{}", hash(&self.message));
+        let key = format!("banner-{}", BuildHasherDefault::<DefaultHasher>::default().hash_one(&self.message));
         let ws = self.ws;
         div()
             .absolute()
@@ -75,11 +78,4 @@ impl RenderOnce for NoticeBanner {
                     ),
             ))
     }
-}
-
-fn hash(s: &str) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    s.hash(&mut h);
-    h.finish()
 }
