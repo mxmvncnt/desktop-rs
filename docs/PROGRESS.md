@@ -5,7 +5,7 @@
 - Merged in: CSD window chrome, diff options (split view, hide whitespace), multiple stashes,
   merge/squash/rebase + in-progress banner + conflict resolution, and history ops
   (push status, full commit context menu, multi-select squash, amend, reorder via menu).
-- All git smoke suites pass on the integrated tree: `smoke`, `merge_smoke`, `stash_smoke`, `history_ops`.
+- The gd-git suites (`crates/git/tests/`: `write_ops`, `merge`, `stash`, `history_ops`, `identity`) run with `cargo test -p gd-git`.
 - Idle is still zero renders (`GD_DEBUG_FRAMES=1`). RSS is ~67 MB (release, small repo).
 - Still untested by hand: everything interactive in the new menus and dialogs.
 
@@ -18,7 +18,7 @@
       `text_input` has no masking) and tokens are not validated online (no HTTP client dependency).
 - [x] Credentials wired: `gd_git::set_credentials` registers tokens; every `.network()` git command gets per-host
       `credential.https://<host>.helper` via `GIT_CONFIG_COUNT/KEY/VALUE` env (secret only in the child env). HTTPS only; SSH untouched.
-- Verify: `cargo run -p gd-git --example identity_smoke -- /tmp/desktop-rs/identity` (uses scratch `GIT_CONFIG_GLOBAL`);
+- Verify: `cargo test -p gd-git --test identity` (scratch `GIT_CONFIG_GLOBAL`);
   snapshot views `settings-accounts[-light|-form|-edit|-norepo]`.
 
 ## Settings modal + light/dark/system theme (2026-10-21)
@@ -136,14 +136,14 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
    - Checkout with uncommitted changes always opens Desktop's dialog (Leave my changes on X = stash / Bring my changes to Y). If checkout fails after stashing, the stash is popped back.
    - Conflicts on apply/pop: the error is shown, the working tree is left conflicted (files show "!") for the user to resolve, and a conflicted pop keeps the stash. No dedicated conflict UI (belongs to the in-progress banner work).
    - Known gaps: stashes dropped externally are noticed on the next full refresh (focus/F5/any op), since `git stash drop` of a non-top entry only rewrites the reflog; no auto-restore of the switch-stash when returning to the branch; "Stash selected files" is always enabled in the menu (notice if none checked).
-   - Snapshot views: `stash-list`, `stash-all`, `stash-detail`, `stash-detail-untracked`, `stash-menu`, `stash-dialog`, `stash-drop-dialog`, `switch-branch-dialog`. Smoke: `cargo run -p gd-git --example stash_smoke -- /tmp/desktop-rs/stash-smoke [--keep]`.
+   - Snapshot views: `stash-list`, `stash-all`, `stash-detail`, `stash-detail-untracked`, `stash-menu`, `stash-dialog`, `stash-drop-dialog`, `switch-branch-dialog`. Test: `cargo test -p gd-git --test stash` (the old `--keep` scratch-repo mode is gone: build snapshot repos with plain `git`).
 6. ✅ Merge / squash / rebase into current branch; operation-in-progress banner; conflict resolution; branch context menu.
    - Branch popover footer "Merge into current branch…" (ctrl+shift+M): dialog with Merge | Squash and merge | Rebase modes, filter, ↑/↓/Enter, Desktop-style preview line ("This will merge N commits from X into Y" / "up to date", plus expected conflicts via `git merge-tree`), computed in the background.
    - New-branch popover has a "Based on" selector (current branch by default, any local/remote branch via `pickers/new_branch_base*.rs`); uses `create_branch_from` (`--no-track`). Snapshot view `new-branch-base`.
    - Squash tab has a "Squash commit summary" field (default "Squash merge X into Y", reset when the highlighted branch changes); `merge_squash(branch, Some(summary))` uses it as the subject, body lists the squashed commits. Modal/menu backdrops `.occlude()` so nothing behind is clickable.
    - Right-click a branch: merge, rebase onto, create from, rename, copy name, delete (also offers deleting the remote branch). Conflicted file rows: Use ours / Use theirs / Mark as resolved / Open in default editor.
    - Banner with Continue/Abort for merge, squash, rebase, cherry-pick, revert; commit box prefilled with MERGE_MSG and commits via `merge --continue`-equivalent; Continue disabled while conflicts remain.
-   - Snapshot views: `merge-dialog`, `squash-dialog`, `rebase-dialog`, `branch-menu`, `delete-dialog`, `rename-dialog`, `conflict-menu`, and `changes` on a conflicted repo (`cargo run -p gd-git --example merge_smoke -- <dir> --keep-conflict`).
+   - Snapshot views: `merge-dialog`, `squash-dialog`, `rebase-dialog`, `branch-menu`, `delete-dialog`, `rename-dialog`, `conflict-menu`, and `changes` on a conflicted repo (make a conflicted repo with plain `git`; the old `merge_smoke --keep-conflict` is gone).
    - Not verified with a real mouse/keyboard. Not done: remote rename, rebase `--autostash`, interactive conflict resolution inside the app, banner for stash-conflicts. Picker ↑/↓ now also capture NavUp/NavDown (the LIST-context bindings never reached a focused input).
 7. ✅ Partial (line/hunk) staging in the diff gutter (Changes tab, unified and split).
    - Desktop layout: split view is `[old text | old no · handle · new no | new text]` (numbers in the middle);
@@ -161,7 +161,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
      clears partial selections.
    - Not selectable: history/stash diffs, "Hide whitespace changes" on (selection is kept for later), truncated or
      non-UTF-8 diffs, conflicted files, while a merge commit is pending. Stash "selected files" still stashes whole files.
-   - Verified: `cargo test -p gd-git` (staged_text), `smoke` example (real partial commit). Snapshot views
+   - Verified: `cargo test -p gd-git` (staged_text), `write_ops` test (real partial commit). Snapshot views
      `partial[@N]`, `partial-split[@N]`. Not yet clicked with a real mouse.
 8. 🟨 Split diff view and whitespace toggle done (gear button in both diff headers: Unified/Split + Hide whitespace changes, persisted in `display` settings file, `-w` via `gd_git::DiffOptions`). Image diffs still open. Split view clips long lines (no horizontal scroll). Snapshot views: `split`, `split-ws`, `split-history`, `hide-ws`, `diff-options-menu`. Split row build: 0.36 ms for an 18k-line diff (cached per loaded diff), so toggling is instant.
 9. ⬜ Pull requests list (GitHub API); create PR; CI status.
@@ -170,7 +170,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 - Unpushed commits get an arrow-up icon with tooltip ("hasn't been pushed to the remote repository yet"); tags show as pills. Refreshed on every full refresh (push/fetch/commit/checkout).
 - Right-click menu: Amend, Undo, Reset to commit (soft/mixed dialog), Checkout commit (detached warning), Move commit up/down (reorder), Revert, Create branch from commit, Create/Delete tag, Cherry-pick (branch picker), Copy SHA/tags, View on GitHub. Multi-select (ctrl/cmd-click, shift-click range) offers Cherry-pick N and Squash N (message dialog).
 - Amend mode in the commit box ("Amend last commit", Stop amending, force-push warning if pushed).
-- Verified by `cargo run -p gd-git --example history_ops -- /tmp/desktop-rs/hops` (bare scratch remote). Snapshot views: `history-menu`, `-menu-head`, `-menu-pushed`, `-multiselect`, `-multimenu`, `-squash`, `-reset`, `-cherry`, `-tag`, `-checkout`, `amend-mode`.
+- Verified by `cargo test -p gd-git --test history_ops` (bare scratch remote). Snapshot views: `history-menu`, `-menu-head`, `-menu-pushed`, `-multiselect`, `-multimenu`, `-squash`, `-reset`, `-cherry`, `-tag`, `-checkout`, `amend-mode`.
 - Skipped: drag-and-drop reorder (menu Move up/down instead), Delete tag restricted to unpushed tags (needs remote tag knowledge; all tags deletable locally), non-adjacent squash (menu item disabled), own conflict UI (uses the generic in-progress banner via `run_op`). Not exercised with a real mouse.
 
 11. ⬜ Tags, branch rename/delete UI, compare branches.

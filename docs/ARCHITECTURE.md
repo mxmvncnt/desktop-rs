@@ -34,8 +34,9 @@ guessing APIs. To recreate them:
   Partial files go through `commit_partial` / `amend_commit(.., partial)`, see §Partial staging.
 - Diffs are parsed into a flat `Vec<DiffLine>` (hunk headers included) so the UI
   can index row `i` in O(1) from a `uniform_list`. Parsing is capped at 50k lines (`truncated`).
-- `examples/smoke.rs` exercises the write paths against a scratch repo:
-  `cargo run -p gd-git --example smoke -- /tmp/desktop-rs/smoke`.
+- `crates/git/tests/*.rs` exercise the write paths against scratch repos (`tests/common` has the
+  tempdir + `sh` helpers): `cargo test -p gd-git`. Index staging goes through
+  `git add --pathspec-from-file=- --pathspec-file-nul` (no ARG_MAX chunking). Remote URL parsing lives in `remote.rs`.
 
 ## Stashes (`gd-git/src/stash.rs`, `app/src/features/stashes/`)
 
