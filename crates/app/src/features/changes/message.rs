@@ -29,7 +29,7 @@ impl Workspace {
     /// last commit's "Update x"). Re-emplacing "" bumps the version.
     pub(crate) fn sync_message_placeholder(&mut self, cx: &mut Context<Self>) {
         let Some(repo) = &self.repo else { return };
-        let placeholder = super::state::default_summary(repo.read(cx), self.amending(cx));
+        let placeholder = repo.read(cx).default_summary(self.amending(cx));
         if placeholder == self.message_placeholder {
             return;
         }

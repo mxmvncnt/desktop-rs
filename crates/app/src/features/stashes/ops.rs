@@ -11,10 +11,6 @@ use crate::features::diff::highlight_diff;
 use crate::repo::RepoModel;
 
 impl RepoModel {
-    fn current_branch(&self) -> Option<String> {
-        self.status.as_ref().and_then(|s| s.branch.clone())
-    }
-
     /// Reload the stash list in the background (called from every full refresh).
     pub fn reload_stashes(&mut self, cx: &mut Context<Self>) {
         let repo = self.repo.clone();
@@ -232,7 +228,7 @@ impl RepoModel {
             self.checkout_now(branch, cx);
             return;
         }
-        let from = self.current_branch().unwrap_or_else(|| "(detached HEAD)".into());
+        let from = self.branch_name();
         let message = format!("Changes left on {from} when switching to {}", branch.name);
         self.run(
             move |r| {
@@ -244,8 +240,7 @@ impl RepoModel {
                 Ok(())
             },
             move |this, _, cx| {
-                this.commits.clear();
-                this.selected_commit = None;
+                this.reset_history_selection();
                 this.last_commit = None;
                 this.notice = Some(format!("Stashed your changes on {from}"));
                 this.reload_stashes(cx);

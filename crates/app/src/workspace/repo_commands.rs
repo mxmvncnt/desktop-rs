@@ -27,7 +27,7 @@ impl Workspace {
             return;
         }
         if summary.trim().is_empty() {
-            match crate::features::changes::default_summary(repo.read(cx), false) {
+            match repo.read(cx).default_summary(false) {
                 Some(d) => summary = d,
                 None => return,
             }

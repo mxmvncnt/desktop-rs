@@ -96,12 +96,6 @@ impl RepoModel {
         });
     }
 
-    /// The history list is stale after the branch moved.
-    fn reset_history_selection(&mut self) {
-        self.commits.clear();
-        self.selected_commit = None;
-    }
-
     pub fn start_merge(&mut self, mode: MergeMode, branch: String, summary: String, cx: &mut Context<Self>) {
         let (done, up_to_date) = mode.notices(&self.branch_name(), &branch);
         self.run_op(

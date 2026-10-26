@@ -26,15 +26,14 @@ impl RenderOnce for StashPanel {
         let theme = Theme::of(cx).clone();
         let r = self.repo.read(cx);
         let st = &r.stashes;
-        let branch = r.status.as_ref().and_then(|s| s.branch.clone());
-        let visible = st.visible(branch.as_deref());
+        let visible = st.visible(r.current_branch());
         let (shown, collapsed, all) = (visible.len(), st.collapsed, st.all_branches);
         let body: Option<AnyElement> = if collapsed {
             None
         } else if shown == 0 {
             Some(empty_hint(&theme).into_any_element())
         } else {
-            Some(StashList::new(self.repo.clone(), self.ws, visible, branch, all).into_any_element())
+            Some(StashList::new(self.repo.clone(), self.ws, visible, r.current_branch().map(str::to_owned), all).into_any_element())
         };
         div()
             .flex()
