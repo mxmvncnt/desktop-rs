@@ -166,7 +166,7 @@ impl Repository {
     }
 
     pub(crate) fn head_sha(&self) -> Result<String> {
-        Ok(self.git().args(["rev-parse", "HEAD"]).run()?.trim().to_string())
+        Ok(self.repo()?.head()?.peel_to_commit()?.id().to_string())
     }
 
     /// Discard working-tree changes for `paths`. Untracked files are deleted.
@@ -283,17 +283,15 @@ impl Repository {
     }
 
     pub fn remotes(&self) -> Result<Vec<(String, String)>> {
-        let out = self.git().args(["remote", "-v"]).run()?;
-        let mut v: Vec<(String, String)> = out
-            .lines()
-            .filter(|l| l.ends_with("(fetch)"))
-            .filter_map(|l| {
-                let mut it = l.split_whitespace();
-                Some((it.next()?.to_string(), it.next()?.to_string()))
+        let repo = self.repo()?;
+        let names = repo.remotes()?;
+        names
+            .iter()
+            .map(|name| {
+                let name = name?.unwrap_or_default();
+                Ok((name.to_string(), repo.find_remote(name)?.url().unwrap_or_default().to_string()))
             })
-            .collect();
-        v.dedup();
-        Ok(v)
+            .collect()
     }
 
     fn default_remote(&self) -> Result<Option<String>> {

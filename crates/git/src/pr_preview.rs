@@ -24,16 +24,16 @@ impl Repository {
     /// Branch a PR most likely targets: the remote's default (`origin/HEAD`),
     /// else the first of main / master / develop that exists.
     pub fn default_base_branch(&self) -> Option<String> {
-        if let Ok(out) = self.git().args(["symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD"]).run() {
-            let name = out.trim();
-            if !name.is_empty() {
-                return Some(name.to_string());
-            }
+        let repo = self.repo().ok()?;
+        let origin_head = repo.find_reference("refs/remotes/origin/HEAD").ok();
+        if let Some(target) = origin_head.as_ref().and_then(|r| r.symbolic_target().ok().flatten()) {
+            return target.strip_prefix("refs/remotes/").map(String::from);
         }
         ["origin/main", "origin/master", "main", "master", "origin/develop", "develop"]
             .into_iter()
-            .find(|n| self.git().args(["rev-parse", "--verify", "-q"]).arg(format!("refs/remotes/{n}")).run().is_ok()
-                || self.git().args(["rev-parse", "--verify", "-q"]).arg(format!("refs/heads/{n}")).run().is_ok())
+            .find(|n| {
+                repo.find_reference(&format!("refs/remotes/{n}")).is_ok() || repo.find_reference(&format!("refs/heads/{n}")).is_ok()
+            })
             .map(String::from)
     }
 

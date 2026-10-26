@@ -48,11 +48,8 @@ impl Repository {
     }
 
     fn current_branch_name(&self) -> String {
-        self.git()
-            .args(["rev-parse", "--abbrev-ref", "HEAD"])
-            .run()
-            .map(|s| s.trim().to_string())
-            .unwrap_or_else(|_| "HEAD".into())
+        let head = self.repo().and_then(|r| Ok(r.head()?.shorthand().map(String::from)?));
+        head.unwrap_or_else(|_| "HEAD".into())
     }
 
     /// Regular merge (`git merge --no-edit`). Conflicts leave the merge paused.
@@ -76,15 +73,19 @@ impl Repository {
         if self.outcome_of(res)? == OpOutcome::Conflicts {
             return Ok(OpOutcome::Conflicts);
         }
+        let repo = self.repo()?;
         // Nothing staged (e.g. the branch only reverted its own changes).
-        if self.git().args(["diff", "--cached", "--quiet"]).run().is_ok() {
+        if repo.diff_tree_to_index(Some(&repo.head()?.peel_to_tree()?), None, None)?.deltas().len() == 0 {
             return Ok(OpOutcome::UpToDate);
         }
-        let subjects = self
-            .git()
-            .args(["log", "--reverse", "--format=* %s", &format!("HEAD..{branch}")])
-            .run()
-            .unwrap_or_default();
+        let mut walk = repo.revwalk()?;
+        walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME | git2::Sort::REVERSE)?;
+        walk.push(repo.revparse_single(branch)?.id())?;
+        walk.hide_head()?;
+        let subjects = walk
+            .map(|oid| Ok(format!("* {}", repo.find_commit(oid?)?.summary().ok().flatten().unwrap_or_default())))
+            .collect::<Result<Vec<_>>>()?
+            .join("\n");
         let subject = match summary.map(str::trim) {
             Some(s) if !s.is_empty() => s.to_string(),
             _ => default_squash_summary(branch, &self.current_branch_name()),

@@ -13,6 +13,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::refs::upstream_ref;
 use crate::{message, GitError, OpOutcome, Repository, Result};
 
 /// How `git reset` treats the index and working tree.
@@ -47,41 +48,35 @@ impl Repository {
         if !self.has_head() {
             return Ok(HashSet::new());
         }
-        let has_upstream = self
-            .git()
-            .args(["rev-parse", "--verify", "-q", "@{upstream}"])
-            .run()
-            .is_ok();
-        let out = if has_upstream {
-            self.git().args(["rev-list", "@{upstream}..HEAD"]).run()?
-        } else {
-            if self.remotes()?.is_empty() {
-                return Ok(HashSet::new());
-            }
-            self.git().args(["rev-list", "HEAD", "--not", "--remotes"]).run()?
-        };
-        Ok(out.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect())
+        let repo = self.repo()?;
+        let mut walk = repo.revwalk()?;
+        walk.push_head()?;
+        let upstream = repo
+            .head()?
+            .name()
+            .ok()
+            .and_then(|head| upstream_ref(&repo, head))
+            .filter(|upstream| repo.refname_to_id(upstream).is_ok());
+        match upstream {
+            Some(upstream) => walk.hide_ref(&upstream)?,
+            None if repo.remotes()?.is_empty() => return Ok(HashSet::new()),
+            None => walk.hide_glob("refs/remotes/*")?,
+        }
+        walk.map(|oid| Ok(oid?.to_string())).collect()
     }
 
     /// Tags by the commit they point at (annotated tags are peeled).
     pub fn tags_by_commit(&self) -> Result<HashMap<String, Vec<String>>> {
-        let out = self
-            .git()
-            .args([
-                "for-each-ref",
-                "--format=%(objectname)%00%(*objectname)%00%(refname:short)",
-                "refs/tags",
-            ])
-            .run()?;
+        let repo = self.repo()?;
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
-        for line in out.lines() {
-            let f: Vec<&str> = line.split('\0').collect();
-            if f.len() < 3 {
-                continue;
+        repo.tag_foreach(|oid, name| {
+            let tag = String::from_utf8_lossy(name);
+            if let Ok(commit) = repo.find_object(oid, None).and_then(|o| o.peel_to_commit()) {
+                let tag = tag.strip_prefix("refs/tags/").unwrap_or(&tag).to_string();
+                map.entry(commit.id().to_string()).or_default().push(tag);
             }
-            let sha = if f[1].is_empty() { f[0] } else { f[1] };
-            map.entry(sha.to_string()).or_default().push(f[2].to_string());
-        }
+            true
+        })?;
         Ok(map)
     }
 
@@ -95,12 +90,11 @@ impl Repository {
     /// Fetch URL of the current branch's remote (else `origin`, else the first remote).
     pub fn tracking_remote_url(&self) -> Option<String> {
         let remotes = self.remotes().ok()?;
-        let upstream_remote = self
-            .git()
-            .args(["rev-parse", "--abbrev-ref", "@{upstream}"])
-            .run()
+        let repo = self.repo().ok()?;
+        let upstream_remote = repo
+            .branch_upstream_remote(repo.head().ok()?.name().ok()?)
             .ok()
-            .and_then(|u| u.trim().split_once('/').map(|(r, _)| r.to_string()));
+            .and_then(|name| name.as_str().ok().map(String::from));
         upstream_remote
             .and_then(|n| remotes.iter().find(|(r, _)| *r == n))
             .or_else(|| remotes.iter().find(|(n, _)| n == "origin"))
@@ -146,8 +140,7 @@ impl Repository {
     }
 
     fn parent_count(&self, sha: &str) -> Result<usize> {
-        let out = self.git().args(["rev-list", "--parents", "-n", "1", sha]).run()?;
-        Ok(out.split_whitespace().count().saturating_sub(1))
+        Ok(self.repo()?.revparse_single(sha)?.peel_to_commit()?.parent_count())
     }
 
     /// New commit undoing `sha` (`-m 1` for merge commits). On conflicts the
@@ -200,22 +193,17 @@ impl Repository {
     // ---- squash / reorder -------------------------------------------------
 
     fn first_parent_walk(&self) -> Result<Vec<Node>> {
-        let out = self
-            .git()
-            .args(["rev-list", "--first-parent", "--parents"])
-            .arg(format!("--max-count={WALK_LIMIT}"))
-            .arg("HEAD")
-            .run()?;
-        Ok(out
-            .lines()
-            .filter_map(|l| {
-                let mut it = l.split_whitespace();
-                Some(Node {
-                    sha: it.next()?.to_string(),
-                    parents: it.map(String::from).collect(),
-                })
+        let repo = self.repo()?;
+        let mut walk = repo.revwalk()?;
+        walk.simplify_first_parent()?;
+        walk.push_head()?;
+        walk.take(WALK_LIMIT)
+            .map(|oid| {
+                let oid = oid?;
+                let parents = repo.find_commit(oid)?.parent_ids().map(|p| p.to_string()).collect();
+                Ok(Node { sha: oid.to_string(), parents })
             })
-            .collect())
+            .collect()
     }
 
     /// Whether `shas` form one adjacent run of non-merge commits on the
