@@ -153,7 +153,7 @@ impl Repository {
     /// Apply a stash, keeping it. Conflicts leave the working tree in the
     /// conflicted state and return an error mentioning them.
     pub fn stash_apply(&self, sha: &str) -> Result<()> {
-        self.git().args(["stash", "apply", sha]).run().map(|_| ()).map_err(tag_conflict)
+        self.git().args(["stash", "apply", sha]).exec().map_err(tag_conflict)
     }
 
     /// Apply and drop. On conflicts git keeps the stash (so nothing is lost).
@@ -162,8 +162,7 @@ impl Repository {
         self.git()
             .args(["stash", "pop"])
             .arg(format!("stash@{{{ix}}}"))
-            .run()
-            .map(|_| ())
+            .exec()
             .map_err(tag_conflict)
     }
 
@@ -172,8 +171,7 @@ impl Repository {
         self.git()
             .args(["stash", "drop", "--quiet"])
             .arg(format!("stash@{{{ix}}}"))
-            .run()?;
-        Ok(())
+            .exec()
     }
 
     /// Change a stash's message. Git has no rename: re-`store` the same commit
@@ -193,8 +191,7 @@ impl Repository {
         self.git()
             .args(["stash", "drop", "--quiet"])
             .arg(format!("stash@{{{}}}", old + 1))
-            .run()?;
-        Ok(())
+            .exec()
     }
 
     /// Files in a stash: tracked changes first, then untracked files

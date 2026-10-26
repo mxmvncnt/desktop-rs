@@ -143,6 +143,11 @@ impl Git {
         cmd
     }
 
+    /// Run, discarding stdout.
+    pub fn exec(self) -> Result<(), GitError> {
+        self.run_bytes().map(drop)
+    }
+
     /// Run and return stdout as (lossy) UTF-8.
     pub fn run(self) -> Result<String, GitError> {
         self.run_bytes()

@@ -70,7 +70,7 @@ impl Repository {
             return Ok(OpOutcome::UpToDate);
         }
         let res = self.git().no_editor().args(["merge", "--no-edit", branch]).run();
-        self.outcome_of(res.map(|_| ()))
+        self.outcome_of(res)
     }
 
     /// `git merge --squash` followed by one commit. `summary` is the commit
@@ -82,7 +82,7 @@ impl Repository {
             return Ok(OpOutcome::UpToDate);
         }
         let res = self.git().no_editor().args(["merge", "--squash", branch]).run();
-        if self.outcome_of(res.map(|_| ()))? == OpOutcome::Conflicts {
+        if self.outcome_of(res)? == OpOutcome::Conflicts {
             return Ok(OpOutcome::Conflicts);
         }
         // Nothing staged (e.g. the branch only reverted its own changes).
@@ -109,7 +109,7 @@ impl Repository {
             return Ok(OpOutcome::UpToDate);
         }
         let res = self.git().no_editor().args(["rebase", onto]).run();
-        self.outcome_of(res.map(|_| ()))
+        self.outcome_of(res)
     }
 
     /// Commit during a merge-like operation (merge, squash, cherry-pick,
@@ -130,8 +130,7 @@ impl Repository {
             message.push_str("\n\n");
             message.push_str(description.trim());
         }
-        self.git().no_editor().args(["commit", "-q", "-F", "-"]).stdin(message).run()?;
-        Ok(())
+        self.git().no_editor().args(["commit", "-q", "-F", "-"]).stdin(message).exec()
     }
 
     // ---- conflict resolution --------------------------------------------
@@ -154,26 +153,22 @@ impl Repository {
 
     /// Mark `path` resolved with whatever is in the working tree.
     pub fn mark_resolved(&self, path: &str) -> Result<()> {
-        self.git().args(["add", "-A", "--", path]).run()?;
-        Ok(())
+        self.git().args(["add", "-A", "--", path]).exec()
     }
 
     // ---- branch management ------------------------------------------------
 
     pub fn rename_branch(&self, old: &str, new: &str) -> Result<()> {
-        self.git().args(["branch", "-m", old, new]).run()?;
-        Ok(())
+        self.git().args(["branch", "-m", old, new]).exec()
     }
 
     /// Delete `branch` on `remote` (`git push <remote> --delete <branch>`).
     pub fn delete_remote_branch(&self, remote: &str, branch: &str) -> Result<()> {
-        self.git().args(["push", remote, "--delete", branch]).network().run()?;
-        Ok(())
+        self.git().args(["push", remote, "--delete", branch]).network().exec()
     }
 
     /// Create `name` at `base` (any branch or commit-ish) and switch to it.
     pub fn create_branch_from(&self, name: &str, base: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name, base, "--no-track"]).run()?;
-        Ok(())
+        self.git().args(["checkout", "-q", "-b", name, base, "--no-track"]).exec()
     }
 }

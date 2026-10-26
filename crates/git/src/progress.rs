@@ -181,7 +181,7 @@ impl Repository {
             }
             InProgress::Revert { .. } => self.git().no_editor().args(["revert", "--continue"]).run(),
         };
-        self.outcome_of(res.map(|_| ()))
+        self.outcome_of(res)
     }
 
     /// Abort the paused operation and restore the pre-operation state.
@@ -193,14 +193,13 @@ impl Repository {
             InProgress::CherryPick { .. } => &["cherry-pick", "--abort"],
             InProgress::Revert { .. } => &["revert", "--abort"],
         };
-        self.git().no_editor().args(args.iter().copied()).run()?;
-        Ok(())
+        self.git().no_editor().args(args.iter().copied()).exec()
     }
 
     /// Map a failed git command to `Conflicts` when it merely paused.
-    pub(crate) fn outcome_of(&self, res: Result<()>) -> Result<OpOutcome> {
+    pub(crate) fn outcome_of<T>(&self, res: Result<T>) -> Result<OpOutcome> {
         match res {
-            Ok(()) => Ok(OpOutcome::Done),
+            Ok(_) => Ok(OpOutcome::Done),
             Err(e) => {
                 if self.in_progress().is_some() && self.has_unmerged() {
                     Ok(OpOutcome::Conflicts)

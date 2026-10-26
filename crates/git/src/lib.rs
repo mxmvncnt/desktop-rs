@@ -222,14 +222,12 @@ impl Repository {
 
     /// Create a branch from HEAD and switch to it.
     pub fn create_branch(&self, name: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name]).run()?;
-        Ok(())
+        self.git().args(["checkout", "-q", "-b", name]).exec()
     }
 
     pub fn delete_branch(&self, name: &str, force: bool) -> Result<()> {
         let flag = if force { "-D" } else { "-d" };
-        self.git().args(["branch", flag, name]).run()?;
-        Ok(())
+        self.git().args(["branch", flag, name]).exec()
     }
 
     pub fn fetch(&self) -> Result<()> {
@@ -251,8 +249,7 @@ impl Repository {
     }
 
     pub fn pull(&self) -> Result<()> {
-        self.git().args(["pull", "--ff", "--no-edit"]).network().run()?;
-        Ok(())
+        self.git().args(["pull", "--ff", "--no-edit"]).network().exec()
     }
 
     /// Fetch, then push only if the remote has no commits we lack. Returns
@@ -312,8 +309,7 @@ impl Repository {
 
     /// Undo the last commit, keeping its changes in the working tree.
     pub fn undo_last_commit(&self) -> Result<()> {
-        self.git().args(["reset", "-q", "--soft", "HEAD~1"]).run()?;
-        Ok(())
+        self.git().args(["reset", "-q", "--soft", "HEAD~1"]).exec()
     }
 
     pub fn remotes(&self) -> Result<Vec<(String, String)>> {

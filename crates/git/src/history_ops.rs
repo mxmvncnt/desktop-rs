@@ -128,31 +128,26 @@ impl Repository {
             ResetMode::Soft => "--soft",
             ResetMode::Mixed => "--mixed",
         };
-        self.git().args(["reset", "-q", flag, sha]).run()?;
-        Ok(())
+        self.git().args(["reset", "-q", flag, sha]).exec()
     }
 
     /// Detach HEAD at `sha`.
     pub fn checkout_commit(&self, sha: &str) -> Result<()> {
         self.ensure_idle("check out a commit")?;
-        self.git().args(["checkout", "-q", "--detach", sha]).run()?;
-        Ok(())
+        self.git().args(["checkout", "-q", "--detach", sha]).exec()
     }
 
     /// Create `name` at `sha` and switch to it.
     pub fn create_branch_at(&self, name: &str, sha: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name, sha]).run()?;
-        Ok(())
+        self.git().args(["checkout", "-q", "-b", name, sha]).exec()
     }
 
     pub fn create_tag(&self, name: &str, sha: &str) -> Result<()> {
-        self.git().args(["tag", "-a", "-m", "", name, sha]).run()?;
-        Ok(())
+        self.git().args(["tag", "-a", "-m", "", name, sha]).exec()
     }
 
     pub fn delete_tag(&self, name: &str) -> Result<()> {
-        self.git().args(["tag", "-d", name]).run()?;
-        Ok(())
+        self.git().args(["tag", "-d", name]).exec()
     }
 
     fn parent_count(&self, sha: &str) -> Result<usize> {
@@ -168,7 +163,7 @@ impl Repository {
         if self.parent_count(sha)? > 1 {
             g = g.args(["-m", "1"]);
         }
-        let res = g.arg(sha).run().map(|_| ());
+        let res = g.arg(sha).exec();
         self.outcome_of(res)
     }
 
@@ -180,7 +175,7 @@ impl Repository {
         }
         self.ensure_idle("cherry-pick")?;
         self.git().args(["checkout", "-q", target]).run()?;
-        let res = self.git().arg("cherry-pick").args(shas).run().map(|_| ());
+        let res = self.git().arg("cherry-pick").args(shas).exec();
         self.outcome_of(res)
     }
 
@@ -311,8 +306,7 @@ impl Repository {
             let res = self
                 .git()
                 .args(["-c", "core.editor=true", "rebase", "--autostash", "--onto", new.as_str(), walk[newest].sha.as_str()])
-                .run()
-                .map(|_| ());
+                .exec();
             return self.outcome_of(res);
         }
         Ok(OpOutcome::Done)
@@ -363,7 +357,7 @@ impl Repository {
         };
         let res = g.run();
         let _ = std::fs::remove_file(&path);
-        self.outcome_of(res.map(|_| ()))
+        self.outcome_of(res)
     }
 }
 
