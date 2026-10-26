@@ -21,5 +21,5 @@ use gpui::App;
 /// Install fonts and the theme global. Call once at startup.
 pub fn init(cx: &mut App) {
     assets::load_fonts(cx);
-    cx.set_global(Theme::dark());
+    cx.set_global(Theme::for_family(themes::DEFAULT_THEME, false));
 }

@@ -42,7 +42,7 @@ impl AppearancePage {
             let id = t.id;
             let selected = t.id == self.color_theme;
             let border = if selected { current.accent } else { current.ink(0.14) };
-            let dots = [preview.accent, preview.syntax.keyword, preview.syntax.string, preview.syntax.number, preview.danger];
+            let dots = [preview.accent, preview.syntax.indigo, preview.syntax.emerald, preview.syntax.amber, preview.danger];
             div()
                 .id(format!("color-theme-{id}"))
                 .w(px(122.0))
