@@ -304,8 +304,8 @@ add syntax highlighting with a cache; add a file watcher so focus refresh isn't 
   derives washes/diff colors. The System/Light/Dark mode picks the variant, so every family needs both. Add a theme =
   add two consts + one table entry. Persisted as `color_theme=<id>` in `display`; `Workspace::apply_theme` calls
   `Theme::for_family`. Snapshot view `theme:<id>:<dark|light>[:settings]`.
-- `motion.rs`: the zeron motion catalog (`fade_in` 500ms expo-out with 4px rise,
-  `fade_quick`, `menu_in`, `dialog_in`, plus an exact `CubicBezier`).
+- `motion.rs`: the zeron motion catalog (`fade_in` 500ms ease-out-quint with 4px rise,
+  `fade_quick`, `menu_in`, `dialog_in`).
   Overlay hand-off: overlays call `motion::handoff(id, cx)` (and `Workspace::render` calls
   `motion::begin_frame`); an overlay that first appears while another was drawn on the previous frame
   (menu -> dialog, popover -> popover) skips its entrance and scrim fade, so nothing flashes. New overlays must do the same.

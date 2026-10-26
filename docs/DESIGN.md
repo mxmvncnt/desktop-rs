@@ -24,7 +24,7 @@ screenshots in `.ref/zeron/docs/screenshots/`):
 - Hairline borders at 8% white. Rounded 6px controls, 10–12px panels.
 - One primary action per view: a near-white solid plate with a dark label (`solid`/`on_solid`).
 - Type: Geist (UI) and Geist Mono (diff, sha). Sizes 11–13px, muted captions over medium titles.
-- Motion: entrances use `fade_in` (500ms, expo-out, 4px rise). Popovers use
+- Motion: entrances use `fade_in` (500ms, ease-out-quint, 4px rise). Popovers use
   `menu_in` (140ms, −2px). Content swaps use `fade_quick` (150ms).
   All honor `reduce_motion`.
 - Status colors: emerald add, red delete, amber modified, blue renamed, at 10% washes in diffs.
