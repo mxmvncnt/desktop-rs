@@ -166,10 +166,6 @@ impl RepoModel {
         }));
     }
 
-    fn after_stash_op(&mut self) {
-        self.stashes.viewing = false;
-    }
-
     /// Stash the working changes. `paths` empty = everything.
     pub fn stash_push(&mut self, message: String, paths: Vec<String>, cx: &mut Context<Self>) {
         let n = paths.len();
@@ -201,7 +197,7 @@ impl RepoModel {
             move |r| r.stash_pop(&sha),
             |this, _, cx| {
                 this.notice = Some("Restored stash".into());
-                this.after_stash_op();
+                this.stashes.viewing = false;
                 this.reload_stashes(cx);
             },
             cx,
@@ -213,7 +209,7 @@ impl RepoModel {
             move |r| r.stash_drop(&sha),
             |this, _, cx| {
                 this.notice = Some("Discarded stash".into());
-                this.after_stash_op();
+                this.stashes.viewing = false;
                 this.reload_stashes(cx);
             },
             cx,
