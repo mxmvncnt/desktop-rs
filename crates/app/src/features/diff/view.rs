@@ -4,21 +4,19 @@
 use std::sync::Arc;
 
 use gd_git::Diff;
-use gd_ui::Theme;
-use gpui::{AnyElement, Context, Entity, IntoElement, ParentElement, SharedString, Styled, div, point, px};
+use gd_ui::{Theme, motion};
+use gpui::{
+    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString, Styled,
+    Window, div, point, prelude::*, px,
+};
 
-use super::diff_frame::DiffFrame;
-use super::diff_pane::DiffPane;
-use super::expander::Expander;
-use super::gutter_style::{HANDLE_W, number_cell_w};
+use super::expand::Expander;
+use super::gutter::{HANDLE_W, RowSelect, number_cell_w};
 use super::highlight::DiffHighlight;
-use super::row_select::RowSelect;
-use super::split_list::SplitList;
-use super::whitespace_note::WhitespaceNote;
-use super::state::DiffSelectUi;
-use super::text_flow::{MARKER_W, TextFlow};
-use super::text_select::TextSelect;
-use super::unified_list::UnifiedList;
+use super::list::{MARKER_W, SplitList, TextFlow, UnifiedList};
+use super::options::WhitespaceNote;
+use super::state::{DiffPane, DiffSelectUi};
+use super::text_selection::TextSelect;
 use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
@@ -146,4 +144,67 @@ impl Workspace {
         self.diff_view.set_extent(diff, fixed, 1.0);
         num_w
     }
+}
+
+#[derive(IntoElement)]
+pub struct DiffFrame {
+    pub key: SharedString,
+    pub list: AnyElement,
+    pub truncated: bool,
+    pub flow: TextFlow,
+    pub note: Option<AnyElement>,
+    pub ws: Entity<Workspace>,
+}
+
+impl RenderOnce for DiffFrame {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let theme = Theme::of(cx);
+        let wrap = self.flow == TextFlow::Wrap;
+        let (ws, ws_wheel) = (self.ws.clone(), self.ws);
+        motion::fade_quick(
+            self.key,
+            div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_h_0()
+                .min_w_0()
+                .children(self.note)
+                .child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        // A gutter drag ends wherever the button is released.
+                        .on_mouse_up_all(move |_, _, _, _, cx| {
+                            ws.update(cx, |w, _| {
+                                w.diff_select.drag = None;
+                                w.diff_text_drag_end();
+                            });
+                        })
+                        // Shift+wheel arrives as a horizontal delta on every platform.
+                        .when(!wrap, |d| {
+                            d.on_scroll_wheel(move |e, window, cx| {
+                                let dx = e.delta.pixel_delta(window.line_height()).x;
+                                if dx != px(0.0) {
+                                    ws_wheel.update(cx, |w, cx| w.scroll_diff_x(-dx, window, cx));
+                                }
+                            })
+                        })
+                        .child(self.list),
+                )
+                .when(self.truncated, |d| d.child(truncated_warning(theme))),
+        )
+    }
+}
+
+fn truncated_warning(theme: &Theme) -> impl IntoElement {
+    div()
+        .flex_none()
+        .px(px(16.0))
+        .py(px(6.0))
+        .border_t_1()
+        .border_color(theme.border)
+        .text_size(px(12.0))
+        .text_color(theme.warning)
+        .child("This diff is too large to show completely; it was truncated.")
 }

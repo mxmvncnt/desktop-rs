@@ -1,39 +1,25 @@
 //! Diff viewer: unified and split lists, line-selection gutter, hunk
 //! expansion, syntax highlight, options popover. Git side is in
 //! `gd-git/src/{engine,partial,expand}.rs`; see docs/ARCHITECTURE.md.
+//!
+//! - `view.rs`: `Workspace::render_diff`, the entry point of every pane; `state.rs`: `DiffView`, `DiffPane`;
+//!   `handlers.rs`: `impl Workspace` setters and scrolling; `highlight.rs`: syntax runs.
+//! - `list/` unified and split lists, `gutter/` numbers and line selection, `text_selection/`,
+//!   `expand/` hunk expansion, `options/` display options.
 
-mod diff_frame;
-mod diff_options_button;
-mod diff_options_menu;
-mod diff_pane;
-mod expand_button;
-mod expander;
-mod gutter_style;
+mod expand;
+mod gutter;
 mod handlers;
 mod highlight;
-mod line_selection;
-mod number_cell;
-mod render_diff;
-mod row_select;
-mod rows_list;
+mod list;
+mod options;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
-mod scroll_x;
-mod split_diff;
-mod split_list;
-mod split_row;
 mod state;
-mod text_flow;
-mod text_handlers;
-mod text_select;
 mod text_selection;
-mod unified_list;
-mod unified_row;
-mod whitespace_note;
+mod view;
 
-pub use diff_options_button::DiffOptionsButton;
-pub use diff_options_menu::DiffOptionsMenu;
-pub use diff_pane::DiffPane;
+pub use gutter::LineSelection;
 pub use highlight::{DiffHighlight, HighlightCache, highlight_diff};
-pub use line_selection::LineSelection;
-pub use state::{DiffSelectUi, DiffView};
+pub use options::{DiffOptionsButton, DiffOptionsMenu};
+pub use state::{DiffPane, DiffSelectUi, DiffView};

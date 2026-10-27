@@ -1,13 +1,13 @@
 //! Mouse wiring of the diff text selection. Plain fns on a small props struct
 //! (hot-row exception, see docs/CONVENTIONS.md): the row renderers call
 //! `bind_text` / `bind_drag` for every visible row. The model is in
-//! `text_selection.rs`, the workspace-side handlers in `text_handlers.rs`.
+//! `model.rs`, the workspace-side handlers in `handlers.rs`.
 
 use std::ops::Range;
 
 use gpui::{Div, Entity, Hsla, InteractiveElement, MouseButton, Pixels, Point, Styled, TextLayout};
 
-use super::text_selection::{TextPos, TextSel, TextSide};
+use super::model::{TextPos, TextSel, TextSide};
 use crate::workspace::Workspace;
 
 /// Selection state and mouse wiring handed to every row renderer.

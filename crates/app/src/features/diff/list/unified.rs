@@ -5,13 +5,13 @@ use std::sync::Arc;
 use gd_git::Diff;
 use gpui::{App, IntoElement, ListState, Pixels, RenderOnce, SharedString, UniformListScrollHandle, Window};
 
-use super::expander::Expander;
-use super::highlight::DiffHighlight;
-use super::row_select::RowSelect;
-use super::rows_list::rows_list;
+use super::rows::rows_list;
 use super::text_flow::TextFlow;
-use super::text_select::TextSelect;
-use super::unified_row::UnifiedRows;
+use super::unified_rows::UnifiedRows;
+use crate::features::diff::expand::Expander;
+use crate::features::diff::gutter::RowSelect;
+use crate::features::diff::highlight::DiffHighlight;
+use crate::features::diff::text_selection::TextSelect;
 
 #[derive(IntoElement)]
 pub struct UnifiedList {

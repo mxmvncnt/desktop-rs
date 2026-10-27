@@ -7,8 +7,8 @@ use std::ops::Range;
 use gd_ui::{CheckState, Theme, mixed_mark, theme::DIFF_ROW_HEIGHT};
 use gpui::{AnyElement, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, StatefulInteractiveElement, Styled, div, prelude::*, px};
 
-use super::gutter_style::{HANDLE_W, check_mark, handle_bg};
-use super::state::HoveredHandle;
+use super::style::{HANDLE_W, check_mark, handle_bg};
+use crate::features::diff::state::HoveredHandle;
 use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 

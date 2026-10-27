@@ -17,8 +17,9 @@ use std::ops::Range;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use gd_git::{Diff, DiffLineKind};
+use gd_git::{Diff, DiffLine, DiffLineKind};
 use gd_syntax::{HighlightKind, HighlightRequest, language_for_path};
+use gd_ui::Theme;
 use gd_ui::theme::SyntaxPalette;
 use gpui::{Font, Hsla, TextRun};
 use lru::LruCache;
@@ -109,23 +110,22 @@ pub fn runs_for(
 /// collect it into its own inline paragraph, and then the `StyledText` is never
 /// measured itself and its layout can't hit-test (GPUI-CE panics).
 pub fn line_text(
-    text: &str,
+    line: &DiffLine,
     spans: &[Span],
-    emphasis: &[(usize, usize)],
     selected: Option<(Range<usize>, Hsla)>,
     fg: Hsla,
-    emph_bg: Hsla,
-    font: &Font,
-    palette: &SyntaxPalette,
+    theme: &Theme,
 ) -> (gpui::AnyElement, gpui::TextLayout) {
     use gpui::{IntoElement, ParentElement, Styled};
+    let (text, emphasis) = (line.text.as_str(), line.emphasis.as_slice());
     if text.is_empty() || (spans.is_empty() && emphasis.is_empty() && selected.is_none()) {
         let styled = gpui::StyledText::new(text.to_string());
         let layout = styled.layout().clone();
         return (gpui::div().flex().flex_col().text_color(fg).child(styled).into_any_element(), layout);
     }
-    let mut runs = runs_for(text, spans, fg, font, palette);
+    let mut runs = runs_for(text, spans, fg, &gpui::font(theme.font_mono.clone()), &theme.syntax);
     if !emphasis.is_empty() {
+        let emph_bg = if line.kind == DiffLineKind::Add { theme.diff_add_emph } else { theme.diff_del_emph };
         runs = overlay_background(text, runs, emphasis, emph_bg);
     }
     if let Some((r, bg)) = selected {

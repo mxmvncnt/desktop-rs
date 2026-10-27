@@ -5,7 +5,7 @@ use std::sync::Arc;
 use gd_git::Diff;
 use gpui::{ListAlignment, ListState, Pixels, px};
 
-use super::split_diff::SplitDiff;
+use super::list::SplitDiff;
 use super::text_selection::{TextSel, TextSide};
 
 /// Workspace-side state for the diff viewer (one field on `Workspace`).
@@ -105,4 +105,18 @@ pub struct GutterDrag {
 pub struct DiffSelectUi {
     pub hovered_handle: Option<HoveredHandle>,
     pub drag: Option<GutterDrag>,
+}
+
+/// Which pane (and `RepoModel::detail`) a diff belongs to: decides line
+/// selection and expansion.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DiffPane {
+    /// Working-tree diff: lines can be selected and hunks expanded.
+    Changes,
+    /// Commit diff: hunks can be expanded.
+    Commit,
+    /// Stash diff: view only.
+    Stash,
+    /// Pull-request preview: view only.
+    Pr,
 }
