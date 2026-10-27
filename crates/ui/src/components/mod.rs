@@ -21,7 +21,7 @@ pub use dialog::{Dialog, modal};
 pub use option_row::OptionRow;
 pub use popover::Popover;
 pub use resize_handle::ResizeHandle;
-pub use surface::{badge, divider, icon, overlay_card, pressable, vdivider};
+pub use surface::{badge, divider, empty_state, icon, overlay_card, pressable, vdivider};
 pub use tabs::Tabs;
 pub use toolbar_button::ToolbarButton;
 pub use tooltip::tooltip;

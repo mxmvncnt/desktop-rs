@@ -3,7 +3,7 @@
 //! filter input turns up/down into NavUp/NavDown, so those are captured here
 //! too (the workspace-level list bindings never reach a focused input).
 
-use gd_ui::{Theme, divider};
+use gd_ui::{Theme, divider, empty_state};
 use gpui::{
     AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window,
     div, prelude::*, px,
@@ -61,15 +61,10 @@ impl PickerShell {
         self
     }
 
-    fn body(&self, theme: &Theme) -> gpui::Div {
+    fn body(&self, cx: &App) -> gpui::Div {
         let height = (self.rows.clamp(1, PICKER_MAX_ROWS) as f32) * PICKER_ROW + 8.0;
         div().h(px(height)).py(px(4.0)).when(self.rows == 0, |d| {
-            d.flex()
-                .items_center()
-                .justify_center()
-                .text_size(px(12.0))
-                .text_color(theme.text_faint)
-                .child("No matches")
+            d.child(empty_state("No matches", cx).size_full())
         })
     }
 }
@@ -77,7 +72,7 @@ impl PickerShell {
 impl RenderOnce for PickerShell {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let body = self.body(&theme).when(self.rows > 0, |d| d.child(self.list));
+        let body = self.body(cx).when(self.rows > 0, |d| d.child(self.list));
         let ws = self.ws;
         let on_enter = self.on_enter;
         let enter_ws = ws.clone();

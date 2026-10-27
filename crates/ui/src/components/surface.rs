@@ -61,6 +61,18 @@ pub fn badge(text: impl Into<SharedString>, cx: &App) -> Div {
         .child(text.into())
 }
 
+/// Centered faint placeholder text ("No matches"); callers size it
+/// (`flex_1()`, `h_full()`).
+pub fn empty_state(text: impl Into<SharedString>, cx: &App) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .text_size(px(12.0))
+        .text_color(Theme::of(cx).text_faint)
+        .child(text.into())
+}
+
 /// The floating card used by popovers, menus and dialogs.
 pub fn overlay_card(cx: &App) -> Div {
     let theme = Theme::of(cx);

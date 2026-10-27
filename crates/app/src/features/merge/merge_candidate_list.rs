@@ -1,7 +1,7 @@
 //! Virtualized list of branches the merge dialog can merge from.
 
 use gd_git::{Branch, BranchKind};
-use gd_ui::{Icon, Theme, icon, pressable};
+use gd_ui::{Icon, Theme, empty_state, icon, pressable};
 use gpui::{
     App, Entity, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
     UniformListScrollHandle, Window, div, px, uniform_list,
@@ -30,7 +30,7 @@ impl RenderOnce for MergeCandidateList {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let n = self.branches.len();
         if n == 0 {
-            return empty(cx).into_any_element();
+            return empty_state("No matching branches", cx).h_full().into_any_element();
         }
         let (rows, ws, selected) = (self.branches, self.ws, self.selected);
         uniform_list("merge-branches", n, move |range, _w, cx| {
@@ -42,18 +42,6 @@ impl RenderOnce for MergeCandidateList {
         .size_full()
         .into_any_element()
     }
-}
-
-fn empty(cx: &App) -> impl IntoElement + use<> {
-    let theme = Theme::of(cx);
-    div()
-        .h_full()
-        .flex()
-        .items_center()
-        .justify_center()
-        .text_size(px(12.0))
-        .text_color(theme.text_faint)
-        .child("No matching branches")
 }
 
 fn row(i: usize, b: &Branch, selected: bool, ws: Entity<Workspace>, cx: &App) -> impl IntoElement + use<> {
