@@ -1,12 +1,11 @@
 use gpui::{Entity, FocusHandle, Pixels, Point, SharedString, Subscription, Task, UniformListScrollHandle};
 use gpui_elements::editable_text::EditableTextState;
 
+use super::overlay::Overlay;
 use crate::features::accounts::AccountsUi;
 use crate::features::branches::BranchUi;
 use crate::features::diff::{DiffSelectUi, DiffView};
 use crate::features::history::HistoryUi;
-use crate::components::Menu;
-use crate::features::menus::ConfirmDialog;
 use crate::features::merge::MergeUi;
 use crate::features::settings::{Settings, SettingsPage};
 use crate::features::stashes::StashUi;
@@ -24,15 +23,14 @@ pub struct Workspace {
     pub settings: Settings,
     /// Sidebar width changed by a drag and not yet saved.
     pub(crate) sidebar_width_dirty: bool,
-    /// Settings modal (features/settings/).
-    pub settings_open: bool,
     pub settings_page: SettingsPage,
     /// Git identity + provider accounts (features/accounts).
     pub accounts_ui: AccountsUi,
     pub repo: Option<Entity<RepoModel>>,
-    pub popover: Option<Popover>,
-    /// Bumped on every popover open so its entrance animation replays.
-    pub popover_gen: usize,
+    /// Open menus, dialogs, popovers and the settings modal (`overlay.rs`).
+    pub overlays: Vec<Overlay>,
+    /// Bumped on every overlay open so entrance animations replay.
+    pub overlay_gen: usize,
     /// Popover the backdrop just dismissed, and where that press landed. The
     /// backdrop doesn't occlude the toolbar, so the same press also clicks
     /// the trigger underneath; this lets the trigger ignore that click
@@ -43,17 +41,13 @@ pub struct Workspace {
     /// whether the base list is expanded.
     pub new_branch_base: Option<String>,
     pub new_branch_base_open: bool,
-    /// Open right-click menu / confirm dialog (rendered only while `Some`).
-    pub menu: Option<Menu>,
-    pub menu_gen: usize,
-    pub dialog: Option<ConfirmDialog>,
-    /// History tab: commit menu, dialogs, amend mode (features/history).
+    /// History tab: dialog inputs, amend mode (features/history).
     pub history_ui: HistoryUi,
-    /// Stash dialogs (create / rename / drop / switch branch) and their input.
+    /// Input of the stash dialogs (create / rename).
     pub stash_ui: StashUi,
-    /// Merge dialog, branch/conflict menus and branch dialogs (features/merge).
+    /// Merge dialog inputs and preview loading (features/merge).
     pub merge_ui: MergeUi,
-    /// Branch context menu and rename / delete / create dialogs (features/branches).
+    /// Input of the rename / create-from branch dialogs (features/branches).
     pub branch_ui: BranchUi,
     /// Window corner radius for this frame (0 unless floating under CSD);
     /// layers touching a window corner round their own background with it.

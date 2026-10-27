@@ -27,10 +27,9 @@ pub struct SettingsModal {
 }
 
 impl SettingsModal {
-    /// `None` while the modal is closed.
-    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
+    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Self {
         let s = &ws.settings;
-        ws.settings_open.then(|| Self {
+        Self {
             page: ws.settings_page,
             theme: s.theme,
             color_theme: s.color_theme_id().to_string(),
@@ -40,7 +39,7 @@ impl SettingsModal {
                 AccountsPage::new(&ws.accounts_ui, repo_name, cx.entity())
             }),
             ws: cx.entity(),
-        })
+        }
     }
 
     fn body(self) -> AnyElement {

@@ -1,17 +1,15 @@
 //! The root "template": toolbar, body (sidebar + main pane or welcome) and
 //! the overlay stack.
 
-use std::rc::Rc;
-
 use gd_ui::Theme;
 use gpui::{
     AnyElement, Context, DragMoveEvent, MouseButton, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     div, px,
 };
 
-use super::{actions, state::Workspace};
+use super::{actions, overlay::Overlay, state::Workspace};
 use crate::actions::{WORKSPACE, WORKSPACE_MENU};
-use crate::components::{Menu, MenuView, Run};
+use crate::components::MenuView;
 use crate::features::branches::BranchDialogView;
 use crate::features::changes::{Sidebar, SidebarResize};
 use crate::features::diff::DiffOptionsMenu;
@@ -46,7 +44,10 @@ impl Render for Workspace {
                 this.drag_sidebar_to(e.event.position.x.as_f32(), cx)
             }))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, _| { this.finish_sidebar_drag(); this.commit_msg.end_drag(); }))
-            .key_context(if self.overlay_open() { WORKSPACE_MENU } else { WORKSPACE })
+            .key_context(match self.overlays.last() {
+                None | Some(Overlay::Popover(_)) => WORKSPACE,
+                Some(_) => WORKSPACE_MENU,
+            })
             .track_focus(&self.focus);
         let root = actions::bind(root, cx)
             .size_full()
@@ -89,51 +90,25 @@ impl Workspace {
             .into_any_element()
     }
 
-    /// Banner, popovers, menus and dialogs, in z-order (last paints on top).
+    /// Notice banner, then the open overlays in stack order (last paints on top).
     fn overlays(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
-        let banner = NoticeBanner::open(self, cx);
-        let popover = PopoverLayer::open(self, cx);
+        let mut out: Vec<AnyElement> = NoticeBanner::open(self, cx).into_iter().map(IntoElement::into_any_element).collect();
         let ws = cx.entity();
-        let menu_view = |menu: &Option<Menu>, id: &'static str, generation: usize, on_dismiss: Run| {
-            let menu = menu.clone()?;
-            Some(MenuView { id: (id, generation).into(), menu, ws: ws.clone(), on_dismiss })
-        };
-        let menu = menu_view(&self.menu, "context-menu", self.menu_gen, Rc::new(|ws, _, cx| ws.close_menu(cx)));
-        let diff_options = DiffOptionsMenu::new(self, cx.entity());
-        let dialog = DiscardDialogView::open(self, cx);
-        let settings = SettingsModal::open(self, cx);
-        let hist_menu = menu_view(&self.history_ui.menu, "hist-menu", self.history_ui.menu_gen, Rc::new(|ws, w, cx| {
-            ws.hist_dismiss(w, cx);
-        }));
-        let hist_dialog = HistoryDialogView::open(self, cx);
-        let stash_dialog = StashDialogView::open(self, cx);
-        let branch_menu = menu_view(&self.branch_ui.menu, "branch-menu", self.branch_ui.menu_gen, Rc::new(|ws, _, cx| {
-            ws.close_branch_menu();
-            cx.notify()
-        }));
-        let conflict_menu = menu_view(&self.merge_ui.menu, "merge-menu", self.merge_ui.menu_gen, Rc::new(|ws, _, cx| {
-            ws.merge_ui.menu = None;
-            cx.notify()
-        }));
-        let merge_overlays = div()
-            .absolute()
-            .inset_0()
-            .children(branch_menu)
-            .children(conflict_menu)
-            .children(MergeDialogView::open(self, cx))
-            .children(BranchDialogView::open(self, cx));
-
-        let mut out = Vec::new();
-        out.extend(banner.map(IntoElement::into_any_element));
-        out.extend(popover.map(IntoElement::into_any_element));
-        out.extend(menu.map(IntoElement::into_any_element));
-        out.extend(diff_options.map(IntoElement::into_any_element));
-        out.extend(dialog.map(IntoElement::into_any_element));
-        out.extend(settings.map(IntoElement::into_any_element));
-        out.extend(stash_dialog.map(IntoElement::into_any_element));
-        out.extend(hist_menu.map(IntoElement::into_any_element));
-        out.extend(hist_dialog.map(IntoElement::into_any_element));
-        out.push(merge_overlays.into_any_element());
+        for overlay in self.overlays.clone() {
+            out.extend(match overlay {
+                Overlay::Popover(p) => Some(PopoverLayer::open(self, p, cx).into_any_element()),
+                Overlay::Menu(menu) => {
+                    Some(MenuView { id: ("menu", self.overlay_gen).into(), menu, ws: ws.clone() }.into_any_element())
+                }
+                Overlay::DiffOptions(pos) => Some(DiffOptionsMenu::new(self, pos, ws.clone()).into_any_element()),
+                Overlay::Settings => Some(SettingsModal::open(self, cx).into_any_element()),
+                Overlay::Discard(d) => Some(DiscardDialogView::new(d, ws.clone()).into_any_element()),
+                Overlay::History(d) => Some(HistoryDialogView::new(self, d, cx).into_any_element()),
+                Overlay::Stash(d) => StashDialogView::open(self, d, cx).map(IntoElement::into_any_element),
+                Overlay::Merge(d) => MergeDialogView::open(self, d, cx).map(IntoElement::into_any_element),
+                Overlay::Branch(d) => BranchDialogView::open(self, d, cx).map(IntoElement::into_any_element),
+            });
+        }
         out
     }
 }

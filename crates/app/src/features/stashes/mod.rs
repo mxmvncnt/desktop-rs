@@ -15,6 +15,4 @@ mod state;
 
 pub use stash_dialog::StashDialogView;
 pub use stash_panel::StashPanel;
-#[cfg(feature = "snapshot")]
-pub use state::StashDialog;
-pub use state::{StashState, StashUi};
+pub use state::{StashDialog, StashState, StashUi};

@@ -1,5 +1,4 @@
-//! The diff options popover: closes on backdrop click/Esc (counted in
-//! `overlay_open`).
+//! The diff options popover: closes on backdrop click/Esc.
 
 use gd_ui::Popover;
 use gpui::{App, Entity, IntoElement, ParentElement, Pixels, Point, RenderOnce, Styled, Window, div, px};
@@ -19,14 +18,13 @@ pub struct DiffOptionsMenu {
 }
 
 impl DiffOptionsMenu {
-    /// `None` while the popover is closed.
-    pub fn new(ws: &Workspace, entity: Entity<Workspace>) -> Option<Self> {
-        Some(Self {
-            pos: ws.diff_view.menu?,
-            generation: ws.diff_view.menu_gen,
+    pub fn new(ws: &Workspace, pos: Point<Pixels>, entity: Entity<Workspace>) -> Self {
+        Self {
+            pos,
+            generation: ws.overlay_gen,
             options: DiffDisplayOptions::new(&ws.settings, true, entity.clone()),
             ws: entity,
-        })
+        }
     }
 }
 
@@ -35,7 +33,7 @@ impl RenderOnce for DiffOptionsMenu {
         let ws = self.ws;
         let pos = origin(self.pos, window);
         Popover::new(("diff-options-in", self.generation), pos, MENU_W, div().p(px(6.0)).child(self.options))
-            .on_dismiss(move |_, _, cx| ws.update(cx, |this, cx| this.close_diff_options(cx)))
+            .on_dismiss(move |_, w, cx| ws.update(cx, |this, cx| this.close_overlay(w, cx)))
     }
 }
 

@@ -6,7 +6,7 @@ use super::menu_actions::reset_dialog;
 use super::state::{HistoryAction, HistoryDialog};
 use crate::utils::text::sanitize_branch_name;
 use crate::repo::RepoModel;
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 /// Squash message typed in the dialog (both parts trimmed).
 struct SquashMessage {
@@ -20,13 +20,13 @@ impl Workspace {
         let name = sanitize_branch_name(self.history_ui.name.read(cx).as_str());
         let message = self.squash_message_input(cx);
         // Validate before consuming the dialog.
-        match &self.history_ui.dialog {
-            Some(HistoryDialog::CreateBranch(_) | HistoryDialog::CreateTag(_)) if name.is_empty() => return,
-            Some(HistoryDialog::Squash { .. }) if message.summary.is_empty() => return,
-            None => return,
-            _ => {}
+        match self.overlays.last() {
+            Some(Overlay::History(HistoryDialog::CreateBranch(_) | HistoryDialog::CreateTag(_))) if name.is_empty() => return,
+            Some(Overlay::History(HistoryDialog::Squash { .. })) if message.summary.is_empty() => return,
+            Some(Overlay::History(_)) => {}
+            _ => return,
         }
-        let Some(dialog) = self.history_ui.dialog.take() else { return };
+        let Some(Overlay::History(dialog)) = self.overlays.pop() else { return };
         self.focus(window, cx);
         cx.notify();
         match dialog {
@@ -57,7 +57,7 @@ impl Workspace {
             HistoryAction::MoveUp => repo.update(cx, |r, cx| r.move_commit(commit.sha, true, cx)),
             HistoryAction::MoveDown => repo.update(cx, |r, cx| r.move_commit(commit.sha, false, cx)),
             // Reset still asks for the soft/mixed mode next.
-            HistoryAction::Reset => self.history_ui.dialog = Some(reset_dialog(commit)),
+            HistoryAction::Reset => self.open_overlay(Overlay::History(reset_dialog(commit)), cx),
             _ => {}
         }
     }

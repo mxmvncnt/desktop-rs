@@ -1,11 +1,10 @@
 //! Merge state: the model side ([`MergeState`], a field of `RepoModel`) and the
-//! Workspace side ([`MergeUi`]: merge dialog, conflicted-file menu, inputs).
+//! Workspace side ([`MergeUi`]: inputs and preview loading).
 
 use gd_git::{InProgress, MergePreview};
 use gpui::{AppContext, Context, Entity, Subscription, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
-use crate::components::Menu;
 use crate::repo::LoadSlot;
 use crate::workspace::Workspace;
 
@@ -40,6 +39,7 @@ pub struct MergeState {
 }
 
 /// The "Merge into current branch" dialog.
+#[derive(Clone)]
 pub struct MergeDialog {
     pub mode: MergeMode,
     /// Highlighted row in the filtered candidate list.
@@ -64,13 +64,9 @@ pub enum ConflictAction {
     Reveal,
 }
 
-/// Everything the merge feature adds to `Workspace`. A plain struct (not an
-/// `Entity`): Esc/Enter/arrow routing in `workspace/actions.rs` and `menus/key_routing.rs` reads `menu`/`dialog`.
+/// Everything the merge feature adds to `Workspace` besides its overlays
+/// (the dialog and the conflict menu are `Overlay`s).
 pub struct MergeUi {
-    pub dialog: Option<MergeDialog>,
-    /// Right-click menu of a conflicted file row.
-    pub menu: Option<Menu>,
-    pub menu_gen: usize,
     pub filter: Entity<EditableTextState>,
     /// Commit summary of the squash commit (Squash tab only).
     pub summary: Entity<EditableTextState>,
@@ -86,14 +82,11 @@ impl MergeUi {
         let filter = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
         let summary = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
         let subs = vec![cx.subscribe(&filter, |this: &mut Workspace, _, _: &TextChanged, cx| {
-            if this.merge_ui.dialog.is_some() {
+            if this.merge_dialog().is_some() {
                 this.merge_select(0, cx);
             }
         })];
         Self {
-            dialog: None,
-            menu: None,
-            menu_gen: 0,
             filter,
             summary,
             summary_for: None,

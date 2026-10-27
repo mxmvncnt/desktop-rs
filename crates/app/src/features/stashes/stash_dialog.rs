@@ -20,10 +20,10 @@ pub struct StashDialogView {
 }
 
 impl StashDialogView {
-    /// `None` when no stash dialog is open.
-    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
+    /// `None` without an open repository.
+    pub fn open(ws: &Workspace, dialog: StashDialog, cx: &mut Context<Workspace>) -> Option<Self> {
         Some(Self {
-            dialog: ws.stash_ui.dialog.clone()?,
+            dialog,
             ws: cx.entity(),
             repo: ws.repo.clone()?,
             input: ws.stash_ui.input.clone(),
@@ -42,7 +42,7 @@ impl RenderOnce for StashDialogView {
         let (ws, ws2) = (self.ws.clone(), self.ws);
         dialog
             .on_confirm(move |_, cx| ws.update(cx, |this, cx| this.stash_confirm(cx)))
-            .on_cancel(move |_, cx| ws2.update(cx, |this, cx| this.close_stash_dialog(cx)))
+            .on_cancel(move |w, cx| ws2.update(cx, |this, cx| this.close_overlay(w, cx)))
     }
 }
 

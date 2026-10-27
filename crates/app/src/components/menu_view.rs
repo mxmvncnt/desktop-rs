@@ -10,7 +10,7 @@ use gpui::{App, Context, ElementId, Entity, IntoElement, Pixels, Point, RenderOn
 use super::{MenuRow, RowItem};
 use crate::workspace::Workspace;
 
-/// Something a menu row or an overlay key does to the workspace.
+/// Something a menu row does to the workspace.
 pub type Run = Rc<dyn Fn(&mut Workspace, &mut Window, &mut Context<Workspace>)>;
 
 #[derive(Clone)]
@@ -22,7 +22,8 @@ pub struct Menu {
 }
 
 impl Menu {
-    /// Menu of `rows` at `position`; choosing a row calls `run` with its action.
+    /// Menu of `rows` at `position`; choosing a row closes it (it is the top
+    /// overlay) and calls `run` with the row's action.
     pub fn new<A: Clone + 'static>(
         position: Point<Pixels>,
         rows: Vec<MenuRow<A>>,
@@ -33,7 +34,11 @@ impl Menu {
             MenuRow::Separator => MenuRow::Separator,
             MenuRow::Item(i) => {
                 let (run, action) = (run.clone(), i.action);
-                let action: Run = Rc::new(move |ws, w, cx| run(ws, action.clone(), w, cx));
+                let action: Run = Rc::new(move |ws, w, cx| {
+                    ws.overlays.pop();
+                    cx.notify();
+                    run(ws, action.clone(), w, cx)
+                });
                 MenuRow::Item(RowItem { action, label: i.label, icon: i.icon, danger: i.danger, disabled: i.disabled })
             }
         };
@@ -65,15 +70,14 @@ pub struct MenuView {
     pub id: ElementId,
     pub menu: Menu,
     pub ws: Entity<Workspace>,
-    pub on_dismiss: Run,
 }
 
 impl RenderOnce for MenuView {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let (ws, dismiss) = (self.ws.clone(), self.on_dismiss);
+        let ws = self.ws.clone();
         ContextMenu::new(self.id, self.menu.position)
             .selected(self.menu.selected)
-            .on_dismiss(move |w, cx| ws.update(cx, |this, cx| dismiss(this, w, cx)))
+            .on_dismiss(move |w, cx| ws.update(cx, |this, cx| this.close_overlay(w, cx)))
             .entries(self.menu.rows.into_iter().map(|row| menu_entry(row, &self.ws)))
     }
 }

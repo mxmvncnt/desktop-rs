@@ -41,52 +41,25 @@ fn bind_commands(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<D
 }
 
 fn bind_menu_keys(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    root.on_action(cx.listener(|this, _: &MenuNext, _, cx| this.menu_step(1, cx)))
-        .on_action(cx.listener(|this, _: &MenuPrevious, _, cx| this.menu_step(-1, cx)))
-        .on_action(cx.listener(|this, _: &MenuConfirm, w, cx| {
-            if !this.hist_confirm_key(w, cx) {
-                this.menu_confirm(w, cx)
-            }
-        }))
+    root.on_action(cx.listener(|this, _: &MenuNext, _, cx| this.overlay_step(1, cx)))
+        .on_action(cx.listener(|this, _: &MenuPrevious, _, cx| this.overlay_step(-1, cx)))
+        .on_action(cx.listener(|this, _: &MenuConfirm, w, cx| this.overlay_confirm(w, cx)))
         .on_action(cx.listener(|this, _: &SelectNext, w, cx| this.select_move(Move::By(1), w, cx)))
         .on_action(cx.listener(|this, _: &SelectPrevious, w, cx| this.select_move(Move::By(-1), w, cx)))
         .on_action(cx.listener(|this, _: &SelectFirst, w, cx| this.select_move(Move::First, w, cx)))
         .on_action(cx.listener(|this, _: &SelectLast, w, cx| this.select_move(Move::Last, w, cx)))
         .on_action(cx.listener(|this, _: &SelectPageUp, w, cx| this.select_move(Move::By(-PAGE), w, cx)))
         .on_action(cx.listener(|this, _: &SelectPageDown, w, cx| this.select_move(Move::By(PAGE), w, cx)))
-        .on_action(cx.listener(|this, _: &Dismiss, w, cx| this.dismiss_top_overlay(w, cx)))
+        .on_action(cx.listener(|this, _: &Dismiss, w, cx| this.dismiss(w, cx)))
 }
 
 impl Workspace {
-    /// Any menu / dialog / modal that wants Esc, Enter and arrows.
-    pub(super) fn overlay_open(&self) -> bool {
-        self.history_ui.is_open()
-            || self.menu.is_some()
-            || self.dialog.is_some()
-            || self.settings_open
-            || self.diff_view.menu.is_some()
-            || self.stash_ui.dialog.is_some()
-            || self.merge_ui.menu.is_some()
-            || self.branch_ui.wants_menu_context()
-    }
-
-    /// Esc: close the topmost overlay, in z-order.
-    fn dismiss_top_overlay(&mut self, w: &mut Window, cx: &mut Context<Self>) {
-        if self.settings_open {
-            self.toggle_settings(cx)
-        } else if self.hist_dismiss(w, cx) {
-        } else if self.stash_ui.dialog.is_some() {
-            self.close_stash_dialog(cx)
-        } else if self.close_merge_ui(w, cx) || self.close_branch_ui(w, cx) {
-        } else if self.dialog.is_some() {
-            self.close_dialog(cx)
-        } else if self.diff_view.menu.is_some() {
-            self.close_diff_options(cx)
-        } else if self.menu.is_some() {
-            self.close_menu(cx)
-        } else if self.popover.is_some() {
-            self.close_popover(w, cx)
-        } else if self.close_pr_preview_key(cx) {
+    /// Esc: close the top overlay, else leave the pull request preview.
+    fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.overlays.is_empty() {
+            self.close_pr_preview_key(cx);
+        } else {
+            self.close_overlay(window, cx);
         }
     }
 }

@@ -15,7 +15,7 @@ use gpui_elements::editable_text::{
 
 use super::merge_candidate_list::{MergeCandidateList, ROW_HEIGHT};
 use super::merge_preview::MergePreviewLine;
-use super::state::MergeMode;
+use super::state::{MergeDialog, MergeMode};
 use crate::components::text_field;
 use crate::workspace::Workspace;
 
@@ -37,15 +37,14 @@ pub struct MergeDialogView {
 }
 
 impl MergeDialogView {
-    /// `None` when the merge dialog is closed.
-    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
-        let d = ws.merge_ui.dialog.as_ref()?;
+    /// `None` without an open repository.
+    pub fn open(ws: &Workspace, d: MergeDialog, cx: &mut Context<Workspace>) -> Option<Self> {
         Some(Self {
             mode: d.mode,
             ix: d.ix,
             loading: d.loading,
             ready: ws.merge_ready(),
-            preview: d.preview.clone(),
+            preview: d.preview,
             current: ws.repo.as_ref()?.read(cx).branch_name(),
             candidates: ws.merge_candidates(cx),
             filter: ws.merge_ui.filter.clone(),
@@ -65,11 +64,7 @@ impl RenderOnce for MergeDialogView {
             .confirm_label(confirm_label(self.mode))
             .confirm_disabled(!self.ready)
             .on_confirm(move |w, cx| ws_ok.update(cx, |this, cx| this.merge_confirm(w, cx)))
-            .on_cancel(move |w, cx| {
-                ws_cancel.update(cx, |this, cx| {
-                    this.close_merge_ui(w, cx);
-                })
-            });
+            .on_cancel(move |w, cx| ws_cancel.update(cx, |this, cx| this.close_overlay(w, cx)));
         key_capture(&self.ws).child(dialog)
     }
 }
@@ -156,9 +151,7 @@ fn key_capture(ws: &Entity<Workspace>) -> gpui::Div {
         })
         .capture_action(move |_: &Escape, w, cx| {
             cx.stop_propagation();
-            w4.update(cx, |this, cx| {
-                this.close_merge_ui(w, cx);
-            })
+            w4.update(cx, |this, cx| this.close_overlay(w, cx))
         })
 }
 

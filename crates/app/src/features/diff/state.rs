@@ -1,19 +1,15 @@
-//! State of the diff viewer: the `Workspace::diff_view` field (options popover,
-//! split-row cache, horizontal scroll, wrap list) and the gutter pointer state.
+//! State of the diff viewer: the `Workspace::diff_view` field (split-row cache, horizontal scroll, wrap list) and the gutter pointer state.
 
 use std::sync::Arc;
 
 use gd_git::Diff;
-use gpui::{ListAlignment, ListState, Pixels, Point, px};
+use gpui::{ListAlignment, ListState, Pixels, px};
 
 use super::split_diff::SplitDiff;
 use super::text_selection::{TextSel, TextSide};
 
 /// Workspace-side state for the diff viewer (one field on `Workspace`).
 pub struct DiffView {
-    /// Open options popover position (window coordinates).
-    pub menu: Option<Point<Pixels>>,
-    pub menu_gen: usize,
     /// Paired rows of the diff currently shown in split mode.
     pub(super) split_cache: Option<Arc<SplitDiff>>,
     /// Horizontal scroll of the diff text (both split columns), see `TextFlow`.
@@ -32,8 +28,6 @@ pub struct DiffView {
 impl Default for DiffView {
     fn default() -> Self {
         Self {
-            menu: None,
-            menu_gen: 0,
             split_cache: None,
             hscroll: px(0.0),
             extent: None,

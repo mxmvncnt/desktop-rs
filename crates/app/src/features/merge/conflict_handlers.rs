@@ -16,19 +16,13 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.menu = None;
-        self.close_branch_menu();
-        self.merge_ui.menu = Some(Menu::new(position, conflict_menu_rows(), move |ws, action, _, cx| {
+        let menu = Menu::new(position, conflict_menu_rows(), move |ws, action, _, cx| {
             ws.run_conflict_action(action, change.path.clone(), cx)
-        }));
-        self.merge_ui.menu_gen += 1;
-        self.focus(window, cx);
-        cx.notify();
+        });
+        self.open_menu(menu, window, cx);
     }
 
     fn run_conflict_action(&mut self, action: ConflictAction, path: String, cx: &mut Context<Self>) {
-        self.merge_ui.menu = None;
-        cx.notify();
         let Some(repo) = self.repo.clone() else { return };
         let root = repo.read(cx).repo.root().to_path_buf();
         let resolve = match action {

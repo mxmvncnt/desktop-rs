@@ -11,4 +11,4 @@ mod state;
 pub use branch_dialog::BranchDialogView;
 #[cfg(feature = "snapshot")]
 pub use state::BranchAction;
-pub use state::BranchUi;
+pub use state::{BranchDialog, BranchUi};

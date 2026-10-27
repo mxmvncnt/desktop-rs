@@ -8,7 +8,6 @@ use gd_git::{Commit, ResetMode};
 use gpui::{AppContext, Context, Entity, Subscription};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
-use crate::components::Menu;
 use crate::repo::LoadSlot;
 use crate::workspace::Workspace;
 
@@ -42,12 +41,9 @@ pub enum ClickKind {
     Range,
 }
 
-/// Everything the History feature adds to `Workspace`. A plain struct (not an
-/// `Entity`): Esc/Enter/arrow routing in `workspace/actions.rs` and `menus/key_routing.rs` reads `menu`/`dialog`.
+/// Everything the History feature adds to `Workspace`: the dialog inputs and
+/// amend mode (the menu and dialogs are `Overlay`s).
 pub struct HistoryUi {
-    pub menu: Option<Menu>,
-    pub menu_gen: usize,
-    pub dialog: Option<HistoryDialog>,
     /// Commit box is amending the last commit of this repository.
     pub amend: Option<PathBuf>,
     /// Inputs shared by the dialogs (squash message, branch / tag name).
@@ -67,11 +63,7 @@ impl HistoryUi {
             .into_iter()
             .map(|i| cx.subscribe(i, |_: &mut Workspace, _, _: &TextChanged, cx| cx.notify()))
             .collect();
-        Self { menu: None, menu_gen: 0, dialog: None, amend: None, msg_summary, msg_desc, name, search, _subs: subs }
-    }
-
-    pub fn is_open(&self) -> bool {
-        self.menu.is_some() || self.dialog.is_some()
+        Self { amend: None, msg_summary, msg_desc, name, search, _subs: subs }
     }
 }
 

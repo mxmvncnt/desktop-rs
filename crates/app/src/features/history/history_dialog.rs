@@ -26,16 +26,15 @@ pub struct HistoryDialogView {
 }
 
 impl HistoryDialogView {
-    /// `None` when no history dialog is open.
-    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
+    pub fn new(ws: &Workspace, dialog: HistoryDialog, cx: &mut Context<Workspace>) -> Self {
         let ui = &ws.history_ui;
-        Some(Self {
-            dialog: ui.dialog.clone()?,
+        Self {
+            dialog,
             ws: cx.entity(),
             name: ui.name.clone(),
             msg_summary: ui.msg_summary.clone(),
             msg_desc: ui.msg_desc.clone(),
-        })
+        }
     }
 }
 
@@ -56,11 +55,7 @@ impl RenderOnce for HistoryDialogView {
         dialog
             .width(480.0)
             .on_confirm(move |w, cx| ws.update(cx, |this, cx| this.hist_confirm(w, cx)))
-            .on_cancel(move |w, cx| {
-                ws2.update(cx, |this, cx| {
-                    this.hist_dismiss(w, cx);
-                })
-            })
+            .on_cancel(move |w, cx| ws2.update(cx, |this, cx| this.close_overlay(w, cx)))
     }
 }
 

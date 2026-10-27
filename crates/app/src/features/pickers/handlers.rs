@@ -102,7 +102,7 @@ impl Workspace {
         if !b.is_head {
             repo.update(cx, |r, cx| r.checkout(b, cx));
         }
-        self.close_popover(w, cx);
+        self.close_overlay(w, cx);
     }
 
     /// Click on a branch row.
@@ -110,7 +110,7 @@ impl Workspace {
         if let (false, Some(repo)) = (b.is_head, &self.repo) {
             repo.update(cx, |r, cx| r.checkout(b, cx));
         }
-        self.close_popover(w, cx);
+        self.close_overlay(w, cx);
     }
 
     /// "New branch" footer button: the filter text prefills the name.
@@ -131,7 +131,7 @@ impl Workspace {
                 None => repo.update(cx, |r, cx| r.create_branch(name, cx)),
             }
         }
-        self.close_popover(w, cx);
+        self.close_overlay(w, cx);
     }
 
     pub(super) fn submit_clone(&mut self, cx: &mut Context<Self>) {

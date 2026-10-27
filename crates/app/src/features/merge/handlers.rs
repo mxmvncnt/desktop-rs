@@ -6,9 +6,23 @@ use gpui::{Context, Focusable, ScrollStrategy, Window};
 
 use super::state::{MergeDialog, MergeMode};
 use crate::repo::spawn_load;
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
+    pub(super) fn merge_dialog(&self) -> Option<&MergeDialog> {
+        match self.overlays.last() {
+            Some(Overlay::Merge(d)) => Some(d),
+            _ => None,
+        }
+    }
+
+    fn merge_dialog_mut(&mut self) -> Option<&mut MergeDialog> {
+        match self.overlays.last_mut() {
+            Some(Overlay::Merge(d)) => Some(d),
+            _ => None,
+        }
+    }
+
     /// A merge-like operation is paused (merge is not allowed then).
     pub(crate) fn paused(&self, cx: &gpui::App) -> bool {
         self.repo.as_ref().is_some_and(|r| r.read(cx).merge.in_progress.is_some())
@@ -32,14 +46,9 @@ impl Workspace {
         if self.repo.is_none() || self.paused(cx) {
             return;
         }
-        self.popover = None;
-        self.menu = None;
-        self.dialog = None;
-        self.merge_ui.menu = None;
-        self.close_branch_overlays();
         self.merge_ui.filter.update(cx, |s, cx| s.emplace("", cx));
         self.merge_ui.summary_for = None;
-        self.merge_ui.dialog = Some(MergeDialog::new(mode));
+        self.open_overlay(Overlay::Merge(MergeDialog::new(mode)), cx);
         let ix = preselect
             .and_then(|name| self.merge_candidates(cx).iter().position(|b| b.name == name))
             .unwrap_or(0);
@@ -55,7 +64,7 @@ impl Workspace {
         let ix = ix.min(cands.len().saturating_sub(1));
         let branch = cands.get(ix).map(|b| b.name.clone());
         self.reset_squash_summary(branch.as_deref(), cx);
-        let Some(d) = &mut self.merge_ui.dialog else { return };
+        let Some(d) = self.merge_dialog_mut() else { return };
         d.ix = ix;
         d.preview = None;
         d.loading = branch.is_some();
@@ -86,7 +95,7 @@ impl Workspace {
     }
 
     fn preview_loaded(&mut self, res: gd_git::Result<MergePreview>, cx: &mut Context<Self>) {
-        let Some(d) = &mut self.merge_ui.dialog else { return };
+        let Some(d) = self.merge_dialog_mut() else { return };
         d.loading = false;
         match res {
             Ok(p) => d.preview = Some(p),
@@ -104,7 +113,7 @@ impl Workspace {
 
     pub(super) fn merge_step(&mut self, delta: isize, cx: &mut Context<Self>) {
         let n = self.merge_candidates(cx).len();
-        let Some(d) = &self.merge_ui.dialog else { return };
+        let Some(d) = self.merge_dialog() else { return };
         if n == 0 {
             return;
         }
@@ -114,7 +123,7 @@ impl Workspace {
     }
 
     pub(super) fn merge_set_mode(&mut self, mode: MergeMode, cx: &mut Context<Self>) {
-        if let Some(d) = &mut self.merge_ui.dialog {
+        if let Some(d) = self.merge_dialog_mut() {
             d.mode = mode;
             cx.notify();
         }
@@ -122,33 +131,18 @@ impl Workspace {
 
     /// Whether the dialog's primary action can run (branch has commits to bring in).
     pub(super) fn merge_ready(&self) -> bool {
-        self.merge_ui.dialog.as_ref().and_then(|d| d.preview.as_ref()).is_some_and(|p| p.ahead > 0)
+        self.merge_dialog().and_then(|d| d.preview.as_ref()).is_some_and(|p| p.ahead > 0)
     }
 
     pub fn merge_confirm(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.merge_ready() {
             return;
         }
-        let Some(d) = self.merge_ui.dialog.take() else { return };
+        let Some(Overlay::Merge(d)) = self.overlays.pop_if(|o| matches!(o, Overlay::Merge(_))) else { return };
         let (Some(p), Some(repo)) = (d.preview, self.repo.clone()) else { return };
         self.focus(window, cx);
         let summary = self.merge_ui.summary.read(cx).as_str().to_string();
         repo.update(cx, |r, cx| r.start_merge(d.mode, p.branch, summary, cx));
         cx.notify();
-    }
-
-    /// Close the conflict menu, else the merge dialog. Returns whether one was open.
-    pub fn close_merge_ui(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        let open = self.merge_ui.dialog.is_some() || self.merge_ui.menu.is_some();
-        // Close one layer at a time: menu first.
-        if self.merge_ui.menu.take().is_none() {
-            self.merge_ui.dialog = None;
-            self.merge_ui.preview_load.cancel();
-            self.focus(window, cx);
-        }
-        if open {
-            cx.notify();
-        }
-        open
     }
 }

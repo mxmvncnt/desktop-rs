@@ -25,7 +25,7 @@ use std::time::Duration;
 use gpui::{AppContext as _, HeadlessAppContext, px, size};
 
 use crate::repo::Tab;
-use crate::workspace::{Popover, Workspace};
+use crate::workspace::{Overlay, Popover, Workspace};
 
 pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
     let platform = gpui_platform::current_platform(true);
@@ -86,8 +86,11 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                         } else {
                             crate::features::settings::ThemeMode::Dark
                         };
-                        ws.settings_open = parts.next() == Some("settings");
-                        if let (false, Some(r)) = (ws.settings_open, &ws.repo) {
+                        let settings = parts.next() == Some("settings");
+                        if settings {
+                            ws.overlays.push(Overlay::Settings);
+                        }
+                        if let (false, Some(r)) = (settings, &ws.repo) {
                             r.update(cx, |r, cx| r.select_change(1, cx)); // second file: Rust, for syntax colors
                         }
                         ws.apply_theme(window, cx);
@@ -148,7 +151,9 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                             crate::features::settings::ThemeMode::Dark
                         };
                         ws.apply_theme(window, cx);
-                        ws.settings_open = view.starts_with("settings");
+                        if view.starts_with("settings") {
+                            ws.overlays.push(Overlay::Settings);
+                        }
                         if view == "settings-diff" {
                             ws.settings_page = crate::features::settings::SettingsPage::Diff;
                         }
@@ -171,8 +176,7 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                     "header-menu" => ws.open_header_menu(gpui::point(px(60.0), px(100.0)), window, cx),
                     "discard-dialog" => {
                         if let Some(c) = ws.repo.as_ref().and_then(|r| r.read(cx).changes().get(1).cloned()) {
-                            ws.dialog = Some(crate::features::menus::ConfirmDialog::DiscardFile(c));
-                            cx.notify();
+                            ws.open_overlay(Overlay::Discard(crate::features::menus::ConfirmDialog::DiscardFile(c)), cx);
                         }
                     }
                     "sidebar-wide" => {
@@ -242,8 +246,7 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                     }
                     "stash-drop-dialog" => {
                         if let Some(s) = ws.repo.as_ref().and_then(|r| r.read(cx).stashes.list.first().cloned()) {
-                            ws.stash_ui.dialog = Some(crate::features::stashes::StashDialog::Drop(s));
-                            cx.notify();
+                            ws.open_overlay(Overlay::Stash(crate::features::stashes::StashDialog::Drop(s)), cx);
                         }
                     }
                     "switch-branch-dialog" => {
@@ -650,7 +653,7 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut gpui::Window, cx
     if view.ends_with("-norepo") {
         ws.repo = None;
     }
-    ws.settings_open = true;
+    ws.overlays.push(Overlay::Settings);
     ws.settings_page = SettingsPage::Accounts;
     let acct = |id: &str, provider, name: &str, host: &str, user: &str, token: &str| Account {
         id: id.into(),

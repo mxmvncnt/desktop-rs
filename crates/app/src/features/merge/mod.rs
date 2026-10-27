@@ -16,4 +16,4 @@ mod state;
 pub use conflict_hint::ConflictHint;
 pub use in_progress_banner::InProgressBanner;
 pub use merge_dialog::MergeDialogView;
-pub use state::{MergeMode, MergeState, MergeUi};
+pub use state::{MergeDialog, MergeMode, MergeState, MergeUi};

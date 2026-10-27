@@ -31,7 +31,7 @@ impl Toolbar {
             repo_name: repo.map(|r| r.repo.name().into()).unwrap_or_else(|| "Select a repository".into()),
             branch: repo.map(|r| r.branch_name().into()).unwrap_or_else(|| "—".into()),
             remote: RemoteButton::for_repo(repo),
-            popover: ws.popover,
+            popover: ws.popover(),
         }
     }
 }

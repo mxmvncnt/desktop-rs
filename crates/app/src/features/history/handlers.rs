@@ -1,5 +1,5 @@
-//! Workspace-side handlers of the commit menu: open, keyboard navigation,
-//! Enter and Esc. Components call these through their `Entity<Workspace>` prop.
+//! Workspace-side handlers of the history tab: open the commit menu, dialog
+//! tabs and choices. Components call these through their `Entity<Workspace>` prop.
 
 use gd_git::Commit;
 use gpui::{Context, Pixels, Point, Window};
@@ -8,7 +8,7 @@ use super::commit_menu_rows::commit_menu_rows;
 use super::state::{ClickKind, HistoryDialog, MenuCtx};
 use crate::components::Menu;
 use crate::repo::RepoModel;
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     pub fn open_commit_menu(&mut self, ix: usize, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
@@ -18,42 +18,9 @@ impl Workspace {
             repo.update(cx, |r, cx| r.click_commit(ix, ClickKind::Plain, cx));
         }
         let Some(ctx) = menu_ctx(repo.read(cx), ix) else { return };
-        self.popover = None;
-        self.menu = None;
-        self.dialog = None;
-        self.history_ui.dialog = None;
         let rows = commit_menu_rows(&ctx);
-        self.history_ui.menu = Some(Menu::new(position, rows, move |ws, action, w, cx| {
-            ws.run_hist_action(action, ctx.clone(), w, cx)
-        }));
-        self.history_ui.menu_gen += 1;
-        self.focus(window, cx);
-        cx.notify();
-    }
-
-    /// Enter: run the highlighted item / confirm the open dialog. `true` if handled.
-    pub fn hist_confirm_key(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        if self.history_ui.dialog.is_some() {
-            self.hist_confirm(window, cx);
-            return true;
-        }
-        let Some(menu) = &self.history_ui.menu else { return false };
-        if let Some(run) = menu.confirm() {
-            run(self, window, cx);
-        }
-        true
-    }
-
-    /// Esc: close the dialog or menu. `true` if something was open.
-    pub fn hist_dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        let had = self.history_ui.is_open();
-        if had {
-            self.history_ui.dialog = None;
-            self.history_ui.menu = None;
-            self.focus(window, cx);
-            cx.notify();
-        }
-        had
+        let menu = Menu::new(position, rows, move |ws, action, w, cx| ws.run_hist_action(action, ctx.clone(), w, cx));
+        self.open_menu(menu, window, cx);
     }
 }
 
@@ -88,7 +55,7 @@ fn linear_through(commits: &[Commit], last: usize) -> bool {
 impl Workspace {
     /// Reset dialog: the Keep-staged / Keep-unstaged tabs.
     pub(super) fn set_reset_mode(&mut self, new_mode: gd_git::ResetMode, cx: &mut Context<Self>) {
-        if let Some(HistoryDialog::Reset { mode, .. }) = &mut self.history_ui.dialog {
+        if let Some(Overlay::History(HistoryDialog::Reset { mode, .. })) = self.overlays.last_mut() {
             *mode = new_mode;
         }
         cx.notify();
@@ -96,7 +63,7 @@ impl Workspace {
 
     /// Cherry-pick dialog: choose the target branch row.
     pub(super) fn set_cherry_pick_branch(&mut self, ix: usize, cx: &mut Context<Self>) {
-        if let Some(HistoryDialog::CherryPick { target, .. }) = &mut self.history_ui.dialog {
+        if let Some(Overlay::History(HistoryDialog::CherryPick { target, .. })) = self.overlays.last_mut() {
             target.selected = ix;
         }
         cx.notify();

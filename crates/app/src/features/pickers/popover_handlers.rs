@@ -2,7 +2,7 @@
 
 use gpui::{ClickEvent, Context, Focusable, ScrollStrategy, Window};
 
-use crate::workspace::{Popover, Workspace};
+use crate::workspace::{Overlay, Popover, Workspace};
 
 impl Workspace {
     /// Toolbar trigger click: toggles `p`, unless this press is the one that
@@ -25,15 +25,14 @@ impl Workspace {
     }
 
     pub fn toggle_popover(&mut self, p: Popover, window: &mut Window, cx: &mut Context<Self>) {
-        if self.popover == Some(p) {
-            self.close_popover(window, cx);
+        if self.popover() == Some(p) {
+            self.close_overlay(window, cx);
             return;
         }
         if matches!(p, Popover::Branches | Popover::NewBranch) && self.repo.is_none() {
             return;
         }
-        self.popover = Some(p);
-        self.popover_gen += 1;
+        self.open_overlay(Overlay::Popover(p), cx);
         self.new_branch_base = None;
         self.new_branch_base_open = false;
         self.reset_popover_selection(cx);
@@ -55,7 +54,7 @@ impl Workspace {
     /// Runs on open and on every input change, including the clear on open.
     pub(crate) fn reset_popover_selection(&mut self, cx: &mut Context<Self>) {
         let unfiltered = self.filter.read(cx).as_str().trim().is_empty();
-        self.popover_selected = match self.popover {
+        self.popover_selected = match self.popover() {
             Some(Popover::Repositories) if unfiltered => self.settings.selected.unwrap_or(0),
             Some(Popover::Branches) if unfiltered => self.head_branch_row(cx),
             _ => 0,
@@ -72,12 +71,6 @@ impl Workspace {
             .iter()
             .position(|&i| r.branches.get(i).is_some_and(|b| b.is_head))
             .unwrap_or(0)
-    }
-
-    pub fn close_popover(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.popover = None;
-        self.focus(window, cx);
-        cx.notify();
     }
 
     /// Up/down inside an open popover.

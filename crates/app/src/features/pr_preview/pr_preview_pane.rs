@@ -41,7 +41,7 @@ fn empty(theme: &Theme, text: &'static str) -> AnyElement {
 impl Workspace {
     /// Menu / shortcut entry point; needs an open repository.
     pub fn open_pr_preview(&mut self, cx: &mut Context<Self>) {
-        self.popover = None;
+        self.overlays.clear();
         if let Some(repo) = self.repo.clone() {
             repo.update(cx, |r, cx| r.open_pr_preview(cx));
         }

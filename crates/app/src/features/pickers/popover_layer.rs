@@ -14,9 +14,7 @@ pub struct PopoverLayer {
 }
 
 impl PopoverLayer {
-    /// `None` when no popover is open.
-    pub fn open(ws: &mut Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
-        let popover = ws.popover?;
+    pub fn open(ws: &mut Workspace, popover: Popover, cx: &mut Context<Workspace>) -> Self {
         let content = match popover {
             Popover::Repositories => ws.repo_picker(cx).into_any_element(),
             Popover::Branches => match ws.branch_picker(cx) {
@@ -26,7 +24,7 @@ impl PopoverLayer {
             Popover::NewBranch => ws.new_branch_form(cx).into_any_element(),
             Popover::Clone => ws.clone_form(cx).into_any_element(),
         };
-        Some(Self { ws: cx.entity(), popover, generation: ws.popover_gen, content })
+        Self { ws: cx.entity(), popover, generation: ws.overlay_gen, content }
     }
 }
 
@@ -41,8 +39,8 @@ impl RenderOnce for PopoverLayer {
             .scrim(0.18)
             .on_dismiss(move |ev, window, cx| {
                 ws.update(cx, |this, cx| {
-                    this.popover_dismissed = this.popover.map(|p| (p, ev.position));
-                    this.close_popover(window, cx)
+                    this.popover_dismissed = this.popover().map(|p| (p, ev.position));
+                    this.close_overlay(window, cx)
                 })
             })
     }

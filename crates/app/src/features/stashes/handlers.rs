@@ -9,12 +9,10 @@ use super::stash_menu::stash_menu_rows;
 use super::state::{StashAction, StashDialog};
 use crate::components::Menu;
 use crate::repo::RepoModel;
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     fn run_stash_action(&mut self, action: StashAction, s: Stash, window: &mut Window, cx: &mut Context<Self>) {
-        self.menu = None;
-        cx.notify();
         match action {
             StashAction::Apply => self.with_repo(cx, move |r, cx| r.stash_apply(s.sha, cx)),
             StashAction::Pop => self.with_repo(cx, move |r, cx| r.stash_pop(s.sha, cx)),
@@ -54,28 +52,20 @@ impl Workspace {
 
     /// Called when a checkout was requested with a dirty working tree.
     pub fn open_switch_dialog(&mut self, branch: Branch, cx: &mut Context<Self>) {
-        self.menu = None;
-        self.popover = None;
-        self.dialog = None;
         // Desktop's default: leave the changes behind (stash).
-        self.stash_ui.dialog = Some(StashDialog::Switch { branch, stash: true });
-        cx.notify();
+        self.open_overlay(Overlay::Stash(StashDialog::Switch { branch, stash: true }), cx);
     }
 
     /// Swap the open dialog's content (option rows toggling a choice).
     pub(super) fn update_stash_dialog(&mut self, d: StashDialog, cx: &mut Context<Self>) {
-        self.stash_ui.dialog = Some(d);
-        cx.notify();
-    }
-
-    pub fn close_stash_dialog(&mut self, cx: &mut Context<Self>) {
-        if self.stash_ui.dialog.take().is_some() {
+        if let Some(Overlay::Stash(open)) = self.overlays.last_mut() {
+            *open = d;
             cx.notify();
         }
     }
 
     pub fn stash_confirm(&mut self, cx: &mut Context<Self>) {
-        let Some(d) = self.stash_ui.dialog.take() else { return };
+        let Some(Overlay::Stash(d)) = self.overlays.pop_if(|o| matches!(o, Overlay::Stash(_))) else { return };
         cx.notify();
         let Some(repo) = self.repo.clone() else { return };
         let text = self.stash_ui.input.read(cx).as_str().trim().to_string();
@@ -94,10 +84,7 @@ impl Workspace {
 
     pub(super) fn open_stash_dialog(&mut self, d: StashDialog, window: &mut Window, cx: &mut Context<Self>) {
         let wants_input = matches!(d, StashDialog::Create { .. } | StashDialog::Rename(_));
-        self.menu = None;
-        self.popover = None;
-        self.dialog = None;
-        self.stash_ui.dialog = Some(d);
+        self.open_overlay(Overlay::Stash(d), cx);
         if wants_input {
             window.focus(&self.stash_ui.input.focus_handle(cx), cx);
         } else {

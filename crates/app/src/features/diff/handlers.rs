@@ -7,26 +7,15 @@ use gd_git::{Diff, DiffOptions};
 use gpui::{Context, Pixels, Point, Window, point, px};
 
 use super::split_diff::SplitDiff;
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     pub fn open_diff_options(&mut self, pos: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
-        if self.diff_view.menu.take().is_some() {
-            cx.notify();
-            return;
+        if matches!(self.overlays.last(), Some(Overlay::DiffOptions(_))) {
+            return self.close_overlay(window, cx);
         }
-        self.popover = None;
-        self.menu = None;
-        self.diff_view.menu = Some(pos);
-        self.diff_view.menu_gen += 1;
+        self.open_overlay(Overlay::DiffOptions(pos), cx);
         self.focus(window, cx);
-        cx.notify();
-    }
-
-    pub fn close_diff_options(&mut self, cx: &mut Context<Self>) {
-        if self.diff_view.menu.take().is_some() {
-            cx.notify();
-        }
     }
 
     pub fn set_diff_split(&mut self, split: bool, cx: &mut Context<Self>) {

@@ -1,5 +1,6 @@
 use gd_git::FileChange;
 
+#[derive(Clone)]
 pub enum ConfirmDialog {
     DiscardFile(FileChange),
     DiscardAll(Vec<FileChange>),

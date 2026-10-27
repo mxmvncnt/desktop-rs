@@ -25,13 +25,13 @@ pub struct BranchDialogView {
 }
 
 impl BranchDialogView {
-    /// `None` when no branch dialog is open.
-    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
+    /// `None` without an open repository.
+    pub fn open(ws: &Workspace, dialog: BranchDialog, cx: &mut Context<Workspace>) -> Option<Self> {
         let current = ws.repo.as_ref()?.read(cx).branch_name();
         Some(Self {
             valid: ws.branch_dialog_valid(cx),
             typed: ws.typed_branch_name(cx),
-            dialog: ws.branch_ui.dialog.clone()?,
+            dialog,
             current,
             input: ws.branch_ui.input.clone(),
             ws: cx.entity(),
@@ -50,11 +50,7 @@ impl RenderOnce for BranchDialogView {
         let dialog = dialog
             .confirm_disabled(!self.valid)
             .on_confirm(move |w, cx| ws_ok.update(cx, |this, cx| this.branch_dialog_confirm(w, cx)))
-            .on_cancel(move |w, cx| {
-                ws_cancel.update(cx, |this, cx| {
-                    this.close_branch_ui(w, cx);
-                })
-            });
+            .on_cancel(move |w, cx| ws_cancel.update(cx, |this, cx| this.close_overlay(w, cx)));
         key_capture(&self.ws).child(dialog)
     }
 }
@@ -135,8 +131,6 @@ fn key_capture(ws: &Entity<Workspace>) -> gpui::Div {
         })
         .capture_action(move |_: &Escape, w, cx| {
             cx.stop_propagation();
-            w2.update(cx, |this, cx| {
-                this.close_branch_ui(w, cx);
-            })
+            w2.update(cx, |this, cx| this.close_overlay(w, cx))
         })
 }

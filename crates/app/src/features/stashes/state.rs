@@ -60,19 +60,14 @@ pub enum StashDialog {
     Switch { branch: Branch, stash: bool },
 }
 
-/// The one Workspace field for stash UI. It stays a plain struct (not an
-/// `Entity`) because Esc/Enter routing in `workspace/actions.rs` and `menus/key_routing.rs` consults
-/// `dialog` directly.
+/// The Workspace field for stash UI: the input of the create / rename dialogs
+/// (the dialogs themselves are `Overlay::Stash`).
 pub struct StashUi {
-    pub dialog: Option<StashDialog>,
     pub input: Entity<EditableTextState>,
 }
 
 impl StashUi {
     pub fn new(cx: &mut App) -> Self {
-        Self {
-            dialog: None,
-            input: cx.new(|cx| EditableTextState::new(StringStorage::default(), cx)),
-        }
+        Self { input: cx.new(|cx| EditableTextState::new(StringStorage::default(), cx)) }
     }
 }

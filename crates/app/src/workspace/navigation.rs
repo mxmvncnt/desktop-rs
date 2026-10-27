@@ -5,6 +5,7 @@
 
 use gpui::{Context, Entity, InteractiveElement, ScrollStrategy, Window};
 
+use super::overlay::Overlay;
 use super::state::Workspace;
 use crate::features::diff::DiffPane;
 use crate::features::history::matching_commits;
@@ -48,14 +49,15 @@ impl Workspace {
         if window.focused(cx).is_some_and(|h| h != self.focus) {
             return;
         }
-        if self.popover.is_some() {
-            if let Move::By(d) = mv {
-                self.step_popover_selection(d.signum(), cx);
+        match self.overlays.last() {
+            Some(Overlay::Popover(_)) => {
+                if let Move::By(d) = mv {
+                    self.step_popover_selection(d.signum(), cx);
+                }
+                return;
             }
-            return;
-        }
-        if self.overlay_open() {
-            return;
+            Some(_) => return,
+            None => {}
         }
         let Some(repo) = self.repo.clone() else { return };
         let list = self.effective_nav_list(repo.read(cx));

@@ -7,23 +7,13 @@ use gpui::{Context, Pixels, Point, Window};
 use super::menu_rows::{file_rows, header_rows};
 use super::state::ConfirmDialog;
 use crate::components::Menu;
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     pub fn open_menu(&mut self, menu: Menu, window: &mut Window, cx: &mut Context<Self>) {
-        self.popover = None;
-        self.dialog = None;
-        self.menu = Some(menu);
-        self.menu_gen += 1;
+        self.open_overlay(Overlay::Menu(menu), cx);
         // Focus the root so up/down/Enter/Esc reach us.
         self.focus(window, cx);
-        cx.notify();
-    }
-
-    pub fn close_menu(&mut self, cx: &mut Context<Self>) {
-        if self.menu.take().is_some() {
-            cx.notify();
-        }
     }
 
     /// Open the menu for list row `ix` (resolved against the live model).
@@ -47,14 +37,8 @@ impl Workspace {
         }
     }
 
-    pub fn close_dialog(&mut self, cx: &mut Context<Self>) {
-        if self.dialog.take().is_some() {
-            cx.notify();
-        }
-    }
-
     pub fn confirm_dialog(&mut self, cx: &mut Context<Self>) {
-        let Some(dialog) = self.dialog.take() else { return };
+        let Some(Overlay::Discard(dialog)) = self.overlays.pop_if(|o| matches!(o, Overlay::Discard(_))) else { return };
         cx.notify();
         let Some(repo) = self.repo.clone() else { return };
         let changes = match dialog {

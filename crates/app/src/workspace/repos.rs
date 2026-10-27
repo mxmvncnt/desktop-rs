@@ -33,7 +33,7 @@ impl Workspace {
         };
         self.settings.selected = Some(ix);
         self.settings.save();
-        self.popover = None;
+        self.overlays.clear();
         match Repository::open(&path) {
             Ok(repo) => self.attach_model(repo, cx),
             Err(e) => {
@@ -56,8 +56,7 @@ impl Workspace {
         }));
         self.repo_event_sub = Some(cx.subscribe(&model, |this, _, ev: &RepoEvent, cx| this.on_repo_event(ev, cx)));
         self.repo = Some(model);
-        self.menu = None;
-        self.dialog = None;
+        self.overlays.clear();
     }
 
     fn on_repo_event(&mut self, ev: &RepoEvent, cx: &mut Context<Self>) {
@@ -91,7 +90,7 @@ impl Workspace {
     }
 
     pub fn prompt_add_repository(&mut self, cx: &mut Context<Self>) {
-        self.popover = None;
+        self.overlays.clear();
         let paths = cx.prompt_for_paths(directory_prompt("Add repository"));
         cx.spawn(async move |this, cx| {
             if let Ok(Ok(Some(paths))) = paths.await
@@ -109,7 +108,7 @@ impl Workspace {
             return;
         }
         let paths = cx.prompt_for_paths(directory_prompt("Clone into…"));
-        self.popover = None;
+        self.overlays.clear();
         cx.spawn(async move |this, cx| {
             let Ok(Ok(Some(paths))) = paths.await else { return };
             let Some(parent) = paths.into_iter().next() else { return };

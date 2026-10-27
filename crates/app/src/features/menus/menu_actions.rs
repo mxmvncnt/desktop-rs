@@ -7,13 +7,11 @@ use super::menu_rows::extension;
 use super::state::{ConfirmDialog, MenuAction};
 use crate::repo::RepoModel;
 use crate::utils::paths::{copy_path, reveal};
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     /// `change` is the right-clicked file (`None` for the header menu).
     pub fn run_menu_action(&mut self, action: MenuAction, change: Option<FileChange>, window: &mut Window, cx: &mut Context<Self>) {
-        self.menu = None;
-        cx.notify();
         let Some(repo) = self.repo.clone() else { return };
         match (action, change) {
             (MenuAction::StashAll, _) => self.open_stash_create(false, window, cx),
@@ -21,7 +19,7 @@ impl Workspace {
             (MenuAction::DiscardAll, _) => {
                 let all = repo.read(cx).changes().to_vec();
                 if !all.is_empty() {
-                    self.dialog = Some(ConfirmDialog::DiscardAll(all));
+                    self.open_overlay(Overlay::Discard(ConfirmDialog::DiscardAll(all)), cx);
                 }
             }
             (action, Some(change)) => self.run_file_action(action, change, &repo, cx),
@@ -32,7 +30,7 @@ impl Workspace {
     fn run_file_action(&mut self, action: MenuAction, c: FileChange, repo: &Entity<RepoModel>, cx: &mut Context<Self>) {
         let root = repo.read(cx).repo.root().to_path_buf();
         match action {
-            MenuAction::Discard => self.dialog = Some(ConfirmDialog::DiscardFile(c)),
+            MenuAction::Discard => self.open_overlay(Overlay::Discard(ConfirmDialog::DiscardFile(c)), cx),
             MenuAction::CopyPath => copy_path(&root, &c.path, cx),
             MenuAction::CopyRelPath => cx.write_to_clipboard(ClipboardItem::new_string(c.path)),
             MenuAction::Reveal => reveal(&root, &c.path, cx),
