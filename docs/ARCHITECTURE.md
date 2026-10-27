@@ -269,9 +269,10 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 ## Syntax highlighting (`crates/syntax`, `app/src/features/diff/highlight.rs`)
 
 - `gd-syntax` is ported from zeron's `zeron-syntax`, trimmed to Rust, JS/JSX/TS/TSX, Python,
-  Go, JSON, Bash, TOML, Markdown, HTML (+JS/CSS injection), CSS, YAML, C, C++.
-  `highlight(HighlightRequest{source, path, ..})` returns per-line `(byte_range, HighlightKind)`.
-  Limits: 2 MB source, 1M spans; unknown extension -> `UnknownLanguage`.
+  Go, JSON, Bash, TOML, Markdown (inline styles only, no fenced-code injection), HTML (+JS/CSS
+  injection), CSS, YAML, C, C++. `highlight(HighlightRequest{source, path})` returns per-line
+  `(byte_range, HighlightKind)`; unknown extension -> `UnknownLanguage`. `configuration()` is one
+  table row per language. Size limits live in the app (`diff/highlight.rs`: 2 MB, 20k rows).
 - Why tree-sitter over syntect: parse is incremental-grade fast (18k rows in ~125 ms), queries
   are shared with zeron, and the palette maps 1:1 to `HighlightKind`. Cost: ~16 grammar crates
   of C code (longer cold build, a few MB of binary).

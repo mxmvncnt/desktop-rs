@@ -347,10 +347,10 @@ fn cached_markdown_inline_configuration() -> Result<&'static HighlightConfigurat
         .map_err(Clone::clone)
 }
 
-fn rust_configuration() -> Result<HighlightConfiguration, HighlightError> {
-    // The upstream Rust query groups numbers and booleans as
-    // `constant.builtin`. Zeron preserves those structural roles separately.
-    let highlights = tree_sitter_rust::HIGHLIGHTS_QUERY
+/// The upstream Rust query groups numbers and booleans as `constant.builtin`;
+/// zeron preserves those structural roles separately.
+fn rust_highlights() -> String {
+    tree_sitter_rust::HIGHLIGHTS_QUERY
         .replace(
             "(boolean_literal) @constant.builtin",
             "(boolean_literal) @boolean",
@@ -362,31 +362,16 @@ fn rust_configuration() -> Result<HighlightConfiguration, HighlightError> {
         .replace(
             "(float_literal) @constant.builtin",
             "(float_literal) @number",
-        );
-    HighlightConfiguration::new(
-        tree_sitter_rust::LANGUAGE.into(),
-        "rust",
-        &highlights,
-        tree_sitter_rust::INJECTIONS_QUERY,
-        "",
-    )
-    .map_err(|error| HighlightError::Parser(error.to_string()))
+        )
 }
 
-fn markdown_configuration() -> Result<HighlightConfiguration, HighlightError> {
-    // tree-sitter-highlight excludes child ranges from injections by default.
-    // The Markdown block grammar's `inline` node owns anonymous children that
-    // cover its source, so the upstream query otherwise injects an empty range.
-    let injections = tree_sitter_md::INJECTION_QUERY_BLOCK.replace(
+/// tree-sitter-highlight excludes child ranges from injections by default.
+/// The Markdown block grammar's `inline` node owns anonymous children that
+/// cover its source, so the upstream query otherwise injects an empty range.
+fn markdown_injections() -> String {
+    tree_sitter_md::INJECTION_QUERY_BLOCK.replace(
         "((inline) @injection.content\n  (#set! injection.language \"markdown_inline\"))",
         "((inline) @injection.content\n  (#set! injection.language \"markdown_inline\")\n  (#set! injection.include-children))",
-    );
-    make_configuration(
-        tree_sitter_md::LANGUAGE.into(),
-        "markdown",
-        tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
-        &injections,
-        "",
     )
 }
 
@@ -411,146 +396,34 @@ fn make_configuration(
         .map_err(|error| HighlightError::Parser(error.to_string()))
 }
 
-fn javascript_family_highlights(language: LanguageId) -> String {
-    use LanguageId::*;
-
-    let queries = match language {
-        JavaScript => &[tree_sitter_javascript::HIGHLIGHT_QUERY][..],
-        Jsx => &[
-            tree_sitter_javascript::HIGHLIGHT_QUERY,
-            tree_sitter_javascript::JSX_HIGHLIGHT_QUERY,
-        ][..],
-        TypeScript => &[
-            tree_sitter_javascript::HIGHLIGHT_QUERY,
-            tree_sitter_typescript::HIGHLIGHTS_QUERY,
-        ][..],
-        Tsx => &[
-            tree_sitter_javascript::HIGHLIGHT_QUERY,
-            tree_sitter_javascript::JSX_HIGHLIGHT_QUERY,
-            tree_sitter_typescript::HIGHLIGHTS_QUERY,
-        ][..],
-        _ => unreachable!("JavaScript query composition requires a JavaScript-family language"),
-    };
-    queries.join("\n")
-}
-
-fn javascript_family_configuration(
-    language: LanguageId,
-) -> Result<HighlightConfiguration, HighlightError> {
-    use LanguageId::*;
-
-    let highlights = javascript_family_highlights(language);
-    let (grammar, name, injections, locals) = match language {
-        JavaScript => (
-            tree_sitter_javascript::LANGUAGE.into(),
-            "javascript",
-            tree_sitter_javascript::INJECTIONS_QUERY,
-            tree_sitter_javascript::LOCALS_QUERY,
-        ),
-        Jsx => (
-            tree_sitter_javascript::LANGUAGE.into(),
-            "jsx",
-            tree_sitter_javascript::INJECTIONS_QUERY,
-            tree_sitter_javascript::LOCALS_QUERY,
-        ),
-        TypeScript => (
-            tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
-            "typescript",
-            "",
-            tree_sitter_typescript::LOCALS_QUERY,
-        ),
-        Tsx => (
-            tree_sitter_typescript::LANGUAGE_TSX.into(),
-            "tsx",
-            "",
-            tree_sitter_typescript::LOCALS_QUERY,
-        ),
-        _ => unreachable!("JavaScript configuration requires a JavaScript-family language"),
-    };
-    make_configuration(grammar, name, &highlights, injections, locals)
-}
-
+#[rustfmt::skip]
 fn configuration(language: LanguageId) -> Result<HighlightConfiguration, HighlightError> {
     use LanguageId::*;
-    match language {
-        Rust => rust_configuration(),
-        JavaScript | Jsx | TypeScript | Tsx => javascript_family_configuration(language),
-        Python => make_configuration(
-            tree_sitter_python::LANGUAGE.into(),
-            "python",
-            tree_sitter_python::HIGHLIGHTS_QUERY,
-            "",
-            "",
-        ),
-        Go => make_configuration(
-            tree_sitter_go::LANGUAGE.into(),
-            "go",
-            tree_sitter_go::HIGHLIGHTS_QUERY,
-            "",
-            "",
-        ),
-        Json | Jsonc => make_configuration(
-            tree_sitter_json::LANGUAGE.into(),
-            "json",
-            tree_sitter_json::HIGHLIGHTS_QUERY,
-            "",
-            "",
-        ),
-        Bash => make_configuration(
-            tree_sitter_bash::LANGUAGE.into(),
-            "bash",
-            tree_sitter_bash::HIGHLIGHT_QUERY,
-            "",
-            "",
-        ),
-        Toml => make_configuration(
-            tree_sitter_toml_ng::LANGUAGE.into(),
-            "toml",
-            tree_sitter_toml_ng::HIGHLIGHTS_QUERY,
-            "",
-            "",
-        ),
-        Markdown => markdown_configuration(),
-        Html => make_configuration(
-            tree_sitter_html::LANGUAGE.into(),
-            "html",
-            tree_sitter_html::HIGHLIGHTS_QUERY,
-            tree_sitter_html::INJECTIONS_QUERY,
-            "",
-        ),
-        Css => make_configuration(
-            tree_sitter_css::LANGUAGE.into(),
-            "css",
-            tree_sitter_css::HIGHLIGHTS_QUERY,
-            "",
-            "",
-        ),
-        Yaml => make_configuration(
-            tree_sitter_yaml::LANGUAGE.into(),
-            "yaml",
-            tree_sitter_yaml::HIGHLIGHTS_QUERY,
-            "",
-            "",
-        ),
-        C => make_configuration(
-            tree_sitter_c::LANGUAGE.into(),
-            "c",
-            tree_sitter_c::HIGHLIGHT_QUERY,
-            "",
-            "",
-        ),
-        Cpp => make_configuration(
-            tree_sitter_cpp::LANGUAGE.into(),
-            "cpp",
-            &format!(
-                "{}\n{}",
-                tree_sitter_c::HIGHLIGHT_QUERY,
-                tree_sitter_cpp::HIGHLIGHT_QUERY
-            ),
-            "",
-            "",
-        ),
-    }
+    use tree_sitter_javascript as js;
+    use tree_sitter_typescript as ts;
+    let markdown_injections = markdown_injections();
+    let join = |queries: &[&str]| queries.join("\n");
+
+    // (grammar, name, highlights query, injections query, locals query)
+    let (grammar, name, highlights, injections, locals) = match language {
+        Rust => (tree_sitter_rust::LANGUAGE.into(), "rust", rust_highlights(), tree_sitter_rust::INJECTIONS_QUERY, ""),
+        JavaScript => (js::LANGUAGE.into(), "javascript", js::HIGHLIGHT_QUERY.into(), js::INJECTIONS_QUERY, js::LOCALS_QUERY),
+        Jsx => (js::LANGUAGE.into(), "jsx", join(&[js::HIGHLIGHT_QUERY, js::JSX_HIGHLIGHT_QUERY]), js::INJECTIONS_QUERY, js::LOCALS_QUERY),
+        TypeScript => (ts::LANGUAGE_TYPESCRIPT.into(), "typescript", join(&[js::HIGHLIGHT_QUERY, ts::HIGHLIGHTS_QUERY]), "", ts::LOCALS_QUERY),
+        Tsx => (ts::LANGUAGE_TSX.into(), "tsx", join(&[js::HIGHLIGHT_QUERY, js::JSX_HIGHLIGHT_QUERY, ts::HIGHLIGHTS_QUERY]), "", ts::LOCALS_QUERY),
+        Python => (tree_sitter_python::LANGUAGE.into(), "python", tree_sitter_python::HIGHLIGHTS_QUERY.into(), "", ""),
+        Go => (tree_sitter_go::LANGUAGE.into(), "go", tree_sitter_go::HIGHLIGHTS_QUERY.into(), "", ""),
+        Json | Jsonc => (tree_sitter_json::LANGUAGE.into(), "json", tree_sitter_json::HIGHLIGHTS_QUERY.into(), "", ""),
+        Bash => (tree_sitter_bash::LANGUAGE.into(), "bash", tree_sitter_bash::HIGHLIGHT_QUERY.into(), "", ""),
+        Toml => (tree_sitter_toml_ng::LANGUAGE.into(), "toml", tree_sitter_toml_ng::HIGHLIGHTS_QUERY.into(), "", ""),
+        Markdown => (tree_sitter_md::LANGUAGE.into(), "markdown", tree_sitter_md::HIGHLIGHT_QUERY_BLOCK.into(), markdown_injections.as_str(), ""),
+        Html => (tree_sitter_html::LANGUAGE.into(), "html", tree_sitter_html::HIGHLIGHTS_QUERY.into(), tree_sitter_html::INJECTIONS_QUERY, ""),
+        Css => (tree_sitter_css::LANGUAGE.into(), "css", tree_sitter_css::HIGHLIGHTS_QUERY.into(), "", ""),
+        Yaml => (tree_sitter_yaml::LANGUAGE.into(), "yaml", tree_sitter_yaml::HIGHLIGHTS_QUERY.into(), "", ""),
+        C => (tree_sitter_c::LANGUAGE.into(), "c", tree_sitter_c::HIGHLIGHT_QUERY.into(), "", ""),
+        Cpp => (tree_sitter_cpp::LANGUAGE.into(), "cpp", join(&[tree_sitter_c::HIGHLIGHT_QUERY, tree_sitter_cpp::HIGHLIGHT_QUERY]), "", ""),
+    };
+    make_configuration(grammar, name, &highlights, injections, locals)
 }
 
 // Ordered from generic to specific. `HighlightConfiguration::configure`
