@@ -40,7 +40,7 @@ pub struct AccountInputs {
     pub token: Entity<EditableTextState>,
 }
 
-pub struct AccountsUi {
+pub struct AccountsStore {
     pub accounts: Vec<Account>,
     pub form: Option<AccountForm>,
     pub identity: IdentityState,
@@ -48,7 +48,7 @@ pub struct AccountsUi {
     pub(super) identity_load: LoadSlot,
 }
 
-impl AccountsUi {
+impl AccountsStore {
     /// Loads the saved accounts and registers their tokens for git network ops.
     pub fn new(cx: &mut App) -> Self {
         let mk = |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));

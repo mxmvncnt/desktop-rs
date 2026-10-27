@@ -1,26 +1,25 @@
 //! "Git identity" section: the global identity, and the override for the open repository.
 
-use gd_git::{EffectiveIdentity, IdentitySource};
+use gd_git::{EffectiveIdentity, IdentitySource, Repository};
 use gd_ui::{Button, Theme};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use super::identity_block::IdentityBlock;
-use super::state::{AccountInputs, IdentityState};
-use crate::workspace::Workspace;
+use super::state::{AccountInputs, AccountsStore, IdentityState};
 
 #[derive(IntoElement)]
 pub struct IdentitySection {
     pub identity: IdentityState,
     pub inputs: AccountInputs,
-    /// Name of the open repository (`None` = no override editor).
-    pub repo_name: Option<String>,
-    pub ws: Entity<Workspace>,
+    /// The open repository (`None` = no override editor).
+    pub repo: Option<Repository>,
+    pub store: Entity<AccountsStore>,
 }
 
 impl IdentitySection {
 
     fn global_block(&self) -> IdentityBlock {
-        let ws = self.ws.clone();
+        let (store, repo) = (self.store.clone(), self.repo.clone());
         let inp = &self.inputs;
         // Global message only when the last action was not about the repository.
         IdentityBlock::new(
@@ -30,22 +29,23 @@ impl IdentitySection {
             (&inp.global_name, &inp.global_email),
         )
         .button(Button::new("identity-global-save").primary().compact().label("Save").on_click(move |_, _, cx| {
-            ws.update(cx, |this, cx| this.save_global_identity(cx))
+            store.update(cx, |this, cx| this.save_global_identity(repo.clone(), cx))
         }))
         .status(self.identity.message.clone())
     }
 
-    fn local_block(&self, repo_name: &str) -> IdentityBlock {
-        let (ws_save, ws_clear) = (self.ws.clone(), self.ws.clone());
+    fn local_block(&self, repo: &Repository) -> IdentityBlock {
+        let (save, clear) = (self.store.clone(), self.store.clone());
+        let (save_repo, clear_repo) = (repo.clone(), repo.clone());
         let inp = &self.inputs;
         IdentityBlock::new(
-            format!("Override for {repo_name}"),
+            format!("Override for {}", repo.name()),
             "Optional. Leave empty to use the global identity in this repository (local git config).",
             ("identity-local-name", "identity-local-email"),
             (&inp.local_name, &inp.local_email),
         )
         .button(Button::new("identity-local-save").compact().label("Save override").on_click(move |_, _, cx| {
-            ws_save.update(cx, |this, cx| this.save_local_identity(cx))
+            save.update(cx, |this, cx| this.save_local_identity(save_repo.clone(), cx))
         }))
         .button(
             Button::new("identity-local-clear")
@@ -53,7 +53,7 @@ impl IdentitySection {
                 .compact()
                 .disabled(self.identity.local.is_empty())
                 .label("Remove override")
-                .on_click(move |_, _, cx| ws_clear.update(cx, |this, cx| this.clear_local_identity(cx))),
+                .on_click(move |_, _, cx| clear.update(cx, |this, cx| this.clear_local_identity(clear_repo.clone(), cx))),
         )
     }
 }
@@ -62,8 +62,8 @@ impl RenderOnce for IdentitySection {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let mut col = div().flex().flex_col().gap(px(14.0)).child(self.global_block());
-        if let Some(name) = &self.repo_name {
-            col = col.child(self.local_block(name));
+        if let Some(repo) = &self.repo {
+            col = col.child(self.local_block(repo));
             if let Some(e) = &self.identity.effective {
                 col = col.child(div().text_size(px(12.0)).text_color(theme.text_muted).child(effective_line(e)));
             }

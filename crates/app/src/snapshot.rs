@@ -663,38 +663,40 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut gpui::Window, cx
         username: user.into(),
         token: token.into(),
     };
-    let ui = &mut ws.accounts_ui;
-    ui.accounts = vec![
-        acct("1", Provider::GitHub, "Personal", "github.com", "octocat", "ghp_x"),
-        acct("2", Provider::GitHubEnterprise, "Work", "github.corp.example.com", "mvincent", "ghp_y"),
-        acct("3", Provider::GitLab, "GitLab", "gitlab.com", "", ""),
-    ];
-    let set = |input: &gpui::Entity<gpui_elements::editable_text::EditableTextState>, t: &str, cx: &mut gpui::Context<Workspace>| {
-        input.update(cx, |s, cx| s.emplace(t, cx))
-    };
-    let inp = ui.inputs.clone();
-    set(&inp.global_name, "Maxime Vincent", cx);
-    set(&inp.global_email, "maxime@example.com", cx);
-    set(&inp.local_name, "Max (work)", cx);
-    set(&inp.local_email, "max@corp.example.com", cx);
-    let ui = &mut ws.accounts_ui;
-    let global = gd_git::Identity { name: "Maxime Vincent".into(), email: "maxime@example.com".into() };
-    let local = gd_git::Identity { name: "Max (work)".into(), email: "max@corp.example.com".into() };
-    ui.identity.global = global;
-    ui.identity.effective = Some(gd_git::EffectiveIdentity { identity: local.clone(), source: gd_git::IdentitySource::Repository });
-    ui.identity.local = local;
-    ui.identity.message = Some(StatusText::ok("Saved to your global git config"));
-    if view.ends_with("form") || view.ends_with("edit") {
-        let editing = view.ends_with("edit");
-        set(&inp.display_name, if editing { "Work" } else { "" }, cx);
-        set(&inp.host, if editing { "github.corp.example.com" } else { "github.com" }, cx);
-        set(&inp.username, if editing { "mvincent" } else { "" }, cx);
-        ws.accounts_ui.form = Some(AccountForm {
-            editing: editing.then(|| "2".to_string()),
-            provider: if editing { Provider::GitHubEnterprise } else { Provider::GitHub },
-            has_token: editing,
-            error: None,
-        });
-    }
+    let editing = view.ends_with("edit");
+    let show_form = view.ends_with("form") || editing;
+    ws.accounts.update(cx, |ui, cx| {
+        ui.accounts = vec![
+            acct("1", Provider::GitHub, "Personal", "github.com", "octocat", "ghp_x"),
+            acct("2", Provider::GitHubEnterprise, "Work", "github.corp.example.com", "mvincent", "ghp_y"),
+            acct("3", Provider::GitLab, "GitLab", "gitlab.com", "", ""),
+        ];
+        let inp = &ui.inputs;
+        let set = |input: &gpui::Entity<gpui_elements::editable_text::EditableTextState>, t: &str, cx: &mut gpui::App| {
+            input.update(cx, |s, cx| s.emplace(t, cx))
+        };
+        set(&inp.global_name, "Maxime Vincent", cx);
+        set(&inp.global_email, "maxime@example.com", cx);
+        set(&inp.local_name, "Max (work)", cx);
+        set(&inp.local_email, "max@corp.example.com", cx);
+        let global = gd_git::Identity { name: "Maxime Vincent".into(), email: "maxime@example.com".into() };
+        let local = gd_git::Identity { name: "Max (work)".into(), email: "max@corp.example.com".into() };
+        ui.identity.global = global;
+        ui.identity.effective = Some(gd_git::EffectiveIdentity { identity: local.clone(), source: gd_git::IdentitySource::Repository });
+        ui.identity.local = local;
+        ui.identity.message = Some(StatusText::ok("Saved to your global git config"));
+        if show_form {
+            set(&inp.display_name, if editing { "Work" } else { "" }, cx);
+            set(&inp.host, if editing { "github.corp.example.com" } else { "github.com" }, cx);
+            set(&inp.username, if editing { "mvincent" } else { "" }, cx);
+            ui.form = Some(AccountForm {
+                editing: editing.then(|| "2".to_string()),
+                provider: if editing { Provider::GitHubEnterprise } else { Provider::GitHub },
+                has_token: editing,
+                error: None,
+            });
+        }
+        cx.notify();
+    });
     cx.notify();
 }

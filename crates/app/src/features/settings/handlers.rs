@@ -19,6 +19,11 @@ impl Workspace {
         }
     }
 
+    fn load_identity(&mut self, cx: &mut Context<Self>) {
+        let repo = self.repo.as_ref().map(|r| r.read(cx).repo.clone());
+        self.accounts.update(cx, |a, cx| a.load_identity(repo, cx));
+    }
+
     pub(super) fn set_settings_page(&mut self, page: SettingsPage, cx: &mut Context<Self>) {
         self.settings_page = page;
         if page == SettingsPage::Accounts {

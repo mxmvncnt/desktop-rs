@@ -2,7 +2,7 @@ use gpui::{Entity, FocusHandle, SharedString, Subscription, Task, UniformListScr
 use gpui_elements::editable_text::EditableTextState;
 
 use super::overlay::Overlay;
-use crate::features::accounts::AccountsUi;
+use crate::features::accounts::AccountsStore;
 use crate::features::branches::BranchUi;
 use crate::features::diff::{DiffSelectUi, DiffView};
 use crate::features::history::HistoryUi;
@@ -26,7 +26,7 @@ pub struct Workspace {
     pub(crate) sidebar_width_dirty: bool,
     pub settings_page: SettingsPage,
     /// Git identity + provider accounts (features/accounts).
-    pub accounts_ui: AccountsUi,
+    pub accounts: Entity<AccountsStore>,
     pub repo: Option<Entity<RepoModel>>,
     /// Open menus, dialogs, popovers and the settings modal (`overlay.rs`).
     pub overlays: Vec<Overlay>,

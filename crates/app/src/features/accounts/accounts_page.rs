@@ -1,6 +1,7 @@
 //! Settings → Accounts: git identity, then provider accounts (or the
 //! add/edit form while it is open). Scrolls when taller than the modal.
 
+use gd_git::Repository;
 use gpui::{
     App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
 };
@@ -8,49 +9,29 @@ use gpui::{
 use super::account_form::AccountForm;
 use super::account_list::AccountList;
 use super::identity_section::IdentitySection;
-use super::state::AccountsUi;
-use crate::workspace::Workspace;
+use super::state::AccountsStore;
 
 #[derive(IntoElement)]
 pub struct AccountsPage {
-    accounts: Vec<super::model::Account>,
-    form: Option<super::state::AccountForm>,
-    identity: super::state::IdentityState,
-    inputs: super::state::AccountInputs,
-    repo_name: Option<String>,
-    ws: Entity<Workspace>,
-}
-
-impl AccountsPage {
-    pub fn new(ui: &AccountsUi, repo_name: Option<String>, ws: Entity<Workspace>) -> Self {
-        Self {
-            accounts: ui.accounts.clone(),
-            form: ui.form.clone(),
-            identity: ui.identity.clone(),
-            inputs: ui.inputs.clone(),
-            repo_name,
-            ws,
-        }
-    }
+    pub store: Entity<AccountsStore>,
+    /// The open repository, for the per-repository identity override.
+    pub repo: Option<Repository>,
 }
 
 impl RenderOnce for AccountsPage {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let s = self.store.read(cx);
+        let (store, inputs) = (self.store.clone(), s.inputs.clone());
         // The form replaces the whole page so it is fully visible.
-        let content = match self.form {
-            Some(form) => AccountForm { form, inputs: self.inputs, ws: self.ws }.into_any_element(),
+        let content = match s.form.clone() {
+            Some(form) => AccountForm { form, inputs, store }.into_any_element(),
             None => div()
                 .flex()
                 .flex_col()
                 .gap(px(22.0))
-                .child(IdentitySection {
-                    identity: self.identity,
-                    inputs: self.inputs,
-                    repo_name: self.repo_name,
-                    ws: self.ws.clone(),
-                })
+                .child(IdentitySection { identity: s.identity.clone(), inputs, repo: self.repo, store: store.clone() })
                 .child(div().h(px(1.0)).bg(gd_ui::Theme::of(cx).border))
-                .child(AccountList { accounts: self.accounts, ws: self.ws })
+                .child(AccountList { accounts: s.accounts.clone(), store })
                 .into_any_element(),
         };
         div()

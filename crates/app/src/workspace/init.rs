@@ -7,7 +7,7 @@ use gpui::{App, AppContext, Context, Entity, Focusable, Subscription, UniformLis
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
 use super::state::Workspace;
-use crate::features::accounts::AccountsUi;
+use crate::features::accounts::AccountsStore;
 use crate::features::branches::BranchUi;
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
@@ -30,13 +30,15 @@ impl Workspace {
         let inputs = [message.clone(), p.filter.clone(), p.name_input.clone(), p.url_input.clone()];
         let mut subs = input_subscriptions(&inputs, cx);
         subs.push(cx.observe(&pickers, |_, _, cx| cx.notify()));
+        let accounts = cx.new(|cx| AccountsStore::new(cx));
+        subs.push(cx.observe(&accounts, |_, _, cx| cx.notify()));
         subs.extend(window_subscriptions(window, cx));
 
         let mut this = Self {
             settings: Settings::load(),
             sidebar_width_dirty: false,
             settings_page: Default::default(),
-            accounts_ui: AccountsUi::new(cx),
+            accounts,
             repo: None,
             overlays: Vec::new(),
             overlay_gen: 0,
