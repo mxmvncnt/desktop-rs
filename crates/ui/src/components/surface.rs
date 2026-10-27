@@ -1,7 +1,7 @@
 //! Small style building blocks: icons, hairline dividers, the pressable
 //! row/ghost surface, pill badges and the overlay card.
 
-use gpui::{App, Div, ElementId, SharedString, Stateful, Styled, Svg, div, millis, prelude::*, px, svg};
+use gpui::{App, Div, Hsla, ElementId, SharedString, Stateful, Styled, Svg, div, millis, prelude::*, px, svg};
 
 use crate::assets::Icon;
 use crate::motion::HOVER_MS;
@@ -43,6 +43,11 @@ pub fn pressable(id: impl Into<ElementId>, selected: bool, cx: &App) -> Stateful
         .hover_style(move |s| s.bg(hover))
         .active_style(move |s| s.bg(active))
         .cursor_pointer()
+}
+
+/// The dash of a partially checked box.
+pub fn mixed_mark(color: Hsla) -> Div {
+    div().w(px(7.0)).h(px(1.5)).rounded(px(1.0)).bg(color)
 }
 
 /// A small pill badge (counts, ahead/behind).

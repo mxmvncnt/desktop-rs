@@ -4,7 +4,7 @@
 
 use std::ops::Range;
 
-use gd_ui::{CheckState, Theme, theme::DIFF_ROW_HEIGHT};
+use gd_ui::{CheckState, Theme, mixed_mark, theme::DIFF_ROW_HEIGHT};
 use gpui::{AnyElement, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, StatefulInteractiveElement, Styled, div, prelude::*, px};
 
 use super::gutter_style::{HANDLE_W, check_mark, handle_bg};
@@ -89,7 +89,7 @@ fn handle_mark(state: CheckState, theme: &Theme) -> Option<gpui::Div> {
     let mark = div().flex().flex_1().h(px(DIFF_ROW_HEIGHT)).items_center().justify_center();
     match state {
         CheckState::Checked => Some(mark.child(check_mark(theme.on_accent))),
-        CheckState::Mixed => Some(mark.child(div().w(px(7.0)).h(px(1.5)).rounded(px(1.0)).bg(theme.on_accent))),
+        CheckState::Mixed => Some(mark.child(mixed_mark(theme.on_accent))),
         CheckState::Unchecked => None,
     }
 }

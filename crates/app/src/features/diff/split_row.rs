@@ -14,6 +14,7 @@ use super::split_diff::{NONE, SplitDiff, SplitRow};
 use super::text_flow::{TextFlow, marker_cell, row_box, text_cell};
 use super::text_select::{TextSelect, TextTarget};
 use super::text_selection::TextSide;
+use super::unified_row::{LineLook, line_look};
 use crate::repo::RepoModel;
 
 /// What every split row needs besides its index.
@@ -100,12 +101,7 @@ impl SplitRows<'_> {
             return (cell.bg(theme.ink(0.025)), None);
         }
         let line = &self.split.diff.lines[ix as usize];
-        let (bg, fg, marker, marker_color) = match line.kind {
-            DiffLineKind::Add => (theme.diff_add_bg, theme.text, "+", theme.diff_add),
-            DiffLineKind::Delete => (theme.diff_del_bg, theme.text, "-", theme.diff_del),
-            DiffLineKind::NoNewline => (gpui::transparent_black(), theme.text_faint, "", theme.text_faint),
-            _ => (gpui::transparent_black(), theme.text_muted, " ", theme.text_faint),
-        };
+        let LineLook { bg, fg, marker, marker_color } = line_look(line.kind, theme);
         let font = gpui::font(theme.font_mono.clone());
         let emph_bg = if line.kind == DiffLineKind::Add { theme.diff_add_emph } else { theme.diff_del_emph };
         let spans = self.hl.map(|h| h.row(ix as usize)).unwrap_or(&[]);
