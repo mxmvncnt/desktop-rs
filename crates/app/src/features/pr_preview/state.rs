@@ -5,6 +5,8 @@ use std::sync::Arc;
 use gd_git::{Comparison, Diff};
 use gpui::{Task, UniformListScrollHandle};
 
+use crate::repo::LoadSlot;
+
 use crate::features::diff::{DiffHighlight, HighlightCache};
 
 #[derive(Default)]
@@ -25,8 +27,7 @@ pub struct PrPreviewState {
     pub hl: Option<Arc<DiffHighlight>>,
     pub files_scroll: UniformListScrollHandle,
     pub base_scroll: UniformListScrollHandle,
-    pub(super) gen_: u64,
-    pub(super) task: Option<Task<()>>,
+    pub(super) load: LoadSlot,
     pub(super) hl_task: Option<Task<()>>,
     pub(super) cache: HighlightCache,
 }

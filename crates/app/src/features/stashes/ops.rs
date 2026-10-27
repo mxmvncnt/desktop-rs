@@ -1,6 +1,6 @@
 //! Stash model operations on `RepoModel`: the git work runs on the background
 //! executor like the rest of `RepoModel` (see `repo/`), and stale loads are
-//! dropped by the generation counter in [`StashState`].
+//! dropped by the [`LoadSlot`] in [`StashState`].
 
 use std::sync::Arc;
 
@@ -43,7 +43,7 @@ impl RepoModel {
             self.stashes.files.clear();
             self.stashes.diff = None;
             self.stashes.hl = None;
-            self.stashes.task = None;
+            self.stashes.load.cancel();
         }
         cx.notify();
     }
@@ -75,36 +75,23 @@ impl RepoModel {
         self.stashes.selected_file = None;
         self.stashes.diff = None;
         self.stashes.hl = None;
-        self.stashes.gen_ += 1;
-        let generation = self.stashes.gen_;
-        let repo = self.repo.clone();
-        self.stashes.task = Some(cx.spawn(async move |this, cx| {
-            let res = cx
-                .background_spawn(async move {
-                    let files = repo.stash_files(&sha)?;
-                    let diff = match files.first() {
-                        Some(f) => Some((repo.stash_diff(&sha, f)?, f.path.clone())),
-                        None => None,
-                    };
-                    Ok::<_, gd_git::GitError>((files, diff))
-                })
-                .await;
-            this.update(cx, |this, cx| {
-                if this.stashes.gen_ != generation {
-                    return;
-                }
-                match res {
-                    Ok((files, diff)) => {
-                        this.stashes.selected_file = (!files.is_empty()).then_some(0);
-                        this.stashes.files = files;
-                        this.set_stash_diff(diff, cx);
-                    }
-                    Err(e) => this.error = Some(e.to_string()),
-                }
-                cx.notify();
-            })
-            .ok();
-        }));
+        self.load(
+            |this| &mut this.stashes.load,
+            move |repo| {
+                let files = repo.stash_files(&sha)?;
+                let diff = match files.first() {
+                    Some(f) => Some((repo.stash_diff(&sha, f)?, f.path.clone())),
+                    None => None,
+                };
+                Ok((files, diff))
+            },
+            |this, (files, diff), cx| {
+                this.stashes.selected_file = (!files.is_empty()).then_some(0);
+                this.stashes.files = files;
+                this.set_stash_diff(diff, cx);
+            },
+            cx,
+        );
         cx.notify();
     }
 
@@ -113,28 +100,12 @@ impl RepoModel {
             return;
         };
         self.stashes.selected_file = Some(ix);
-        self.stashes.gen_ += 1;
-        let generation = self.stashes.gen_;
-        let repo = self.repo.clone();
-        self.stashes.task = Some(cx.spawn(async move |this, cx| {
-            let res = cx
-                .background_spawn(async move {
-                    let path = file.path.clone();
-                    repo.stash_diff(&sha, &file).map(|d| (d, path))
-                })
-                .await;
-            this.update(cx, |this, cx| {
-                if this.stashes.gen_ != generation {
-                    return;
-                }
-                match res {
-                    Ok(d) => this.set_stash_diff(Some(d), cx),
-                    Err(e) => this.error = Some(e.to_string()),
-                }
-                cx.notify();
-            })
-            .ok();
-        }));
+        self.load(
+            |this| &mut this.stashes.load,
+            move |repo| repo.stash_diff(&sha, &file).map(|d| (d, file.path.clone())),
+            |this, d, cx| this.set_stash_diff(Some(d), cx),
+            cx,
+        );
         cx.notify();
     }
 

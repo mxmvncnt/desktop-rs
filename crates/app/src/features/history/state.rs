@@ -5,9 +5,10 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use gd_git::{Commit, ResetMode};
-use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription, Task};
+use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
+use crate::repo::LoadSlot;
 use crate::workspace::Workspace;
 
 /// Everything the History tab needs beyond the commit list itself.
@@ -26,8 +27,7 @@ pub struct HistoryState {
     pub web_url: Option<String>,
     /// Multi-selection (shas). Empty means "just `selected_commit`".
     pub multi: HashSet<String>,
-    pub(super) load_gen: u64,
-    pub(super) task: Option<Task<()>>,
+    pub(super) push_load: LoadSlot,
 }
 
 /// How a click on a history row changes the selection.

@@ -1,7 +1,7 @@
 //! The write-op runner every feature's `ops.rs` builds on.
 
 use gd_git::Repository;
-use gpui::{AppContext, Context};
+use gpui::{AppContext, Context, Task};
 
 use super::state::{RemoteOp, RepoModel};
 
@@ -62,5 +62,64 @@ impl RepoModel {
             .ok();
         })
         .detach();
+    }
+}
+
+/// Generation counter plus the task of the newest load: starting a load drops
+/// the previous task, and a result from an older generation is never applied.
+#[derive(Default)]
+pub struct LoadSlot {
+    generation: u64,
+    task: Option<Task<()>>,
+}
+
+impl LoadSlot {
+    /// Drop the load in flight (and its result).
+    pub fn cancel(&mut self) {
+        self.generation += 1;
+        self.task = None;
+    }
+}
+
+/// Run `work` off-thread and hand its result to `apply` on the UI thread,
+/// unless a newer load of the same `slot` started meanwhile.
+pub fn spawn_load<E: 'static, T: Send + 'static>(
+    this: &mut E,
+    slot: fn(&mut E) -> &mut LoadSlot,
+    work: impl FnOnce() -> T + Send + 'static,
+    apply: impl FnOnce(&mut E, T, &mut Context<E>) + 'static,
+    cx: &mut Context<E>,
+) {
+    let slot_ref = slot(this);
+    slot_ref.cancel();
+    let generation = slot_ref.generation;
+    slot_ref.task = Some(cx.spawn(async move |this, cx| {
+        let res = cx.background_spawn(async move { work() }).await;
+        this.update(cx, |this, cx| {
+            if slot(this).generation == generation {
+                apply(this, res, cx);
+            }
+        })
+        .ok();
+    }));
+}
+
+impl RepoModel {
+    /// [`spawn_load`] for a git read: errors go to `self.error`, `apply` only sees successes.
+    pub fn load<T: Send + 'static>(
+        &mut self,
+        slot: fn(&mut Self) -> &mut LoadSlot,
+        work: impl FnOnce(&Repository) -> gd_git::Result<T> + Send + 'static,
+        apply: impl FnOnce(&mut Self, T, &mut Context<Self>) + 'static,
+        cx: &mut Context<Self>,
+    ) {
+        let repo = self.repo.clone();
+        spawn_load(self, slot, move || work(&repo), |this, res, cx| {
+            match res {
+                Ok(v) => apply(this, v, cx),
+                Err(e) => this.error = Some(e.to_string()),
+            }
+            cx.notify();
+        }, cx);
     }
 }

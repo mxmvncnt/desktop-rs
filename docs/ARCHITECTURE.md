@@ -50,7 +50,7 @@ guessing APIs. To recreate them:
   `--literal-pathspecs` breaks `-u` cleanup when no pathspec is given, so it is only passed with paths.
 - `exec.rs` now falls back to stdout for the error text when stderr is empty (`stash apply` prints CONFLICT lines on stdout).
 - Rename = `stash store -m <new subject> <sha>` then drop the old entry (moves to top).
-- State: `RepoModel::stashes: StashState` (`features/stashes/state.rs`, ops in `ops.rs`; list, filter, collapsed, selection, files/diff/highlight, generation counter);
+- State: `RepoModel::stashes: StashState` (`features/stashes/state.rs`, ops in `ops.rs`; list, filter, collapsed, selection, files/diff/highlight, `LoadSlot`);
   loaded in the background from every full refresh. `RepoEvent::SwitchBranchWithChanges` makes `RepoModel::checkout`
   hand dirty-tree checkouts to the Workspace, which owns `Workspace::stash_ui` (dialog + message input). Use
   `RepoModel::checkout_now` to skip the dialog. `gd_ui::Dialog::content` embeds inputs/option rows.
@@ -119,16 +119,24 @@ guessing APIs. To recreate them:
 
 - `Workspace` (`workspace/`: `state.rs` struct, `init.rs`, `render.rs` root template, `actions.rs` key routing + Esc order, `repos.rs` open/add/clone, `repo_commands.rs`, `navigation.rs`) is the root view. It owns settings, popover state,
   text-input entities, scroll handles, and an `Option<Entity<RepoModel>>`.
-- `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, pending_refresh), `background_fetch.rs`, `change_diff.rs`/`commit_diff.rs` (generation counters), `diff_highlight.rs`, `expand.rs`, `history_log.rs`, `run.rs`) owns all repository state: status, selection, diff,
+- `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, pending_refresh), `background_fetch.rs`, `change_diff.rs`/`commit_diff.rs` (stale-load dropping), `diff_highlight.rs`, `expand.rs`, `history_log.rs`, `run.rs`) owns all repository state: status, selection, diff,
   history pages, commit details, branches, and in-flight ops.
   Every git call goes through `cx.background_spawn`, and results are applied with `this.update`.
-- **Stale results are dropped** with generation counters (`change_diff_gen`,
-  `commit_gen`). Clicking quickly through files never shows the wrong diff.
+- **Stale results are dropped** with a `LoadSlot { generation, task }`
+  (`repo/run.rs`): `RepoModel::load` (git read, errors go to `error`) or the generic
+  `spawn_load` (also used by `Workspace` for the identity and merge preview loads)
+  drops the previous task and ignores results of an older generation. `commit_diff.rs`
+  keeps its own `commit_gen`: its loads are detached on purpose (holding an arrow key
+  shows every commit) and late results still apply unless a newer one landed. Clicking quickly through files never shows the wrong diff.
   A status refresh always reloads the selected diff (status list equality is not
   enough: re-editing a modified file leaves it identical); `apply_change_diff`
   drops results equal to what is shown.
-- `RepoModel::run(op, on_ok)` is the generic write-op helper. It runs off-thread,
-  sets `error`, then refreshes status and branches.
+- `RepoModel::run(op, work, on_ok, cx)` (`repo/run.rs`) is the one write-op runner. It runs
+  off-thread, sets `error`, then refreshes. `Op { label, committing, remote }` names the
+  flags the op marks in flight; `run` sets and clears exactly those. A `label` fills
+  `merge.busy` (banner text), allows one labeled op at a time and clears the history
+  multi-selection. Unlabeled ops (commit, ignore, discard, checkout, stash ops, fetch/pull/push)
+  may overlap.
 - Refresh triggers: file watcher, window activation (skipped if the watcher
   refreshed <1s ago), after every op, F5. See §File watcher.
 - UI lives in `features/<feature>/` (see CONVENTIONS.md): `RenderOnce` components, with
@@ -208,7 +216,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
   multi-selection as shas) reloaded in the background by `reload_push_state` on every full refresh.
   UI state: `Workspace.history_ui` (menu, dialogs, amend, dialog text inputs). Own menu/dialog types so the
   Changes menu code is untouched; `workspace/actions.rs` routes Esc/Enter/arrows to it first.
-- Every op goes through `RepoModel::hist_run`, a thin wrapper over the merge branch's `run_op` (one at a time, then `refresh`). Menu items are
+- Every op goes through `RepoModel::run` with a labeled `Op` (one at a time, then `refresh`). Menu items are
   disabled while an op, remote op, commit, or stopped merge/rebase/cherry-pick/revert is active.
 - Unpushed: `rev-list @{upstream}..HEAD`, or `HEAD --not --remotes` without upstream; empty with no remotes.
 - Squash: adjacent, linear commits only. The squashed commit is built with `commit-tree` (newest tree, oldest's
@@ -228,9 +236,9 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 
 - `gd-git`: `progress.rs` (`Repository::in_progress() -> Option<InProgress>`: Merge/Squash/Rebase/CherryPick/Revert, read from MERGE_HEAD, `rebase-merge/`, `rebase-apply/`, CHERRY_PICK_HEAD, REVERT_HEAD, SQUASH_MSG+unmerged; `continue_operation`, `abort_operation`, `prepared_message`) and `merge.rs` (`merge`, `merge_squash`, `rebase`, `merge_preview`, `commit_merge`, `resolve_with`, `mark_resolved`, branch rename/delete-remote/create-from). Operations return `OpOutcome::{Done, UpToDate, Conflicts}`; a pause is not an error. `Git::no_editor()` sets GIT_EDITOR=true for `--continue`.
 - The watcher already covers `rebase-*` (git dir top level) and MERGE_HEAD etc.
-- App: `RepoModel.merge: MergeState` (`features/merge/state.rs`, ops in `features/merge/ops.rs`), loaded in every refresh in the background. `RepoModel::run_op` is the busy-flag write helper. A newly paused merge-like op emits `RepoEvent::PreparedMessage` (fills the commit box if empty). While merge-like ops are paused, `commit` uses `commit_merge` (no index reset).
+- App: `RepoModel.merge: MergeState` (`features/merge/state.rs`, ops in `features/merge/ops.rs`), loaded in every refresh in the background. `RepoModel::run` with a labeled `Op` is the busy-flag write helper. A newly paused merge-like op emits `RepoEvent::PreparedMessage` (fills the commit box if empty). While merge-like ops are paused, `commit` uses `commit_merge` (no index reset).
 - Views: `features/merge/` (`MergeUi` = `Workspace.merge_ui`: `merge_dialog` + `merge_candidate_list` + `merge_preview`, `in_progress_banner`, `conflict_hint` above the diff, `conflict_menu`/`conflict_menu_rows`, `handlers`/`conflict_handlers`) and `features/branches/` (`BranchUi` = `Workspace.branch_ui`: `branch_menu`/`branch_menu_rows`, `branch_dialog` for rename/delete/create-from, `ops`, `handlers`). Esc/Enter/arrows are routed in workspace/actions.rs and menus to both. Conflicted file rows route to the conflict menu in `open_file_menu`.
-- **Hooking another op (revert, cherry-pick, squash) in:** run the git command inside `RepoModel::run_op`, map a pause with `Repository::outcome_of`, and use `notice_for_outcome`. Banner, conflict list and Continue/Abort work automatically.
+- **Hooking another op (revert, cherry-pick, squash) in:** run the git command inside `RepoModel::run`, map a pause with `Repository::outcome_of`, and use `notice_for_outcome`. Banner, conflict list and Continue/Abort work automatically.
 - Gotchas: absolute overlays must themselves be `.absolute().inset_0()` (GPUI lays absolute children out against their direct parent); a focused text input turns ↑/↓/Esc into `NavUp/NavDown/Escape` actions, so dialogs use `capture_action` for those; `gen` is a reserved word in edition 2024.
 
 ## Syntax highlighting (`crates/syntax`, `app/src/features/diff/highlight.rs`)

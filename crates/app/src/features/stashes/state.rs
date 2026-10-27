@@ -8,6 +8,7 @@ use gpui::{App, AppContext, Entity, Task, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use crate::features::diff::{DiffHighlight, HighlightCache};
+use crate::repo::LoadSlot;
 
 #[derive(Default)]
 pub struct StashState {
@@ -27,8 +28,7 @@ pub struct StashState {
     pub hl: Option<Arc<DiffHighlight>>,
     pub files_scroll: UniformListScrollHandle,
     pub list_scroll: UniformListScrollHandle,
-    pub(super) gen_: u64,
-    pub(super) task: Option<Task<()>>,
+    pub(super) load: LoadSlot,
     pub(super) hl_task: Option<Task<()>>,
     pub(super) cache: HighlightCache,
 }

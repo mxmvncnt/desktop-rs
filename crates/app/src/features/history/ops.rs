@@ -8,34 +8,29 @@
 //! operation in progress (see `Repository::in_progress`).
 
 use gd_git::ResetMode;
-use gpui::{AppContext, Context};
+use gpui::Context;
 
-use crate::repo::{LastCommit, Op, RepoModel};
+use crate::repo::{LastCommit, Op, RepoModel, spawn_load};
 
 impl RepoModel {
     /// Recompute unpushed commits, tags, web URL and the in-progress state in
     /// the background. Called from every full refresh (so after push, fetch,
     /// commit, checkout...).
     pub fn reload_push_state(&mut self, cx: &mut Context<Self>) {
-        self.history.load_gen += 1;
-        let generation = self.history.load_gen;
         let repo = self.repo.clone();
-        self.history.task = Some(cx.spawn(async move |this, cx| {
-            let (unpushed, tags, url, no_remote) = cx
-                .background_spawn(async move {
-                    (
-                        repo.unpushed_commits(),
-                        repo.tags_by_commit(),
-                        repo.github_web_url(),
-                        repo.remotes().map(|r| r.is_empty()).unwrap_or(false),
-                    )
-                })
-                .await;
-            this.update(cx, |this, cx| {
+        spawn_load(
+            self,
+            |this| &mut this.history.push_load,
+            move || {
+                (
+                    repo.unpushed_commits(),
+                    repo.tags_by_commit(),
+                    repo.github_web_url(),
+                    repo.remotes().map(|r| r.is_empty()).unwrap_or(false),
+                )
+            },
+            |this, (unpushed, tags, url, no_remote), cx| {
                 let h = &mut this.history;
-                if h.load_gen != generation {
-                    return;
-                }
                 h.all_local = no_remote;
                 if let Ok(u) = unpushed {
                     h.unpushed = u;
@@ -46,9 +41,9 @@ impl RepoModel {
                 }
                 h.web_url = url;
                 cx.notify();
-            })
-            .ok();
-        }));
+            },
+            cx,
+        );
     }
 
     /// Why history operations are unavailable right now (shown as disabled menu items).

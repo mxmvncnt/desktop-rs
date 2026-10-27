@@ -2,11 +2,12 @@
 //! git identity as last read, and the text inputs of both.
 
 use gd_git::{EffectiveIdentity, Identity};
-use gpui::{App, AppContext, Entity, Task};
+use gpui::{App, AppContext, Entity};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::model::{self, Account, Provider};
 use super::status_text::StatusText;
+use crate::repo::LoadSlot;
 
 /// The add/edit account form (its text lives in [`AccountInputs`]).
 #[derive(Clone, Debug)]
@@ -44,8 +45,7 @@ pub struct AccountsUi {
     pub form: Option<AccountForm>,
     pub identity: IdentityState,
     pub inputs: AccountInputs,
-    pub(super) load_gen: u64,
-    pub(super) task: Option<Task<()>>,
+    pub(super) identity_load: LoadSlot,
 }
 
 impl AccountsUi {
@@ -68,8 +68,7 @@ impl AccountsUi {
                 username: mk(cx),
                 token: mk(cx),
             },
-            load_gen: 0,
-            task: None,
+            identity_load: LoadSlot::default(),
         }
     }
 }
