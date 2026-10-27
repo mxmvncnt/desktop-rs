@@ -4,38 +4,23 @@
 use gd_ui::{CheckRow, Tabs, Theme};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
-use crate::features::settings::Settings;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct DiffDisplayOptions {
-    split: bool,
-    wrap: bool,
-    hide_whitespace: bool,
     /// Popover layout: titled sections and a separator.
-    sectioned: bool,
-    ws: Entity<Workspace>,
-}
-
-impl DiffDisplayOptions {
-    pub fn new(settings: &Settings, sectioned: bool, ws: Entity<Workspace>) -> Self {
-        Self {
-            split: settings.diff_split,
-            wrap: settings.diff_wrap,
-            hide_whitespace: settings.diff_ignore_whitespace,
-            sectioned,
-            ws,
-        }
-    }
+    pub sectioned: bool,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for DiffDisplayOptions {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx);
-        let (wrap, hidden) = (self.wrap, self.hide_whitespace);
+        let settings = &self.ws.read(cx).settings;
+        let (split, wrap, hidden) = (settings.diff_split, settings.diff_wrap, settings.diff_ignore_whitespace);
         let (ws_tabs, ws_wrap, ws_hide) = (self.ws.clone(), self.ws.clone(), self.ws);
         let tabs = div().px(px(2.0)).pb(px(6.0)).child(
-            Tabs::new("diff-display", usize::from(self.split))
+            Tabs::new("diff-display", usize::from(split))
                 .tab("Unified", None)
                 .tab("Split", None)
                 .on_select(move |ix, _, cx| ws_tabs.update(cx, |this, cx| this.set_diff_split(ix == 1, cx))),

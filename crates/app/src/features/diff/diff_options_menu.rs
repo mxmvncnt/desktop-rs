@@ -22,7 +22,7 @@ impl DiffOptionsMenu {
         Self {
             pos,
             generation: ws.overlay_gen,
-            options: DiffDisplayOptions::new(&ws.settings, true, entity.clone()),
+            options: DiffDisplayOptions { sectioned: true, ws: entity.clone() },
             ws: entity,
         }
     }

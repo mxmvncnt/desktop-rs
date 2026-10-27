@@ -21,7 +21,6 @@ pub struct SettingsModal {
     page: SettingsPage,
     theme: ThemeMode,
     color_theme: String,
-    diff: DiffPage,
     accounts: Option<AccountsPage>,
     ws: Entity<Workspace>,
 }
@@ -33,7 +32,6 @@ impl SettingsModal {
             page: ws.settings_page,
             theme: s.theme,
             color_theme: s.color_theme_id().to_string(),
-            diff: DiffPage::new(s, cx.entity()),
             accounts: (ws.settings_page == SettingsPage::Accounts).then(|| AccountsPage {
                 store: ws.accounts.clone(),
                 repo: ws.repo.as_ref().map(|r| r.read(cx).repo.clone()),
@@ -49,7 +47,7 @@ impl SettingsModal {
                 color_theme: self.color_theme.clone(),
                 ws: self.ws.clone(),
             }.into_any_element(),
-            SettingsPage::Diff => self.diff.into_any_element(),
+            SettingsPage::Diff => DiffPage { ws: self.ws }.into_any_element(),
             SettingsPage::Accounts => self.accounts.map_or_else(|| div().into_any_element(), IntoElement::into_any_element),
         }
     }
