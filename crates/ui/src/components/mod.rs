@@ -1,6 +1,7 @@
 //! gd-ui components, one per file. Everything is re-exported at the crate root.
 
 mod button;
+mod check_row;
 mod checkbox;
 mod context_menu;
 mod dialog;
@@ -13,6 +14,7 @@ mod toolbar_button;
 mod tooltip;
 
 pub use button::{Button, ButtonStyle, icon_button};
+pub use check_row::CheckRow;
 pub use checkbox::{CheckState, Checkbox};
 pub use context_menu::{ContextMenu, MenuEntry, MenuItem};
 pub use dialog::{Dialog, modal};

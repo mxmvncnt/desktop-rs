@@ -2,7 +2,6 @@
 //! expansion, syntax highlight, options popover. Git side is in
 //! `gd-git/src/{engine,partial,expand}.rs`; see docs/ARCHITECTURE.md.
 
-mod check_option_row;
 mod diff_frame;
 mod diff_options_button;
 mod diff_options_menu;
@@ -30,7 +29,6 @@ mod unified_list;
 mod unified_row;
 mod whitespace_note;
 
-pub use check_option_row::CheckOptionRow;
 pub use expander::ExpandTarget;
 pub use diff_options_button::DiffOptionsButton;
 pub use diff_options_menu::DiffOptionsMenu;

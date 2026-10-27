@@ -34,7 +34,7 @@ impl SettingsModal {
             page: ws.settings_page,
             theme: s.theme,
             color_theme: s.color_theme_id().to_string(),
-            diff: DiffPage::new(s.diff_split, s.diff_wrap, s.diff_ignore_whitespace, cx.entity()),
+            diff: DiffPage::new(s, cx.entity()),
             accounts: (ws.settings_page == SettingsPage::Accounts).then(|| {
                 let repo_name = ws.repo.as_ref().map(|r| r.read(cx).repo.name());
                 AccountsPage::new(&ws.accounts_ui, repo_name, cx.entity())
