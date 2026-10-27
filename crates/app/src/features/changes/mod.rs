@@ -15,10 +15,9 @@ mod no_changes;
 mod ops;
 mod sidebar;
 mod resize;
-mod sidebar_handle;
 mod sidebar_tabs;
 mod state;
 mod undo_strip;
 
 pub use sidebar::Sidebar;
-pub use sidebar_handle::SidebarResize;
+pub use resize::SidebarResize;

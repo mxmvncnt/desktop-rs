@@ -1,12 +1,12 @@
 //! Left sidebar: Changes / History tabs and the selected tab's body.
 
-use gd_ui::{Theme, divider};
+use gd_ui::{ResizeHandle, Theme, divider};
 use gpui::{
     AnyElement, App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
 };
 
 use super::changes_panel::ChangesPanel;
-use super::sidebar_handle::SidebarHandle;
+use super::resize::SidebarResize;
 use super::sidebar_tabs::SidebarTabs;
 use crate::features::history::CommitList;
 use crate::repo::{RepoModel, Tab};
@@ -18,7 +18,7 @@ pub struct Sidebar {
     body: AnyElement,
     corner_radius: f32,
     width: f32,
-    handle: SidebarHandle,
+    handle: ResizeHandle<SidebarResize>,
 }
 
 impl Sidebar {
@@ -31,7 +31,10 @@ impl Sidebar {
         };
         Self { tabs: SidebarTabs::new(tab, count, repo.clone()), body, corner_radius: ws.corner_radius,
             width: ws.sidebar_width(),
-            handle: SidebarHandle::new(cx.entity()),
+            handle: ResizeHandle::right_edge("sidebar-handle", SidebarResize).on_reset({
+                let ws = cx.entity();
+                move |_, cx| ws.update(cx, |this, cx| this.reset_sidebar_width(cx))
+            }),
         }
     }
 }

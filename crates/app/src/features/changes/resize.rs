@@ -5,6 +5,10 @@ use gpui::Context;
 
 use crate::workspace::Workspace;
 
+/// Drag payload marking an in-progress sidebar resize.
+#[derive(Clone)]
+pub struct SidebarResize;
+
 impl Workspace {
     pub fn sidebar_width(&self) -> f32 {
         let w = self.settings.sidebar_width.unwrap_or(SIDEBAR_WIDTH);

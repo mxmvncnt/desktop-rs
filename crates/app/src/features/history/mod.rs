@@ -15,7 +15,6 @@ mod confirm;
 mod handlers;
 mod history_dialog;
 mod menu_actions;
-mod message_handle;
 mod message_resize;
 mod multi_select;
 mod ops;
