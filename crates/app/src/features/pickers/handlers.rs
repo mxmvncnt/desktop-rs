@@ -27,7 +27,13 @@ impl Workspace {
                 })
             })
             .collect();
-        RepoPicker::new(entries, self.popover_selected, self.filter.clone(), self.popover_scroll.clone(), cx.entity())
+        RepoPicker {
+            entries,
+            selected: self.popover_selected,
+            filter: self.filter.clone(),
+            scroll: self.popover_scroll.clone(),
+            ws: cx.entity(),
+        }
     }
 
     /// `None` when no repository is open.
@@ -35,30 +41,30 @@ impl Workspace {
         let repo = self.repo.clone()?;
         let items = self.filtered_branches(cx);
         self.popover_selected = self.popover_selected.min(items.len().saturating_sub(1));
-        Some(BranchPicker::new(
+        Some(BranchPicker {
             items,
-            self.popover_selected,
+            selected: self.popover_selected,
             repo,
-            self.filter.clone(),
-            self.popover_scroll.clone(),
-            cx.entity(),
-        ))
+            filter: self.filter.clone(),
+            scroll: self.popover_scroll.clone(),
+            ws: cx.entity(),
+        })
     }
 
     pub fn new_branch_form(&self, cx: &mut Context<Self>) -> NewBranchForm {
         let repo = self.repo.as_ref().map(|r| r.read(cx));
-        NewBranchForm::new(
-            sanitize_branch_name(self.name_input.read(cx).as_str()),
-            NewBranchBase {
+        NewBranchForm {
+            name: sanitize_branch_name(self.name_input.read(cx).as_str()),
+            base: NewBranchBase {
                 current: repo.map(|r| r.branch_name()).unwrap_or_default(),
                 chosen: self.new_branch_base.clone(),
                 open: self.new_branch_base_open,
                 branches: repo.map(|r| r.branches.clone()).unwrap_or_default(),
                 ws: cx.entity(),
             },
-            self.name_input.clone(),
-            cx.entity(),
-        )
+            input: self.name_input.clone(),
+            ws: cx.entity(),
+        }
     }
 
     pub(super) fn toggle_new_branch_base(&mut self, cx: &mut Context<Self>) {
@@ -74,11 +80,11 @@ impl Workspace {
     }
 
     pub fn clone_form(&self, cx: &mut Context<Self>) -> CloneForm {
-        CloneForm::new(
-            self.url_input.read(cx).as_str().trim().is_empty(),
-            self.url_input.clone(),
-            cx.entity(),
-        )
+        CloneForm {
+            url_empty: self.url_input.read(cx).as_str().trim().is_empty(),
+            input: self.url_input.clone(),
+            ws: cx.entity(),
+        }
     }
 
     /// Enter in the repository picker: open the highlighted repository.

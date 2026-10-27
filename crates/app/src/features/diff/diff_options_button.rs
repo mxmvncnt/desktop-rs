@@ -7,13 +7,7 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct DiffOptionsButton {
-    ws: Entity<Workspace>,
-}
-
-impl DiffOptionsButton {
-    pub fn new(ws: Entity<Workspace>) -> Self {
-        Self { ws }
-    }
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for DiffOptionsButton {

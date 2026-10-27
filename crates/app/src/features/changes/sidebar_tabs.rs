@@ -5,15 +5,9 @@ use crate::repo::{RepoModel, Tab};
 
 #[derive(IntoElement)]
 pub struct SidebarTabs {
-    tab: Tab,
-    change_count: usize,
-    repo: Entity<RepoModel>,
-}
-
-impl SidebarTabs {
-    pub fn new(tab: Tab, change_count: usize, repo: Entity<RepoModel>) -> Self {
-        Self { tab, change_count, repo }
-    }
+    pub tab: Tab,
+    pub change_count: usize,
+    pub repo: Entity<RepoModel>,
 }
 
 impl RenderOnce for SidebarTabs {

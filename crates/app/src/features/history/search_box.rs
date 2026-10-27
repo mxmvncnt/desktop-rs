@@ -8,13 +8,7 @@ use crate::components::text_field;
 
 #[derive(IntoElement)]
 pub(super) struct SearchBox {
-    input: Entity<EditableTextState>,
-}
-
-impl SearchBox {
-    pub fn new(input: Entity<EditableTextState>) -> Self {
-        Self { input }
-    }
+    pub input: Entity<EditableTextState>,
 }
 
 impl RenderOnce for SearchBox {

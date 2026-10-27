@@ -13,16 +13,13 @@ use crate::workspace::Workspace;
 #[derive(IntoElement)]
 pub struct NewBranchForm {
     /// Sanitized text of the name input.
-    name: String,
-    base: NewBranchBase,
-    input: Entity<EditableTextState>,
-    ws: Entity<Workspace>,
+    pub name: String,
+    pub base: NewBranchBase,
+    pub input: Entity<EditableTextState>,
+    pub ws: Entity<Workspace>,
 }
 
 impl NewBranchForm {
-    pub fn new(name: String, base: NewBranchBase, input: Entity<EditableTextState>, ws: Entity<Workspace>) -> Self {
-        Self { name, base, input, ws }
-    }
 
     fn hint(&self) -> SharedString {
         if self.name.is_empty() {

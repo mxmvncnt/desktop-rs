@@ -12,25 +12,12 @@ use crate::repo::RepoModel;
 
 #[derive(IntoElement)]
 pub struct ExpandButton {
-    id: usize,
-    icon: Icon,
-    tip: &'static str,
-    expansion: Expansion,
-    repo: Entity<RepoModel>,
-    target: ExpandTarget,
-}
-
-impl ExpandButton {
-    pub fn new(
-        id: usize,
-        icon: Icon,
-        tip: &'static str,
-        expansion: Expansion,
-        repo: Entity<RepoModel>,
-        target: ExpandTarget,
-    ) -> Self {
-        Self { id, icon, tip, expansion, repo, target }
-    }
+    pub id: usize,
+    pub icon: Icon,
+    pub tip: &'static str,
+    pub expansion: Expansion,
+    pub repo: Entity<RepoModel>,
+    pub target: ExpandTarget,
 }
 
 impl RenderOnce for ExpandButton {

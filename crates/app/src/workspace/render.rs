@@ -67,7 +67,7 @@ impl Workspace {
     /// Sidebar + main pane for the open repo, or the welcome screen.
     fn body(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let Some(repo) = self.repo.clone() else {
-            return WelcomeScreen::new(cx.entity()).into_any_element();
+            return WelcomeScreen { ws: cx.entity() }.into_any_element();
         };
         let (tab, pr_open) = {
             let r = repo.read(cx);

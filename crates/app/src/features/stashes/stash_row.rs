@@ -12,27 +12,14 @@ pub const STASH_ROW_HEIGHT: f32 = 46.0;
 
 #[derive(IntoElement)]
 pub struct StashRow {
-    stash: Stash,
-    selected: bool,
+    pub stash: Stash,
+    pub selected: bool,
     /// Made on the checked-out branch.
-    here: bool,
+    pub here: bool,
     /// "All branches" filter is on (shows the "this branch" badge).
-    all_branches: bool,
-    repo: Entity<RepoModel>,
-    ws: Entity<Workspace>,
-}
-
-impl StashRow {
-    pub fn new(
-        stash: Stash,
-        selected: bool,
-        here: bool,
-        all_branches: bool,
-        repo: Entity<RepoModel>,
-        ws: Entity<Workspace>,
-    ) -> Self {
-        Self { stash, selected, here, all_branches, repo, ws }
-    }
+    pub all_branches: bool,
+    pub repo: Entity<RepoModel>,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for StashRow {

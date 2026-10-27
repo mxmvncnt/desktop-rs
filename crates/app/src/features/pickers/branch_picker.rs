@@ -17,25 +17,15 @@ use crate::workspace::Workspace;
 #[derive(IntoElement)]
 pub struct BranchPicker {
     /// Indices into `RepoModel::branches` matching the filter.
-    items: Vec<usize>,
-    selected: usize,
-    repo: Entity<RepoModel>,
-    filter: Entity<EditableTextState>,
-    scroll: UniformListScrollHandle,
-    ws: Entity<Workspace>,
+    pub items: Vec<usize>,
+    pub selected: usize,
+    pub repo: Entity<RepoModel>,
+    pub filter: Entity<EditableTextState>,
+    pub scroll: UniformListScrollHandle,
+    pub ws: Entity<Workspace>,
 }
 
 impl BranchPicker {
-    pub fn new(
-        items: Vec<usize>,
-        selected: usize,
-        repo: Entity<RepoModel>,
-        filter: Entity<EditableTextState>,
-        scroll: UniformListScrollHandle,
-        ws: Entity<Workspace>,
-    ) -> Self {
-        Self { items, selected, repo, filter, scroll, ws }
-    }
 
     fn list(&self) -> AnyElement {
         let (items, selected) = (self.items.clone(), self.selected);

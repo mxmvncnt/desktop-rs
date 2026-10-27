@@ -18,16 +18,10 @@ const MIN_MATCHES: usize = 50;
 
 #[derive(IntoElement)]
 pub struct CommitList {
-    repo: Entity<RepoModel>,
-    ws: Entity<Workspace>,
-    scroll: UniformListScrollHandle,
-    search: Entity<EditableTextState>,
-}
-
-impl CommitList {
-    pub fn new(repo: Entity<RepoModel>, ws: Entity<Workspace>, scroll: UniformListScrollHandle, search: Entity<EditableTextState>) -> Self {
-        Self { repo, ws, scroll, search }
-    }
+    pub repo: Entity<RepoModel>,
+    pub ws: Entity<Workspace>,
+    pub scroll: UniformListScrollHandle,
+    pub search: Entity<EditableTextState>,
 }
 
 impl RenderOnce for CommitList {
@@ -39,7 +33,7 @@ impl RenderOnce for CommitList {
             .flex_col()
             .flex_1()
             .min_h_0()
-            .child(SearchBox::new(self.search))
+            .child(SearchBox { input: self.search })
             .child(body)
     }
 }

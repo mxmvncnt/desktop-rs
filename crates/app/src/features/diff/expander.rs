@@ -39,7 +39,14 @@ impl Expander {
         let n = diff.hunks.len();
         let mut out = Vec::new();
         let mut add = |k: usize, ic: Icon, tip: &'static str, e| {
-            out.push(ExpandButton::new(h * 2 + k, ic, tip, e, self.repo.clone(), self.target))
+            out.push(ExpandButton {
+                id: h * 2 + k,
+                icon: ic,
+                tip,
+                expansion: e,
+                repo: self.repo.clone(),
+                target: self.target,
+            })
         };
         if h == n {
             if Self::has_trailing(diff) {

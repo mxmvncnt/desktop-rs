@@ -45,7 +45,11 @@ impl SettingsModal {
 
     fn body(self) -> AnyElement {
         match self.page {
-            SettingsPage::Appearance => AppearancePage::new(self.theme, self.color_theme.clone(), self.ws.clone()).into_any_element(),
+            SettingsPage::Appearance => AppearancePage {
+                mode: self.theme,
+                color_theme: self.color_theme.clone(),
+                ws: self.ws.clone(),
+            }.into_any_element(),
             SettingsPage::Diff => self.diff.into_any_element(),
             SettingsPage::Accounts => self.accounts.map_or_else(|| div().into_any_element(), IntoElement::into_any_element),
         }
@@ -70,7 +74,7 @@ impl SettingsModal {
     }
 
     fn card(self, cx: &mut App) -> gpui::Stateful<gpui::Div> {
-        let (nav, title) = (SettingsNav::new(self.page, self.ws.clone()), self.title_bar());
+        let (nav, title) = (SettingsNav { page: self.page, ws: self.ws.clone() }, self.title_bar());
         let body = self.body();
         overlay_card(cx)
             .id("settings-card")

@@ -11,13 +11,7 @@ use crate::utils::text::plural;
 
 #[derive(IntoElement)]
 pub struct PrHeader {
-    repo: Entity<RepoModel>,
-}
-
-impl PrHeader {
-    pub fn new(repo: Entity<RepoModel>) -> Self {
-        Self { repo }
-    }
+    pub repo: Entity<RepoModel>,
 }
 
 impl RenderOnce for PrHeader {

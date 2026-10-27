@@ -77,14 +77,19 @@ impl RenderOnce for MergeDialogView {
 impl MergeDialogView {
     fn content(&self, cx: &App) -> impl IntoElement + use<> {
         let theme = Theme::of(cx).clone();
-        let list = MergeCandidateList::new(self.candidates.clone(), self.ix, self.scroll.clone(), self.ws.clone());
-        let status = MergePreviewLine::new(
-            self.mode,
-            self.current.clone(),
-            self.preview.clone(),
-            self.loading,
-            !self.candidates.is_empty(),
-        );
+        let list = MergeCandidateList {
+            branches: self.candidates.clone(),
+            selected: self.ix,
+            scroll: self.scroll.clone(),
+            ws: self.ws.clone(),
+        };
+        let status = MergePreviewLine {
+            mode: self.mode,
+            current: self.current.clone(),
+            preview: self.preview.clone(),
+            loading: self.loading,
+            has_candidates: !self.candidates.is_empty(),
+        };
         div()
             .flex()
             .flex_col()

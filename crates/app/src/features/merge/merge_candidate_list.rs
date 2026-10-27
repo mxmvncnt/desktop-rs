@@ -14,16 +14,10 @@ pub const ROW_HEIGHT: f32 = 30.0;
 
 #[derive(IntoElement)]
 pub struct MergeCandidateList {
-    branches: Vec<Branch>,
-    selected: usize,
-    scroll: UniformListScrollHandle,
-    ws: Entity<Workspace>,
-}
-
-impl MergeCandidateList {
-    pub fn new(branches: Vec<Branch>, selected: usize, scroll: UniformListScrollHandle, ws: Entity<Workspace>) -> Self {
-        Self { branches, selected, scroll, ws }
-    }
+    pub branches: Vec<Branch>,
+    pub selected: usize,
+    pub scroll: UniformListScrollHandle,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for MergeCandidateList {

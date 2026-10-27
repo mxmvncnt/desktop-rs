@@ -16,7 +16,7 @@ impl Workspace {
     pub fn render_history_main(&mut self, repo: &Entity<RepoModel>, cx: &mut Context<Self>) -> AnyElement {
         let r = repo.read(cx);
         if r.multi_indices().len() >= 2 {
-            return MultiSelectPane::new(repo.clone()).into_any_element();
+            return MultiSelectPane { repo: repo.clone() }.into_any_element();
         }
         // Show the loaded commit (not the just-clicked one) so header, files
         // and diff change together instead of in separate steps.
@@ -27,14 +27,20 @@ impl Workspace {
         let file_key = r.commit_shown.as_ref().and_then(|s| s.path.clone()).unwrap_or_default();
         let (diff, hl, n_files) = (r.commit_diff.clone(), r.commit_hl.clone(), r.commit_files.len());
         let diff_key = SharedString::from(format!("commit-diff-{}-{file_key}", commit.sha));
-        let header = CommitHeader::new(commit, n_files, DiffOptionsButton::new(cx.entity()), self.commit_msg.height, cx.entity());
+        let header = CommitHeader::new(commit, n_files, DiffOptionsButton {
+            ws: cx.entity(),
+        }, self.commit_msg.height, cx.entity());
         let file_list = nav_focus(div(), NavList::CommitFiles, cx.entity())
             .flex()
             .flex_col()
             .flex_none()
             .w(px(260.0))
             .py(px(4.0))
-            .child(FileList { repo: repo.clone(), source: FileSource::Commit, scroll: self.commit_files_scroll.clone() });
+            .child(FileList {
+                repo: repo.clone(),
+                source: FileSource::Commit,
+                scroll: self.commit_files_scroll.clone(),
+            });
         let diff = self.render_diff(diff, hl, diff_key, DiffPane::History(repo.clone()), cx);
         div()
             .flex()

@@ -38,14 +38,19 @@ impl RenderOnce for AccountsPage {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         // The form replaces the whole page so it is fully visible.
         let content = match self.form {
-            Some(form) => AccountForm::new(form, self.inputs, self.ws).into_any_element(),
+            Some(form) => AccountForm { form, inputs: self.inputs, ws: self.ws }.into_any_element(),
             None => div()
                 .flex()
                 .flex_col()
                 .gap(px(22.0))
-                .child(IdentitySection::new(self.identity, self.inputs, self.repo_name, self.ws.clone()))
+                .child(IdentitySection {
+                    identity: self.identity,
+                    inputs: self.inputs,
+                    repo_name: self.repo_name,
+                    ws: self.ws.clone(),
+                })
                 .child(div().h(px(1.0)).bg(gd_ui::Theme::of(cx).border))
-                .child(AccountList::new(self.accounts, self.ws))
+                .child(AccountList { accounts: self.accounts, ws: self.ws })
                 .into_any_element(),
         };
         div()

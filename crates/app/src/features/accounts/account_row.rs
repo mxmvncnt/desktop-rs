@@ -8,14 +8,8 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct AccountRow {
-    account: Account,
-    ws: Entity<Workspace>,
-}
-
-impl AccountRow {
-    pub fn new(account: Account, ws: Entity<Workspace>) -> Self {
-        Self { account, ws }
-    }
+    pub account: Account,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for AccountRow {

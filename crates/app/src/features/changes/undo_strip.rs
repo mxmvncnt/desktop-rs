@@ -9,14 +9,8 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct UndoStrip {
-    commit: LastCommit,
-    ws: Entity<Workspace>,
-}
-
-impl UndoStrip {
-    pub fn new(commit: LastCommit, ws: Entity<Workspace>) -> Self {
-        Self { commit, ws }
-    }
+    pub commit: LastCommit,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for UndoStrip {

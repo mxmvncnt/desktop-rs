@@ -12,18 +12,12 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct StashHeader {
-    stash: Stash,
-    n_files: usize,
+    pub stash: Stash,
+    pub n_files: usize,
     /// Made on the checked-out branch.
-    here: bool,
-    repo: Entity<RepoModel>,
-    ws: Entity<Workspace>,
-}
-
-impl StashHeader {
-    pub fn new(stash: Stash, n_files: usize, here: bool, repo: Entity<RepoModel>, ws: Entity<Workspace>) -> Self {
-        Self { stash, n_files, here, repo, ws }
-    }
+    pub here: bool,
+    pub repo: Entity<RepoModel>,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for StashHeader {

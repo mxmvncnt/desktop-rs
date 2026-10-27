@@ -11,15 +11,12 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct AccountForm {
-    form: FormState,
-    inputs: AccountInputs,
-    ws: Entity<Workspace>,
+    pub form: FormState,
+    pub inputs: AccountInputs,
+    pub ws: Entity<Workspace>,
 }
 
 impl AccountForm {
-    pub fn new(form: FormState, inputs: AccountInputs, ws: Entity<Workspace>) -> Self {
-        Self { form, inputs, ws }
-    }
 
     fn provider_tabs(&self) -> impl IntoElement + use<> {
         let ws = self.ws.clone();

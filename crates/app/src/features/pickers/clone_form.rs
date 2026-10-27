@@ -9,15 +9,9 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct CloneForm {
-    url_empty: bool,
-    input: Entity<EditableTextState>,
-    ws: Entity<Workspace>,
-}
-
-impl CloneForm {
-    pub fn new(url_empty: bool, input: Entity<EditableTextState>, ws: Entity<Workspace>) -> Self {
-        Self { url_empty, input, ws }
-    }
+    pub url_empty: bool,
+    pub input: Entity<EditableTextState>,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for CloneForm {

@@ -10,29 +10,17 @@ use crate::utils::text::plural;
 
 #[derive(IntoElement)]
 pub struct MergePreviewLine {
-    mode: MergeMode,
-    current: String,
-    preview: Option<MergePreview>,
-    loading: bool,
-    has_candidates: bool,
+    pub mode: MergeMode,
+    pub current: String,
+    pub preview: Option<MergePreview>,
+    pub loading: bool,
+    pub has_candidates: bool,
 }
 
 /// A piece of the sentence; `Bold` is a branch name or a count.
 enum Part {
     Plain(String),
     Bold(String),
-}
-
-impl MergePreviewLine {
-    pub fn new(
-        mode: MergeMode,
-        current: String,
-        preview: Option<MergePreview>,
-        loading: bool,
-        has_candidates: bool,
-    ) -> Self {
-        Self { mode, current, preview, loading, has_candidates }
-    }
 }
 
 impl RenderOnce for MergePreviewLine {

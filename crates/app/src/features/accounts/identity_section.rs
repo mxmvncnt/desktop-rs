@@ -10,17 +10,14 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct IdentitySection {
-    identity: IdentityState,
-    inputs: AccountInputs,
+    pub identity: IdentityState,
+    pub inputs: AccountInputs,
     /// Name of the open repository (`None` = no override editor).
-    repo_name: Option<String>,
-    ws: Entity<Workspace>,
+    pub repo_name: Option<String>,
+    pub ws: Entity<Workspace>,
 }
 
 impl IdentitySection {
-    pub fn new(identity: IdentityState, inputs: AccountInputs, repo_name: Option<String>, ws: Entity<Workspace>) -> Self {
-        Self { identity, inputs, repo_name, ws }
-    }
 
     fn global_block(&self) -> IdentityBlock {
         let ws = self.ws.clone();

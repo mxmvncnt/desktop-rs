@@ -33,7 +33,13 @@ impl RenderOnce for StashPanel {
         } else if shown == 0 {
             Some(empty_hint(&theme).into_any_element())
         } else {
-            Some(StashList::new(self.repo.clone(), self.ws, visible, r.current_branch().map(str::to_owned), all).into_any_element())
+            Some(StashList {
+                repo: self.repo.clone(),
+                ws: self.ws,
+                visible,
+                current_branch: r.current_branch().map(str::to_owned),
+                all_branches: all,
+            }.into_any_element())
         };
         div()
             .flex()
@@ -41,7 +47,7 @@ impl RenderOnce for StashPanel {
             .flex_none()
             .border_t_1()
             .border_color(theme.border)
-            .child(StashPanelHeader::new(self.repo, shown, collapsed, all))
+            .child(StashPanelHeader { repo: self.repo, shown, collapsed, all_branches: all })
             .children(body)
     }
 }

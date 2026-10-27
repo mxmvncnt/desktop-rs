@@ -16,22 +16,14 @@ const SIDEBAR_BORDER: f32 = 1.0;
 
 #[derive(IntoElement)]
 pub struct CommitBox {
-    button: CommitButton,
-    message: Entity<EditableTextState>,
+    pub button: CommitButton,
+    pub message: Entity<EditableTextState>,
     /// Sidebar width, to give the input a definite width (see `message_input`).
-    sidebar_width: f32,
-    ws: Entity<Workspace>,
+    pub sidebar_width: f32,
+    pub ws: Entity<Workspace>,
 }
 
 impl CommitBox {
-    pub fn new(
-        button: CommitButton,
-        message: Entity<EditableTextState>,
-        sidebar_width: f32,
-        ws: Entity<Workspace>,
-    ) -> Self {
-        Self { button, message, sidebar_width, ws }
-    }
 
     fn message_input(&self, cx: &App) -> impl IntoElement {
         let placeholder = self.button.default_summary.as_deref().unwrap_or("Commit message (required)");
@@ -51,7 +43,7 @@ impl RenderOnce for CommitBox {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let b = &self.button;
-        let amend_notice = b.amending.then(|| AmendNotice::new(b.head_pushed, self.ws.clone()));
+        let amend_notice = b.amending.then(|| AmendNotice { pushed: b.head_pushed, ws: self.ws.clone() });
         let commit = Button::new("commit")
             .primary()
             .full_width()

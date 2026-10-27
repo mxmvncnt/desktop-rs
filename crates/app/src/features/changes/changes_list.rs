@@ -12,16 +12,10 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct ChangesList {
-    count: usize,
-    repo: Entity<RepoModel>,
-    ws: Entity<Workspace>,
-    scroll: UniformListScrollHandle,
-}
-
-impl ChangesList {
-    pub fn new(count: usize, repo: Entity<RepoModel>, ws: Entity<Workspace>, scroll: UniformListScrollHandle) -> Self {
-        Self { count, repo, ws, scroll }
-    }
+    pub count: usize,
+    pub repo: Entity<RepoModel>,
+    pub ws: Entity<Workspace>,
+    pub scroll: UniformListScrollHandle,
 }
 
 impl RenderOnce for ChangesList {

@@ -8,13 +8,10 @@ use crate::workspace::{Popover, Workspace};
 
 #[derive(IntoElement)]
 pub struct WelcomeScreen {
-    ws: Entity<Workspace>,
+    pub ws: Entity<Workspace>,
 }
 
 impl WelcomeScreen {
-    pub fn new(ws: Entity<Workspace>) -> Self {
-        Self { ws }
-    }
 
     fn add_card(&self) -> SuggestionCard {
         let ws = self.ws.clone();

@@ -11,15 +11,12 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct AppearancePage {
-    mode: ThemeMode,
-    color_theme: String,
-    ws: Entity<Workspace>,
+    pub mode: ThemeMode,
+    pub color_theme: String,
+    pub ws: Entity<Workspace>,
 }
 
 impl AppearancePage {
-    pub fn new(mode: ThemeMode, color_theme: String, ws: Entity<Workspace>) -> Self {
-        Self { mode, color_theme, ws }
-    }
 
     fn mode_tabs(&self) -> impl IntoElement {
         let ws = self.ws.clone();
