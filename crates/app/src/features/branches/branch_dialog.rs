@@ -3,10 +3,10 @@
 use gd_git::{Branch, BranchKind};
 use gd_ui::{CheckState, Checkbox, Dialog, Theme};
 use gpui::{
-    App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
+    App, Context, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
     div, px,
 };
-use gpui_elements::editable_text::{EditableTextState, actions::{Enter, Escape}};
+use gpui_elements::editable_text::EditableTextState;
 
 use super::state::BranchDialog;
 use crate::components::text_field;
@@ -47,11 +47,10 @@ impl RenderOnce for BranchDialogView {
             BranchDialog::Delete { branch, remote, also_remote } => self.delete(branch, remote.as_deref(), *also_remote, cx),
         };
         let (ws_ok, ws_cancel) = (self.ws.clone(), self.ws.clone());
-        let dialog = dialog
+        dialog
             .confirm_disabled(!self.valid)
             .on_confirm(move |w, cx| ws_ok.update(cx, |this, cx| this.branch_dialog_confirm(w, cx)))
-            .on_cancel(move |w, cx| ws_cancel.update(cx, |this, cx| this.close_overlay(w, cx)));
-        key_capture(&self.ws).child(dialog)
+            .on_cancel(move |w, cx| ws_cancel.update(cx, |this, cx| this.close_overlay(w, cx)))
     }
 }
 
@@ -117,20 +116,4 @@ impl BranchDialogView {
             )
             .child(format!("Also delete the remote branch {remote}"))
     }
-}
-
-/// Full-screen wrapper capturing Enter / Esc before the input sees them.
-fn key_capture(ws: &Entity<Workspace>) -> gpui::Div {
-    let (w1, w2) = (ws.clone(), ws.clone());
-    div()
-        .absolute()
-        .inset_0()
-        .capture_action(move |_: &Enter, w, cx| {
-            cx.stop_propagation();
-            w1.update(cx, |this, cx| this.branch_dialog_confirm(w, cx))
-        })
-        .capture_action(move |_: &Escape, w, cx| {
-            cx.stop_propagation();
-            w2.update(cx, |this, cx| this.close_overlay(w, cx))
-        })
 }

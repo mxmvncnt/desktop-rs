@@ -1,5 +1,5 @@
 //! Settings modal (appearance and diff pages) and the persisted `Settings`
-//! model (`model.rs`). Shown while `Workspace::settings_open`.
+//! model (`model.rs`). Shown as `Overlay::Settings`.
 
 mod appearance_page;
 mod diff_page;

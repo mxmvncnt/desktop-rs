@@ -2,8 +2,8 @@
 
 use gd_git::{Branch, Stash};
 use gd_ui::{Dialog, OptionRow};
-use gpui::{App, Context, Div, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
-use gpui_elements::editable_text::{EditableTextState, actions::Enter};
+use gpui::{App, Context, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
+use gpui_elements::editable_text::EditableTextState;
 
 use super::state::StashDialog;
 use crate::repo::RepoModel;
@@ -118,14 +118,8 @@ impl StashDialogView {
         })
     }
 
-    fn message_field(&self, placeholder: &str, cx: &App) -> Div {
-        let ws = self.ws.clone();
-        div()
-            .capture_action(move |_: &Enter, _, cx| {
-                cx.stop_propagation();
-                ws.update(cx, |this, cx| this.stash_confirm(cx))
-            })
-            .child(text_field("stash-message", &self.input, placeholder, cx))
+    fn message_field(&self, placeholder: &str, cx: &App) -> impl IntoElement + use<> {
+        text_field("stash-message", &self.input, placeholder, cx)
     }
 }
 

@@ -5,6 +5,8 @@ use std::rc::Rc;
 
 use gpui::{App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, SharedString, Styled, Window, deferred, div, px};
 
+use gpui_elements::editable_text::actions::{Enter, Escape};
+
 use super::{Callback, Button, ButtonStyle, overlay_card};
 use crate::motion;
 use crate::theme::{Theme, scrim};
@@ -79,11 +81,13 @@ impl Dialog {
         self.danger = true;
         self
     }
+    /// Called for the confirm button and Enter (also while a text input has focus),
+    /// unless [`Dialog::confirm_disabled`].
     pub fn on_confirm(mut self, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_confirm = Some(Rc::new(f));
         self
     }
-    /// Called for Cancel, a backdrop click, and (by the owner) Esc.
+    /// Called for Cancel, a backdrop click, and Esc (also while a text input has focus).
     pub fn on_cancel(mut self, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_cancel = Some(Rc::new(f));
         self
@@ -96,6 +100,7 @@ impl RenderOnce for Dialog {
         let instant = motion::handoff(&self.id, cx);
         let cancel = self.on_cancel;
         let confirm = self.on_confirm;
+        let (enter, escape) = (confirm.clone().filter(|_| !self.confirm_disabled), cancel.clone());
 
         let mut cancel_btn = Button::new("dialog-cancel").label(self.cancel_label);
         if let Some(f) = cancel.clone() {
@@ -151,7 +156,23 @@ impl RenderOnce for Dialog {
                     .child(confirm_btn),
             );
 
-        modal(card, cancel, instant)
+        // Inputs turn Enter / Esc into their own actions, so capture them here.
+        div()
+            .absolute()
+            .inset_0()
+            .capture_action(move |_: &Enter, w, cx| {
+                if let Some(f) = &enter {
+                    cx.stop_propagation();
+                    f(w, cx)
+                }
+            })
+            .capture_action(move |_: &Escape, w, cx| {
+                if let Some(f) = &escape {
+                    cx.stop_propagation();
+                    f(w, cx)
+                }
+            })
+            .child(modal(card, cancel, instant))
     }
 }
 

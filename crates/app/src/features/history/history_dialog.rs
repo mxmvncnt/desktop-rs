@@ -4,7 +4,7 @@
 use gd_git::{Commit, ResetMode};
 use gd_ui::{Dialog, Icon, Tabs, Theme, icon};
 use gpui::{App, Context, Entity, IntoElement, RenderOnce, SharedString, Window, div, prelude::*, px, uniform_list};
-use gpui_elements::editable_text::{EditableTextState, actions::Enter};
+use gpui_elements::editable_text::EditableTextState;
 
 use super::state::{CherryPickTarget, HistoryAction, HistoryDialog};
 use crate::components::BranchRow;
@@ -149,9 +149,7 @@ impl HistoryDialogView {
 
     fn squash(&self, n: usize, any_pushed: bool, cx: &App) -> Dialog {
         let desc = text_area("hist-desc", &self.msg_desc, "Description", cx).w_full().h(px(120.0)).overflow_y_scroll();
-        let summary = div()
-            .capture_action(self.enter_confirms())
-            .child(text_field("hist-summary", &self.msg_summary, "Summary (required)", cx));
+        let summary = text_field("hist-summary", &self.msg_summary, "Summary (required)", cx);
         let content = div().flex().flex_col().gap(px(8.0)).pt(px(4.0)).child(summary).child(desc);
         let mut d = Dialog::new("hist-dialog", format!("Squash {n} commits"))
             .body("Combine them into one commit with this message.")
@@ -164,17 +162,8 @@ impl HistoryDialogView {
         d
     }
 
-    /// Single-line name input; Enter confirms the dialog.
     fn name_field(&self, placeholder: &str, cx: &App) -> gpui::Div {
-        div().pt(px(4.0)).capture_action(self.enter_confirms()).child(text_field("hist-name", &self.name, placeholder, cx))
-    }
-
-    fn enter_confirms(&self) -> impl Fn(&Enter, &mut Window, &mut App) + 'static {
-        let ws = self.ws.clone();
-        move |_: &Enter, w, cx| {
-            cx.stop_propagation();
-            ws.update(cx, |this, cx| this.hist_confirm(w, cx))
-        }
+        div().pt(px(4.0)).child(text_field("hist-name", &self.name, placeholder, cx))
     }
 }
 

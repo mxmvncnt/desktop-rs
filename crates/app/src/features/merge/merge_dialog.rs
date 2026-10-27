@@ -1,6 +1,6 @@
 //! The "Merge into current branch" dialog: mode tabs, filter, candidate list
-//! and preview sentence. Esc/Enter/arrows are captured here so the filter
-//! input doesn't swallow them.
+//! and preview sentence. The arrows are captured here so the filter input
+//! doesn't swallow them.
 
 use gd_git::{Branch, MergePreview};
 use gd_ui::{Dialog, Tabs, Theme};
@@ -10,7 +10,7 @@ use gpui::{
 };
 use gpui_elements::editable_text::{
     EditableTextState,
-    actions::{Enter, Escape, NavDown, NavUp},
+    actions::{NavDown, NavUp},
 };
 
 use super::merge_candidate_list::{MergeCandidateList, ROW_HEIGHT};
@@ -131,27 +131,19 @@ impl MergeDialogView {
     }
 }
 
-/// Full-screen wrapper capturing Enter / arrows / Esc before the input sees them.
+/// Full-screen wrapper capturing the arrows before the filter input sees them.
 fn key_capture(ws: &Entity<Workspace>) -> gpui::Div {
-    let (w1, w2, w3, w4) = (ws.clone(), ws.clone(), ws.clone(), ws.clone());
+    let (down, up) = (ws.clone(), ws.clone());
     div()
         .absolute()
         .inset_0()
-        .capture_action(move |_: &Enter, w, cx| {
-            cx.stop_propagation();
-            w1.update(cx, |this, cx| this.merge_confirm(w, cx))
-        })
         .capture_action(move |_: &NavDown, _, cx| {
             cx.stop_propagation();
-            w2.update(cx, |this, cx| this.merge_step(1, cx))
+            down.update(cx, |this, cx| this.merge_step(1, cx))
         })
         .capture_action(move |_: &NavUp, _, cx| {
             cx.stop_propagation();
-            w3.update(cx, |this, cx| this.merge_step(-1, cx))
-        })
-        .capture_action(move |_: &Escape, w, cx| {
-            cx.stop_propagation();
-            w4.update(cx, |this, cx| this.close_overlay(w, cx))
+            up.update(cx, |this, cx| this.merge_step(-1, cx))
         })
 }
 
