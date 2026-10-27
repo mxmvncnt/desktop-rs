@@ -45,8 +45,12 @@ cargo run --features snapshot -- --snapshot /tmp/desktop-rs/x.png <repo> <view>
 Then look at the PNG. Make test repos under `/tmp/desktop-rs/` (see PROGRESS.md for a
 script). The snapshot can't click, but it can hover (`GD_SNAPSHOT_MOUSE=x,y`) and
 drag with the left button (`GD_SNAPSHOT_DRAG=x1,y1,x2,y2`, logical window px). For
-other interaction states, add a view name to `crates/app/src/snapshot.rs` that sets
-up the state directly.
+other interaction states, add a view: in `crates/app/src/features/<feature>/snapshot.rs`
+(`#[cfg(feature = "snapshot")] pub mod snapshot;` in the feature's `mod.rs`), add a
+`View { name: "my-view", steps: &[step] }` to `views()` and write `step(ws, view, window, cx)`, a plain fn
+that sets the state directly. A name ending in `*` matches by prefix (`select*`); later steps run after the loads
+of the earlier ones finished. A new feature adds its `snapshot::views` to `FEATURES` in `crates/app/src/snapshot.rs`
+(the harness: window, steps, mouse/drag, capture).
 
 ## Documentation duty
 

@@ -1,5 +1,35 @@
 # Code base cleanup report (2026-10-25)
 
+## Status (branch `cleanup-for-humans`, final wave)
+
+Done (`git log 658535f..cleanup-for-humans`):
+
+- Part 2 library swaps: git2 for every git read, `notify-debouncer-full` + `ignore` watcher, serde/toml settings and accounts,
+  OS keyring for tokens, `rust-embed` assets, `lru` highlight cache, `percent-encoding`/`url`, std `hash_one`, gpui `ease_out_quint`.
+- Part 1 dedup and structure: generation-checked `LoadSlot`, one write-op runner, shared stage/message/head helpers in gd-git,
+  `components/` (`FileRow`, `FileList`, `FileDiffPane`, `BranchRow`, `DiffDisplayOptions`, `text_field`, `text_area`, ...), gd-ui primitives
+  (`ResizeHandle`, `OptionRow`, `CheckRow`, `Popover`, `modal`, `empty_state`, `Callback`, `mixed_mark`), 29 pass-through `new()` removed,
+  one `DiffDetail` and `HighlightCache` for all diff panes, one overlay stack and one `Menu`/`MenuView`.
+- Stores: `PopoverStore`, `AccountsStore`; `ChangesState`, `HistoryLog`, `RefreshState` grouped out of `RepoModel`.
+- §1.7: `features/diff/` regrouped into `list/`, `gutter/`, `text_selection/`, `expand/`, `options/`; micro files merged;
+  `line_text` takes the `DiffLine` and `Theme` (no 8-argument clippy warning).
+- §7: `snapshot.rs` is the harness; each feature lists its views in `features/<x>/snapshot.rs`; the cfg(snapshot) re-exports are gone
+  (only `GD_SNAPSHOT_CSD` in `platform/linux/chrome.rs` remains); the watcher check is `watcher_tests.rs` (runs with `--features snapshot`,
+  needs GPUI's test platform, so it is not part of a plain `cargo test`).
+- §8 documentation drift fixed; CONVENTIONS/ARCHITECTURE/AGENTS describe the new tree and how to add a snapshot view.
+
+Deliberately not done:
+
+- Part 3 (gpui-component): decided against, see the decision above.
+- P2.2 syntect (stays optional) and the gd-syntax trim (§4); P2.8.
+- `HistoryUi`, `StashUi`, `MergeUi`, `BranchUi`, `SettingsStore`, `DiffView` as entities: they are input handles or a render cache, an
+  `Entity` would add a layer without removing an `Entity<Workspace>` dependency (see CONVENTIONS, "Stores").
+- Commit-box typing still re-renders the workspace (perf TODO).
+- Crates for `relative_time` and remote URL parsing, and the rebase-apply rewrite: not worth the dependency or the behavior risk.
+- §5.10 shared hash: `highlight.rs::cache_key` keeps its `DefaultHasher` stream; std has no one-shot hash for a stream of fields, `hash_one` only fits a single value.
+
+---
+
 > **Decision (2026-10-25): we keep our own components; Part 3 (gpui-component) is not adopted.**
 > The component cleanup follows Part 1 §1.1/§1.5–1.7 and Part 2 §P2.10 instead. Part 2's non-UI
 > library swaps (git2, watcher, serde, keyring, url, …) still apply. P2.2 (syntect) stays optional.
