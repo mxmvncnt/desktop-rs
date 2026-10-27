@@ -20,7 +20,7 @@ features/stashes/
 - Use `pub(super)` / `pub(crate)` to keep internals private. The rest of the app
   only sees what `mod.rs` re-exports.
 - A component used by two or more features goes in `crates/app/src/components/`
-  (`FileRow`, `FileList`, `BranchRow`, `DiffDisplayOptions`, `MenuRow`,
+  (`FileRow`, `FileList`, `FileDiffPane`, `BranchRow`, `DiffDisplayOptions`, `MenuRow`,
   `SuggestionCard`, `text_field`/`text_area`); a primitive with no app types goes in
   `gd-ui` (`ResizeHandle`, `OptionRow`, `CheckRow`, `Popover`, `modal`, `empty_state`,
   `Callback`). Non-UI helpers go in `crates/app/src/utils/` (`text.rs`, `paths.rs`). No `utils.rs`/`helpers.rs` grab bags:
@@ -133,7 +133,7 @@ and gutter pointer state, `handlers.rs` = `impl Workspace` setters,
 - Keep the perf tricks when touching this folder: `Arc::ptr_eq` caches
   (`split_for`, `wrap_list_for`), `restrict_scroll_to_axis` and the manual
   h-scroll in `rows_list`/`text_flow`, and no `h_full` on gutter cells.
-- Typed replacements: `ExpandTarget` (not `commit: bool`), `BlockRow::{First,
+- Typed replacements: `DiffPane` (not `commit: bool`), `BlockRow::{First,
   Rest}`, `HoveredHandle`/`GutterDrag` (not tuples).
 
 ## Feature folders: changes, pickers, settings, menus, welcome

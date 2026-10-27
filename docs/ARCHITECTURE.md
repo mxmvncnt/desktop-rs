@@ -55,7 +55,7 @@ guessing APIs. To recreate them:
   `--literal-pathspecs` breaks `-u` cleanup when no pathspec is given, so it is only passed with paths.
 - `exec.rs` now falls back to stdout for the error text when stderr is empty (`stash apply` prints CONFLICT lines on stdout).
 - Rename = `stash store -m <new subject> <sha>` then drop the old entry (moves to top).
-- State: `RepoModel::stashes: StashState` (`features/stashes/state.rs`, ops in `ops.rs`; list, filter, collapsed, selection, files/diff/highlight, `LoadSlot`);
+- State: `RepoModel::stashes: StashState` (`features/stashes/state.rs`, ops in `ops.rs`; list, filter, collapsed, selection, `detail: DiffDetail`);
   loaded in the background from every full refresh. `RepoEvent::SwitchBranchWithChanges` makes `RepoModel::checkout`
   hand dirty-tree checkouts to the Workspace, which owns `Workspace::stash_ui` (dialog + message input). Use
   `RepoModel::checkout_now` to skip the dialog. `gd_ui::Dialog::content` embeds inputs/option rows.
@@ -112,11 +112,11 @@ guessing APIs. To recreate them:
   splits the flat rows into hunks, pulls context rows from `source.new` into the gap (20 = `EXPANSION_STEP`), merges
   touching hunks, re-flattens with fresh headers. Changed rows are copied untouched, so `staged_text` gives the same
   result before and after expanding (tested). `gap_above`/`gap_below` drive which buttons show.
-- `RepoModel::expand_diff(commit, e)` swaps `change_diff`/`commit_diff` and re-highlights in the background.
+- `RepoModel::expand_diff(pane, e)` swaps `detail(pane).diff` and re-highlights in the background.
   `change_diff_key` (path + options) lets `load_change_diff` keep the expanded diff when a reload returns the same
   source texts. Line selection is keyed by `LineKey = (is_add, line number)` instead of row index, so it survives
   row shifts; `reconcile_selection` drops it only when the source texts change.
-- `render_diff(.., pane: DiffPane, ..)` (`render_diff.rs`): `Changes` (select + expand), `History` (expand), `ReadOnly` (stashes).
+- `render_diff(.., pane: DiffPane, ..)` (`render_diff.rs`): `Changes` (select + expand), `Commit` (expand), `Stash` and `Pr` (view only). `DiffPane` also names the `DiffDetail` (`RepoModel::detail(pane)`).
   Header rows render `Expander::gutter` instead of number cells; an extra trailing list row (index == rows) holds
   the last Expand Down. Buttons use `group` + `group_hover_style` so the svg icon recolors on hover.
 
@@ -124,15 +124,22 @@ guessing APIs. To recreate them:
 
 - `Workspace` (`workspace/`: `state.rs` struct, `init.rs`, `render.rs` root template, `actions.rs` key routing + Esc order, `repos.rs` open/add/clone, `repo_commands.rs`, `navigation.rs`) is the root view. It owns settings, popover state,
   text-input entities, scroll handles, and an `Option<Entity<RepoModel>>`.
-- `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, pending_refresh), `background_fetch.rs`, `change_diff.rs`/`commit_diff.rs` (stale-load dropping), `diff_highlight.rs`, `expand.rs`, `history_log.rs`, `run.rs`) owns all repository state: status, selection, diff,
+- `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, `RefreshState` in `RepoModel::sync`), `background_fetch.rs`, `diff_detail.rs` (`DiffDetail` + the one highlight spawner, `select_file`, `expand_diff`), `change_diff.rs`/`commit_diff.rs`, `history_log.rs`, `run.rs`) owns all repository state: status, selection, diff,
   history pages, commit details, branches, and in-flight ops.
   Every git call goes through `cx.background_spawn`, and results are applied with `this.update`.
 - **Stale results are dropped** with a `LoadSlot { generation, task }`
   (`repo/run.rs`): `RepoModel::load` (git read, errors go to `error`) or the generic
   `spawn_load` (also used by `Workspace` for the identity and merge preview loads)
-  drops the previous task and ignores results of an older generation. `commit_diff.rs`
-  keeps its own `commit_gen`: its loads are detached on purpose (holding an arrow key
-  shows every commit) and late results still apply unless a newer one landed. Clicking quickly through files never shows the wrong diff.
+  drops the previous task and ignores results of an older generation. The commit detail
+  uses `LoadSlot::late()`: its loads are detached on purpose (holding an arrow key
+  shows every commit) and late results still apply unless a newer one landed.
+  **`DiffDetail`** (`repo/diff_detail.rs`) is the one store of files, selected file, `base`
+  (commit/stash sha or PR merge base the files belong to), diff, loaded `path`, highlight and
+  file-list scroll handle, for `RepoModel::{change_detail, commit_detail}`, `stashes.detail`
+  and `pr.detail`; one `HighlightCache` (`RepoModel::hl_cache`) serves all of them. `show_diff`
+  is the only highlight spawner (a `LoadSlot` per detail), `show_files`/`load_files`/`select_file`
+  the only file-loading paths. `components/file_diff_pane.rs` renders header + file list + diff for
+  commit, stash and PR. Clicking quickly through files never shows the wrong diff.
   A status refresh always reloads the selected diff (status list equality is not
   enough: re-editing a modified file leaves it identical); `apply_change_diff`
   drops results equal to what is shown.
@@ -151,7 +158,7 @@ guessing APIs. To recreate them:
 ### List keyboard navigation (`workspace/navigation.rs`)
 
 - ↑/↓/Home/End/PageUp/PageDown are bound in the `Workspace` context (`SelectNext/Previous/First/Last/PageUp/PageDown`); `MENU` bindings are defined later so overlays win. Focused text inputs bind ↑/↓/Home/End themselves and `select_move` returns when something other than the root has focus, so typing is unaffected.
-- Target = `Workspace.nav_list` (`NavList`: Changes, Commits, CommitFiles, Stashes, StashFiles), set by `nav_focus(div, list, ws)` (capture mouse-down on each list container; also refocuses the root). Falls back to the tab's main list. Selection goes through the normal `select_*` methods (background diff load + generation counters = latest wins) and `scroll_to_item`.
+- Target = `Workspace.nav_list` (`NavList`: Changes, Commits, Stashes, `Files(DiffPane)`), set by `nav_focus(div, list, ws)` (capture mouse-down on each list container; also refocuses the root). Falls back to the tab's main list. Selection goes through the normal `select_*` methods (background diff load + generation counters = latest wins) and `scroll_to_item`.
 - Snapshot views `nav-history`, `nav-stash`, `nav-changes` dispatch the real actions.
 
 ### Menus, dialogs, undo (`features/menus`)
@@ -258,11 +265,10 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 - `gd-ui::theme::SyntaxPalette` (7 base colors mapped in `color()`: indigo keywords/functions, emerald strings,
   amber numbers/types, pink macros). Variable/parameter/operator/punctuation are drawn in the
   row's own color (no run) to cut noise and run count.
-- App flow: after a diff loads, `RepoModel::spawn_highlight` runs `highlight_diff` via
-  `background_spawn`. Until it lands the view renders plain text; then `change_hl`/`commit_hl`
+- App flow: after a diff loads, `RepoModel::show_diff` runs `highlight_diff` via
+  `background_spawn`. Until it lands the view renders plain text; then `DiffDetail::hl`
   is set and the row switches to `StyledText::with_runs` (same metrics, so no layout shift).
-  Staleness: the result is applied only if `Arc::ptr_eq` with the currently displayed diff;
-  the task slot is overwritten on each new diff. Results are cached in an 8-entry LRU keyed by
+  Staleness: the highlight `LoadSlot` of the detail is restarted on each new diff, so an older result is dropped. Results are cached in an 8-entry LRU keyed by
   hash(path, diff text), shared with the background task.
 - Both sides are highlighted separately (context+delete = old, context+add = new; context and
   adds take new-side spans, deletes old-side spans). Hunks are stitched with a blank line, so a
