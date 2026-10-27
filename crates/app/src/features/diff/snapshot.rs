@@ -4,7 +4,7 @@
 use gpui::{Context, Window, point, px};
 
 use super::DiffPane;
-use super::text_selection::{TextPos, TextSel, TextSide};
+use super::text_selection::model::{TextPos, TextSel, TextSide};
 use crate::repo::Tab;
 use crate::snapshot::View;
 use crate::workspace::Workspace;
@@ -31,10 +31,8 @@ fn options(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context
     ws.settings.diff_split = matches!(view, "split" | "split-history" | "split-ws" | "diff-options-menu");
     ws.settings.diff_ignore_whitespace = matches!(view, "hide-ws" | "split-ws");
     ws.apply_diff_options(cx);
-    if view == "split-history" {
-        if let Some(r) = &ws.repo {
-            r.update(cx, |r, cx| r.set_tab(Tab::History, cx));
-        }
+    if let (true, Some(r)) = (view == "split-history", &ws.repo) {
+        r.update(cx, |r, cx| r.set_tab(Tab::History, cx));
     }
     if view == "diff-options-menu" {
         ws.open_diff_options(point(px(1240.0), px(60.0)), window, cx);
