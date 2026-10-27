@@ -2,6 +2,7 @@
 
 mod branch_row;
 mod diff_display_options;
+mod file_diff_pane;
 mod file_list;
 mod file_row;
 mod menu_row;

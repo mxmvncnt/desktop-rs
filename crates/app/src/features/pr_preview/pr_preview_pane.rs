@@ -2,14 +2,13 @@
 //! read-only diff. An `impl Workspace` method because the diff renderer owns
 //! scroll state (`&mut Workspace`).
 
-use gd_ui::{Theme, vdivider};
-use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
+use gd_ui::Theme;
+use gpui::{AnyElement, Context, Entity, IntoElement, div, prelude::*};
 
-use crate::components::FileList;
 use super::pr_header::PrHeader;
 use crate::features::diff::DiffPane;
 use crate::repo::RepoModel;
-use crate::workspace::{NavList, Workspace, nav_focus};
+use crate::workspace::Workspace;
 
 impl Workspace {
     pub fn render_pr_preview(&mut self, repo: &Entity<RepoModel>, cx: &mut Context<Self>) -> AnyElement {
@@ -18,20 +17,7 @@ impl Workspace {
         let pr = &r.pr;
         let header = PrHeader { repo: repo.clone() };
         let body = match &pr.comparison {
-            Some(c) if !c.files.is_empty() => {
-                let file_key = pr.detail.path.clone().unwrap_or_default();
-                let key = SharedString::from(format!("pr-diff-{}-{file_key}", c.merge_base));
-                let (diff, hl) = (pr.detail.diff.clone(), pr.detail.hl.clone());
-                let file_list = nav_focus(div(), NavList::Files(DiffPane::Pr), cx.entity())
-                    .flex()
-                    .flex_col()
-                    .flex_none()
-                    .w(px(260.0))
-                    .py(px(4.0))
-                    .child(FileList { repo: repo.clone(), pane: DiffPane::Pr });
-                let diff = self.render_diff(diff, hl, key, DiffPane::Pr, repo, cx);
-                div().flex().flex_1().min_h_0().child(file_list).child(vdivider(cx)).child(diff).into_any_element()
-            }
+            Some(c) if !c.files.is_empty() => return self.render_file_diff_pane(header, repo, DiffPane::Pr, cx),
             Some(_) => empty(&theme, "No changes: nothing to compare against the base branch."),
             None if pr.loading => empty(&theme, "Comparing branches…"),
             None if pr.error.is_some() => empty(&theme, "The branches can't be compared."),
