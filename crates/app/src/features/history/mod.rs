@@ -5,7 +5,6 @@
 mod amend;
 mod cherry_pick_branch_row;
 mod commit_detail;
-mod commit_file_list;
 mod commit_header;
 mod commit_list;
 mod commit_menu;

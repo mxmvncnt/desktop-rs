@@ -3,7 +3,7 @@
 use gd_ui::vdivider;
 use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
 
-use super::commit_file_list::CommitFileList;
+use crate::components::{FileList, FileSource};
 use super::commit_header::CommitHeader;
 use super::multi_select::MultiSelectPane;
 use crate::features::diff::{DiffOptionsButton, DiffPane};
@@ -34,7 +34,7 @@ impl Workspace {
             .flex_none()
             .w(px(260.0))
             .py(px(4.0))
-            .child(CommitFileList::new(repo.clone(), self.commit_files_scroll.clone()));
+            .child(FileList { repo: repo.clone(), source: FileSource::Commit, scroll: self.commit_files_scroll.clone() });
         let diff = self.render_diff(diff, hl, diff_key, DiffPane::History(repo.clone()), cx);
         div()
             .flex()

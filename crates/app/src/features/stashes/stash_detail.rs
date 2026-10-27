@@ -3,7 +3,7 @@
 use gd_ui::vdivider;
 use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
 
-use super::stash_file_list::StashFileList;
+use crate::components::{FileList, FileSource};
 use super::stash_header::StashHeader;
 use crate::repo::RepoModel;
 use crate::features::diff::DiffPane;
@@ -29,7 +29,7 @@ impl Workspace {
             .flex_none()
             .w(px(260.0))
             .py(px(4.0))
-            .child(StashFileList::new(repo.clone()));
+            .child(FileList { repo: repo.clone(), source: FileSource::Stash, scroll: st.files_scroll.clone() });
         let diff = self.render_diff(diff, hl, diff_key, DiffPane::ReadOnly, cx);
         div()
             .flex()

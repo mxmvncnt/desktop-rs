@@ -5,7 +5,7 @@
 use gd_ui::{Theme, vdivider};
 use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
 
-use super::pr_file_list::PrFileList;
+use crate::components::{FileList, FileSource};
 use super::pr_header::PrHeader;
 use crate::features::diff::DiffPane;
 use crate::repo::RepoModel;
@@ -28,7 +28,7 @@ impl Workspace {
                     .flex_none()
                     .w(px(260.0))
                     .py(px(4.0))
-                    .child(PrFileList::new(repo.clone()));
+                    .child(FileList { repo: repo.clone(), source: FileSource::Pr, scroll: pr.files_scroll.clone() });
                 let diff = self.render_diff(diff, hl, key, DiffPane::ReadOnly, cx);
                 div().flex().flex_1().min_h_0().child(file_list).child(vdivider(cx)).child(diff).into_any_element()
             }

@@ -1,7 +1,5 @@
 pub mod branch_name;
 pub mod commit_authors;
-pub mod file_change_row;
-pub mod file_status_color;
 pub mod file_url;
 pub mod menu_row;
 pub mod relative_time;
