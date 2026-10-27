@@ -1,6 +1,7 @@
-//! A radio-style option card used by the stash and switch-branch dialogs.
+//! A radio-style option card (title + optional detail) for dialogs.
 
-use gd_ui::{Theme, pressable};
+use super::pressable;
+use crate::theme::Theme;
 use gpui::{App, ElementId, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 #[derive(IntoElement)]

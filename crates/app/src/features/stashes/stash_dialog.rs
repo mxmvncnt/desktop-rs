@@ -1,11 +1,10 @@
 //! The stash dialogs: create / rename / drop and the switch-branch choice.
 
 use gd_git::{Branch, Stash};
-use gd_ui::Dialog;
+use gd_ui::{Dialog, OptionRow};
 use gpui::{App, Context, Div, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 use gpui_elements::editable_text::{EditableTextState, actions::Enter};
 
-use super::option_row::OptionRow;
 use super::state::StashDialog;
 use crate::repo::RepoModel;
 use crate::shared::plural::plural;

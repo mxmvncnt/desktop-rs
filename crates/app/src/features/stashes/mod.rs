@@ -3,7 +3,6 @@
 
 mod handlers;
 mod ops;
-mod option_row;
 mod stash_detail;
 mod stash_dialog;
 mod stash_file_list;
