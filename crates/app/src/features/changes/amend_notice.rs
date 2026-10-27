@@ -11,14 +11,8 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct AmendNotice {
-    pushed: bool,
-    ws: gpui::Entity<Workspace>,
-}
-
-impl AmendNotice {
-    pub fn new(pushed: bool, ws: gpui::Entity<Workspace>) -> Self {
-        Self { pushed, ws }
-    }
+    pub pushed: bool,
+    pub ws: gpui::Entity<Workspace>,
 }
 
 impl RenderOnce for AmendNotice {

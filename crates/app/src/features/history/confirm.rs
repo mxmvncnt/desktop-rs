@@ -4,7 +4,7 @@ use gpui::{Context, Entity, Window};
 
 use super::menu_actions::reset_dialog;
 use super::state::{HistoryAction, HistoryDialog};
-use crate::shared::branch_name::sanitize_branch_name;
+use crate::utils::text::sanitize_branch_name;
 use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
@@ -12,12 +12,6 @@ use crate::workspace::Workspace;
 struct SquashMessage {
     summary: String,
     description: String,
-}
-
-impl SquashMessage {
-    fn full(self) -> String {
-        if self.description.is_empty() { self.summary } else { format!("{}\n\n{}", self.summary, self.description) }
-    }
 }
 
 impl Workspace {
@@ -40,7 +34,7 @@ impl Workspace {
             HistoryDialog::AmendPushed(c) => self.start_amend(c, window, cx),
             HistoryDialog::Squash { commits, .. } => {
                 let shas = commits.into_iter().map(|c| c.sha).collect();
-                repo.update(cx, |r, cx| r.squash(shas, message.full(), cx));
+                repo.update(cx, |r, cx| r.squash(shas, gd_git::message(&message.summary, &message.description), cx));
             }
             other => confirm_simple(other, name, &repo, cx),
         }

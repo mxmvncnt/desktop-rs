@@ -6,9 +6,9 @@ use gd_ui::{Icon, Theme, motion};
 use gpui::{App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use crate::repo::RepoModel;
-use crate::shared::suggestion_card::SuggestionCard;
-use crate::shared::file_url::file_url;
-use crate::shared::plural::plural;
+use crate::components::SuggestionCard;
+use crate::utils::paths::file_url;
+use crate::utils::text::plural;
 
 #[derive(IntoElement)]
 pub struct NoChanges {

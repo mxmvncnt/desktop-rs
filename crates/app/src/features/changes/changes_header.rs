@@ -5,21 +5,15 @@ use gpui::{
 
 use super::state::SelectionSummary;
 use crate::repo::RepoModel;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 use crate::workspace::Workspace;
 
 /// "N changed files" with the select-all checkbox; right-click opens the header menu.
 #[derive(IntoElement)]
 pub struct ChangesHeader {
-    selection: SelectionSummary,
-    repo: Entity<RepoModel>,
-    ws: Entity<Workspace>,
-}
-
-impl ChangesHeader {
-    pub fn new(selection: SelectionSummary, repo: Entity<RepoModel>, ws: Entity<Workspace>) -> Self {
-        Self { selection, repo, ws }
-    }
+    pub selection: SelectionSummary,
+    pub repo: Entity<RepoModel>,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for ChangesHeader {

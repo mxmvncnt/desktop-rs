@@ -5,6 +5,8 @@ use gpui::{App, ElementId, IntoElement, ParentElement, RenderOnce, SharedString,
 use super::badge;
 use crate::theme::{CONTROL_RADIUS, Theme};
 
+type SelectHandler = std::rc::Rc<dyn Fn(usize, &mut Window, &mut App)>;
+
 /// Segmented tab bar ("Changes" | "History"). Selected tab gets a raised
 /// plate; the plate color transitions so switching feels like it slides.
 #[derive(IntoElement)]
@@ -12,7 +14,7 @@ pub struct Tabs {
     id: ElementId,
     items: Vec<(SharedString, Option<SharedString>)>,
     selected: usize,
-    on_select: Option<std::rc::Rc<dyn Fn(usize, &mut Window, &mut App)>>,
+    on_select: Option<SelectHandler>,
 }
 
 impl Tabs {

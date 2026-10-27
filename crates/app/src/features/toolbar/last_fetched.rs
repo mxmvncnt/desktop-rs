@@ -2,7 +2,7 @@
 
 use std::time::SystemTime;
 
-use crate::shared::relative_time::{Coarsest, relative_time_since};
+use crate::utils::text::{Coarsest, relative_time_since};
 
 /// "Last fetched 5 minutes ago" / "Never fetched".
 pub fn last_fetched_caption(last: Option<SystemTime>) -> String {

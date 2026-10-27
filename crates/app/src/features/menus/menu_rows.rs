@@ -6,7 +6,7 @@ use gd_git::{FileChange, FileStatus};
 use gd_ui::Icon;
 
 use super::state::{MenuAction, MenuTarget};
-use crate::shared::menu_row::{MenuRow, RowItem};
+use crate::components::{MenuRow, RowItem};
 
 pub fn extension(path: &str) -> Option<&str> {
     Path::new(path).extension().and_then(|e| e.to_str())

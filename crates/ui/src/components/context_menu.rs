@@ -4,14 +4,11 @@
 
 use std::rc::Rc;
 
-use gpui::{App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Point, RenderOnce, SharedString, Styled, Window, deferred, div, prelude::*, px};
+use gpui::{App, ElementId, IntoElement, ParentElement, Pixels, Point, RenderOnce, SharedString, Styled, Window, div, prelude::*, px};
 
-use super::{icon, overlay_card, pressable};
+use super::{Callback, Popover, icon, pressable};
 use crate::assets::Icon;
-use crate::motion;
 use crate::theme::Theme;
-
-type Callback = Rc<dyn Fn(&mut Window, &mut App)>;
 
 /// One selectable row of a [`ContextMenu`].
 pub struct MenuItem {
@@ -96,7 +93,6 @@ impl ContextMenu {
 impl RenderOnce for ContextMenu {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let instant = motion::handoff(&self.id, cx);
         // Keep the card inside the window (flip up / shift left near edges).
         // `position` is in window coordinates; under client-side decorations
         // the content sits inside a transparent shadow inset, so translate.
@@ -121,13 +117,7 @@ impl RenderOnce for ContextMenu {
             position.y
         };
 
-        let mut card = overlay_card(cx)
-            .id(self.id.clone())
-            .occlude()
-            .w(px(MENU_WIDTH))
-            .p(px(MENU_PAD))
-            .flex()
-            .flex_col();
+        let mut card = div().p(px(MENU_PAD)).flex().flex_col();
         for (ix, entry) in self.entries.into_iter().enumerate() {
             card = card.child(match entry {
                 MenuEntry::Separator => div()
@@ -165,22 +155,10 @@ impl RenderOnce for ContextMenu {
             });
         }
 
-        let dismiss = self.on_dismiss;
-        let mut backdrop = div().id("menu-backdrop").occlude().absolute().inset_0();
-        if let Some(f) = dismiss {
-            let g = f.clone();
-            backdrop = backdrop
-                .on_mouse_down(MouseButton::Left, move |_, w, cx| f(w, cx))
-                .on_mouse_down(MouseButton::Right, move |_, w, cx| g(w, cx));
+        let mut menu = Popover::new(self.id, gpui::point(x, y), MENU_WIDTH, card);
+        if let Some(f) = self.on_dismiss {
+            menu = menu.on_dismiss(move |_, w, cx| f(w, cx));
         }
-        deferred(
-            div().absolute().inset_0().child(backdrop).child(
-                div()
-                    .absolute()
-                    .left(x)
-                    .top(y)
-                    .child(motion::menu_in("context-menu-in", card, instant)),
-            ),
-        )
+        menu
     }
 }

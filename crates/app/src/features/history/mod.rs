@@ -3,9 +3,7 @@
 //! docs/ARCHITECTURE.md.
 
 mod amend;
-mod cherry_pick_branch_row;
 mod commit_detail;
-mod commit_file_list;
 mod commit_header;
 mod commit_list;
 mod commit_menu;
@@ -15,7 +13,6 @@ mod confirm;
 mod handlers;
 mod history_dialog;
 mod menu_actions;
-mod message_handle;
 mod message_resize;
 mod multi_select;
 mod ops;

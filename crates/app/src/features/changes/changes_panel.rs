@@ -35,12 +35,22 @@ impl ChangesPanel {
         let last: Option<LastCommit> = r.undoable_commit().cloned().filter(|_| !amending);
         let ws_entity = cx.entity();
         Self {
-            header: ChangesHeader::new(selection, repo.clone(), ws_entity.clone()),
-            list: ChangesList::new(selection.total, repo.clone(), ws_entity.clone(), ws.changes_scroll.clone()),
+            header: ChangesHeader { selection, repo: repo.clone(), ws: ws_entity.clone() },
+            list: ChangesList {
+                count: selection.total,
+                repo: repo.clone(),
+                ws: ws_entity.clone(),
+                scroll: ws.changes_scroll.clone(),
+            },
             ws: ws_entity.clone(),
             stashes: StashPanel::new(repo, ws_entity.clone(), cx),
-            undo: last.map(|c| UndoStrip::new(c, ws_entity.clone())),
-            commit_box: CommitBox::new(button, ws.message.clone(), ws.sidebar_width(), ws_entity),
+            undo: last.map(|c| UndoStrip { commit: c, ws: ws_entity.clone() }),
+            commit_box: CommitBox {
+                button,
+                message: ws.message.clone(),
+                sidebar_width: ws.sidebar_width(),
+                ws: ws_entity,
+            },
         }
     }
 }

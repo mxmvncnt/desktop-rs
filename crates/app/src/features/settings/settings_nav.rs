@@ -11,14 +11,11 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct SettingsNav {
-    page: SettingsPage,
-    ws: Entity<Workspace>,
+    pub page: SettingsPage,
+    pub ws: Entity<Workspace>,
 }
 
 impl SettingsNav {
-    pub fn new(page: SettingsPage, ws: Entity<Workspace>) -> Self {
-        Self { page, ws }
-    }
 
     fn item(&self, p: SettingsPage, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();

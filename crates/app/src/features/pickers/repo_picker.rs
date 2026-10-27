@@ -22,23 +22,14 @@ pub struct RepoEntry {
 
 #[derive(IntoElement)]
 pub struct RepoPicker {
-    entries: Vec<RepoEntry>,
-    selected: usize,
-    filter: Entity<EditableTextState>,
-    scroll: UniformListScrollHandle,
-    ws: Entity<Workspace>,
+    pub entries: Vec<RepoEntry>,
+    pub selected: usize,
+    pub filter: Entity<EditableTextState>,
+    pub scroll: UniformListScrollHandle,
+    pub ws: Entity<Workspace>,
 }
 
 impl RepoPicker {
-    pub fn new(
-        entries: Vec<RepoEntry>,
-        selected: usize,
-        filter: Entity<EditableTextState>,
-        scroll: UniformListScrollHandle,
-        ws: Entity<Workspace>,
-    ) -> Self {
-        Self { entries, selected, filter, scroll, ws }
-    }
 
     fn list(entries: Vec<RepoEntry>, selected: usize, scroll: &UniformListScrollHandle, ws: &Entity<Workspace>) -> AnyElement {
         let n = entries.len();

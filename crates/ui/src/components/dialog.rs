@@ -5,11 +5,9 @@ use std::rc::Rc;
 
 use gpui::{App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, SharedString, Styled, Window, deferred, div, px};
 
-use super::{Button, ButtonStyle, overlay_card};
+use super::{Callback, Button, ButtonStyle, overlay_card};
 use crate::motion;
 use crate::theme::{Theme, scrim};
-
-type Callback = Rc<dyn Fn(&mut Window, &mut App)>;
 
 /// Modal confirmation dialog: scrim, centered card, title, body, and
 /// Cancel + confirm buttons (confirm is primary, or red with [`Dialog::danger`]).
@@ -153,24 +151,30 @@ impl RenderOnce for Dialog {
                     .child(confirm_btn),
             );
 
-        let mut backdrop = div().id("dialog-backdrop").occlude().absolute().inset_0().bg(scrim(0.5));
-        if let Some(f) = cancel {
-            backdrop = backdrop.on_mouse_down(MouseButton::Left, move |_, w, cx| f(w, cx));
-        }
-        deferred(
-            div()
-                .absolute()
-                .inset_0()
-                .child(motion::scrim_in("dialog-scrim-in", backdrop, instant))
-                .child(
-                    div()
-                        .absolute()
-                        .inset_0()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(motion::dialog_in("dialog-in", card, instant)),
-                ),
-        )
+        modal(card, cancel, instant)
     }
+}
+
+/// Scrim plus a centered card for custom modals (settings); a backdrop click
+/// calls `on_cancel`. `instant` skips the entrance (see `motion::handoff`).
+pub fn modal(card: impl IntoElement + Styled + 'static, on_cancel: Option<Callback>, instant: bool) -> impl IntoElement {
+    let mut backdrop = div().id("dialog-backdrop").occlude().absolute().inset_0().bg(scrim(0.5));
+    if let Some(f) = on_cancel {
+        backdrop = backdrop.on_mouse_down(MouseButton::Left, move |_, w, cx| f(w, cx));
+    }
+    deferred(
+        div()
+            .absolute()
+            .inset_0()
+            .child(motion::scrim_in("dialog-scrim-in", backdrop, instant))
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(motion::dialog_in("dialog-in", card, instant)),
+            ),
+    )
 }

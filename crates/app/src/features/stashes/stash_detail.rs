@@ -3,7 +3,7 @@
 use gd_ui::vdivider;
 use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
 
-use super::stash_file_list::StashFileList;
+use crate::components::{FileList, FileSource};
 use super::stash_header::StashHeader;
 use crate::repo::RepoModel;
 use crate::features::diff::DiffPane;
@@ -22,14 +22,18 @@ impl Workspace {
         let file_key = st.selected_file.and_then(|ix| st.files.get(ix)).map(|f| f.path.clone()).unwrap_or_default();
         let (diff, hl, n_files) = (st.diff.clone(), st.hl.clone(), st.files.len());
         let diff_key = SharedString::from(format!("stash-diff-{}-{file_key}", stash.sha));
-        let header = StashHeader::new(stash, n_files, here, repo.clone(), cx.entity());
+        let header = StashHeader { stash, n_files, here, repo: repo.clone(), ws: cx.entity() };
         let file_list = nav_focus(div(), NavList::StashFiles, cx.entity())
             .flex()
             .flex_col()
             .flex_none()
             .w(px(260.0))
             .py(px(4.0))
-            .child(StashFileList::new(repo.clone()));
+            .child(FileList {
+                repo: repo.clone(),
+                source: FileSource::Stash,
+                scroll: st.files_scroll.clone(),
+            });
         let diff = self.render_diff(diff, hl, diff_key, DiffPane::ReadOnly, cx);
         div()
             .flex()

@@ -1,11 +1,12 @@
 //! desktop-rs — Rust + GPUI-CE app (POC). See docs/.
 
 mod actions;
+mod components;
 mod features;
 mod frame_debug;
 mod platform;
 mod repo;
-mod shared;
+mod utils;
 #[cfg(feature = "snapshot")]
 mod snapshot;
 

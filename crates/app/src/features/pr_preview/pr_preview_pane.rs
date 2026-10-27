@@ -5,7 +5,7 @@
 use gd_ui::{Theme, vdivider};
 use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
 
-use super::pr_file_list::PrFileList;
+use crate::components::{FileList, FileSource};
 use super::pr_header::PrHeader;
 use crate::features::diff::DiffPane;
 use crate::repo::RepoModel;
@@ -16,7 +16,7 @@ impl Workspace {
         let theme = Theme::of(cx).clone();
         let r = repo.read(cx);
         let pr = &r.pr;
-        let header = PrHeader::new(repo.clone());
+        let header = PrHeader { repo: repo.clone() };
         let body = match &pr.comparison {
             Some(c) if !c.files.is_empty() => {
                 let file_key = pr.selected_file.and_then(|ix| c.files.get(ix)).map(|f| f.path.clone()).unwrap_or_default();
@@ -28,7 +28,11 @@ impl Workspace {
                     .flex_none()
                     .w(px(260.0))
                     .py(px(4.0))
-                    .child(PrFileList::new(repo.clone()));
+                    .child(FileList {
+                        repo: repo.clone(),
+                        source: FileSource::Pr,
+                        scroll: pr.files_scroll.clone(),
+                    });
                 let diff = self.render_diff(diff, hl, key, DiffPane::ReadOnly, cx);
                 div().flex().flex_1().min_h_0().child(file_list).child(vdivider(cx)).child(diff).into_any_element()
             }

@@ -5,7 +5,7 @@ use gd_git::{FileChange, FileStatus};
 use gpui::Context;
 
 use crate::repo::{LastCommit, Op, RepoEvent, RepoModel};
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 
 impl RepoModel {
     pub fn included_paths(&self) -> Vec<String> {

@@ -8,13 +8,7 @@ use crate::repo::RepoModel;
 
 #[derive(IntoElement)]
 pub struct MultiSelectPane {
-    repo: Entity<RepoModel>,
-}
-
-impl MultiSelectPane {
-    pub fn new(repo: Entity<RepoModel>) -> Self {
-        Self { repo }
-    }
+    pub repo: Entity<RepoModel>,
 }
 
 impl RenderOnce for MultiSelectPane {

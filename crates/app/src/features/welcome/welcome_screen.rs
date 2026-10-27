@@ -3,18 +3,15 @@
 use gd_ui::{Icon, Theme, motion};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
-use crate::shared::suggestion_card::SuggestionCard;
+use crate::components::SuggestionCard;
 use crate::workspace::{Popover, Workspace};
 
 #[derive(IntoElement)]
 pub struct WelcomeScreen {
-    ws: Entity<Workspace>,
+    pub ws: Entity<Workspace>,
 }
 
 impl WelcomeScreen {
-    pub fn new(ws: Entity<Workspace>) -> Self {
-        Self { ws }
-    }
 
     fn add_card(&self) -> SuggestionCard {
         let ws = self.ws.clone();

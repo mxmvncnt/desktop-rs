@@ -1,7 +1,7 @@
 //! Small style building blocks: icons, hairline dividers, the pressable
 //! row/ghost surface, pill badges and the overlay card.
 
-use gpui::{App, Div, ElementId, SharedString, Stateful, Styled, Svg, div, millis, prelude::*, px, svg};
+use gpui::{App, Div, Hsla, ElementId, SharedString, Stateful, Styled, Svg, div, millis, prelude::*, px, svg};
 
 use crate::assets::Icon;
 use crate::motion::HOVER_MS;
@@ -45,6 +45,11 @@ pub fn pressable(id: impl Into<ElementId>, selected: bool, cx: &App) -> Stateful
         .cursor_pointer()
 }
 
+/// The dash of a partially checked box.
+pub fn mixed_mark(color: Hsla) -> Div {
+    div().w(px(7.0)).h(px(1.5)).rounded(px(1.0)).bg(color)
+}
+
 /// A small pill badge (counts, ahead/behind).
 pub fn badge(text: impl Into<SharedString>, cx: &App) -> Div {
     let theme = Theme::of(cx);
@@ -58,6 +63,18 @@ pub fn badge(text: impl Into<SharedString>, cx: &App) -> Div {
         .bg(theme.ink(0.08))
         .text_size(px(11.0))
         .text_color(theme.text_muted)
+        .child(text.into())
+}
+
+/// Centered faint placeholder text ("No matches"); callers size it
+/// (`flex_1()`, `h_full()`).
+pub fn empty_state(text: impl Into<SharedString>, cx: &App) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .text_size(px(12.0))
+        .text_color(Theme::of(cx).text_faint)
         .child(text.into())
 }
 

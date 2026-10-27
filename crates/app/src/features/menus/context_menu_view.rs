@@ -5,7 +5,7 @@ use gpui::{App, Context, Entity, IntoElement, Pixels, Point, RenderOnce, Window}
 
 use super::menu_rows::menu_rows;
 use super::state::MenuAction;
-use crate::shared::menu_row::MenuRow;
+use crate::components::MenuRow;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]

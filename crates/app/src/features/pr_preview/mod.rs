@@ -3,7 +3,6 @@
 
 mod ops;
 mod pr_base_menu;
-mod pr_file_list;
 mod pr_header;
 mod pr_preview_pane;
 mod state;

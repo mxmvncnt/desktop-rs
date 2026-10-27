@@ -7,17 +7,11 @@ use crate::repo::RepoModel;
 
 #[derive(IntoElement)]
 pub struct StashPanelHeader {
-    repo: Entity<RepoModel>,
+    pub repo: Entity<RepoModel>,
     /// Stashes visible under the current filter.
-    shown: usize,
-    collapsed: bool,
-    all_branches: bool,
-}
-
-impl StashPanelHeader {
-    pub fn new(repo: Entity<RepoModel>, shown: usize, collapsed: bool, all_branches: bool) -> Self {
-        Self { repo, shown, collapsed, all_branches }
-    }
+    pub shown: usize,
+    pub collapsed: bool,
+    pub all_branches: bool,
 }
 
 impl RenderOnce for StashPanelHeader {

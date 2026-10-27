@@ -29,14 +29,14 @@ pub struct UnifiedRows<'a> {
 }
 
 /// Row background, text color and `+`/`-` marker of a line kind.
-struct LineLook {
-    bg: Hsla,
-    fg: Hsla,
-    marker: &'static str,
-    marker_color: Hsla,
+pub(super) struct LineLook {
+    pub bg: Hsla,
+    pub fg: Hsla,
+    pub marker: &'static str,
+    pub marker_color: Hsla,
 }
 
-fn line_look(kind: DiffLineKind, theme: &Theme) -> LineLook {
+pub(super) fn line_look(kind: DiffLineKind, theme: &Theme) -> LineLook {
     let (bg, fg, marker) = match kind {
         DiffLineKind::Add => (theme.diff_add_bg, theme.text, "+"),
         DiffLineKind::Delete => (theme.diff_del_bg, theme.text, "-"),

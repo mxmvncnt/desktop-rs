@@ -6,7 +6,7 @@ use gd_ui::{Button, Icon, Theme, icon, motion};
 use gpui::{App, ColorExt as _, Context, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px};
 
 use crate::repo::RepoModel;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]

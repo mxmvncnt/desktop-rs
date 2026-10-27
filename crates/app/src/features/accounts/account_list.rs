@@ -9,14 +9,11 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct AccountList {
-    accounts: Vec<Account>,
-    ws: Entity<Workspace>,
+    pub accounts: Vec<Account>,
+    pub ws: Entity<Workspace>,
 }
 
 impl AccountList {
-    pub fn new(accounts: Vec<Account>, ws: Entity<Workspace>) -> Self {
-        Self { accounts, ws }
-    }
 
     fn header(&self) -> impl IntoElement + use<> {
         let ws = self.ws.clone();
@@ -46,7 +43,7 @@ impl RenderOnce for AccountList {
             .gap(px(8.0))
             .child(self.header())
             .child(caption("Tokens are used for HTTPS fetch, pull and push to the account's host. They are stored in a private (0600) file in the config folder."))
-            .children(self.accounts.iter().cloned().map(|a| AccountRow::new(a, ws.clone())))
+            .children(self.accounts.iter().cloned().map(|a| AccountRow { account: a, ws: ws.clone() }))
             .children(self.accounts.is_empty().then(|| caption("No accounts yet.")))
     }
 }

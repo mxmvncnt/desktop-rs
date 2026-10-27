@@ -19,8 +19,11 @@ features/stashes/
 
 - Use `pub(super)` / `pub(crate)` to keep internals private. The rest of the app
   only sees what `mod.rs` re-exports.
-- Shared, feature-independent bits go in `crates/app/src/shared/` (or `gd-ui` if
-  they're pure design-system components). No `utils.rs`/`helpers.rs` grab bags:
+- A component used by two or more features goes in `crates/app/src/components/`
+  (`FileRow`, `FileList`, `BranchRow`, `DiffDisplayOptions`, `MenuRow`,
+  `SuggestionCard`, `text_field`/`text_area`); a primitive with no app types goes in
+  `gd-ui` (`ResizeHandle`, `OptionRow`, `CheckRow`, `Popover`, `modal`, `empty_state`,
+  `Callback`). Non-UI helpers go in `crates/app/src/utils/` (`text.rs`, `paths.rs`). No `utils.rs`/`helpers.rs` grab bags:
   name a file after what it does (`relative_time.rs`).
 
 ## Components (Vue SFC ≈ one file)
@@ -79,27 +82,32 @@ Exception: git writes and network ops keep shelling out to the `git` CLI
 - Components are `#[derive(IntoElement)]` + `RenderOnce`, one per file
   (`stash_panel`, `stash_panel_header`, `stash_list`, `stash_row`,
   `stash_header`, `stash_file_list`, `stash_dialog`,
-  `option_row`), with a `new(..)` constructor and typed props.
+  ...), with typed props.
 - Props: data they show (cloned, e.g. `Stash`) plus `Entity<RepoModel>` for
   model calls and `Entity<Workspace>` (`cx.entity()` at the call site) for UI
   actions. Handlers call back with
   `ws.update(cx, |this, cx| this.open_stash_dialog(..))` or
   `repo.update(cx, |r, cx| r.stash_pop(sha, cx))`; no `cx.listener` inside
   `RenderOnce`. Callback props are `Box<dyn Fn(&mut Window, &mut App)>`
-  (`OptionRow`).
+  (`gd_ui::OptionRow`); name the type with `gd_ui::Callback`.
 - Pieces that need `&mut Workspace` (the diff renderer owns scroll state) stay
   an `impl Workspace` method (`stash_detail.rs`) that composes the stateless
   components around it.
+- No pass-through `new()`: when a constructor only copies its arguments into
+  fields, make the fields `pub` and build the component with a struct literal
+  at the call site. Keep `new` when it boxes a callback, computes something or
+  returns `Option<Self>`. Stateless with one call site and no props struct: a
+  plain `fn x(..) -> impl IntoElement` is enough.
 - Panels that may be hidden expose `Component::new(..) -> Option<Self>`.
-- Context menus return `Vec<MenuRow>` (`shared/menu_row.rs`:
+- Context menus return `Vec<MenuRow>` (`components/menu_row.rs`:
   `MenuRow::{Item(RowItem), Separator}`); `features/menus` renders them.
 - Dialog variants are built by one small method per variant on the
   `RenderOnce` struct, not one giant match.
 - Feature-owned menus reuse `MenuRow<A>` with their own action enum
   (`features/history`: `MenuRow<HistoryAction>`); rows are built in one small fn
   per group (`commit_menu_rows.rs`).
-- Identical rows across features live in `shared/` (`file_change_row.rs`, with an
-  id namespace and an `on_select` callback prop).
+- Identical rows across features live in `components/` (`FileRow` with an id
+  namespace, `.leading(..)` slot and callbacks; `BranchRow` with trailing children).
 - Replace `(bool, bool)` click flags with an enum (`ClickKind`).
 - Two related features can share one overlay area without sharing state:
   `merge` (`merge_ui`) and `branches` (`branch_ui`) each own their menu/dialog;
@@ -118,7 +126,7 @@ and gutter pointer state, `handlers.rs` = `impl Workspace` setters,
   `SplitRows::row`, `number_cell` and `RowSelect::handle_cell` are not
   `RenderOnce` structs (no per-row props struct, no extra boxing). Per-list and
   per-frame pieces are components (`UnifiedList`, `SplitList`, `DiffFrame`,
-  `DiffOptionsMenu`, `DiffOptionsButton`, `WhitespaceNote`, `CheckOptionRow`,
+  `DiffOptionsMenu`, `DiffOptionsButton`, `WhitespaceNote`,
   and `ExpandButton`, which only appears on hunk headers).
 - Row renderers borrow their shared inputs in one small struct
   (`UnifiedRows { diff, hl, sel, exp, .. }`) instead of 8 positional args.
@@ -150,8 +158,8 @@ and gutter pointer state, `handlers.rs` = `impl Workspace` setters,
 - `features/menus`: the generic context menu (`ContextMenuView`), discard
   dialog (`DiscardDialogView`), `MenuAction`/`MenuTarget`, and the cross-feature
   arrow/Enter routing (`key_routing.rs`).
-- `shared/`: `file_status_color`, `split_path`, `branch_name`
-  (`sanitize_branch_name`), `suggestion_card` (`SuggestionCard`).
+- `utils/text.rs`: `plural`, `split_path`, `sanitize_branch_name`, `relative_time`,
+  commit authors. `utils/paths.rs`: `file_url`, `reveal`, `copy_path`.
 - Closure-heavy `RenderOnce` components call back through `Entity<Workspace>`
   (`ws.update(cx, |this, cx| ..)`), never `cx.listener`.
 - Return types that borrow `&self` need `+ use<>` (edition 2024).

@@ -1,7 +1,7 @@
 //! Card with an icon, a title, a one-line body and an action button
 //! (welcome screen, "No local changes" suggestions).
 
-use gd_ui::{Button, Icon, Theme, icon};
+use gd_ui::{Button, ClickHandler, Icon, Theme, icon};
 use gpui::{
     App, ClickEvent, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
 };
@@ -13,7 +13,7 @@ pub struct SuggestionCard {
     title: SharedString,
     body: SharedString,
     action: SharedString,
-    on_click: Box<dyn Fn(&ClickEvent, &mut Window, &mut App)>,
+    on_click: ClickHandler,
 }
 
 impl SuggestionCard {

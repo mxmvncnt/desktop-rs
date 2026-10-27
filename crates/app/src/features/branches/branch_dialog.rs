@@ -9,7 +9,7 @@ use gpui::{
 use gpui_elements::editable_text::{EditableTextState, actions::{Enter, Escape}};
 
 use super::state::BranchDialog;
-use crate::shared::text_field::text_field;
+use crate::components::text_field;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]

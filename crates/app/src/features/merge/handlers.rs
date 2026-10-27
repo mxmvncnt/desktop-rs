@@ -1,7 +1,7 @@
 //! Workspace-side handlers of the merge dialog: open, select, step, confirm
 //! and close. The preview is computed on the background executor.
 
-use gd_git::{Branch, BranchKind, MergePreview};
+use gd_git::{Branch, MergePreview};
 use gpui::{Context, Focusable, ScrollStrategy, Window};
 
 use super::state::{MergeDialog, MergeMode};
@@ -19,18 +19,7 @@ impl Workspace {
     pub(super) fn merge_candidates(&self, cx: &gpui::App) -> Vec<Branch> {
         let Some(repo) = &self.repo else { return Vec::new() };
         let f = self.merge_ui.filter.read(cx).as_str().trim().to_lowercase();
-        let r = repo.read(cx);
-        let local: std::collections::HashSet<&str> =
-            r.branches.iter().filter(|b| b.kind == BranchKind::Local).map(|b| b.name.as_str()).collect();
-        r.branches
-            .iter()
-            .filter(|b| !b.is_head)
-            .filter(|b| f.is_empty() || b.name.to_lowercase().contains(&f))
-            .filter(|b| {
-                b.kind == BranchKind::Local || !b.name.split_once('/').is_some_and(|(_, n)| local.contains(n))
-            })
-            .cloned()
-            .collect()
+        repo.read(cx).matching_branches(&f).map(|(_, b)| b).filter(|b| !b.is_head).cloned().collect()
     }
 
     pub fn open_merge_dialog(

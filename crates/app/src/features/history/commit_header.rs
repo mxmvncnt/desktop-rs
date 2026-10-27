@@ -1,15 +1,15 @@
 //! Header of the commit detail pane: summary, body, author, sha, time, file count.
 
 use gd_git::Commit;
-use gd_ui::{Icon, Theme, icon};
+use gd_ui::{Icon, ResizeHandle, Theme, icon};
 use gpui::{AnyElement, App, DragMoveEvent, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
-use super::message_handle::{MessageDrag, MessageHandle};
+use super::message_resize::MessageDrag;
 use super::message_resize::MSG_DEFAULT_MAX;
 use crate::workspace::Workspace;
-use crate::shared::commit_authors::{authors_text, body_without_trailers};
-use crate::shared::relative_time::relative_time;
-use crate::shared::plural::plural;
+use crate::utils::text::{authors_text, body_without_trailers};
+use crate::utils::text::relative_time;
+use crate::utils::text::plural;
 
 #[derive(IntoElement)]
 pub struct CommitHeader {
@@ -66,7 +66,7 @@ impl CommitHeader {
             .when_some(self.msg_height, |d, h| d.h(px(h)))
             .when(self.msg_height.is_none(), |d| d.max_h(px(MSG_DEFAULT_MAX)))
             .child(body);
-        let ws = self.ws.clone();
+        let (ws, reset_ws) = (self.ws.clone(), self.ws.clone());
         let shown = self.msg_height.unwrap_or(MSG_DEFAULT_MAX);
         div()
             .flex()
@@ -76,7 +76,9 @@ impl CommitHeader {
                 ws.update(cx, |this, cx| this.drag_commit_message_to(y, shown, cx))
             })
             .child(text)
-            .child(MessageHandle::new(self.ws.clone()))
+            .child(ResizeHandle::bottom_edge("commit-message-handle", MessageDrag).on_reset(move |_, cx| {
+                reset_ws.update(cx, |this, cx| this.reset_commit_message_height(cx))
+            }))
     }
 
     fn title_line(self) -> impl IntoElement {

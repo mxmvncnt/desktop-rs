@@ -2,7 +2,7 @@
 
 use gpui::{App, ClickEvent, ElementId, IntoElement, ParentElement, RenderOnce, Styled, Window, div, millis, prelude::*, px};
 
-use super::{ClickHandler, icon};
+use super::{ClickHandler, icon, mixed_mark};
 use crate::assets::Icon;
 use crate::motion::HOVER_MS;
 use crate::theme::Theme;
@@ -61,13 +61,7 @@ impl RenderOnce for Checkbox {
                 CheckState::Checked => {
                     d.child(icon(Icon::Check).size(px(12.0)).text_color(theme.on_solid))
                 }
-                CheckState::Mixed => d.child(
-                    div()
-                        .w(px(7.0))
-                        .h(px(1.5))
-                        .rounded(px(1.0))
-                        .bg(theme.on_solid),
-                ),
+                CheckState::Mixed => d.child(mixed_mark(theme.on_solid)),
                 CheckState::Unchecked => d,
             });
         if let Some(f) = self.on_click {

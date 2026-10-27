@@ -11,24 +11,12 @@ const MAX_ROWS: usize = 4;
 
 #[derive(IntoElement)]
 pub struct StashList {
-    repo: Entity<RepoModel>,
-    ws: Entity<Workspace>,
+    pub repo: Entity<RepoModel>,
+    pub ws: Entity<Workspace>,
     /// Indices into `StashState::list` that pass the branch filter.
-    visible: Vec<usize>,
-    current_branch: Option<String>,
-    all_branches: bool,
-}
-
-impl StashList {
-    pub fn new(
-        repo: Entity<RepoModel>,
-        ws: Entity<Workspace>,
-        visible: Vec<usize>,
-        current_branch: Option<String>,
-        all_branches: bool,
-    ) -> Self {
-        Self { repo, ws, visible, current_branch, all_branches }
-    }
+    pub visible: Vec<usize>,
+    pub current_branch: Option<String>,
+    pub all_branches: bool,
 }
 
 impl RenderOnce for StashList {
@@ -45,7 +33,14 @@ impl RenderOnce for StashList {
                     let s = r.stashes.list.get(*visible.get(i)?)?.clone();
                     let here = s.branch.is_some() && s.branch == current_branch;
                     let selected_here = viewing && selected.as_deref() == Some(s.sha.as_str());
-                    Some(StashRow::new(s, selected_here, here, all_branches, repo.clone(), ws.clone()))
+                    Some(StashRow {
+                        stash: s,
+                        selected: selected_here,
+                        here,
+                        all_branches,
+                        repo: repo.clone(),
+                        ws: ws.clone(),
+                    })
                 })
                 .collect()
         })

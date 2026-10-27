@@ -1,10 +1,12 @@
 //! Settings modal: a sidebar of categories and the selected category's page.
 //! Esc, the close button, a backdrop click, or the toolbar gear closes it.
 
-use gd_ui::{Icon, divider, icon_button, motion, overlay_card, theme::scrim};
+use std::rc::Rc;
+
+use gd_ui::{Callback, Icon, divider, icon_button, modal, motion, overlay_card};
 use gpui::{
-    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
-    Styled, Window, deferred, div, px,
+    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
+    px,
 };
 
 use crate::features::accounts::AccountsPage;
@@ -32,7 +34,7 @@ impl SettingsModal {
             page: ws.settings_page,
             theme: s.theme,
             color_theme: s.color_theme_id().to_string(),
-            diff: DiffPage::new(s.diff_split, s.diff_wrap, s.diff_ignore_whitespace, cx.entity()),
+            diff: DiffPage::new(s, cx.entity()),
             accounts: (ws.settings_page == SettingsPage::Accounts).then(|| {
                 let repo_name = ws.repo.as_ref().map(|r| r.read(cx).repo.name());
                 AccountsPage::new(&ws.accounts_ui, repo_name, cx.entity())
@@ -43,7 +45,11 @@ impl SettingsModal {
 
     fn body(self) -> AnyElement {
         match self.page {
-            SettingsPage::Appearance => AppearancePage::new(self.theme, self.color_theme.clone(), self.ws.clone()).into_any_element(),
+            SettingsPage::Appearance => AppearancePage {
+                mode: self.theme,
+                color_theme: self.color_theme.clone(),
+                ws: self.ws.clone(),
+            }.into_any_element(),
             SettingsPage::Diff => self.diff.into_any_element(),
             SettingsPage::Accounts => self.accounts.map_or_else(|| div().into_any_element(), IntoElement::into_any_element),
         }
@@ -68,7 +74,7 @@ impl SettingsModal {
     }
 
     fn card(self, cx: &mut App) -> gpui::Stateful<gpui::Div> {
-        let (nav, title) = (SettingsNav::new(self.page, self.ws.clone()), self.title_bar());
+        let (nav, title) = (SettingsNav { page: self.page, ws: self.ws.clone() }, self.title_bar());
         let body = self.body();
         overlay_card(cx)
             .id("settings-card")
@@ -94,27 +100,8 @@ impl RenderOnce for SettingsModal {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let instant = motion::handoff(&"settings-in".into(), cx);
         let ws = self.ws.clone();
-        let backdrop = div()
-            .id("settings-backdrop")
-            .absolute()
-            .inset_0()
-            .bg(scrim(0.5))
-            .on_mouse_down(MouseButton::Left, move |_, _, cx| close(&ws, cx));
-        deferred(
-            div()
-                .absolute()
-                .inset_0()
-                .child(motion::scrim_in("settings-scrim-in", backdrop, instant))
-                .child(
-                    div()
-                        .absolute()
-                        .inset_0()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(motion::dialog_in("settings-in", self.card(cx), instant)),
-                ),
-        )
+        let on_cancel: Callback = Rc::new(move |_, cx| close(&ws, cx));
+        modal(self.card(cx), Some(on_cancel), instant)
     }
 }
 
