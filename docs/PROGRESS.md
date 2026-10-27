@@ -110,7 +110,7 @@ Branch: `main`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 
 - ✅ `notify` watcher per open repo (`app/src/watcher.rs`), 300ms trailing debounce (2s max wait), coalesced refresh.
 - ✅ `.git` filtering: only HEAD/index/refs/FETCH_HEAD/MERGE_HEAD/... count; objects, logs, `*.lock` ignored. `target/` (top level) and `node_modules` skipped.
-- ✅ Idle = zero refreshes, ~zero CPU. Verify: `cargo test -p desktop-rs --features snapshot watcher` (`app/src/watcher_tests.rs`, asserts on a temp repo).
+- ✅ Idle = zero refreshes, ~zero CPU. Verify: `cargo test -p desktop-rs --features snapshot watcher` (`app/src/tests/watcher_tests.test.rs`, asserts on a temp repo).
 - ✅ `gd_git::Repository::{git_dir, common_git_dir, last_fetch_time}`; toolbar caption "Last fetched 5 minutes ago" / "Never fetched".
 - ✅ Background fetch: 10s after open if stale, then every 30 min; silent on failure (logged), skipped if a remote op is running or no remote.
 - ✅ Focus refresh skipped if the watcher refreshed within 1s.

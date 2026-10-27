@@ -12,6 +12,7 @@ mod snapshot;
 
 mod watcher;
 #[cfg(all(test, feature = "snapshot"))]
+#[path = "tests/watcher_tests.test.rs"]
 mod watcher_tests;
 mod workspace;
 

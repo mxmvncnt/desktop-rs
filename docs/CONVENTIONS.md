@@ -83,6 +83,14 @@ rows (rebuilt every frame) are always plain fns. No struct whose `new()` only co
   (e.g. `enum MenuRow { Item(MenuItem), Separator }`, not
   `Option<(MenuAction, &str, Icon, bool)>`).
 
+## Tests
+
+Unit tests live next to the source in a `tests/` folder of that source folder, one file per source
+file named `<file>.test.rs` (`utils/text.rs` -> `utils/tests/text.test.rs`). The source file declares
+them with `#[cfg(test)] #[path = "tests/text.test.rs"] mod tests;` and the test file starts with
+`use super::*;` (private items stay reachable). Feature-gated tests keep their gate on the `mod`
+line. Integration tests go in `crates/<crate>/tests/` (Cargo's own layout).
+
 ## Dependencies
 
 Prefer a well-maintained crate over hand-rolled platform/utility code

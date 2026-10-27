@@ -14,7 +14,7 @@ Done (`git log 658535f..cleanup-for-humans`):
 - §1.7: `features/diff/` regrouped into `list/`, `gutter/`, `text_selection/`, `expand/`, `options/`; micro files merged;
   `line_text` takes the `DiffLine` and `Theme` (no 8-argument clippy warning).
 - §7: `snapshot.rs` is the harness; each feature lists its views in `features/<x>/snapshot.rs`; the cfg(snapshot) re-exports are gone
-  (only `GD_SNAPSHOT_CSD` in `platform/linux/chrome.rs` remains); the watcher check is `watcher_tests.rs` (runs with `--features snapshot`,
+  (only `GD_SNAPSHOT_CSD` in `platform/linux/chrome.rs` remains); the watcher check is `tests/watcher_tests.test.rs` (runs with `--features snapshot`,
   needs GPUI's test platform, so it is not part of a plain `cargo test`).
 - §8 documentation drift fixed; CONVENTIONS/ARCHITECTURE/AGENTS describe the new tree and how to add a snapshot view.
 

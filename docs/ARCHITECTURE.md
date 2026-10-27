@@ -231,7 +231,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
   Background fetch task: first check at 10s, then wakes every 60s (also re-renders
   the relative-time caption); fetches when both last fetch and last attempt are >=30 min old.
   Failures are only logged.
-- Headless test (`cargo test -p desktop-rs --features snapshot watcher`, `watcher_tests.rs`): the watcher debounces
+- Headless test (`cargo test -p desktop-rs --features snapshot watcher`, `tests/watcher_tests.test.rs`): the watcher debounces
   in wall-clock time, so use real sleeps and poll `run_until_parked`.
 
 ## History (`gd_git::history_ops`, `app/src/features/history/`)
