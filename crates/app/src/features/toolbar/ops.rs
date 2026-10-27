@@ -2,20 +2,19 @@
 
 use gpui::Context;
 
-use crate::repo::{RemoteOp, RepoModel};
+use crate::repo::{Op, RemoteOp, RepoModel};
 
 impl RepoModel {
     pub fn remote(&mut self, op: RemoteOp, cx: &mut Context<Self>) {
         if self.remote_op.is_some() {
             return;
         }
-        self.remote_op = Some(op);
-        cx.notify();
         let (branch, has_upstream) = match &self.status {
             Some(s) => (s.branch.clone().unwrap_or_default(), s.upstream.is_some()),
             None => (String::new(), false),
         };
         self.run(
+            Op { remote: Some(op), ..Op::default() },
             move |r| match op {
                 RemoteOp::Fetch => r.fetch().map(|_| true),
                 RemoteOp::Pull => r.pull().map(|_| true),

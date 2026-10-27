@@ -2,9 +2,10 @@
 //! Workspace side ([`MergeUi`]: merge dialog, conflicted-file menu, inputs).
 
 use gd_git::{FileChange, InProgress, MergePreview};
-use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription, Task, UniformListScrollHandle};
+use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
+use crate::repo::LoadSlot;
 use crate::workspace::Workspace;
 
 /// Which flavor of "merge into current branch" to run. The discriminant is the
@@ -44,13 +45,11 @@ pub struct MergeDialog {
     pub ix: usize,
     pub preview: Option<MergePreview>,
     pub loading: bool,
-    /// Bumped on each selection; a late preview for an old one is dropped.
-    pub(super) revision: u64,
 }
 
 impl MergeDialog {
     pub fn new(mode: MergeMode) -> Self {
-        Self { mode, ix: 0, preview: None, loading: false, revision: 0 }
+        Self { mode, ix: 0, preview: None, loading: false }
     }
 }
 
@@ -83,7 +82,7 @@ pub struct MergeUi {
     /// Branch the summary default was last generated for.
     pub(super) summary_for: Option<String>,
     pub(super) scroll: UniformListScrollHandle,
-    pub(super) preview_task: Option<Task<()>>,
+    pub(super) preview_load: LoadSlot,
     _subs: Vec<Subscription>,
 }
 
@@ -104,7 +103,7 @@ impl MergeUi {
             summary,
             summary_for: None,
             scroll: UniformListScrollHandle::new(),
-            preview_task: None,
+            preview_load: LoadSlot::default(),
             _subs: subs,
         }
     }

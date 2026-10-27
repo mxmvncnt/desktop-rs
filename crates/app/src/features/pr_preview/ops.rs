@@ -1,5 +1,5 @@
 //! Pull-request preview operations on `RepoModel`. All git work runs on the
-//! background executor; the generation counter drops stale loads.
+//! background executor; the [`LoadSlot`] drops stale loads.
 
 use std::sync::Arc;
 
@@ -7,7 +7,7 @@ use gd_git::{BranchKind, Comparison, Diff};
 use gpui::{AppContext, Context};
 
 use crate::features::diff::highlight_diff;
-use crate::repo::RepoModel;
+use crate::repo::{RepoModel, spawn_load};
 
 /// What one background load returns.
 struct Loaded {
@@ -27,7 +27,7 @@ impl RepoModel {
     pub fn close_pr_preview(&mut self, cx: &mut Context<Self>) {
         self.pr.open = false;
         self.pr.base_menu = false;
-        self.pr.task = None;
+        self.pr.load.cancel();
         cx.notify();
     }
 
@@ -62,31 +62,26 @@ impl RepoModel {
 
     /// (Re)load the comparison of HEAD against the chosen or default base.
     pub fn load_pr_comparison(&mut self, cx: &mut Context<Self>) {
-        self.pr.gen_ += 1;
-        let generation = self.pr.gen_;
         self.pr.loading = true;
         self.pr.error = None;
         let (repo, chosen, opts) = (self.repo.clone(), self.pr.base.clone(), self.diff_options);
-        self.pr.task = Some(cx.spawn(async move |this, cx| {
-            let res = cx
-                .background_spawn(async move {
-                    let base = chosen.or_else(|| repo.default_base_branch());
-                    let remote_url = repo.tracking_remote_url();
-                    let Some(b) = base.clone() else {
-                        return Ok(Loaded { base, comparison: None, remote_url, first: None });
-                    };
-                    let cmp = repo.compare(&b, "HEAD")?;
-                    let first = match cmp.files.first() {
-                        Some(f) => Some((repo.compare_file_diff(&cmp.merge_base, "HEAD", f, opts)?, f.path.clone())),
-                        None => None,
-                    };
-                    Ok::<_, gd_git::GitError>(Loaded { base, comparison: Some(cmp), remote_url, first })
-                })
-                .await;
-            this.update(cx, |this, cx| {
-                if this.pr.gen_ != generation {
-                    return;
-                }
+        spawn_load(
+            self,
+            |this| &mut this.pr.load,
+            move || {
+                let base = chosen.or_else(|| repo.default_base_branch());
+                let remote_url = repo.tracking_remote_url();
+                let Some(b) = base.clone() else {
+                    return Ok(Loaded { base, comparison: None, remote_url, first: None });
+                };
+                let cmp = repo.compare(&b, "HEAD")?;
+                let first = match cmp.files.first() {
+                    Some(f) => Some((repo.compare_file_diff(&cmp.merge_base, "HEAD", f, opts)?, f.path.clone())),
+                    None => None,
+                };
+                Ok::<_, gd_git::GitError>(Loaded { base, comparison: Some(cmp), remote_url, first })
+            },
+            |this, res, cx| {
                 this.pr.loading = false;
                 match res {
                     Ok(l) => this.apply_pr_loaded(l, cx),
@@ -97,9 +92,9 @@ impl RepoModel {
                     }
                 }
                 cx.notify();
-            })
-            .ok();
-        }));
+            },
+            cx,
+        );
         cx.notify();
     }
 
@@ -119,27 +114,13 @@ impl RepoModel {
         let Some(file) = cmp.files.get(ix).cloned() else { return };
         let merge_base = cmp.merge_base.clone();
         self.pr.selected_file = Some(ix);
-        self.pr.gen_ += 1;
-        let generation = self.pr.gen_;
-        let (repo, opts) = (self.repo.clone(), self.diff_options);
-        self.pr.task = Some(cx.spawn(async move |this, cx| {
-            let res = cx
-                .background_spawn(async move {
-                    repo.compare_file_diff(&merge_base, "HEAD", &file, opts).map(|d| (d, file.path.clone()))
-                })
-                .await;
-            this.update(cx, |this, cx| {
-                if this.pr.gen_ != generation {
-                    return;
-                }
-                match res {
-                    Ok(d) => this.set_pr_diff(Some(d), cx),
-                    Err(e) => this.error = Some(e.to_string()),
-                }
-                cx.notify();
-            })
-            .ok();
-        }));
+        let opts = self.diff_options;
+        self.load(
+            |this| &mut this.pr.load,
+            move |repo| repo.compare_file_diff(&merge_base, "HEAD", &file, opts).map(|d| (d, file.path.clone())),
+            |this, d, cx| this.set_pr_diff(Some(d), cx),
+            cx,
+        );
         cx.notify();
     }
 

@@ -2,40 +2,35 @@
 //! context-menu actions (reset, checkout, revert, cherry-pick, squash,
 //! reorder, amend, tags, undo).
 //!
-//! All git work goes through [`RepoModel::hist_run`], which runs off-thread,
+//! All git work goes through [`RepoModel::run`], which runs off-thread (one at a time),
 //! reports errors via `RepoModel::error`, and refreshes status + history +
 //! push state afterwards. Operations that stop on conflicts leave the git
 //! operation in progress (see `Repository::in_progress`).
 
-use gd_git::{Repository, ResetMode};
-use gpui::{AppContext, Context};
+use gd_git::ResetMode;
+use gpui::Context;
 
-use crate::repo::{LastCommit, RepoModel};
+use crate::repo::{LastCommit, Op, RepoModel, spawn_load};
 
 impl RepoModel {
     /// Recompute unpushed commits, tags, web URL and the in-progress state in
     /// the background. Called from every full refresh (so after push, fetch,
     /// commit, checkout...).
     pub fn reload_push_state(&mut self, cx: &mut Context<Self>) {
-        self.history.load_gen += 1;
-        let generation = self.history.load_gen;
         let repo = self.repo.clone();
-        self.history.task = Some(cx.spawn(async move |this, cx| {
-            let (unpushed, tags, url, no_remote) = cx
-                .background_spawn(async move {
-                    (
-                        repo.unpushed_commits(),
-                        repo.tags_by_commit(),
-                        repo.github_web_url(),
-                        repo.remotes().map(|r| r.is_empty()).unwrap_or(false),
-                    )
-                })
-                .await;
-            this.update(cx, |this, cx| {
+        spawn_load(
+            self,
+            |this| &mut this.history.push_load,
+            move || {
+                (
+                    repo.unpushed_commits(),
+                    repo.tags_by_commit(),
+                    repo.github_web_url(),
+                    repo.remotes().map(|r| r.is_empty()).unwrap_or(false),
+                )
+            },
+            |this, (unpushed, tags, url, no_remote), cx| {
                 let h = &mut this.history;
-                if h.load_gen != generation {
-                    return;
-                }
                 h.all_local = no_remote;
                 if let Ok(u) = unpushed {
                     h.unpushed = u;
@@ -46,9 +41,9 @@ impl RepoModel {
                 }
                 h.web_url = url;
                 cx.notify();
-            })
-            .ok();
-        }));
+            },
+            cx,
+        );
     }
 
     /// Why history operations are unavailable right now (shown as disabled menu items).
@@ -60,23 +55,10 @@ impl RepoModel {
         self.history.all_local || self.history.unpushed.contains(sha)
     }
 
-    /// Run a history operation through the shared `run_op` (one at a time,
-    /// refreshes afterwards; conflicts surface as the in-progress banner).
-    fn hist_run<R: Send + 'static>(
-        &mut self,
-        label: &'static str,
-        op: impl FnOnce(&Repository) -> gd_git::Result<R> + Send + 'static,
-        on_ok: impl FnOnce(&mut Self, R, &mut Context<Self>) + 'static,
-        cx: &mut Context<Self>,
-    ) {
-        self.history.multi.clear();
-        self.run_op(label, op, on_ok, cx);
-    }
-
     pub fn reset_to_commit(&mut self, sha: String, mode: ResetMode, cx: &mut Context<Self>) {
         self.last_commit = None;
-        self.hist_run(
-            "Resetting",
+        self.run(
+            Op::labeled("Resetting"),
             move |r| r.reset_to_commit(&sha, mode),
             |this, _, _| this.notice = Some("Reset to commit".into()),
             cx,
@@ -84,8 +66,8 @@ impl RepoModel {
     }
 
     pub fn checkout_commit(&mut self, sha: String, cx: &mut Context<Self>) {
-        self.hist_run(
-            "Checking out",
+        self.run(
+            Op::labeled("Checking out"),
             move |r| r.checkout_commit(&sha),
             |this, _, _| {
                 this.last_commit = None;
@@ -96,8 +78,8 @@ impl RepoModel {
     }
 
     pub fn revert_commit(&mut self, sha: String, cx: &mut Context<Self>) {
-        self.hist_run(
-            "Reverting",
+        self.run(
+            Op::labeled("Reverting"),
             move |r| r.revert_commit(&sha),
             |this, o, _| this.notice_for_outcome(o, "Reverted commit".into(), "Nothing to revert".into()),
             cx,
@@ -105,8 +87,8 @@ impl RepoModel {
     }
 
     pub fn create_branch_at(&mut self, name: String, sha: String, cx: &mut Context<Self>) {
-        self.hist_run(
-            "Creating branch",
+        self.run(
+            Op::labeled("Creating branch"),
             move |r| r.create_branch(&name, Some(&sha)),
             |this, _, _| this.last_commit = None,
             cx,
@@ -115,8 +97,8 @@ impl RepoModel {
 
     pub fn create_tag(&mut self, name: String, sha: String, cx: &mut Context<Self>) {
         let n = name.clone();
-        self.hist_run(
-            "Tagging",
+        self.run(
+            Op::labeled("Tagging"),
             move |r| r.create_tag(&name, &sha),
             move |this, _, _| this.notice = Some(format!("Created tag {n}")),
             cx,
@@ -125,8 +107,8 @@ impl RepoModel {
 
     pub fn delete_tag(&mut self, name: String, cx: &mut Context<Self>) {
         let n = name.clone();
-        self.hist_run(
-            "Deleting tag",
+        self.run(
+            Op::labeled("Deleting tag"),
             move |r| r.delete_tag(&name),
             move |this, _, _| this.notice = Some(format!("Deleted tag {n}")),
             cx,
@@ -136,8 +118,8 @@ impl RepoModel {
     /// `shas` must be oldest first.
     pub fn cherry_pick(&mut self, shas: Vec<String>, target: String, cx: &mut Context<Self>) {
         let n = shas.len();
-        self.hist_run(
-            "Cherry-picking",
+        self.run(
+            Op::labeled("Cherry-picking"),
             move |r| r.cherry_pick(&shas, &target),
             move |this, o, _| {
                 this.last_commit = None;
@@ -151,8 +133,8 @@ impl RepoModel {
     pub fn squash(&mut self, shas: Vec<String>, message: String, cx: &mut Context<Self>) {
         let n = shas.len();
         self.last_commit = None;
-        self.hist_run(
-            "Squashing",
+        self.run(
+            Op::labeled("Squashing"),
             move |r| r.squash_commits(&shas, &message),
             move |this, o, _| this.notice_for_outcome(o, format!("Squashed {n} commits"), "Nothing to squash".into()),
             cx,
@@ -161,8 +143,8 @@ impl RepoModel {
 
     pub fn move_commit(&mut self, sha: String, up: bool, cx: &mut Context<Self>) {
         self.last_commit = None;
-        self.hist_run(
-            "Reordering",
+        self.run(
+            Op::labeled("Reordering"),
             move |r| r.move_commit(&sha, up),
             |this, o, _| this.notice_for_outcome(o, "Reordered commits".into(), "Nothing to reorder".into()),
             cx,
@@ -173,10 +155,9 @@ impl RepoModel {
     pub fn amend(&mut self, summary: String, description: String, cx: &mut Context<Self>) {
         let paths = self.included_paths();
         let partial = self.partial_files();
-        self.committing = true;
         self.last_commit = None;
-        self.hist_run(
-            "Amending",
+        self.run(
+            Op { label: Some("Amending"), committing: true, ..Op::default() },
             move |r| r.amend_commit(&summary, &description, &paths, &partial),
             |this, _, _| {
                 this.notice = Some("Amended last commit".into());

@@ -2,9 +2,10 @@
 //! and close. The preview is computed on the background executor.
 
 use gd_git::{Branch, BranchKind, MergePreview};
-use gpui::{AppContext, Context, Focusable, ScrollStrategy, Window};
+use gpui::{Context, Focusable, ScrollStrategy, Window};
 
 use super::state::{MergeDialog, MergeMode};
+use crate::repo::spawn_load;
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -67,18 +68,19 @@ impl Workspace {
         self.reset_squash_summary(branch.as_deref(), cx);
         let Some(d) = &mut self.merge_ui.dialog else { return };
         d.ix = ix;
-        d.revision += 1;
         d.preview = None;
         d.loading = branch.is_some();
-        let generation = d.revision;
-        self.merge_ui.preview_task = None;
+        self.merge_ui.preview_load.cancel();
         cx.notify();
         let (Some(branch), Some(repo)) = (branch, self.repo.clone()) else { return };
         let git = repo.read(cx).repo.clone();
-        self.merge_ui.preview_task = Some(cx.spawn(async move |this, cx| {
-            let res = cx.background_spawn(async move { git.merge_preview(&branch) }).await;
-            this.update(cx, |this, cx| this.preview_loaded(generation, res, cx)).ok();
-        }));
+        spawn_load(
+            self,
+            |this| &mut this.merge_ui.preview_load,
+            move || git.merge_preview(&branch),
+            |this, res, cx| this.preview_loaded(res, cx),
+            cx,
+        );
     }
 
     /// Prefill the squash summary when the highlighted branch changes.
@@ -94,11 +96,8 @@ impl Workspace {
         self.merge_ui.summary.update(cx, |s, cx| s.emplace(&text, cx));
     }
 
-    fn preview_loaded(&mut self, generation: u64, res: gd_git::Result<MergePreview>, cx: &mut Context<Self>) {
+    fn preview_loaded(&mut self, res: gd_git::Result<MergePreview>, cx: &mut Context<Self>) {
         let Some(d) = &mut self.merge_ui.dialog else { return };
-        if d.revision != generation {
-            return;
-        }
         d.loading = false;
         match res {
             Ok(p) => d.preview = Some(p),
@@ -155,7 +154,7 @@ impl Workspace {
         // Close one layer at a time: menu first.
         if self.merge_ui.menu.take().is_none() {
             self.merge_ui.dialog = None;
-            self.merge_ui.preview_task = None;
+            self.merge_ui.preview_load.cancel();
             self.focus(window, cx);
         }
         if open {

@@ -8,6 +8,7 @@ use gpui_elements::editable_text::EditableTextState;
 use super::model::{self, Account, Provider, normalize_host};
 use super::state::{AccountForm, register_credentials};
 use super::status_text::StatusText;
+use crate::repo::spawn_load;
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -26,27 +27,20 @@ impl Workspace {
     /// Read the global (and, with a repo open, local + effective) identity off the UI thread.
     pub fn load_identity(&mut self, cx: &mut Context<Self>) {
         let repo = self.current_git_repo(cx);
-        self.accounts_ui.load_gen += 1;
-        let gen_ = self.accounts_ui.load_gen;
-        self.accounts_ui.task = Some(cx.spawn(async move |this, cx| {
-            let res = cx
-                .background_spawn(async move {
-                    let global = gd_git::global_identity()?;
-                    let repo_part = match repo {
-                        Some(r) => Some((r.local_identity()?, r.effective_identity()?)),
-                        None => None,
-                    };
-                    Ok::<_, gd_git::GitError>((global, repo_part))
-                })
-                .await;
-            this.update(cx, |this, cx| {
-                if gen_ != this.accounts_ui.load_gen {
-                    return;
-                }
-                this.apply_identity(res, cx);
-            })
-            .ok();
-        }));
+        spawn_load(
+            self,
+            |this| &mut this.accounts_ui.identity_load,
+            move || {
+                let global = gd_git::global_identity()?;
+                let repo_part = match repo {
+                    Some(r) => Some((r.local_identity()?, r.effective_identity()?)),
+                    None => None,
+                };
+                Ok::<_, gd_git::GitError>((global, repo_part))
+            },
+            |this, res, cx| this.apply_identity(res, cx),
+            cx,
+        );
     }
 
     fn apply_identity(

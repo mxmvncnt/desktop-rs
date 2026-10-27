@@ -5,6 +5,7 @@ use std::time::{Instant, SystemTime};
 use gd_git::{Branch, Commit, Diff, DiffOptions, FileChange, Repository, WorkingStatus};
 use gpui::{Context, Task};
 
+use super::run::LoadSlot;
 use crate::features::diff::{DiffHighlight, HighlightCache};
 use crate::watcher::RepoWatcher;
 
@@ -78,11 +79,10 @@ pub struct RepoModel {
     pub partial: HashMap<String, crate::features::diff::LineSelection>,
     pub selected_change: Option<usize>,
     pub change_diff: Option<Arc<Diff>>,
-    pub(super) change_diff_gen: u64,
+    pub(super) change_diff_load: LoadSlot,
     /// What `change_diff` was loaded for, so a reload of the same unchanged
     /// file keeps the (possibly expanded) diff on screen.
     pub change_diff_key: Option<(String, DiffOptions)>,
-    pub(super) _change_diff_task: Option<Task<()>>,
 
     // ---- refresh coalescing / live updates ----
     /// A refresh is running on the background executor.
@@ -160,9 +160,8 @@ impl RepoModel {
             partial: HashMap::new(),
             selected_change: None,
             change_diff: None,
-            change_diff_gen: 0,
+            change_diff_load: LoadSlot::default(),
             change_diff_key: None,
-            _change_diff_task: None,
             refreshing: false,
             pending_refresh: None,
             refresh_count: 0,
