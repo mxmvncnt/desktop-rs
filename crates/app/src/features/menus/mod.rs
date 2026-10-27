@@ -7,6 +7,8 @@ mod handlers;
 mod menu_actions;
 mod menu_rows;
 mod state;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use discard_dialog::DiscardDialogView;
 pub use state::ConfirmDialog;

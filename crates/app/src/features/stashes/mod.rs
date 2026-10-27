@@ -12,6 +12,8 @@ mod stash_panel;
 mod stash_panel_header;
 mod stash_row;
 mod state;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use stash_dialog::StashDialogView;
 pub use stash_panel::StashPanel;

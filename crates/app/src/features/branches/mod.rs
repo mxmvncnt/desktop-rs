@@ -6,9 +6,9 @@ mod branch_dialog;
 mod branch_menu_rows;
 mod handlers;
 mod ops;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 mod state;
 
 pub use branch_dialog::BranchDialogView;
-#[cfg(feature = "snapshot")]
-pub use state::BranchAction;
 pub use state::{BranchDialog, BranchUi};

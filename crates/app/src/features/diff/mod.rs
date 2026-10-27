@@ -16,6 +16,8 @@ mod number_cell;
 mod render_diff;
 mod row_select;
 mod rows_list;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 mod scroll_x;
 mod split_diff;
 mod split_list;
@@ -35,5 +37,3 @@ pub use diff_pane::DiffPane;
 pub use highlight::{DiffHighlight, HighlightCache, highlight_diff};
 pub use line_selection::LineSelection;
 pub use state::{DiffSelectUi, DiffView};
-#[cfg(feature = "snapshot")]
-pub use text_selection::{TextPos, TextSel, TextSide};

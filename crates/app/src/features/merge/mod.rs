@@ -12,6 +12,8 @@ mod merge_dialog;
 mod merge_preview;
 mod ops;
 mod state;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use conflict_hint::ConflictHint;
 pub use in_progress_banner::InProgressBanner;

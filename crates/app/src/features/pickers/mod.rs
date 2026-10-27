@@ -15,6 +15,8 @@ mod repo_picker;
 mod popover_handlers;
 mod popover_layer;
 mod store;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use popover_layer::PopoverLayer;
 pub use store::PopoverStore;

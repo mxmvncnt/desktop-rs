@@ -18,6 +18,8 @@ mod ops;
 mod search;
 mod search_box;
 mod selection;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 mod state;
 
 pub use commit_list::CommitList;
@@ -25,8 +27,4 @@ pub use history_dialog::HistoryDialogView;
 pub use message_resize::MessageResize;
 pub use search::matching_commits;
 pub use state::HistoryDialog;
-#[cfg(feature = "snapshot")]
-pub use state::{ClickKind, HistoryAction};
-#[cfg(feature = "snapshot")]
-pub(crate) use handlers::menu_ctx;
 pub use state::{HistoryState, HistoryUi};
