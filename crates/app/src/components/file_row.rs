@@ -2,7 +2,9 @@
 //! The changes list adds a leading checkbox and a right-click handler.
 
 use gd_git::{FileChange, FileStatus};
-use gd_ui::{Icon, Theme, icon, pressable, theme::ROW_HEIGHT};
+use std::rc::Rc;
+
+use gd_ui::{Callback, Icon, Theme, icon, pressable, theme::ROW_HEIGHT};
 use gpui::{
     AnyElement, App, ColorExt as _, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Point,
     RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
@@ -20,7 +22,7 @@ pub struct FileRow {
     change: FileChange,
     selected: bool,
     leading: Option<AnyElement>,
-    on_click: Box<dyn Fn(&mut Window, &mut App)>,
+    on_click: Callback,
     on_right_click: Option<RightClick>,
 }
 
@@ -32,7 +34,7 @@ impl FileRow {
         selected: bool,
         on_click: impl Fn(&mut Window, &mut App) + 'static,
     ) -> Self {
-        Self { id, ix, change, selected, leading: None, on_click: Box::new(on_click), on_right_click: None }
+        Self { id, ix, change, selected, leading: None, on_click: Rc::new(on_click), on_right_click: None }
     }
 
     pub fn leading(mut self, el: impl IntoElement) -> Self {

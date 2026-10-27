@@ -5,11 +5,9 @@ use std::rc::Rc;
 
 use gpui::{App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, SharedString, Styled, Window, deferred, div, px};
 
-use super::{Button, ButtonStyle, overlay_card};
+use super::{Callback, Button, ButtonStyle, overlay_card};
 use crate::motion;
 use crate::theme::{Theme, scrim};
-
-type Callback = Rc<dyn Fn(&mut Window, &mut App)>;
 
 /// Modal confirmation dialog: scrim, centered card, title, body, and
 /// Cancel + confirm buttons (confirm is primary, or red with [`Dialog::danger`]).

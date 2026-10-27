@@ -41,7 +41,7 @@ impl RenderOnce for PrHeader {
                     .items_center()
                     .gap(px(6.0))
                     .text_size(px(12.0))
-                    .text_color(color(&theme))
+                    .text_color(color)
                     .child(icon(Icon::Info).size(px(13.0)))
                     .child(text)
             }))
@@ -127,10 +127,10 @@ impl PrHeader {
     }
 
     /// Warning / info line and the color to draw it in.
-    fn hint(&self, cx: &App) -> Option<(String, fn(&Theme) -> gpui::Hsla)> {
+    fn hint(&self, cx: &App) -> Option<(String, gpui::Hsla)> {
         let r = self.repo.read(cx);
-        let warn: fn(&Theme) -> gpui::Hsla = |t| t.warning;
-        let faint: fn(&Theme) -> gpui::Hsla = |t| t.text_faint;
+        let theme = Theme::of(cx);
+        let (warn, faint) = (theme.warning, theme.text_faint);
         if let Some(e) = &r.pr.error {
             return Some((e.clone(), warn));
         }

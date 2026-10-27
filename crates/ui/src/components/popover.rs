@@ -13,6 +13,8 @@ use super::overlay_card;
 use crate::motion;
 use crate::theme::scrim;
 
+type DismissHandler = Rc<dyn Fn(&MouseDownEvent, &mut Window, &mut App)>;
+
 #[derive(IntoElement)]
 pub struct Popover {
     id: ElementId,
@@ -20,7 +22,7 @@ pub struct Popover {
     width: f32,
     content: AnyElement,
     scrim: Option<f32>,
-    on_dismiss: Option<Rc<dyn Fn(&MouseDownEvent, &mut Window, &mut App)>>,
+    on_dismiss: Option<DismissHandler>,
 }
 
 impl Popover {

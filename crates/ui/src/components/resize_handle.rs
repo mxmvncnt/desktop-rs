@@ -6,6 +6,9 @@ use gpui::{
     MouseButton, ParentElement, Render, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
+use std::rc::Rc;
+
+use super::Callback;
 use crate::theme::Theme;
 
 /// The (invisible) view GPUI shows under the cursor while dragging.
@@ -29,7 +32,7 @@ pub struct ResizeHandle<P: 'static> {
     id: ElementId,
     edge: Edge,
     payload: P,
-    on_reset: Option<Box<dyn Fn(&mut Window, &mut gpui::App)>>,
+    on_reset: Option<Callback>,
 }
 
 impl<P: 'static> ResizeHandle<P> {
@@ -43,7 +46,7 @@ impl<P: 'static> ResizeHandle<P> {
 
     /// Called on double-click.
     pub fn on_reset(mut self, f: impl Fn(&mut Window, &mut gpui::App) + 'static) -> Self {
-        self.on_reset = Some(Box::new(f));
+        self.on_reset = Some(Rc::new(f));
         self
     }
 }

@@ -3,7 +3,7 @@
 
 use std::rc::Rc;
 
-use gd_ui::{Icon, divider, icon_button, modal, motion, overlay_card};
+use gd_ui::{Callback, Icon, divider, icon_button, modal, motion, overlay_card};
 use gpui::{
     AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
     px,
@@ -96,7 +96,7 @@ impl RenderOnce for SettingsModal {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let instant = motion::handoff(&"settings-in".into(), cx);
         let ws = self.ws.clone();
-        let on_cancel: Rc<dyn Fn(&mut Window, &mut App)> = Rc::new(move |_, cx| close(&ws, cx));
+        let on_cancel: Callback = Rc::new(move |_, cx| close(&ws, cx));
         modal(self.card(cx), Some(on_cancel), instant)
     }
 }

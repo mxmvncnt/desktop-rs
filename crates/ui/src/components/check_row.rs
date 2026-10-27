@@ -4,14 +4,14 @@ use std::rc::Rc;
 
 use gpui::{App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, prelude::*, px};
 
-use super::{CheckState, Checkbox, pressable};
+use super::{Callback, CheckState, Checkbox, pressable};
 
 #[derive(IntoElement)]
 pub struct CheckRow {
     id: &'static str,
     text: SharedString,
     checked: bool,
-    on_toggle: Rc<dyn Fn(&mut Window, &mut App)>,
+    on_toggle: Callback,
 }
 
 impl CheckRow {

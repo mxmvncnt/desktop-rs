@@ -1,6 +1,8 @@
 //! A radio-style option card (title + optional detail) for dialogs.
 
-use super::pressable;
+use std::rc::Rc;
+
+use super::{Callback, pressable};
 use crate::theme::Theme;
 use gpui::{App, ElementId, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
@@ -10,7 +12,7 @@ pub struct OptionRow {
     selected: bool,
     title: String,
     detail: Option<String>,
-    on_select: Box<dyn Fn(&mut Window, &mut App)>,
+    on_select: Callback,
 }
 
 impl OptionRow {
@@ -20,7 +22,7 @@ impl OptionRow {
         title: impl Into<String>,
         on_select: impl Fn(&mut Window, &mut App) + 'static,
     ) -> Self {
-        Self { id: id.into(), selected, title: title.into(), detail: None, on_select: Box::new(on_select) }
+        Self { id: id.into(), selected, title: title.into(), detail: None, on_select: Rc::new(on_select) }
     }
 
     pub fn detail(mut self, detail: impl Into<String>) -> Self {

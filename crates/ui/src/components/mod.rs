@@ -26,4 +26,7 @@ pub use tabs::Tabs;
 pub use toolbar_button::ToolbarButton;
 pub use tooltip::tooltip;
 
-type ClickHandler = Box<dyn Fn(&gpui::ClickEvent, &mut gpui::Window, &mut gpui::App) + 'static>;
+/// Stored click handler of a component.
+pub type ClickHandler = Box<dyn Fn(&gpui::ClickEvent, &mut gpui::Window, &mut gpui::App) + 'static>;
+/// Stored plain callback (select, toggle, reset, cancel).
+pub type Callback = std::rc::Rc<dyn Fn(&mut gpui::Window, &mut gpui::App)>;

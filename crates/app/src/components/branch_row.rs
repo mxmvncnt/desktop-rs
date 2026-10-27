@@ -1,6 +1,8 @@
 //! One branch: icon, name and trailing children (time, check, tags).
 
-use gd_ui::{Icon, Theme, icon, pressable};
+use std::rc::Rc;
+
+use gd_ui::{Callback, Icon, Theme, icon, pressable};
 use gpui::{
     AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Point, RenderOnce,
     SharedString, StatefulInteractiveElement, Styled, Window, div, px,
@@ -21,7 +23,7 @@ pub struct BranchRow {
     selected: bool,
     bright: bool,
     trailing: Vec<AnyElement>,
-    on_click: Box<dyn Fn(&mut Window, &mut App)>,
+    on_click: Callback,
     on_right_click: Option<RightClick>,
 }
 
@@ -41,7 +43,7 @@ impl BranchRow {
             selected: false,
             bright: false,
             trailing: Vec::new(),
-            on_click: Box::new(on_click),
+            on_click: Rc::new(on_click),
             on_right_click: None,
         }
     }

@@ -6,11 +6,9 @@ use std::rc::Rc;
 
 use gpui::{App, ElementId, IntoElement, ParentElement, Pixels, Point, RenderOnce, SharedString, Styled, Window, div, prelude::*, px};
 
-use super::{Popover, icon, pressable};
+use super::{Callback, Popover, icon, pressable};
 use crate::assets::Icon;
 use crate::theme::Theme;
-
-type Callback = Rc<dyn Fn(&mut Window, &mut App)>;
 
 /// One selectable row of a [`ContextMenu`].
 pub struct MenuItem {
