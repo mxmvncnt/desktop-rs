@@ -88,7 +88,7 @@ guessing APIs. To recreate them:
   `stage_partial` checks the worktree still equals `source.new` (else errors: "changed on disk"), then
   `hash-object -w --stdin --path=<p>` + `update-index --add --cacheinfo <mode>,<sha>,<p>` (mode = worktree exec bit
   on unix, else HEAD's). Renames also `--force-remove` the old path.
-- App state: `RepoModel.partial: HashMap<path, LineSelection { diff: Arc<Diff>, excluded: HashSet<row> }>` next to
+- App state: `RepoModel.work.partial: HashMap<path, LineSelection { diff: Arc<Diff>, excluded: HashSet<row> }>` next to
   `excluded` (whole file off). `set_rows_included` normalizes: all rows off → `excluded`, none off → entry removed, so
   `partial` only holds mixed files. A reloaded diff keeps the selection only if `lines` are identical
   (`reconcile_selection`); `-w` diffs are ignored there. `partial` is cleared after a successful commit/amend.
@@ -124,8 +124,9 @@ guessing APIs. To recreate them:
 
 - `Workspace` (`workspace/`: `state.rs` struct, `init.rs`, `render.rs` root template, `actions.rs` key routing + Esc order, `repos.rs` open/add/clone, `repo_commands.rs`, `navigation.rs`, `overlay.rs` overlay stack) is the root view. It owns settings, picker state,
   text-input entities, scroll handles, and an `Option<Entity<RepoModel>>`.
-- `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, `RefreshState` in `RepoModel::sync`), `background_fetch.rs`, `diff_detail.rs` (`DiffDetail` + the one highlight spawner, `select_file`, `expand_diff`), `change_diff.rs`/`commit_diff.rs`, `history_log.rs`, `run.rs`) owns all repository state: status, selection, diff,
-  history pages, commit details, branches, and in-flight ops.
+- `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, `RefreshState` in `RepoModel::sync`), `background_fetch.rs`, `diff_detail.rs` (`DiffDetail` + the one highlight spawner, `select_file`, `expand_diff`), `change_diff.rs`/`commit_diff.rs`, `history_log.rs`, `run.rs`) owns all repository state, grouped like the features: `work: ChangesState` (status, excluded, partial,
+  selected, detail), `log: HistoryLog` (commits, selected, detail), `sync: RefreshState`, plus `history`, `stashes`, `pr`,
+  `merge`, branches and in-flight ops.
   Every git call goes through `cx.background_spawn`, and results are applied with `this.update`.
 - **Stale results are dropped** with a `LoadSlot { generation, task }`
   (`repo/run.rs`): `RepoModel::load` (git read, errors go to `error`) or the generic
@@ -135,7 +136,7 @@ guessing APIs. To recreate them:
   shows every commit) and late results still apply unless a newer one landed.
   **`DiffDetail`** (`repo/diff_detail.rs`) is the one store of files, selected file, `base`
   (commit/stash sha or PR merge base the files belong to), diff, loaded `path`, highlight and
-  file-list scroll handle, for `RepoModel::{change_detail, commit_detail}`, `stashes.detail`
+  file-list scroll handle, for `RepoModel::{work.detail, log.detail}`, `stashes.detail`
   and `pr.detail`; one `HighlightCache` (`RepoModel::hl_cache`) serves all of them. `show_diff`
   is the only highlight spawner (a `LoadSlot` per detail), `show_files`/`load_files`/`select_file`
   the only file-loading paths. `components/file_diff_pane.rs` renders header + file list + diff for

@@ -161,8 +161,8 @@ impl RepoModel {
             move |r| r.amend_commit(&summary, &description, &paths, &partial),
             |this, _, _| {
                 this.notice = Some("Amended last commit".into());
-                this.partial.clear();
-                this.selected_change = None;
+                this.work.partial.clear();
+                this.work.selected = None;
             },
             cx,
         );
@@ -171,7 +171,7 @@ impl RepoModel {
     /// Undo the HEAD commit (soft reset), putting its message back in the
     /// commit box through the existing `CommitUndone` event.
     pub fn undo_head_commit(&mut self, cx: &mut Context<Self>) {
-        let Some(head) = self.commits.first().cloned() else { return };
+        let Some(head) = self.log.commits.first().cloned() else { return };
         self.last_commit = Some(LastCommit {
             summary: head.summary,
             description: head.body,

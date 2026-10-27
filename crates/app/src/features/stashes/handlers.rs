@@ -103,7 +103,7 @@ impl Workspace {
 fn stash_paths(r: &RepoModel) -> Vec<String> {
     let mut v = Vec::new();
     for c in r.changes() {
-        if r.excluded.contains(&c.path) {
+        if r.work.excluded.contains(&c.path) {
             continue;
         }
         v.push(c.path.clone());

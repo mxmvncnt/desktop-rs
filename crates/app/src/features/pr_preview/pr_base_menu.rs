@@ -26,7 +26,7 @@ impl RenderOnce for PrBaseMenu {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let r = self.repo.read(cx);
         let head = r.branch_name();
-        let upstream = r.status.as_ref().and_then(|s| s.upstream.clone());
+        let upstream = r.work.status.as_ref().and_then(|s| s.upstream.clone());
         let names: Vec<(String, bool)> = r
             .branches
             .iter()

@@ -19,10 +19,10 @@ pub struct SelectionSummary {
 impl SelectionSummary {
     pub fn of(r: &RepoModel) -> Self {
         let total = r.changes().len();
-        let included = total - r.changes().iter().filter(|c| r.excluded.contains(&c.path)).count();
+        let included = total - r.changes().iter().filter(|c| r.work.excluded.contains(&c.path)).count();
         let all = match included {
             0 => CheckState::Unchecked,
-            i if i == total && r.partial.is_empty() => CheckState::Checked,
+            i if i == total && r.work.partial.is_empty() => CheckState::Checked,
             _ => CheckState::Mixed,
         };
         Self { total, included, all }
@@ -60,7 +60,7 @@ impl CommitButton {
         } else {
             format!("Commit to {}", r.branch_name()).into()
         };
-        let head_pushed = r.history.push_state_loaded && r.commits.first().is_some_and(|c| !r.is_unpushed(&c.sha));
+        let head_pushed = r.history.push_state_loaded && r.log.commits.first().is_some_and(|c| !r.is_unpushed(&c.sha));
         Self { label, enabled, amending, head_pushed, default_summary }
     }
 }

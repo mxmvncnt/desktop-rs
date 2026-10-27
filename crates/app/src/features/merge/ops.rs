@@ -126,7 +126,7 @@ impl RepoModel {
             move |r| r.commit_merge(&summary, &description, &paths),
             |this, _, _| {
                 this.notice = Some("Merge committed".into());
-                this.selected_change = None;
+                this.work.selected = None;
             },
             cx,
         );

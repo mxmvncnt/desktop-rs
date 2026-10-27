@@ -109,7 +109,7 @@ impl RepoModel {
             }
         }
         self.apply_progress(data.paused, cx);
-        if full && (!self.commits.is_empty() || self.tab == Tab::History) {
+        if full && (!self.log.commits.is_empty() || self.tab == Tab::History) {
             self.reload_history(cx);
         }
         cx.notify();
@@ -135,13 +135,13 @@ impl RepoModel {
 
     fn apply_status(&mut self, status: WorkingStatus, cx: &mut Context<Self>) {
         // Keep the selection on the same path across refreshes.
-        let old_ix = self.selected_change;
+        let old_ix = self.work.selected;
         let selected_path = old_ix.and_then(|ix| self.changes().get(ix)).map(|c| c.path.clone());
         let paths: HashSet<&str> = status.files.iter().map(|f| f.path.as_str()).collect();
-        self.excluded.retain(|p| paths.contains(p.as_str()));
-        self.partial.retain(|p, _| paths.contains(p.as_str()));
-        self.status = Some(status);
-        self.selected_change = selected_path
+        self.work.excluded.retain(|p| paths.contains(p.as_str()));
+        self.work.partial.retain(|p, _| paths.contains(p.as_str()));
+        self.work.status = Some(status);
+        self.work.selected = selected_path
             .and_then(|p| self.changes().iter().position(|c| c.path == p))
             // The selected file is gone (committed): the file now at its row,
             // i.e. the next one, or the last.

@@ -128,7 +128,7 @@ impl PrHeader {
         if let Some(e) = &r.pr.error {
             return Some((e.clone(), warn));
         }
-        let status = r.status.as_ref()?;
+        let status = r.work.status.as_ref()?;
         if status.branch.is_none() {
             return Some(("HEAD is detached: check out a branch to open a pull request.".into(), warn));
         }

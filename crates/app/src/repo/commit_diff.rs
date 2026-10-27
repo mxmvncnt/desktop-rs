@@ -9,13 +9,13 @@ use crate::features::diff::DiffPane;
 impl RepoModel {
     pub fn select_commit(&mut self, ix: usize, cx: &mut Context<Self>) {
         self.history.multi.clear();
-        if self.selected_commit == Some(ix) {
+        if self.log.selected == Some(ix) {
             return;
         }
-        let Some(commit) = self.commits.get(ix) else {
+        let Some(commit) = self.log.commits.get(ix) else {
             return;
         };
-        self.selected_commit = Some(ix);
+        self.log.selected = Some(ix);
         self.load_files(DiffPane::Commit, commit.sha.clone(), cx);
         cx.notify();
     }

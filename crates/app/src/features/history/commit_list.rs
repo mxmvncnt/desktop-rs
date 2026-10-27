@@ -43,7 +43,7 @@ impl CommitList {
         let (repo, ws) = (self.repo.clone(), self.ws.clone());
         let (total, visible) = {
             let r = repo.read(cx);
-            (r.commits.len(), matching_commits(&r.commits, query))
+            (r.log.commits.len(), matching_commits(&r.log.commits, query))
         };
         let searching = visible.is_some();
         let n = visible.as_ref().map_or(total, Vec::len);

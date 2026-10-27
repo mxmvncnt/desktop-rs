@@ -75,36 +75,48 @@ pub struct RefreshState {
     pub(super) _background_fetch_task: Option<Task<()>>,
 }
 
-pub struct RepoModel {
-    pub repo: Repository,
-    pub tab: Tab,
-    /// App-wide diff options (set by the Workspace); changing them reloads the visible diffs.
-    pub diff_options: DiffOptions,
-
-    // ---- working directory ----
+/// The working directory: status, what the next commit includes, and the selected diff.
+#[derive(Default)]
+pub struct ChangesState {
     pub status: Option<WorkingStatus>,
     /// Paths excluded from the next commit (Desktop's unchecked boxes). We
     /// store the *excluded* set so new files default to included.
     pub excluded: HashSet<String>,
     /// Files with only some lines selected (see `line_selection.rs`).
     pub partial: HashMap<String, crate::features::diff::LineSelection>,
-    pub selected_change: Option<usize>,
-    /// Diff of `selected_change` (its `files` stay empty: the list is `status`).
-    pub change_detail: DiffDetail,
-    /// What `change_detail.diff` was loaded for, so a reload of the same unchanged
+    pub selected: Option<usize>,
+    /// Diff of `selected` (its `files` stay empty: the list is `status`).
+    pub detail: DiffDetail,
+    /// What `detail.diff` was loaded for, so a reload of the same unchanged
     /// file keeps the (possibly expanded) diff on screen.
-    pub change_diff_key: Option<(String, DiffOptions)>,
+    pub diff_key: Option<(String, DiffOptions)>,
+}
+
+/// The paged commit log and the selected commit.
+#[derive(Default)]
+pub struct HistoryLog {
+    pub commits: Vec<Commit>,
+    pub exhausted: bool,
+    pub(super) loading: bool,
+    pub selected: Option<usize>,
+    /// Files and diff of the selected commit (`base` = its sha).
+    pub detail: DiffDetail,
+}
+
+pub struct RepoModel {
+    pub repo: Repository,
+    pub tab: Tab,
+    /// App-wide diff options (set by the Workspace); changing them reloads the visible diffs.
+    pub diff_options: DiffOptions,
+
+    /// Working directory status, selection and diff.
+    pub work: ChangesState,
 
     /// Refresh coalescing, file watcher and background fetch.
     pub sync: RefreshState,
 
-    // ---- history ----
-    pub commits: Vec<Commit>,
-    pub history_exhausted: bool,
-    pub(super) history_loading: bool,
-    pub selected_commit: Option<usize>,
-    /// Files and diff of the selected commit (`base` = its sha).
-    pub commit_detail: DiffDetail,
+    /// Commit log, selection and diff.
+    pub log: HistoryLog,
     /// Shared by every pane's highlighter.
     pub(super) hl_cache: HighlightCache,
     /// Push status, tags, multi-select (see `features/history`).
@@ -142,18 +154,9 @@ impl RepoModel {
             repo,
             tab: Tab::Changes,
             diff_options: DiffOptions::default(),
-            status: None,
-            excluded: HashSet::new(),
-            partial: HashMap::new(),
-            selected_change: None,
-            change_detail: DiffDetail::default(),
-            change_diff_key: None,
-            sync: RefreshState::default(),
-            commits: Vec::new(),
-            history_exhausted: false,
-            history_loading: false,
-            selected_commit: None,
-            commit_detail: DiffDetail { load: LoadSlot::late(), ..Default::default() },
+            work: Default::default(),
+            sync: Default::default(),
+            log: HistoryLog { detail: DiffDetail { load: LoadSlot::late(), ..Default::default() }, ..Default::default() },
             hl_cache: HighlightCache::default(),
             history: Default::default(),
             branches: Vec::new(),
@@ -169,14 +172,14 @@ impl RepoModel {
     }
 
     pub fn branch_name(&self) -> String {
-        match &self.status {
+        match &self.work.status {
             Some(s) => s.branch.clone().unwrap_or_else(|| "(detached HEAD)".into()),
             None => "…".into(),
         }
     }
 
     pub fn current_branch(&self) -> Option<&str> {
-        self.status.as_ref()?.branch.as_deref()
+        self.work.status.as_ref()?.branch.as_deref()
     }
 
     /// A merge-like operation is paused and the next commit finishes it.
@@ -185,13 +188,13 @@ impl RepoModel {
     }
 
     pub fn selected_change_file(&self) -> Option<&FileChange> {
-        self.selected_change.and_then(|ix| self.changes().get(ix))
+        self.work.selected.and_then(|ix| self.changes().get(ix))
     }
 
     /// The history list is stale after the branch moved.
     pub(crate) fn reset_history_selection(&mut self) {
-        self.commits.clear();
-        self.selected_commit = None;
+        self.log.commits.clear();
+        self.log.selected = None;
     }
 
     /// The undoable commit, only while still on the branch it was made on.
@@ -202,6 +205,6 @@ impl RepoModel {
     }
 
     pub fn changes(&self) -> &[FileChange] {
-        self.status.as_ref().map(|s| s.files.as_slice()).unwrap_or(&[])
+        self.work.status.as_ref().map(|s| s.files.as_slice()).unwrap_or(&[])
     }
 }

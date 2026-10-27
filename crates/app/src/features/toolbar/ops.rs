@@ -9,7 +9,7 @@ impl RepoModel {
         if self.remote_op.is_some() {
             return;
         }
-        let (branch, has_upstream) = match &self.status {
+        let (branch, has_upstream) = match &self.work.status {
             Some(s) => (s.branch.clone().unwrap_or_default(), s.upstream.is_some()),
             None => (String::new(), false),
         };

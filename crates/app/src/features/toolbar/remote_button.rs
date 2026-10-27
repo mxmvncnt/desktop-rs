@@ -35,7 +35,7 @@ impl RemoteButton {
     }
 
     fn for_model(r: &RepoModel) -> Self {
-        let st = r.status.as_ref();
+        let st = r.work.status.as_ref();
         let upstream = st.and_then(|s| s.upstream.clone());
         let ab = st.map(|s| s.ahead_behind).unwrap_or_default();
         let remote = upstream

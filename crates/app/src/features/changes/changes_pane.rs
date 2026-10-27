@@ -21,14 +21,14 @@ impl Workspace {
         let Some(change) = r.selected_change_file().cloned() else {
             return NoChanges::new(r).into_any_element();
         };
-        let diff = r.change_detail.diff.clone();
-        let hl = r.change_detail.hl.clone();
+        let diff = r.work.detail.diff.clone();
+        let hl = r.work.detail.hl.clone();
         let hint = (change.status == FileStatus::Conflicted)
             .then(|| ConflictHint::new(&change, diff.as_ref(), repo.clone(), cx));
         let header = FileHeader::new(&change, diff.as_deref(), cx.entity());
         // Key on the loaded diff's path (not the clicked one) so the fade runs
         // when the content swaps, not on the previous file's diff.
-        let shown = r.change_diff_key.as_ref().map_or(change.path.as_str(), |(p, _)| p.as_str());
+        let shown = r.work.diff_key.as_ref().map_or(change.path.as_str(), |(p, _)| p.as_str());
         let diff_id = SharedString::from(format!("change-diff-{shown}"));
         div()
             .flex()

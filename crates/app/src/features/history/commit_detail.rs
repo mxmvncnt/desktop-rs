@@ -16,9 +16,9 @@ impl Workspace {
         }
         // Show the loaded commit (not the just-clicked one) so header, files
         // and diff change together instead of in separate steps.
-        let detail = &r.commit_detail;
-        let shown = detail.base.as_ref().and_then(|sha| r.commits.iter().find(|c| &c.sha == sha));
-        let Some(commit) = shown.or_else(|| r.selected_commit.and_then(|ix| r.commits.get(ix))).cloned() else {
+        let detail = &r.log.detail;
+        let shown = detail.base.as_ref().and_then(|sha| r.log.commits.iter().find(|c| &c.sha == sha));
+        let Some(commit) = shown.or_else(|| r.log.selected.and_then(|ix| r.log.commits.get(ix))).cloned() else {
             return div().flex_1().into_any_element();
         };
         let header = CommitHeader::new(commit, detail.files.len(), DiffOptionsButton {

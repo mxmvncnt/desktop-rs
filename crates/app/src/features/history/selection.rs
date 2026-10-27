@@ -11,7 +11,7 @@ impl RepoModel {
         if self.history.multi.len() < 2 {
             return Vec::new();
         }
-        self.commits
+        self.log.commits
             .iter()
             .enumerate()
             .filter(|(_, c)| self.history.multi.contains(&c.sha))
@@ -21,16 +21,16 @@ impl RepoModel {
 
     pub fn commit_selected(&self, ix: usize) -> bool {
         let multi = self.history.multi.len() >= 2;
-        match self.commits.get(ix) {
+        match self.log.commits.get(ix) {
             Some(c) if multi => self.history.multi.contains(&c.sha),
-            Some(_) => self.selected_commit == Some(ix),
+            Some(_) => self.log.selected == Some(ix),
             None => false,
         }
     }
 
     /// Click on a history row.
     pub fn click_commit(&mut self, ix: usize, kind: ClickKind, cx: &mut Context<Self>) {
-        let Some(sha) = self.commits.get(ix).map(|c| c.sha.clone()) else { return };
+        let Some(sha) = self.log.commits.get(ix).map(|c| c.sha.clone()) else { return };
         match kind {
             ClickKind::Range => self.select_range(ix, cx),
             ClickKind::Toggle => self.toggle_multi(sha, cx),
@@ -43,20 +43,20 @@ impl RepoModel {
     }
 
     fn select_range(&mut self, ix: usize, cx: &mut Context<Self>) {
-        let anchor = self.selected_commit.unwrap_or(ix);
+        let anchor = self.log.selected.unwrap_or(ix);
         let (lo, hi) = (anchor.min(ix), anchor.max(ix));
-        if self.selected_commit.is_none() {
+        if self.log.selected.is_none() {
             self.select_commit(ix, cx);
         }
-        self.history.multi = self.commits[lo..=hi].iter().map(|c| c.sha.clone()).collect();
+        self.history.multi = self.log.commits[lo..=hi].iter().map(|c| c.sha.clone()).collect();
     }
 
     fn toggle_multi(&mut self, sha: String, cx: &mut Context<Self>) {
         if self.history.multi.len() < 2 {
             // Seed with the primary selection.
             self.history.multi = self
-                .selected_commit
-                .and_then(|i| self.commits.get(i))
+                .log.selected
+                .and_then(|i| self.log.commits.get(i))
                 .map(|c| c.sha.clone())
                 .into_iter()
                 .collect();
@@ -66,7 +66,7 @@ impl RepoModel {
         }
         if self.history.multi.len() < 2 {
             let only = self.history.multi.drain().next();
-            if let Some(ix) = only.and_then(|s| self.commits.iter().position(|c| c.sha == s)) {
+            if let Some(ix) = only.and_then(|s| self.log.commits.iter().position(|c| c.sha == s)) {
                 self.select_commit(ix, cx);
             }
         }

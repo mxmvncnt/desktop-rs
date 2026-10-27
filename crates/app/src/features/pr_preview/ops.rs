@@ -43,7 +43,7 @@ impl RepoModel {
     /// Branch name on the remote for the PR head: the upstream's name when
     /// the branch is published, else the local name.
     pub fn pr_head_name(&self) -> String {
-        let upstream = self.status.as_ref().and_then(|s| s.upstream.clone());
+        let upstream = self.work.status.as_ref().and_then(|s| s.upstream.clone());
         match upstream.and_then(|u| u.split_once('/').map(|(_, b)| b.to_string())) {
             Some(b) => b,
             None => self.branch_name(),

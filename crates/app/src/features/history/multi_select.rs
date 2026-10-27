@@ -14,7 +14,7 @@ pub struct MultiSelectPane {
 impl RenderOnce for MultiSelectPane {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let r = self.repo.read(cx);
-        let commits: Vec<Commit> = r.multi_indices().iter().filter_map(|&i| r.commits.get(i).cloned()).collect();
+        let commits: Vec<Commit> = r.multi_indices().iter().filter_map(|&i| r.log.commits.get(i).cloned()).collect();
         let pushed = commits.iter().filter(|c| !r.is_unpushed(&c.sha)).count();
         let n = commits.len();
         div()

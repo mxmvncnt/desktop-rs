@@ -240,7 +240,7 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                     }
                     "stash-dialog" => {
                         if let Some(r) = &ws.repo {
-                            r.update(cx, |r, _| r.excluded.insert("untracked.md".into()));
+                            r.update(cx, |r, _| r.work.excluded.insert("untracked.md".into()));
                         }
                         ws.open_stash_create(false, window, cx);
                     }
@@ -327,7 +327,7 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
             ws.update(cx, |ws, cx| {
                 if let Some(r) = &ws.repo {
                     r.update(cx, |r, cx| {
-                        let Some(diff) = r.change_detail.diff.clone() else { return };
+                        let Some(diff) = r.work.detail.diff.clone() else { return };
                         let rows: Vec<usize> = (0..diff.lines.len()).filter(|&i| gd_git::selectable(&diff, i)).collect();
                         // Deselect the 2nd selectable row and the last hunk.
                         if let Some(&ix) = rows.get(1) {
@@ -382,7 +382,7 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
             ws.update(cx, |ws, cx| {
                 if let Some(r) = &ws.repo {
                     r.update(cx, |r, cx| {
-                        let last = r.change_detail.diff.as_ref().map_or(0, |d| d.hunks.len().saturating_sub(1));
+                        let last = r.work.detail.diff.as_ref().map_or(0, |d| d.hunks.len().saturating_sub(1));
                         r.expand_diff(crate::features::diff::DiffPane::Changes, gd_git::Expansion::Down(0), cx);
                         r.expand_diff(crate::features::diff::DiffPane::Changes, gd_git::Expansion::All(last), cx);
                     });
@@ -550,7 +550,7 @@ fn history_phase2(ws: &mut Workspace, view: &str, window: &mut gpui::Window, cx:
         }
         "history-checkout" => pick(ws, HAction::Checkout, window, cx),
         "amend-mode" => {
-            let head = repo.read(cx).commits.first().cloned();
+            let head = repo.read(cx).log.commits.first().cloned();
             if let Some(head) = head {
                 ws.start_amend(head, window, cx);
             }

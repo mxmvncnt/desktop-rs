@@ -11,7 +11,7 @@ impl RepoModel {
     pub fn included_paths(&self) -> Vec<String> {
         self.changes()
             .iter()
-            .filter(|c| !self.excluded.contains(&c.path) && !self.partial.contains_key(&c.path))
+            .filter(|c| !self.work.excluded.contains(&c.path) && !self.work.partial.contains_key(&c.path))
             .map(|c| c.path.clone())
             .collect()
     }
@@ -23,7 +23,7 @@ impl RepoModel {
         if amending || self.merging() {
             return None;
         }
-        let mut selected = self.changes().iter().filter(|c| !self.excluded.contains(&c.path));
+        let mut selected = self.changes().iter().filter(|c| !self.work.excluded.contains(&c.path));
         let c = selected.next()?;
         if selected.next().is_some() {
             return None;
@@ -39,20 +39,20 @@ impl RepoModel {
 
     /// File checkbox: a partially selected file becomes fully included.
     pub fn toggle_included(&mut self, path: &str, cx: &mut Context<Self>) {
-        if self.partial.remove(path).is_some() {
-            self.excluded.remove(path);
-        } else if !self.excluded.remove(path) {
-            self.excluded.insert(path.to_string());
+        if self.work.partial.remove(path).is_some() {
+            self.work.excluded.remove(path);
+        } else if !self.work.excluded.remove(path) {
+            self.work.excluded.insert(path.to_string());
         }
         cx.notify();
     }
 
     pub fn set_all_included(&mut self, included: bool, cx: &mut Context<Self>) {
-        self.partial.clear();
+        self.work.partial.clear();
         if included {
-            self.excluded.clear();
+            self.work.excluded.clear();
         } else {
-            self.excluded = self.changes().iter().map(|c| c.path.clone()).collect();
+            self.work.excluded = self.changes().iter().map(|c| c.path.clone()).collect();
         }
         cx.notify();
     }
@@ -87,7 +87,7 @@ impl RepoModel {
                 // file and the old diff stays up until the new one is loaded,
                 // so there is no empty frame in between.
                 // Row indices refer to diffs that no longer exist.
-                this.partial.clear();
+                this.work.partial.clear();
             },
             cx,
         );

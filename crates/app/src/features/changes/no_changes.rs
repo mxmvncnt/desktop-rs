@@ -21,7 +21,7 @@ pub struct NoChanges {
 impl NoChanges {
     pub fn new(r: &RepoModel) -> Self {
         let ahead_behind = r
-            .status
+            .work.status
             .as_ref()
             .filter(|s| s.upstream.is_some())
             .map(|s| (s.ahead_behind.ahead, s.ahead_behind.behind));

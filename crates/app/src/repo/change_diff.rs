@@ -14,24 +14,24 @@ impl RepoModel {
             self.stashes.viewing = false;
             cx.notify();
         }
-        if self.selected_change == Some(ix) {
+        if self.work.selected == Some(ix) {
             return;
         }
-        self.selected_change = Some(ix);
+        self.work.selected = Some(ix);
         self.load_change_diff(cx);
         cx.notify();
     }
 
     pub(super) fn load_change_diff(&mut self, cx: &mut Context<Self>) {
         let Some(change) = self.selected_change_file().cloned() else {
-            self.change_detail.load.cancel();
+            self.work.detail.load.cancel();
             self.show_diff(DiffPane::Changes, None, cx);
             return;
         };
         let opts = self.diff_options;
         let path = change.path.clone();
         self.load(
-            |this| &mut this.change_detail.load,
+            |this| &mut this.work.detail.load,
             move |repo| repo.working_diff(&change, opts),
             move |this, d, cx| this.apply_change_diff(d, path, opts, cx),
             cx,
@@ -40,14 +40,14 @@ impl RepoModel {
 
     fn apply_change_diff(&mut self, d: Diff, path: String, opts: DiffOptions, cx: &mut Context<Self>) {
         let key = (path.clone(), opts);
-        let unchanged = self.change_diff_key.as_ref() == Some(&key)
-            && self.change_detail.diff.as_ref().is_some_and(|c| **c == d);
+        let unchanged = self.work.diff_key.as_ref() == Some(&key)
+            && self.work.detail.diff.as_ref().is_some_and(|c| **c == d);
         if unchanged {
             // Same file, same contents: keep the expansion and highlight.
             return;
         }
         self.reconcile_selection(&path, &d);
-        self.change_diff_key = Some(key);
+        self.work.diff_key = Some(key);
         self.show_diff(DiffPane::Changes, Some((d, path)), cx);
     }
 
@@ -59,7 +59,7 @@ impl RepoModel {
         }
         self.diff_options = opts;
         self.load_change_diff(cx);
-        if let Some(ix) = self.commit_detail.selected {
+        if let Some(ix) = self.log.detail.selected {
             self.select_file(DiffPane::Commit, ix, cx);
         }
         if self.pr.open {

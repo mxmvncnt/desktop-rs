@@ -51,7 +51,7 @@ impl StashDialogView {
         let r = self.repo.read(cx);
         let n = r.changes().len();
         // Stashing works on whole files, partially selected ones included.
-        let m = r.changes().iter().filter(|c| !r.excluded.contains(&c.path)).count();
+        let m = r.changes().iter().filter(|c| !r.work.excluded.contains(&c.path)).count();
         let count = if selected_only { m } else { n };
         let current = r.branch_name();
         let mut content = div().flex().flex_col().gap(px(10.0)).pt(px(4.0));

@@ -26,20 +26,20 @@ impl Workspace {
 
 /// Snapshot of everything the menu rows depend on, for the commit at `ix`.
 pub(crate) fn menu_ctx(r: &RepoModel, ix: usize) -> Option<MenuCtx> {
-    let commit = r.commits.get(ix).cloned()?;
+    let commit = r.log.commits.get(ix).cloned()?;
     let multi_ix = r.multi_indices();
-    let multi = multi_ix.iter().filter_map(|&i| r.commits.get(i).cloned()).collect();
+    let multi = multi_ix.iter().filter_map(|&i| r.log.commits.get(i).cloned()).collect();
     let squashable = multi_ix.len() >= 2
         && multi_ix.windows(2).all(|w| w[1] == w[0] + 1)
-        && linear_through(&r.commits, *multi_ix.last().unwrap());
+        && linear_through(&r.log.commits, *multi_ix.last().unwrap());
     Some(MenuCtx {
         tags: r.history.tags.get(&commit.sha).cloned().unwrap_or_default(),
         unpushed: r.is_unpushed(&commit.sha),
         web_url: r.history.web_url.clone(),
         blocked: r.history_blocked(),
         is_head: ix == 0,
-        can_up: ix > 0 && linear_through(&r.commits, ix),
-        can_down: ix + 1 < r.commits.len() && linear_through(&r.commits, ix + 1),
+        can_up: ix > 0 && linear_through(&r.log.commits, ix),
+        can_down: ix + 1 < r.log.commits.len() && linear_through(&r.log.commits, ix + 1),
         squashable,
         multi,
         commit,

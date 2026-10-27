@@ -16,7 +16,7 @@ pub(super) fn change_row(
     cx: &mut App,
 ) -> AnyElement {
     let r = repo.read(cx);
-    let selected = r.selected_change == Some(ix);
+    let selected = r.work.selected == Some(ix);
     let check = r.file_check_state(&change.path);
     let (repo_click, repo_check, ws_row) = (repo.clone(), repo.clone(), ws.clone());
     let path = change.path.clone();

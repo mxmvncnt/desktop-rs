@@ -45,9 +45,9 @@ pub struct LineSelection {
 impl RepoModel {
     /// The changes-list checkbox state of `path`.
     pub fn file_check_state(&self, path: &str) -> CheckState {
-        if self.excluded.contains(path) {
+        if self.work.excluded.contains(path) {
             CheckState::Unchecked
-        } else if self.partial.contains_key(path) {
+        } else if self.work.partial.contains_key(path) {
             CheckState::Mixed
         } else {
             CheckState::Checked
@@ -57,9 +57,9 @@ impl RepoModel {
     /// Lines of the displayed working diff can be clicked: plain text diff of
     /// the Changes tab, whitespace shown, no merge in progress.
     pub fn can_select_lines(&self) -> bool {
-        let Some(diff) = &self.change_detail.diff else { return false };
+        let Some(diff) = &self.work.detail.diff else { return false };
         let conflicted = self
-            .selected_change
+            .work.selected
             .and_then(|ix| self.changes().get(ix))
             .is_none_or(|c| c.status == FileStatus::Conflicted);
         self.tab == Tab::Changes
@@ -80,11 +80,11 @@ impl RepoModel {
         let Some(path) = self.selected_change_file().map(|c| &c.path) else {
             return false;
         };
-        if self.excluded.contains(path) {
+        if self.work.excluded.contains(path) {
             return false;
         }
-        let Some(sel) = self.partial.get(path) else { return true };
-        let key = self.change_detail.diff.as_ref().and_then(|d| line_key(d, ix));
+        let Some(sel) = self.work.partial.get(path) else { return true };
+        let key = self.work.detail.diff.as_ref().and_then(|d| line_key(d, ix));
         key.is_none_or(|k| !sel.excluded.contains(&k))
     }
 
@@ -99,13 +99,13 @@ impl RepoModel {
         if !self.can_select_lines() {
             return false;
         }
-        let (Some(path), Some(diff)) = (self.selected_path(), self.change_detail.diff.clone()) else { return false };
+        let (Some(path), Some(diff)) = (self.selected_path(), self.work.detail.diff.clone()) else { return false };
         // Every changed line is in the diff (expansion only adds context).
         let all: Vec<LineKey> = (0..diff.lines.len()).filter_map(|i| line_key(&diff, i)).collect();
-        let mut excluded: HashSet<LineKey> = if self.excluded.contains(&path) {
+        let mut excluded: HashSet<LineKey> = if self.work.excluded.contains(&path) {
             all.iter().copied().collect()
         } else {
-            self.partial.get(&path).map(|s| s.excluded.clone()).unwrap_or_default()
+            self.work.partial.get(&path).map(|s| s.excluded.clone()).unwrap_or_default()
         };
         let mut changed = false;
         for key in rows.into_iter().filter_map(|i| line_key(&diff, i)) {
@@ -114,12 +114,12 @@ impl RepoModel {
         if !changed {
             return false;
         }
-        self.partial.remove(&path);
-        self.excluded.remove(&path);
+        self.work.partial.remove(&path);
+        self.work.excluded.remove(&path);
         if excluded.len() == all.len() {
-            self.excluded.insert(path);
+            self.work.excluded.insert(path);
         } else if !excluded.is_empty() {
-            self.partial.insert(path, LineSelection { diff, excluded });
+            self.work.partial.insert(path, LineSelection { diff, excluded });
         }
         cx.notify();
         true
@@ -153,7 +153,7 @@ impl RepoModel {
 
     /// Selection state of a change block (all / none / some lines included).
     pub fn block_state(&self, rows: std::ops::Range<usize>) -> CheckState {
-        let Some(diff) = &self.change_detail.diff else { return CheckState::Unchecked };
+        let Some(diff) = &self.work.detail.diff else { return CheckState::Unchecked };
         let (mut on, mut off) = (false, false);
         for ix in rows.filter(|&i| gd_git::selectable(diff, i)) {
             if self.row_included(ix) { on = true } else { off = true }
@@ -178,8 +178,8 @@ impl RepoModel {
             // A `-w` diff has different rows; keep the selection for later.
             return;
         }
-        if self.partial.get(path).is_some_and(|sel| sel.diff.source != diff.source) {
-            self.partial.remove(path);
+        if self.work.partial.get(path).is_some_and(|sel| sel.diff.source != diff.source) {
+            self.work.partial.remove(path);
         }
     }
 
@@ -187,9 +187,9 @@ impl RepoModel {
     pub fn partial_files(&self) -> Vec<PartialFile> {
         self.changes()
             .iter()
-            .filter(|c| !self.excluded.contains(&c.path))
+            .filter(|c| !self.work.excluded.contains(&c.path))
             .filter_map(|c| {
-                let sel = self.partial.get(&c.path)?;
+                let sel = self.work.partial.get(&c.path)?;
                 let content = gd_git::staged_text(&sel.diff, |ix| {
                     line_key(&sel.diff, ix).is_none_or(|k| !sel.excluded.contains(&k))
                 })?;
@@ -205,6 +205,6 @@ impl RepoModel {
 
     /// Anything (whole files or some lines) is selected for commit.
     pub fn has_included(&self) -> bool {
-        self.changes().iter().any(|c| !self.excluded.contains(&c.path))
+        self.changes().iter().any(|c| !self.work.excluded.contains(&c.path))
     }
 }

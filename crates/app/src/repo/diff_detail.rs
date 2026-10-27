@@ -59,8 +59,8 @@ impl DiffPane {
 impl RepoModel {
     pub fn detail(&self, pane: DiffPane) -> &DiffDetail {
         match pane {
-            DiffPane::Changes => &self.change_detail,
-            DiffPane::Commit => &self.commit_detail,
+            DiffPane::Changes => &self.work.detail,
+            DiffPane::Commit => &self.log.detail,
             DiffPane::Stash => &self.stashes.detail,
             DiffPane::Pr => &self.pr.detail,
         }
@@ -68,8 +68,8 @@ impl RepoModel {
 
     pub(crate) fn detail_mut(&mut self, pane: DiffPane) -> &mut DiffDetail {
         match pane {
-            DiffPane::Changes => &mut self.change_detail,
-            DiffPane::Commit => &mut self.commit_detail,
+            DiffPane::Changes => &mut self.work.detail,
+            DiffPane::Commit => &mut self.log.detail,
             DiffPane::Stash => &mut self.stashes.detail,
             DiffPane::Pr => &mut self.pr.detail,
         }

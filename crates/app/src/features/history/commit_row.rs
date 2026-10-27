@@ -29,7 +29,7 @@ impl CommitRow {
     /// Reads the row's display state from the model; `None` past the end.
     pub fn from_model(ix: usize, repo: &Entity<RepoModel>, ws: &Entity<Workspace>, cx: &App) -> Option<Self> {
         let r = repo.read(cx);
-        let commit = r.commits.get(ix)?.clone();
+        let commit = r.log.commits.get(ix)?.clone();
         Some(Self {
             ix,
             selected: r.commit_selected(ix),

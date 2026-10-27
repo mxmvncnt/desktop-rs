@@ -64,15 +64,15 @@ impl Workspace {
         let query = self.history_ui.search.read(cx).as_str().to_string();
         repo.update(cx, |r, cx| match list {
             NavList::Changes => {
-                if let Some(ix) = target(r.selected_change, r.changes().len(), mv) {
+                if let Some(ix) = target(r.work.selected, r.changes().len(), mv) {
                     r.select_change(ix, cx);
                     self.changes_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
                 }
             }
             NavList::Commits => {
-                let visible = matching_commits(&r.commits, &query);
-                let n = visible.as_ref().map_or(r.commits.len(), Vec::len);
-                let cur = r.selected_commit.and_then(|ix| match &visible {
+                let visible = matching_commits(&r.log.commits, &query);
+                let n = visible.as_ref().map_or(r.log.commits.len(), Vec::len);
+                let cur = r.log.selected.and_then(|ix| match &visible {
                     Some(v) => v.iter().position(|&i| i == ix),
                     None => Some(ix),
                 });
@@ -80,7 +80,7 @@ impl Workspace {
                     let ix = visible.as_ref().map_or(pos, |v| v[pos]);
                     r.select_commit(ix, cx);
                     self.history_scroll.scroll_to_item(pos, ScrollStrategy::Nearest);
-                    if ix + 20 >= r.commits.len() {
+                    if ix + 20 >= r.log.commits.len() {
                         r.load_more_history(cx);
                     }
                 }
