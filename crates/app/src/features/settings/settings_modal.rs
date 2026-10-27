@@ -1,10 +1,12 @@
 //! Settings modal: a sidebar of categories and the selected category's page.
 //! Esc, the close button, a backdrop click, or the toolbar gear closes it.
 
-use gd_ui::{Icon, divider, icon_button, motion, overlay_card, theme::scrim};
+use std::rc::Rc;
+
+use gd_ui::{Icon, divider, icon_button, modal, motion, overlay_card};
 use gpui::{
-    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
-    Styled, Window, deferred, div, px,
+    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
+    px,
 };
 
 use crate::features::accounts::AccountsPage;
@@ -94,27 +96,8 @@ impl RenderOnce for SettingsModal {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let instant = motion::handoff(&"settings-in".into(), cx);
         let ws = self.ws.clone();
-        let backdrop = div()
-            .id("settings-backdrop")
-            .absolute()
-            .inset_0()
-            .bg(scrim(0.5))
-            .on_mouse_down(MouseButton::Left, move |_, _, cx| close(&ws, cx));
-        deferred(
-            div()
-                .absolute()
-                .inset_0()
-                .child(motion::scrim_in("settings-scrim-in", backdrop, instant))
-                .child(
-                    div()
-                        .absolute()
-                        .inset_0()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(motion::dialog_in("settings-in", self.card(cx), instant)),
-                ),
-        )
+        let on_cancel: Rc<dyn Fn(&mut Window, &mut App)> = Rc::new(move |_, cx| close(&ws, cx));
+        modal(self.card(cx), Some(on_cancel), instant)
     }
 }
 

@@ -1,10 +1,7 @@
 //! Backdrop + positioned card hosting whichever popover is open.
 
-use gd_ui::{motion, theme::{TOOLBAR_HEIGHT, scrim}};
-use gpui::{
-    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, MouseButton,
-    ParentElement, RenderOnce, Styled, Window, deferred, div, px,
-};
+use gd_ui::theme::TOOLBAR_HEIGHT;
+use gpui::{AnyElement, App, Context, Entity, IntoElement, RenderOnce, Window, div, point, px};
 
 use crate::workspace::{Popover, Workspace};
 
@@ -34,47 +31,19 @@ impl PopoverLayer {
 }
 
 impl RenderOnce for PopoverLayer {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let (left, width) = match self.popover {
             Popover::Repositories | Popover::Clone => (8.0, 380.0),
             Popover::Branches | Popover::NewBranch => (296.0, 380.0),
         };
         let ws = self.ws;
-        let key = gpui::ElementId::from(("popover", self.generation));
-        let instant = motion::handoff(&key, cx);
-        deferred(
-            div()
-                .absolute()
-                .inset_0()
-                .child(
-                    // Backdrop: click outside closes. Very light scrim like zeron menus.
-                    div()
-                        .id("popover-backdrop")
-                        .absolute()
-                        .inset_0()
-                        .bg(scrim(0.18))
-                        .on_mouse_down(MouseButton::Left, move |ev, window, cx| {
-                            ws.update(cx, |this, cx| {
-                                this.popover_dismissed = this.popover.map(|p| (p, ev.position));
-                                this.close_popover(window, cx)
-                            })
-                        }),
-                )
-                .child(
-                    div()
-                        .absolute()
-                        .top(px(TOOLBAR_HEIGHT - 2.0))
-                        .left(px(left))
-                        .w(px(width))
-                        .child(motion::menu_in(
-                            key,
-                            gd_ui::overlay_card(cx)
-                                .id("popover-card")
-                                .occlude()
-                                .child(self.content),
-                            instant,
-                        )),
-                ),
-        )
+        gd_ui::Popover::new(("popover", self.generation), point(px(left), px(TOOLBAR_HEIGHT - 2.0)), width, self.content)
+            .scrim(0.18)
+            .on_dismiss(move |ev, window, cx| {
+                ws.update(cx, |this, cx| {
+                    this.popover_dismissed = this.popover.map(|p| (p, ev.position));
+                    this.close_popover(window, cx)
+                })
+            })
     }
 }

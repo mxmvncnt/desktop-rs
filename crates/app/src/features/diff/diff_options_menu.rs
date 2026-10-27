@@ -2,11 +2,8 @@
 //! whitespace changes". A `deferred` overlay like `ContextMenu` (closes on
 //! backdrop click/Esc; counted in `overlay_open`).
 
-use gd_ui::{Tabs, Theme, motion};
-use gpui::{
-    App, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Point, RenderOnce, SharedString,
-    Styled, Window, deferred, div, px,
-};
+use gd_ui::{Popover, Tabs, Theme};
+use gpui::{App, Entity, IntoElement, ParentElement, Pixels, Point, RenderOnce, Styled, Window, div, px};
 
 use super::check_option_row::CheckOptionRow;
 use crate::workspace::Workspace;
@@ -40,15 +37,9 @@ impl DiffOptionsMenu {
 
 impl RenderOnce for DiffOptionsMenu {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let origin = self.origin(window);
-        let key = SharedString::from(format!("diff-options-in-{}", self.generation));
-        let instant = motion::handoff(&key.clone().into(), cx);
         let ws = self.ws.clone();
-        let card = self.card(cx);
-        let backdrop = backdrop(ws);
-        deferred(div().absolute().inset_0().child(backdrop).child(
-            div().absolute().left(origin.x).top(origin.y).child(motion::menu_in(key, card, instant)),
-        ))
+        Popover::new(("diff-options-in", self.generation), self.origin(window), MENU_W, self.card(cx))
+            .on_dismiss(move |_, _, cx| ws.update(cx, |this, cx| this.close_diff_options(cx)))
     }
 }
 
@@ -63,14 +54,11 @@ impl DiffOptionsMenu {
         Point { x, y: self.pos.y - inset + px(18.0) }
     }
 
-    fn card(&self, cx: &App) -> gpui::Stateful<gpui::Div> {
+    fn card(&self, cx: &App) -> impl IntoElement + use<> {
         let theme = Theme::of(cx);
         let (wrap, hidden) = (self.wrap, self.hide_whitespace);
         let ws_tabs = self.ws.clone();
-        gd_ui::overlay_card(cx)
-            .id("diff-options-card")
-            .occlude()
-            .w(px(MENU_W))
+        div()
             .p(px(6.0))
             .flex()
             .flex_col()
@@ -107,15 +95,4 @@ fn section_label(text: &'static str, theme: &Theme) -> impl IntoElement {
         .font_weight(gpui::FontWeight::MEDIUM)
         .text_color(theme.text_faint)
         .child(text)
-}
-
-/// Click-away layer: closes the popover on a left or right click.
-fn backdrop(ws: Entity<Workspace>) -> impl IntoElement {
-    let ws_left = ws.clone();
-    div()
-        .id("diff-options-backdrop")
-        .absolute()
-        .inset_0()
-        .on_mouse_down(MouseButton::Left, move |_, _, cx| ws_left.update(cx, |this, cx| this.close_diff_options(cx)))
-        .on_mouse_down(MouseButton::Right, move |_, _, cx| ws.update(cx, |this, cx| this.close_diff_options(cx)))
 }
