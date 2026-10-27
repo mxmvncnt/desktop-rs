@@ -77,10 +77,9 @@ impl HighlightKind {
             Self::Comment | Self::Keyword | Self::String | Self::Number | Self::Boolean => 60,
             Self::Variable | Self::Operator => 50,
             Self::Punctuation | Self::Embedded => 40,
-            // Markdown block captures can wrap more specific inline captures,
-            // and fenced-code captures can wrap an injected language. Keep
-            // markup below programming-language tokens while preserving the
-            // nesting order among Markdown roles.
+            // Markdown block captures can wrap more specific inline captures.
+            // Keep markup below programming-language tokens while preserving
+            // the nesting order among Markdown roles.
             Self::MarkupHeading => 30,
             Self::MarkupEmphasis => 31,
             Self::MarkupStrong => 32,
@@ -263,7 +262,6 @@ pub fn highlight(request: HighlightRequest<'_>) -> Result<HighlightedDocument, H
         .ok_or(HighlightError::UnknownLanguage)?;
 
     let primary_configuration = cached_configuration(language)?;
-    let injected = injected_languages(language);
     let markdown_inline = if language == LanguageId::Markdown {
         Some(cached_markdown_inline_configuration()?)
     } else {
@@ -275,15 +273,13 @@ pub fn highlight(request: HighlightRequest<'_>) -> Result<HighlightedDocument, H
             primary_configuration,
             request.source.as_bytes(),
             None,
-            |name| {
-                if name == "markdown_inline" {
-                    return markdown_inline;
+            |name| match (language, name) {
+                (LanguageId::Markdown, "markdown_inline") => markdown_inline,
+                (LanguageId::Html, "javascript") => {
+                    cached_configuration(LanguageId::JavaScript).ok()
                 }
-                let language = language_for_alias(name)?;
-                if !injected.contains(&language) {
-                    return None;
-                }
-                cached_configuration(language).ok()
+                (LanguageId::Html, "css") => cached_configuration(LanguageId::Css).ok(),
+                _ => None,
             },
         )
         .map_err(|error| HighlightError::Parser(error.to_string()))?;
@@ -309,22 +305,9 @@ pub fn highlight(request: HighlightRequest<'_>) -> Result<HighlightedDocument, H
     HighlightedDocument::from_absolute_spans(request.source, spans)
 }
 
-fn injected_languages(parent: LanguageId) -> Vec<LanguageId> {
-    use LanguageId::*;
-    match parent {
-        Html => vec![JavaScript, Css],
-        Markdown => vec![
-            Rust, JavaScript, Jsx, TypeScript, Tsx, Python, Go, Json, Jsonc, Bash, Toml, Html, Css,
-            Yaml, C, Cpp,
-        ],
-        _ => Vec::new(),
-    }
-}
-
 /// Compiled queries contain no document/theme state and are immutable after
 /// capture configuration. Keep one per used grammar instead of recompiling
-/// for every fence or eagerly compiling all 27 Markdown injection targets.
-/// Each grammar has its own cell: concurrent requests compile it only once,
+/// for every document. Each grammar has its own cell: concurrent requests compile it only once,
 /// while unrelated languages never wait on a global compilation lock.
 fn cached_configuration(
     language: LanguageId,
@@ -724,10 +707,7 @@ mod tests {
             ("a.json", "{\"a\": 1}"),
             ("a.sh", "echo \"hi\" | cat"),
             ("Cargo.toml", "[a]\nb = 1"),
-            (
-                "a.md",
-                "# Title\n\n`code` and *em*\n\n```rust\nfn x() {}\n```\n",
-            ),
+            ("a.md", "# Title\n\n`code` and *em*\n"),
             (
                 "a.html",
                 "<div class=\"a\"><script>let a = 1;</script><style>a { color: red }</style></div>",
