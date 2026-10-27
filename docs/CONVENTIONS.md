@@ -33,7 +33,7 @@ features/stashes/
 | stateless SFC with props | `#[derive(IntoElement)] struct X { .. }` + `impl RenderOnce` |
 | SFC with `data()` | `Entity<X>` + `impl Render` |
 | emit | `EventEmitter<E>` + `cx.subscribe`, or a callback field |
-| store | `Entity<RepoModel>` or a `cx.global` |
+| store | `Entity<X Store>` per feature (`RepoModel`, `PopoverStore`, `AccountsStore`) or a `cx.global` |
 | template | the `render()` fn |
 
 - Default to `RenderOnce`. Only make an `Entity` when it owns state that
@@ -48,6 +48,33 @@ features/stashes/
 2. `impl Render` / `impl RenderOnce` (the "template").
 3. `impl X { .. }`: handlers and logic.
 4. Private helper fns.
+
+## Stores
+
+- One `Entity<XStore>` per feature that owns state with its own logic and several
+  components (`RepoModel`, `PopoverStore`, `AccountsStore`). `Workspace` keeps the layout, the
+  overlay stack and the list of stores; it `cx.observe`s a store to re-render.
+- A component takes **its** store (`Entity<AccountsStore>`), calls `store.update(cx, |s, cx| ..)` and
+  reads it in `render`, instead of receiving copies of its fields. Anything the store can't know
+  (the open repository, the window) is a plain argument of the store method.
+- Not a store: a struct of a few input handles that only `impl Workspace` handlers touch
+  (`HistoryUi`, `StashUi`, `MergeUi`, `BranchUi`), a render cache mutated while painting (`DiffView`),
+  or data read all over the app (`Settings`). An `Entity` there adds a layer without removing any
+  `Entity<Workspace>` dependency.
+- Group related `RepoModel` fields in a `#[derive(Default)]` struct (`ChangesState`, `HistoryLog`,
+  `RefreshState`) so `empty()` stays short.
+
+## Generic component, local override
+
+A widget that appears in several places is one component in `components/` with the common
+behavior and small builder methods for what differs (`BranchRow::icon/height/bright`,
+`FileRow::leading`, `DiffDisplayOptions { sectioned }`). Don't copy it with edits.
+
+## RenderOnce struct or plain fn
+
+A `RenderOnce` struct is for a piece with its own props, callbacks or sub-pieces. A plain
+`fn x(..) -> impl IntoElement` is enough for a stateless piece with one call site, and virtualized
+rows (rebuilt every frame) are always plain fns. No struct whose `new()` only copies arguments.
 
 ## Functions and types
 
