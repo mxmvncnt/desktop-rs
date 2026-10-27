@@ -9,7 +9,7 @@ use gpui::{AppContext, Context};
 
 use crate::features::diff::highlight_diff;
 use crate::repo::RepoModel;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 
 impl RepoModel {
     /// Reload the stash list in the background (called from every full refresh).

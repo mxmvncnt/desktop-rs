@@ -5,7 +5,7 @@ use gpui::{
 
 use super::state::SelectionSummary;
 use crate::repo::RepoModel;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 use crate::workspace::Workspace;
 
 /// "N changed files" with the select-all checkbox; right-click opens the header menu.

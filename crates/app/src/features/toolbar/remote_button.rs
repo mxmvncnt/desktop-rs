@@ -6,7 +6,7 @@ use gpui::SharedString;
 
 use super::last_fetched::last_fetched_caption;
 use crate::repo::{RemoteOp, RepoModel};
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 
 pub(super) struct RemoteButton {
     pub icon: Icon,

@@ -8,7 +8,7 @@ use gpui::{
     RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
-use crate::shared::split_path::split_path;
+use crate::utils::text::split_path;
 
 type RightClick = Box<dyn Fn(Point<Pixels>, &mut Window, &mut App)>;
 

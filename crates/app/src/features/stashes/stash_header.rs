@@ -6,8 +6,8 @@ use gpui::{App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 use super::state::StashDialog;
 use crate::repo::RepoModel;
-use crate::shared::relative_time::relative_time;
-use crate::shared::plural::plural;
+use crate::utils::text::relative_time;
+use crate::utils::text::plural;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]

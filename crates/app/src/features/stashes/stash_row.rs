@@ -5,7 +5,7 @@ use gd_ui::{Icon, Theme, badge, icon, pressable};
 use gpui::{App, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelude::*, px};
 
 use crate::repo::RepoModel;
-use crate::shared::relative_time::relative_time;
+use crate::utils::text::relative_time;
 use crate::workspace::Workspace;
 
 pub const STASH_ROW_HEIGHT: f32 = 46.0;

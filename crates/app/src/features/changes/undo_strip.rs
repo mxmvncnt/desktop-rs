@@ -4,7 +4,7 @@ use gd_ui::{Button, Icon, Theme, icon, motion};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use crate::repo::LastCommit;
-use crate::shared::relative_time::relative_time;
+use crate::utils::text::relative_time;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]

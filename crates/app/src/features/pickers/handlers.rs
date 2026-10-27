@@ -8,7 +8,7 @@ use super::clone_form::CloneForm;
 use super::new_branch_base::NewBranchBase;
 use super::new_branch_form::NewBranchForm;
 use super::repo_picker::{RepoEntry, RepoPicker};
-use crate::shared::branch_name::sanitize_branch_name;
+use crate::utils::text::sanitize_branch_name;
 use crate::workspace::{Popover, Workspace};
 
 impl Workspace {

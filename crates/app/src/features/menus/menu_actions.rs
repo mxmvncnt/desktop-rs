@@ -1,13 +1,12 @@
 //! What each context-menu action does (stash actions are in features/stashes).
 
-use std::path::Path;
-
 use gd_git::{FileChange, escape_ignore};
 use gpui::{ClipboardItem, Context, Entity, Window};
 
 use super::menu_rows::extension;
 use super::state::{ConfirmDialog, MenuAction, MenuTarget};
 use crate::repo::RepoModel;
+use crate::utils::paths::{copy_path, reveal};
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -34,9 +33,7 @@ impl Workspace {
         let root = repo.read(cx).repo.root().to_path_buf();
         match action {
             MenuAction::Discard => self.dialog = Some(ConfirmDialog::DiscardFile(c)),
-            MenuAction::CopyPath => {
-                cx.write_to_clipboard(ClipboardItem::new_string(root.join(&c.path).display().to_string()))
-            }
+            MenuAction::CopyPath => copy_path(&root, &c.path, cx),
             MenuAction::CopyRelPath => cx.write_to_clipboard(ClipboardItem::new_string(c.path)),
             MenuAction::Reveal => reveal(&root, &c.path, cx),
             MenuAction::Ignore => {
@@ -46,13 +43,6 @@ impl Workspace {
             _ => {}
         }
     }
-}
-
-fn reveal(root: &Path, path: &str, cx: &mut gpui::App) {
-    let abs = root.join(path);
-    // Deleted files no longer exist: reveal the folder instead.
-    let target = if abs.exists() { abs } else { abs.parent().unwrap_or(root).to_path_buf() };
-    cx.reveal_path(&target);
 }
 
 fn ignore_extension(path: &str, repo: &Entity<RepoModel>, cx: &mut gpui::App) {

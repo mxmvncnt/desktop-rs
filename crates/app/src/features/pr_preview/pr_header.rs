@@ -7,7 +7,7 @@ use gpui::{App, Entity, IntoElement, RenderOnce, SharedString, Window, div, prel
 
 use super::pr_base_menu::PrBaseMenu;
 use crate::repo::RepoModel;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 
 #[derive(IntoElement)]
 pub struct PrHeader {

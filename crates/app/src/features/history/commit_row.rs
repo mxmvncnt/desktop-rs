@@ -6,8 +6,8 @@ use gpui::{App, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelu
 
 use super::state::ClickKind;
 use crate::repo::RepoModel;
-use crate::shared::commit_authors::authors_text;
-use crate::shared::relative_time::relative_time;
+use crate::utils::text::authors_text;
+use crate::utils::text::relative_time;
 use crate::workspace::Workspace;
 
 pub const COMMIT_ROW_HEIGHT: f32 = 50.0;

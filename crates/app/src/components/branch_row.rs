@@ -6,7 +6,7 @@ use gpui::{
     SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
-use crate::shared::relative_time::relative_time;
+use crate::utils::text::relative_time;
 
 type RightClick = Box<dyn Fn(Point<Pixels>, &mut Window, &mut App)>;
 

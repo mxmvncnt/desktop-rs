@@ -4,7 +4,7 @@ use gd_ui::Dialog;
 use gpui::{App, Context, Entity, IntoElement, RenderOnce, Window};
 
 use super::state::ConfirmDialog;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]

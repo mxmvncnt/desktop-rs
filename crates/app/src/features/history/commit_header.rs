@@ -7,9 +7,9 @@ use gpui::{AnyElement, App, DragMoveEvent, Entity, FontWeight, IntoElement, Rend
 use super::message_resize::MessageDrag;
 use super::message_resize::MSG_DEFAULT_MAX;
 use crate::workspace::Workspace;
-use crate::shared::commit_authors::{authors_text, body_without_trailers};
-use crate::shared::relative_time::relative_time;
-use crate::shared::plural::plural;
+use crate::utils::text::{authors_text, body_without_trailers};
+use crate::utils::text::relative_time;
+use crate::utils::text::plural;
 
 #[derive(IntoElement)]
 pub struct CommitHeader {

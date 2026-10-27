@@ -8,8 +8,8 @@ use gpui_elements::editable_text::{EditableTextState, actions::Enter};
 
 use super::state::{CherryPickTarget, HistoryAction, HistoryDialog};
 use crate::components::BranchRow;
-use crate::shared::branch_name::sanitize_branch_name;
-use crate::shared::plural::plural;
+use crate::utils::text::sanitize_branch_name;
+use crate::utils::text::plural;
 use crate::components::{text_area, text_field};
 use crate::workspace::Workspace;
 

@@ -1,11 +1,11 @@
 //! Workspace-side handlers of the conflicted-file menu: open, keyboard
 //! navigation, Enter and running an action.
 
-use gpui::{ClipboardItem, Context, Pixels, Point, Window};
+use gpui::{Context, Pixels, Point, Window};
 
 use super::conflict_menu_rows::conflict_menu_rows;
 use super::state::{ConflictAction, ConflictMenu, Resolve};
-use crate::shared::file_url::file_url;
+use crate::utils::paths::{copy_path, file_url, reveal};
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -66,13 +66,8 @@ impl Workspace {
         }
         match action {
             ConflictAction::OpenEditor => cx.open_url(&file_url(&root.join(&path))),
-            ConflictAction::CopyPath => {
-                cx.write_to_clipboard(ClipboardItem::new_string(root.join(&path).display().to_string()))
-            }
-            ConflictAction::Reveal => {
-                let abs = root.join(&path);
-                cx.reveal_path(&if abs.exists() { abs } else { root });
-            }
+            ConflictAction::CopyPath => copy_path(&root, &path, cx),
+            ConflictAction::Reveal => reveal(&root, &path, cx),
             ConflictAction::Ours | ConflictAction::Theirs | ConflictAction::Resolved => {}
         }
     }
