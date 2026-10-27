@@ -262,7 +262,6 @@ pub fn highlight_diff(diff: &Diff, path: &str, cache: &HighlightCache) -> Option
         let doc = match gd_syntax::highlight(HighlightRequest {
             source: &source,
             path: Some(path),
-            fence_tag: None,
         }) {
             Ok(doc) => doc,
             Err(e) => {

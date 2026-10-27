@@ -3,27 +3,9 @@
 //! output is per-line spans of `(byte_range, HighlightKind)`. Ranges are byte
 //! offsets relative to one UTF-8 source line.
 
-use std::{collections::BTreeSet, ops::Range, path::Path, sync::atomic::AtomicUsize};
+use std::{collections::BTreeSet, ops::Range, path::Path};
 
 use tree_sitter_highlight::{HighlightConfiguration, HighlightEvent, Highlighter};
-
-pub const DEFAULT_MAX_SOURCE_BYTES: usize = 2 * 1024 * 1024;
-pub const DEFAULT_MAX_SPANS: usize = 1_000_000;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HighlightLimits {
-    pub max_source_bytes: usize,
-    pub max_spans: usize,
-}
-
-impl Default for HighlightLimits {
-    fn default() -> Self {
-        Self {
-            max_source_bytes: DEFAULT_MAX_SOURCE_BYTES,
-            max_spans: DEFAULT_MAX_SPANS,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LanguageId {
@@ -116,7 +98,6 @@ pub struct HighlightSpan {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HighlightedDocument {
-    pub language: LanguageId,
     pub lines: Vec<Vec<HighlightSpan>>,
 }
 
@@ -124,7 +105,6 @@ pub struct HighlightedDocument {
 pub struct HighlightRequest<'a> {
     pub source: &'a str,
     pub path: Option<&'a str>,
-    pub fence_tag: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
@@ -139,20 +119,13 @@ pub enum HighlightError {
     },
     #[error("highlight range {start}..{end} is not on UTF-8 boundaries")]
     InvalidUtf8Boundary { start: usize, end: usize },
-    #[error("source exceeds the configured highlighting limit")]
-    SourceTooLarge,
-    #[error("highlight output exceeds the configured span limit")]
-    TooManySpans,
     #[error("parser failed: {0}")]
     Parser(String),
-    #[error("the {0:?} grammar is not bundled")]
-    GrammarUnavailable(LanguageId),
 }
 
 impl HighlightedDocument {
     /// Validate, split, and normalize absolute source spans into line-relative spans.
     pub fn from_absolute_spans(
-        language: LanguageId,
         source: &str,
         spans: impl IntoIterator<Item = HighlightSpan>,
     ) -> Result<Self, HighlightError> {
@@ -189,7 +162,7 @@ impl HighlightedDocument {
         for line in &mut lines {
             *line = normalize_line(std::mem::take(line));
         }
-        Ok(Self { language, lines })
+        Ok(Self { lines })
     }
 }
 
@@ -284,35 +257,10 @@ fn line_starts(source: &str) -> Vec<usize> {
     starts
 }
 
-/// Whether this build contains a parser and compatible highlight queries.
-pub const fn supports_language(language: LanguageId) -> bool {
-    let _ = language;
-    true
-}
-
-/// Highlight a complete document with the default resource limits.
+/// Highlight a complete document.
 pub fn highlight(request: HighlightRequest<'_>) -> Result<HighlightedDocument, HighlightError> {
-    highlight_with_limits(request, HighlightLimits::default(), None)
-}
-
-/// Highlight a complete document with explicit limits and cooperative cancellation.
-pub fn highlight_with_limits(
-    request: HighlightRequest<'_>,
-    limits: HighlightLimits,
-    cancellation_flag: Option<&AtomicUsize>,
-) -> Result<HighlightedDocument, HighlightError> {
-    if request.source.len() > limits.max_source_bytes {
-        return Err(HighlightError::SourceTooLarge);
-    }
-    let language = detect_language(
-        request.path,
-        request.fence_tag,
-        request.source.lines().next(),
-    )
-    .ok_or(HighlightError::UnknownLanguage)?;
-    if !supports_language(language) {
-        return Err(HighlightError::GrammarUnavailable(language));
-    }
+    let language = detect_language(request.path, request.source.lines().next())
+        .ok_or(HighlightError::UnknownLanguage)?;
 
     let primary_configuration = cached_configuration(language)?;
     let injected = injected_languages(language);
@@ -326,7 +274,7 @@ pub fn highlight_with_limits(
         .highlight(
             primary_configuration,
             request.source.as_bytes(),
-            cancellation_flag,
+            None,
             |name| {
                 if name == "markdown_inline" {
                     return markdown_inline;
@@ -354,14 +302,11 @@ pub fn highlight_with_limits(
                         range: start..end,
                         kind,
                     });
-                    if spans.len() > limits.max_spans {
-                        return Err(HighlightError::TooManySpans);
-                    }
                 }
             }
         }
     }
-    HighlightedDocument::from_absolute_spans(language, request.source, spans)
+    HighlightedDocument::from_absolute_spans(request.source, spans)
 }
 
 fn injected_languages(parent: LanguageId) -> Vec<LanguageId> {
@@ -695,18 +640,12 @@ const CAPTURE_KINDS: &[HighlightKind] = &[
     HighlightKind::Invalid,
 ];
 
-pub fn detect_language(
-    path: Option<&str>,
-    fence_tag: Option<&str>,
-    first_line: Option<&str>,
-) -> Option<LanguageId> {
-    fence_tag
-        .and_then(language_for_alias)
-        .or_else(|| path.and_then(language_for_path))
+fn detect_language(path: Option<&str>, first_line: Option<&str>) -> Option<LanguageId> {
+    path.and_then(language_for_path)
         .or_else(|| first_line.and_then(language_for_shebang))
 }
 
-pub fn language_for_alias(alias: &str) -> Option<LanguageId> {
+fn language_for_alias(alias: &str) -> Option<LanguageId> {
     let alias = alias
         .trim()
         .split_ascii_whitespace()
@@ -768,7 +707,6 @@ mod tests {
         highlight(HighlightRequest {
             source,
             path: Some(path),
-            fence_tag: None,
         })
         .unwrap()
     }
@@ -808,23 +746,15 @@ mod tests {
     }
 
     #[test]
-    fn unknown_and_oversized_are_errors() {
+    fn unknown_extension_is_an_error() {
         let req = |p| HighlightRequest {
             source: "x",
             path: Some(p),
-            fence_tag: None,
         };
         assert_eq!(
             highlight(req("a.unknownext")).unwrap_err(),
             HighlightError::UnknownLanguage
         );
-        let big = "a".repeat(DEFAULT_MAX_SOURCE_BYTES + 1);
-        let r = HighlightRequest {
-            source: &big,
-            path: Some("a.rs"),
-            fence_tag: None,
-        };
-        assert_eq!(highlight(r).unwrap_err(), HighlightError::SourceTooLarge);
     }
 
     #[test]
