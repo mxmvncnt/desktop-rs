@@ -3,7 +3,6 @@
 //! docs/ARCHITECTURE.md.
 
 mod amend;
-mod cherry_pick_branch_row;
 mod commit_detail;
 mod commit_header;
 mod commit_list;

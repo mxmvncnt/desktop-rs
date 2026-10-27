@@ -2,12 +2,12 @@
 //! name, cherry-pick target, squash message).
 
 use gd_git::{Commit, ResetMode};
-use gd_ui::{Dialog, Tabs, Theme};
+use gd_ui::{Dialog, Icon, Tabs, Theme, icon};
 use gpui::{App, Context, Entity, IntoElement, RenderOnce, SharedString, Window, div, prelude::*, px, uniform_list};
 use gpui_elements::editable_text::{EditableTextState, actions::Enter};
 
-use super::cherry_pick_branch_row::CherryPickBranchRow;
 use super::state::{CherryPickTarget, HistoryAction, HistoryDialog};
+use crate::components::BranchRow;
 use crate::shared::branch_name::sanitize_branch_name;
 use crate::shared::plural::plural;
 use crate::shared::text_field::text_field;
@@ -131,14 +131,21 @@ impl HistoryDialogView {
         let n = target.branches.len();
         let (branches, current, sel) = (target.branches.clone(), target.current.clone(), target.selected);
         let ws = self.ws.clone();
-        uniform_list("cp-branches", n, move |range, _w, _cx| {
+        uniform_list("cp-branches", n, move |range, _w, cx| {
+            let (text, faint) = (Theme::of(cx).text, Theme::of(cx).text_faint);
             range
                 .filter_map(|ix| {
                     let name = branches.get(ix)?.clone();
                     let is_current = current.as_deref() == Some(name.as_str());
                     let ws = ws.clone();
                     let on_select = move |_: &mut Window, cx: &mut App| ws.update(cx, |this, cx| this.set_cherry_pick_branch(ix, cx));
-                    Some(CherryPickBranchRow::new(ix, name, sel == ix, is_current, on_select))
+                    Some(
+                        BranchRow::new("cp-branch", ix, name, on_select)
+                            .selected(sel == ix)
+                            .bright(sel == ix)
+                            .children(is_current.then(|| div().text_size(px(11.5)).text_color(faint).child("current")))
+                            .children((sel == ix).then(|| icon(Icon::Check).size(px(14.0)).text_color(text))),
+                    )
                 })
                 .collect()
         })
