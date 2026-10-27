@@ -9,20 +9,20 @@
 //!   may have clicked another file while a big diff was loading).
 //!
 //! Files: `state.rs` (struct + events), `refresh.rs` (coalesced refresh,
-//! watcher), `background_fetch.rs`, `change_diff.rs` / `commit_diff.rs`
-//! (diff loading), `diff_highlight.rs`, `expand.rs`,
+//! watcher), `background_fetch.rs`, `diff_detail.rs` (the shared file list +
+//! diff + highlight state of every pane) with `change_diff.rs` / `commit_diff.rs`,
 //! `history_log.rs` (paged log), `run.rs` (write-op runner, `LoadSlot` loads).
 //! Feature-specific ops live in `features/<x>/ops.rs`.
 
 mod background_fetch;
 mod change_diff;
 mod commit_diff;
-mod diff_highlight;
-mod expand;
+mod diff_detail;
 mod history_log;
 mod refresh;
 mod run;
 mod state;
 
+pub use diff_detail::DiffDetail;
 pub use run::{LoadSlot, Op, spawn_load};
 pub use state::{LastCommit, RemoteOp, RepoEvent, RepoModel, Tab};

@@ -1,15 +1,15 @@
 //! Which pane a diff is shown in.
 
-use gpui::Entity;
-
-use crate::repo::RepoModel;
-
-/// Which pane a diff is shown in: decides line selection and expansion.
+/// Which pane (and `RepoModel::detail`) a diff belongs to: decides line
+/// selection and expansion.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DiffPane {
     /// Working-tree diff: lines can be selected and hunks expanded.
-    Changes(Entity<RepoModel>),
+    Changes,
     /// Commit diff: hunks can be expanded.
-    History(Entity<RepoModel>),
+    Commit,
     /// Stash diff: view only.
-    ReadOnly,
+    Stash,
+    /// Pull-request preview: view only.
+    Pr,
 }

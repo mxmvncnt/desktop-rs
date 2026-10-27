@@ -29,7 +29,6 @@ mod unified_list;
 mod unified_row;
 mod whitespace_note;
 
-pub use expander::ExpandTarget;
 pub use diff_options_button::DiffOptionsButton;
 pub use diff_options_menu::DiffOptionsMenu;
 pub use diff_pane::DiffPane;

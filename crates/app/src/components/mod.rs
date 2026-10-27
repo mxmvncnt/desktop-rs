@@ -10,7 +10,7 @@ mod text_field;
 
 pub use branch_row::BranchRow;
 pub use diff_display_options::DiffDisplayOptions;
-pub use file_list::{FileList, FileSource};
+pub use file_list::FileList;
 pub use file_row::FileRow;
 pub use menu_row::{MenuRow, RowItem};
 pub use suggestion_card::SuggestionCard;

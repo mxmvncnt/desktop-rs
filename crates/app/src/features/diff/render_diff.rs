@@ -5,11 +5,11 @@ use std::sync::Arc;
 
 use gd_git::Diff;
 use gd_ui::Theme;
-use gpui::{AnyElement, Context, IntoElement, ParentElement, SharedString, Styled, div, point, px};
+use gpui::{AnyElement, Context, Entity, IntoElement, ParentElement, SharedString, Styled, div, point, px};
 
 use super::diff_frame::DiffFrame;
 use super::diff_pane::DiffPane;
-use super::expander::{ExpandTarget, Expander};
+use super::expander::Expander;
 use super::gutter_style::{HANDLE_W, number_cell_w};
 use super::highlight::DiffHighlight;
 use super::row_select::RowSelect;
@@ -19,6 +19,7 @@ use super::state::DiffSelectUi;
 use super::text_flow::{MARKER_W, TextFlow};
 use super::text_select::TextSelect;
 use super::unified_list::UnifiedList;
+use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -28,6 +29,7 @@ impl Workspace {
         highlight: Option<Arc<DiffHighlight>>,
         key: SharedString,
         pane: DiffPane,
+        repo: &Entity<RepoModel>,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let theme = Theme::of(cx).clone();
@@ -46,7 +48,7 @@ impl Workspace {
                 .into_any_element();
         }
         let note = WhitespaceNote::new(self.settings.diff_ignore_whitespace);
-        let (select, exp) = self.pane_parts(pane, &diff, cx);
+        let (select, exp) = self.pane_parts(pane, repo, &diff, cx);
         let wrap = self.settings.diff_wrap;
         let flow = if wrap { TextFlow::Wrap } else { TextFlow::Scroll(self.diff_view.hscroll) };
         let split = self.settings.diff_split.then(|| self.split_for(&diff));
@@ -100,20 +102,20 @@ impl Workspace {
     }
 
     /// Line selection and hunk expansion available in `pane`.
-    fn pane_parts(&self, pane: DiffPane, diff: &Diff, cx: &Context<Self>) -> (Option<RowSelect>, Option<Expander>) {
-        let (select, exp) = match pane {
-            DiffPane::Changes(repo) => {
-                (Some(repo.clone()), Some(Expander { repo, target: ExpandTarget::Changes }))
-            }
-            DiffPane::History(repo) => (None, Some(Expander { repo, target: ExpandTarget::Commit })),
-            DiffPane::ReadOnly => (None, None),
-        };
-        let select = select.filter(|r| r.read(cx).can_select_lines()).map(|repo| RowSelect {
-            repo,
+    fn pane_parts(
+        &self,
+        pane: DiffPane,
+        repo: &Entity<RepoModel>,
+        diff: &Diff,
+        cx: &Context<Self>,
+    ) -> (Option<RowSelect>, Option<Expander>) {
+        let select = (pane == DiffPane::Changes && repo.read(cx).can_select_lines()).then(|| RowSelect {
+            repo: repo.clone(),
             ws: cx.entity(),
             hovered_block: self.diff_select.hovered_handle.map(|h| h.block),
         });
-        (select, exp.filter(|_| gd_git::expandable(diff)))
+        let expandable = matches!(pane, DiffPane::Changes | DiffPane::Commit) && gd_git::expandable(diff);
+        (select, expandable.then(|| Expander { repo: repo.clone(), pane }))
     }
 
     /// Records the horizontal layout of a split diff for `scroll_diff_x`.

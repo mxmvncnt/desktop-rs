@@ -49,15 +49,12 @@ impl RepoModel {
         // History rewrites (amend, reword, squash, reorder, undo) can leave the
         // selection at the same index but on a different (new) sha: reload it.
         let sha_changed = ix.and_then(|i| self.commits.get(i)).map(|c| &c.sha) != selected_sha.as_ref();
-        if ix != self.selected_commit || self.commit_files.is_empty() || sha_changed {
+        if ix != self.selected_commit || self.commit_detail.files.is_empty() || sha_changed {
             self.selected_commit = None;
             if let Some(ix) = ix {
                 self.select_commit(ix, cx);
             } else {
-                self.commit_files.clear();
-                self.commit_diff = None;
-                self.commit_shown = None;
-                self.commit_hl = None;
+                self.commit_detail.clear();
             }
         }
     }

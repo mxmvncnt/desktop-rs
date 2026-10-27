@@ -323,7 +323,7 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
             ws.update(cx, |ws, cx| {
                 if let Some(r) = &ws.repo {
                     r.update(cx, |r, cx| {
-                        let Some(diff) = r.change_diff.clone() else { return };
+                        let Some(diff) = r.change_detail.diff.clone() else { return };
                         let rows: Vec<usize> = (0..diff.lines.len()).filter(|&i| gd_git::selectable(&diff, i)).collect();
                         // Deselect the 2nd selectable row and the last hunk.
                         if let Some(&ix) = rows.get(1) {
@@ -378,9 +378,9 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
             ws.update(cx, |ws, cx| {
                 if let Some(r) = &ws.repo {
                     r.update(cx, |r, cx| {
-                        let last = r.change_diff.as_ref().map_or(0, |d| d.hunks.len().saturating_sub(1));
-                        r.expand_diff(crate::features::diff::ExpandTarget::Changes, gd_git::Expansion::Down(0), cx);
-                        r.expand_diff(crate::features::diff::ExpandTarget::Changes, gd_git::Expansion::All(last), cx);
+                        let last = r.change_detail.diff.as_ref().map_or(0, |d| d.hunks.len().saturating_sub(1));
+                        r.expand_diff(crate::features::diff::DiffPane::Changes, gd_git::Expansion::Down(0), cx);
+                        r.expand_diff(crate::features::diff::DiffPane::Changes, gd_git::Expansion::All(last), cx);
                     });
                 }
             });
@@ -413,9 +413,9 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                 press(&mut cx, Some(NavList::Commits), false);
                 press(&mut cx, Some(NavList::Commits), false);
                 press(&mut cx, Some(NavList::Commits), false);
-                press(&mut cx, Some(NavList::CommitFiles), false);
+                press(&mut cx, Some(NavList::Files(crate::features::diff::DiffPane::Commit)), false);
             }
-            "nav-stash" => press(&mut cx, Some(NavList::StashFiles), false),
+            "nav-stash" => press(&mut cx, Some(NavList::Files(crate::features::diff::DiffPane::Stash)), false),
             _ => {
                 press(&mut cx, None, false);
                 press(&mut cx, None, false);

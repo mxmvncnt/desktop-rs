@@ -57,7 +57,7 @@ impl RepoModel {
     /// Lines of the displayed working diff can be clicked: plain text diff of
     /// the Changes tab, whitespace shown, no merge in progress.
     pub fn can_select_lines(&self) -> bool {
-        let Some(diff) = &self.change_diff else { return false };
+        let Some(diff) = &self.change_detail.diff else { return false };
         let conflicted = self
             .selected_change
             .and_then(|ix| self.changes().get(ix))
@@ -84,7 +84,7 @@ impl RepoModel {
             return false;
         }
         let Some(sel) = self.partial.get(path) else { return true };
-        let key = self.change_diff.as_ref().and_then(|d| line_key(d, ix));
+        let key = self.change_detail.diff.as_ref().and_then(|d| line_key(d, ix));
         key.is_none_or(|k| !sel.excluded.contains(&k))
     }
 
@@ -99,7 +99,7 @@ impl RepoModel {
         if !self.can_select_lines() {
             return false;
         }
-        let (Some(path), Some(diff)) = (self.selected_path(), self.change_diff.clone()) else { return false };
+        let (Some(path), Some(diff)) = (self.selected_path(), self.change_detail.diff.clone()) else { return false };
         // Every changed line is in the diff (expansion only adds context).
         let all: Vec<LineKey> = (0..diff.lines.len()).filter_map(|i| line_key(&diff, i)).collect();
         let mut excluded: HashSet<LineKey> = if self.excluded.contains(&path) {
@@ -153,7 +153,7 @@ impl RepoModel {
 
     /// Selection state of a change block (all / none / some lines included).
     pub fn block_state(&self, rows: std::ops::Range<usize>) -> CheckState {
-        let Some(diff) = &self.change_diff else { return CheckState::Unchecked };
+        let Some(diff) = &self.change_detail.diff else { return CheckState::Unchecked };
         let (mut on, mut off) = (false, false);
         for ix in rows.filter(|&i| gd_git::selectable(diff, i)) {
             if self.row_included(ix) { on = true } else { off = true }
@@ -173,7 +173,7 @@ impl RepoModel {
 
     /// A freshly loaded diff of `path`: keep its partial selection only if
     /// the file contents are unchanged (line keys refer to them).
-    pub(crate) fn reconcile_selection(&mut self, path: &str, diff: &Arc<Diff>) {
+    pub(crate) fn reconcile_selection(&mut self, path: &str, diff: &Diff) {
         if self.diff_options.ignore_whitespace {
             // A `-w` diff has different rows; keep the selection for later.
             return;

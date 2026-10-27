@@ -5,7 +5,7 @@
 use gd_ui::{Theme, vdivider};
 use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
 
-use crate::components::{FileList, FileSource};
+use crate::components::FileList;
 use super::pr_header::PrHeader;
 use crate::features::diff::DiffPane;
 use crate::repo::RepoModel;
@@ -19,21 +19,17 @@ impl Workspace {
         let header = PrHeader { repo: repo.clone() };
         let body = match &pr.comparison {
             Some(c) if !c.files.is_empty() => {
-                let file_key = pr.selected_file.and_then(|ix| c.files.get(ix)).map(|f| f.path.clone()).unwrap_or_default();
+                let file_key = pr.detail.path.clone().unwrap_or_default();
                 let key = SharedString::from(format!("pr-diff-{}-{file_key}", c.merge_base));
-                let (diff, hl) = (pr.diff.clone(), pr.hl.clone());
-                let file_list = nav_focus(div(), NavList::PrFiles, cx.entity())
+                let (diff, hl) = (pr.detail.diff.clone(), pr.detail.hl.clone());
+                let file_list = nav_focus(div(), NavList::Files(DiffPane::Pr), cx.entity())
                     .flex()
                     .flex_col()
                     .flex_none()
                     .w(px(260.0))
                     .py(px(4.0))
-                    .child(FileList {
-                        repo: repo.clone(),
-                        source: FileSource::Pr,
-                        scroll: pr.files_scroll.clone(),
-                    });
-                let diff = self.render_diff(diff, hl, key, DiffPane::ReadOnly, cx);
+                    .child(FileList { repo: repo.clone(), pane: DiffPane::Pr });
+                let diff = self.render_diff(diff, hl, key, DiffPane::Pr, repo, cx);
                 div().flex().flex_1().min_h_0().child(file_list).child(vdivider(cx)).child(diff).into_any_element()
             }
             Some(_) => empty(&theme, "No changes: nothing to compare against the base branch."),

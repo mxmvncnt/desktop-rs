@@ -1,69 +1,41 @@
 //! Virtualized list of the files of a commit, a stash or a pull request.
 
-use gd_git::FileChange;
-use gpui::{App, Entity, IntoElement, RenderOnce, UniformListScrollHandle, Window, prelude::*, px, uniform_list};
+use gpui::{App, Entity, IntoElement, RenderOnce, Window, prelude::*, px, uniform_list};
 
 use super::FileRow;
+use crate::features::diff::DiffPane;
 use crate::repo::RepoModel;
-
-#[derive(Clone, Copy)]
-pub enum FileSource {
-    Commit,
-    Stash,
-    Pr,
-}
-
-impl FileSource {
-    /// Element id namespace of the rows.
-    fn id(self) -> &'static str {
-        match self {
-            Self::Commit => "commit-file",
-            Self::Stash => "stash-file",
-            Self::Pr => "pr-file",
-        }
-    }
-
-    /// The files and the selected index.
-    fn files(self, r: &RepoModel) -> (&[FileChange], Option<usize>) {
-        match self {
-            Self::Commit => (&r.commit_files, r.selected_commit_file),
-            Self::Stash => (&r.stashes.files, r.stashes.selected_file),
-            Self::Pr => (r.pr.comparison.as_ref().map_or(&[], |c| &c.files), r.pr.selected_file),
-        }
-    }
-
-    fn select(self, r: &mut RepoModel, ix: usize, cx: &mut gpui::Context<RepoModel>) {
-        match self {
-            Self::Commit => r.select_commit_file(ix, cx),
-            Self::Stash => r.select_stash_file(ix, cx),
-            Self::Pr => r.select_pr_file(ix, cx),
-        }
-    }
-}
 
 #[derive(IntoElement)]
 pub struct FileList {
     pub repo: Entity<RepoModel>,
-    pub source: FileSource,
-    pub scroll: UniformListScrollHandle,
+    /// Commit, stash or PR.
+    pub pane: DiffPane,
 }
 
 impl RenderOnce for FileList {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let (repo, source) = (self.repo, self.source);
-        let count = source.files(repo.read(cx)).0.len();
-        uniform_list(source.id(), count, move |range, _w, cx| {
-            let (files, selected) = source.files(repo.read(cx));
+        let (repo, pane) = (self.repo, self.pane);
+        let id = match pane {
+            DiffPane::Commit => "commit-file",
+            DiffPane::Stash => "stash-file",
+            _ => "pr-file",
+        };
+        let detail = repo.read(cx).detail(pane);
+        let (count, scroll) = (detail.files.len(), detail.files_scroll.clone());
+        uniform_list(id, count, move |range, _w, cx| {
+            let detail = repo.read(cx).detail(pane);
             range
                 .filter_map(|ix| {
                     let repo = repo.clone();
-                    Some(FileRow::new(source.id(), ix, files.get(ix)?.clone(), selected == Some(ix), move |_, cx| {
-                        repo.update(cx, |r, cx| source.select(r, ix, cx))
+                    let file = detail.files.get(ix)?.clone();
+                    Some(FileRow::new(id, ix, file, detail.selected == Some(ix), move |_, cx| {
+                        repo.update(cx, |r, cx| r.select_file(pane, ix, cx))
                     }))
                 })
                 .collect()
         })
-        .track_scroll(&self.scroll)
+        .track_scroll(&scroll)
         .px(px(6.0))
         .flex_1()
     }

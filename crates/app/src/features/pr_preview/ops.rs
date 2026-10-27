@@ -1,12 +1,10 @@
 //! Pull-request preview operations on `RepoModel`. All git work runs on the
 //! background executor; the [`LoadSlot`] drops stale loads.
 
-use std::sync::Arc;
-
 use gd_git::{BranchKind, Comparison, Diff};
-use gpui::{AppContext, Context};
+use gpui::Context;
 
-use crate::features::diff::highlight_diff;
+use crate::features::diff::DiffPane;
 use crate::repo::{RepoModel, spawn_load};
 
 /// What one background load returns.
@@ -27,7 +25,7 @@ impl RepoModel {
     pub fn close_pr_preview(&mut self, cx: &mut Context<Self>) {
         self.pr.open = false;
         self.pr.base_menu = false;
-        self.pr.load.cancel();
+        self.pr.detail.load.cancel();
         cx.notify();
     }
 
@@ -67,7 +65,7 @@ impl RepoModel {
         let (repo, chosen, opts) = (self.repo.clone(), self.pr.base.clone(), self.diff_options);
         spawn_load(
             self,
-            |this| &mut this.pr.load,
+            |this| &mut this.pr.detail.load,
             move || {
                 let base = chosen.or_else(|| repo.default_base_branch());
                 let remote_url = repo.tracking_remote_url();
@@ -76,7 +74,7 @@ impl RepoModel {
                 };
                 let cmp = repo.compare(&b, "HEAD")?;
                 let first = match cmp.files.first() {
-                    Some(f) => Some((repo.compare_file_diff(&cmp.merge_base, "HEAD", f, opts)?, f.path.clone())),
+                    Some(f) => Some((DiffPane::Pr.file_diff(&repo, &cmp.merge_base, f, opts)?, f.path.clone())),
                     None => None,
                 };
                 Ok::<_, gd_git::GitError>(Loaded { base, comparison: Some(cmp), remote_url, first })
@@ -88,7 +86,7 @@ impl RepoModel {
                     Err(e) => {
                         this.pr.comparison = None;
                         this.pr.error = Some(e.to_string());
-                        this.pr.diff = None;
+                        this.pr.detail.clear();
                     }
                 }
                 cx.notify();
@@ -103,47 +101,16 @@ impl RepoModel {
         if self.pr.base.is_none() {
             self.pr.base = l.base;
         }
-        let files = l.comparison.as_ref().map(|c| c.files.len()).unwrap_or(0);
-        self.pr.selected_file = (files > 0).then_some(0);
-        self.pr.comparison = l.comparison;
-        self.set_pr_diff(l.first, cx);
-    }
-
-    pub fn select_pr_file(&mut self, ix: usize, cx: &mut Context<Self>) {
-        let Some(cmp) = &self.pr.comparison else { return };
-        let Some(file) = cmp.files.get(ix).cloned() else { return };
-        let merge_base = cmp.merge_base.clone();
-        self.pr.selected_file = Some(ix);
-        let opts = self.diff_options;
-        self.load(
-            |this| &mut this.pr.load,
-            move |repo| repo.compare_file_diff(&merge_base, "HEAD", &file, opts).map(|d| (d, file.path.clone())),
-            |this, d, cx| this.set_pr_diff(Some(d), cx),
-            cx,
-        );
-        cx.notify();
-    }
-
-    fn set_pr_diff(&mut self, diff: Option<(Diff, String)>, cx: &mut Context<Self>) {
-        self.pr.hl = None;
-        self.pr.hl_task = None;
-        let Some((d, path)) = diff else {
-            self.pr.diff = None;
-            return;
-        };
-        let d = Arc::new(d);
-        self.pr.diff = Some(d.clone());
-        let cache = self.pr.cache.clone();
-        self.pr.hl_task = Some(cx.spawn(async move |this, cx| {
-            let for_task = d.clone();
-            let hl = cx.background_spawn(async move { highlight_diff(&for_task, &path, &cache) }).await;
-            this.update(cx, |this, cx| {
-                if hl.is_some() && this.pr.diff.as_ref().is_some_and(|c| Arc::ptr_eq(c, &d)) {
-                    this.pr.hl = hl;
-                    cx.notify();
-                }
-            })
-            .ok();
-        }));
+        match l.comparison {
+            Some(c) => {
+                let (merge_base, files) = (c.merge_base.clone(), c.files.clone());
+                self.pr.comparison = Some(c);
+                self.show_files(DiffPane::Pr, merge_base, files, l.first, cx);
+            }
+            None => {
+                self.pr.comparison = None;
+                self.pr.detail.clear();
+            }
+        }
     }
 }

@@ -1,13 +1,11 @@
 //! Stash model operations on `RepoModel`: the git work runs on the background
 //! executor like the rest of `RepoModel` (see `repo/`), and stale loads are
-//! dropped by the [`LoadSlot`] in [`StashState`].
+//! dropped by the load slot of its `DiffDetail`.
 
-use std::sync::Arc;
-
-use gd_git::{Diff, Stash};
+use gd_git::Stash;
 use gpui::{AppContext, Context};
 
-use crate::features::diff::highlight_diff;
+use crate::features::diff::DiffPane;
 use crate::repo::{Op, RepoModel};
 use crate::utils::text::plural;
 
@@ -40,10 +38,7 @@ impl RepoModel {
         if !still_there && self.stashes.selected.is_some() {
             self.stashes.selected = None;
             self.stashes.viewing = false;
-            self.stashes.files.clear();
-            self.stashes.diff = None;
-            self.stashes.hl = None;
-            self.stashes.load.cancel();
+            self.stashes.detail.clear();
         }
         cx.notify();
     }
@@ -66,72 +61,14 @@ impl RepoModel {
 
     pub fn select_stash(&mut self, sha: String, cx: &mut Context<Self>) {
         self.stashes.viewing = true;
-        if self.stashes.selected.as_deref() == Some(&sha) && !self.stashes.files.is_empty() {
+        if self.stashes.selected.as_deref() == Some(&sha) && !self.stashes.detail.files.is_empty() {
             cx.notify();
             return;
         }
         self.stashes.selected = Some(sha.clone());
-        self.stashes.files.clear();
-        self.stashes.selected_file = None;
-        self.stashes.diff = None;
-        self.stashes.hl = None;
-        self.load(
-            |this| &mut this.stashes.load,
-            move |repo| {
-                let files = repo.stash_files(&sha)?;
-                let diff = match files.first() {
-                    Some(f) => Some((repo.stash_diff(&sha, f)?, f.path.clone())),
-                    None => None,
-                };
-                Ok((files, diff))
-            },
-            |this, (files, diff), cx| {
-                this.stashes.selected_file = (!files.is_empty()).then_some(0);
-                this.stashes.files = files;
-                this.set_stash_diff(diff, cx);
-            },
-            cx,
-        );
+        self.stashes.detail.clear();
+        self.load_files(DiffPane::Stash, sha, cx);
         cx.notify();
-    }
-
-    pub fn select_stash_file(&mut self, ix: usize, cx: &mut Context<Self>) {
-        let (Some(sha), Some(file)) = (self.stashes.selected.clone(), self.stashes.files.get(ix).cloned()) else {
-            return;
-        };
-        self.stashes.selected_file = Some(ix);
-        self.load(
-            |this| &mut this.stashes.load,
-            move |repo| repo.stash_diff(&sha, &file).map(|d| (d, file.path.clone())),
-            |this, d, cx| this.set_stash_diff(Some(d), cx),
-            cx,
-        );
-        cx.notify();
-    }
-
-    fn set_stash_diff(&mut self, diff: Option<(Diff, String)>, cx: &mut Context<Self>) {
-        self.stashes.hl = None;
-        self.stashes.hl_task = None;
-        let Some((d, path)) = diff else {
-            self.stashes.diff = None;
-            return;
-        };
-        let d = Arc::new(d);
-        self.stashes.diff = Some(d.clone());
-        let cache = self.stashes.cache.clone();
-        let for_task = d.clone();
-        self.stashes.hl_task = Some(cx.spawn(async move |this, cx| {
-            let hl = cx
-                .background_spawn(async move { highlight_diff(&for_task, &path, &cache) })
-                .await;
-            this.update(cx, |this, cx| {
-                if hl.is_some() && this.stashes.diff.as_ref().is_some_and(|c| Arc::ptr_eq(c, &d)) {
-                    this.stashes.hl = hl;
-                    cx.notify();
-                }
-            })
-            .ok();
-        }));
     }
 
     /// Stash the working changes. `paths` empty = everything.
@@ -145,8 +82,7 @@ impl RepoModel {
                 this.stashes.collapsed = false;
                 this.stashes.selected = Some(sha);
                 this.stashes.viewing = false;
-                this.stashes.files.clear();
-                this.stashes.diff = None;
+                this.stashes.detail.clear();
                 this.reload_stashes(cx);
             },
             cx,

@@ -1,14 +1,11 @@
 //! Stash state: the list/selection model (`RepoModel::stashes`) and the
 //! Workspace-side dialog state ([`StashUi`]).
 
-use std::sync::Arc;
-
-use gd_git::{Branch, Diff, FileChange, Stash};
-use gpui::{App, AppContext, Entity, Task, UniformListScrollHandle};
+use gd_git::{Branch, Stash};
+use gpui::{App, AppContext, Entity, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
-use crate::features::diff::{DiffHighlight, HighlightCache};
-use crate::repo::LoadSlot;
+use crate::repo::DiffDetail;
 
 #[derive(Default)]
 pub struct StashState {
@@ -22,15 +19,9 @@ pub struct StashState {
     pub viewing: bool,
     /// Sha of the selected stash (indices shift, shas don't).
     pub selected: Option<String>,
-    pub files: Vec<FileChange>,
-    pub selected_file: Option<usize>,
-    pub diff: Option<Arc<Diff>>,
-    pub hl: Option<Arc<DiffHighlight>>,
-    pub files_scroll: UniformListScrollHandle,
+    /// Files and diff of the selected stash (`base` = its sha).
+    pub detail: DiffDetail,
     pub list_scroll: UniformListScrollHandle,
-    pub(super) load: LoadSlot,
-    pub(super) hl_task: Option<Task<()>>,
-    pub(super) cache: HighlightCache,
 }
 
 impl StashState {

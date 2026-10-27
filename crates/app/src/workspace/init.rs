@@ -64,7 +64,6 @@ impl Workspace {
             diff_key: None,
             diff_view: Default::default(),
             diff_select: Default::default(),
-            commit_files_scroll: UniformListScrollHandle::new(),
             commit_msg: Default::default(),
             popover_scroll: UniformListScrollHandle::new(),
             focus: cx.focus_handle(),

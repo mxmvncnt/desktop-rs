@@ -1,13 +1,9 @@
 //! Pull-request preview state (`RepoModel::pr`).
 
-use std::sync::Arc;
+use gd_git::Comparison;
+use gpui::UniformListScrollHandle;
 
-use gd_git::{Comparison, Diff};
-use gpui::{Task, UniformListScrollHandle};
-
-use crate::repo::LoadSlot;
-
-use crate::features::diff::{DiffHighlight, HighlightCache};
+use crate::repo::DiffDetail;
 
 #[derive(Default)]
 pub struct PrPreviewState {
@@ -22,12 +18,7 @@ pub struct PrPreviewState {
     pub error: Option<String>,
     /// Fetch URL of the remote the PR would be opened on.
     pub remote_url: Option<String>,
-    pub selected_file: Option<usize>,
-    pub diff: Option<Arc<Diff>>,
-    pub hl: Option<Arc<DiffHighlight>>,
-    pub files_scroll: UniformListScrollHandle,
+    /// Files and diff of `comparison` (`base` = its merge base).
+    pub detail: DiffDetail,
     pub base_scroll: UniformListScrollHandle,
-    pub(super) load: LoadSlot,
-    pub(super) hl_task: Option<Task<()>>,
-    pub(super) cache: HighlightCache,
 }

@@ -5,24 +5,16 @@ use gd_git::{Diff, Expansion};
 use gd_ui::{Icon, Theme};
 use gpui::{AnyElement, Div, Entity, IntoElement, ParentElement, Pixels, Styled, div};
 
+use super::diff_pane::DiffPane;
 use super::expand_button::ExpandButton;
 use super::gutter_style::handle_bg;
 use super::text_flow::{TextFlow, row_box};
 use crate::repo::RepoModel;
 
-/// Which diff the buttons expand.
-#[derive(Clone, Copy, PartialEq)]
-pub enum ExpandTarget {
-    /// `RepoModel::change_diff`.
-    Changes,
-    /// `RepoModel::commit_diff`.
-    Commit,
-}
-
 #[derive(Clone)]
 pub struct Expander {
     pub repo: Entity<RepoModel>,
-    pub target: ExpandTarget,
+    pub pane: DiffPane,
 }
 
 impl Expander {
@@ -45,7 +37,7 @@ impl Expander {
                 tip,
                 expansion: e,
                 repo: self.repo.clone(),
-                target: self.target,
+                pane: self.pane,
             })
         };
         if h == n {

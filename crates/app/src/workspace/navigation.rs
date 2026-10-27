@@ -6,6 +6,7 @@
 use gpui::{Context, Entity, InteractiveElement, ScrollStrategy, Window};
 
 use super::state::Workspace;
+use crate::features::diff::DiffPane;
 use crate::features::history::matching_commits;
 use crate::repo::{RepoModel, Tab};
 
@@ -17,10 +18,9 @@ pub const PAGE: isize = 10;
 pub enum NavList {
     Changes,
     Commits,
-    CommitFiles,
     Stashes,
-    StashFiles,
-    PrFiles,
+    /// The file list of a commit, stash or pull request.
+    Files(DiffPane),
 }
 
 #[derive(Clone, Copy)]
@@ -83,12 +83,6 @@ impl Workspace {
                     }
                 }
             }
-            NavList::CommitFiles => {
-                if let Some(ix) = target(r.selected_commit_file, r.commit_files.len(), mv) {
-                    r.select_commit_file(ix, cx);
-                    self.commit_files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
-                }
-            }
             NavList::Stashes => {
                 let visible = r.stashes.visible(r.current_branch());
                 let cur = r
@@ -103,17 +97,11 @@ impl Workspace {
                     r.stashes.list_scroll.scroll_to_item(pos, ScrollStrategy::Nearest);
                 }
             }
-            NavList::PrFiles => {
-                let n = r.pr.comparison.as_ref().map_or(0, |c| c.files.len());
-                if let Some(ix) = target(r.pr.selected_file, n, mv) {
-                    r.select_pr_file(ix, cx);
-                    r.pr.files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
-                }
-            }
-            NavList::StashFiles => {
-                if let Some(ix) = target(r.stashes.selected_file, r.stashes.files.len(), mv) {
-                    r.select_stash_file(ix, cx);
-                    r.stashes.files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+            NavList::Files(pane) => {
+                let detail = r.detail(pane);
+                if let Some(ix) = target(detail.selected, detail.files.len(), mv) {
+                    detail.files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+                    r.select_file(pane, ix, cx);
                 }
             }
         });
@@ -122,13 +110,13 @@ impl Workspace {
     /// The clicked list if it is still on screen, else the tab's main list.
     fn effective_nav_list(&self, r: &RepoModel) -> NavList {
         if r.pr.open {
-            return NavList::PrFiles;
+            return NavList::Files(DiffPane::Pr);
         }
         match (r.tab, self.nav_list) {
             (Tab::Changes, Some(NavList::Stashes)) if r.stashes.list.is_empty() => NavList::Changes,
             (Tab::Changes, Some(l @ (NavList::Changes | NavList::Stashes))) => l,
-            (Tab::Changes, Some(NavList::StashFiles)) if r.stashes.viewing => NavList::StashFiles,
-            (Tab::History, Some(l @ (NavList::Commits | NavList::CommitFiles))) => l,
+            (Tab::Changes, Some(NavList::Files(DiffPane::Stash))) if r.stashes.viewing => NavList::Files(DiffPane::Stash),
+            (Tab::History, Some(l @ (NavList::Commits | NavList::Files(DiffPane::Commit)))) => l,
             (Tab::Changes, _) => NavList::Changes,
             (Tab::History, _) => NavList::Commits,
         }
