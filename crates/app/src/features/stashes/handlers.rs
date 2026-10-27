@@ -5,42 +5,33 @@
 use gd_git::{Branch, Stash};
 use gpui::{ClipboardItem, Context, Focusable, Pixels, Point, Window};
 
-use super::state::StashDialog;
+use super::stash_menu::stash_menu_rows;
+use super::state::{StashAction, StashDialog};
+use crate::components::Menu;
 use crate::repo::RepoModel;
-use crate::features::menus::{MenuAction, MenuTarget};
 use crate::workspace::Workspace;
 
 impl Workspace {
-    /// Handles stash-related menu actions; returns false for other actions.
-    pub fn run_stash_action(
-        &mut self,
-        action: MenuAction,
-        target: &MenuTarget,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> bool {
-        let stash = match target {
-            MenuTarget::Stash(s) => Some(s.clone()),
-            _ => None,
-        };
-        match (action, stash) {
-            (MenuAction::StashAll, _) => self.open_stash_create(false, window, cx),
-            (MenuAction::StashSelected, _) => self.open_stash_create(true, window, cx),
-            (MenuAction::StashApply, Some(s)) => self.with_repo(cx, move |r, cx| r.stash_apply(s.sha, cx)),
-            (MenuAction::StashPop, Some(s)) => self.with_repo(cx, move |r, cx| r.stash_pop(s.sha, cx)),
-            (MenuAction::StashDrop, Some(s)) => self.open_stash_dialog(StashDialog::Drop(s), window, cx),
-            (MenuAction::StashRename, Some(s)) => {
+    fn run_stash_action(&mut self, action: StashAction, s: Stash, window: &mut Window, cx: &mut Context<Self>) {
+        self.menu = None;
+        cx.notify();
+        match action {
+            StashAction::Apply => self.with_repo(cx, move |r, cx| r.stash_apply(s.sha, cx)),
+            StashAction::Pop => self.with_repo(cx, move |r, cx| r.stash_pop(s.sha, cx)),
+            StashAction::Drop => self.open_stash_dialog(StashDialog::Drop(s), window, cx),
+            StashAction::Rename => {
                 self.set_stash_input(&s.message, cx);
                 self.open_stash_dialog(StashDialog::Rename(s), window, cx)
             }
-            (MenuAction::StashCopy, Some(s)) => cx.write_to_clipboard(ClipboardItem::new_string(s.title())),
-            _ => return false,
+            StashAction::Copy => cx.write_to_clipboard(ClipboardItem::new_string(s.title())),
         }
-        true
     }
 
     pub fn open_stash_menu(&mut self, stash: Stash, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
-        self.open_menu(position, MenuTarget::Stash(stash), window, cx);
+        let menu = Menu::new(position, stash_menu_rows(), move |ws, action, w, cx| {
+            ws.run_stash_action(action, stash.clone(), w, cx)
+        });
+        self.open_menu(menu, window, cx);
     }
 
     /// Ctrl+Shift+S / the header menu. `selected_only` stashes the checked files.

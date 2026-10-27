@@ -1,6 +1,8 @@
 //! The root "template": toolbar, body (sidebar + main pane or welcome) and
 //! the overlay stack.
 
+use std::rc::Rc;
+
 use gd_ui::Theme;
 use gpui::{
     AnyElement, Context, DragMoveEvent, MouseButton, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
@@ -9,12 +11,13 @@ use gpui::{
 
 use super::{actions, state::Workspace};
 use crate::actions::{WORKSPACE, WORKSPACE_MENU};
-use crate::features::branches::{BranchDialogView, BranchMenuView};
+use crate::components::{Menu, MenuView, Run};
+use crate::features::branches::BranchDialogView;
 use crate::features::changes::{Sidebar, SidebarResize};
 use crate::features::diff::DiffOptionsMenu;
-use crate::features::history::{CommitMenuView, HistoryDialogView};
-use crate::features::menus::{ContextMenuView, DiscardDialogView};
-use crate::features::merge::{ConflictMenuView, InProgressBanner, MergeDialogView};
+use crate::features::history::HistoryDialogView;
+use crate::features::menus::DiscardDialogView;
+use crate::features::merge::{InProgressBanner, MergeDialogView};
 use crate::features::notices::NoticeBanner;
 use crate::features::pickers::PopoverLayer;
 use crate::features::settings::SettingsModal;
@@ -90,18 +93,33 @@ impl Workspace {
     fn overlays(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let banner = NoticeBanner::open(self, cx);
         let popover = PopoverLayer::open(self, cx);
-        let menu = ContextMenuView::open(self, cx);
+        let ws = cx.entity();
+        let menu_view = |menu: &Option<Menu>, id: &'static str, generation: usize, on_dismiss: Run| {
+            let menu = menu.clone()?;
+            Some(MenuView { id: (id, generation).into(), menu, ws: ws.clone(), on_dismiss })
+        };
+        let menu = menu_view(&self.menu, "context-menu", self.menu_gen, Rc::new(|ws, _, cx| ws.close_menu(cx)));
         let diff_options = DiffOptionsMenu::new(self, cx.entity());
         let dialog = DiscardDialogView::open(self, cx);
         let settings = SettingsModal::open(self, cx);
-        let hist_menu = CommitMenuView::open(self, cx);
+        let hist_menu = menu_view(&self.history_ui.menu, "hist-menu", self.history_ui.menu_gen, Rc::new(|ws, w, cx| {
+            ws.hist_dismiss(w, cx);
+        }));
         let hist_dialog = HistoryDialogView::open(self, cx);
         let stash_dialog = StashDialogView::open(self, cx);
+        let branch_menu = menu_view(&self.branch_ui.menu, "branch-menu", self.branch_ui.menu_gen, Rc::new(|ws, _, cx| {
+            ws.close_branch_menu();
+            cx.notify()
+        }));
+        let conflict_menu = menu_view(&self.merge_ui.menu, "merge-menu", self.merge_ui.menu_gen, Rc::new(|ws, _, cx| {
+            ws.merge_ui.menu = None;
+            cx.notify()
+        }));
         let merge_overlays = div()
             .absolute()
             .inset_0()
-            .children(BranchMenuView::open(self, cx))
-            .children(ConflictMenuView::open(self, cx))
+            .children(branch_menu)
+            .children(conflict_menu)
             .children(MergeDialogView::open(self, cx))
             .children(BranchDialogView::open(self, cx));
 

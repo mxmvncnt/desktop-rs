@@ -4,7 +4,6 @@
 
 mod conflict_handlers;
 mod conflict_hint;
-mod conflict_menu;
 mod conflict_menu_rows;
 mod handlers;
 mod in_progress_banner;
@@ -15,7 +14,6 @@ mod ops;
 mod state;
 
 pub use conflict_hint::ConflictHint;
-pub use conflict_menu::ConflictMenuView;
 pub use in_progress_banner::InProgressBanner;
 pub use merge_dialog::MergeDialogView;
 pub use state::{MergeMode, MergeState, MergeUi};

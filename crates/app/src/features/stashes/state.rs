@@ -41,6 +41,15 @@ impl StashState {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StashAction {
+    Apply,
+    Pop,
+    Drop,
+    Rename,
+    Copy,
+}
+
 #[derive(Clone)]
 pub enum StashDialog {
     /// New stash. `selected_only` stashes just the checked files.

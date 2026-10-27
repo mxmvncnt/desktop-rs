@@ -3,12 +3,12 @@
 //! through `RepoModel::run`. See docs/ARCHITECTURE.md.
 
 mod branch_dialog;
-mod branch_menu;
 mod branch_menu_rows;
 mod handlers;
 mod ops;
 mod state;
 
 pub use branch_dialog::BranchDialogView;
-pub use branch_menu::BranchMenuView;
+#[cfg(feature = "snapshot")]
+pub use state::BranchAction;
 pub use state::BranchUi;

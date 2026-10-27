@@ -1,10 +1,11 @@
 //! Merge state: the model side ([`MergeState`], a field of `RepoModel`) and the
 //! Workspace side ([`MergeUi`]: merge dialog, conflicted-file menu, inputs).
 
-use gd_git::{FileChange, InProgress, MergePreview};
-use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription, UniformListScrollHandle};
+use gd_git::{InProgress, MergePreview};
+use gpui::{AppContext, Context, Entity, Subscription, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
+use crate::components::Menu;
 use crate::repo::LoadSlot;
 use crate::workspace::Workspace;
 
@@ -53,13 +54,6 @@ impl MergeDialog {
     }
 }
 
-/// Right-click menu of a conflicted file row.
-pub struct ConflictMenu {
-    pub position: Point<Pixels>,
-    pub change: FileChange,
-    pub selected: Option<usize>,
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ConflictAction {
     Ours,
@@ -74,8 +68,9 @@ pub enum ConflictAction {
 /// `Entity`): Esc/Enter/arrow routing in `workspace/actions.rs` and `menus/key_routing.rs` reads `menu`/`dialog`.
 pub struct MergeUi {
     pub dialog: Option<MergeDialog>,
-    pub menu: Option<ConflictMenu>,
-    pub(super) menu_gen: usize,
+    /// Right-click menu of a conflicted file row.
+    pub menu: Option<Menu>,
+    pub menu_gen: usize,
     pub filter: Entity<EditableTextState>,
     /// Commit summary of the squash commit (Squash tab only).
     pub summary: Entity<EditableTextState>,

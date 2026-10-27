@@ -41,8 +41,8 @@ fn bind_commands(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<D
 }
 
 fn bind_menu_keys(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<Div> {
-    root.on_action(cx.listener(|this, _: &MenuNext, _, cx| this.step_open_menu(1, cx)))
-        .on_action(cx.listener(|this, _: &MenuPrevious, _, cx| this.step_open_menu(-1, cx)))
+    root.on_action(cx.listener(|this, _: &MenuNext, _, cx| this.menu_step(1, cx)))
+        .on_action(cx.listener(|this, _: &MenuPrevious, _, cx| this.menu_step(-1, cx)))
         .on_action(cx.listener(|this, _: &MenuConfirm, w, cx| {
             if !this.hist_confirm_key(w, cx) {
                 this.menu_confirm(w, cx)
@@ -68,14 +68,6 @@ impl Workspace {
             || self.stash_ui.dialog.is_some()
             || self.merge_ui.menu.is_some()
             || self.branch_ui.wants_menu_context()
-    }
-
-    fn step_open_menu(&mut self, delta: isize, cx: &mut Context<Self>) {
-        if self.history_ui.menu.is_some() {
-            self.hist_menu_step(delta, cx)
-        } else {
-            self.menu_step(delta, cx)
-        }
     }
 
     /// Esc: close the topmost overlay, in z-order.

@@ -10,11 +10,10 @@ use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
 impl Workspace {
-    pub fn run_hist_action(&mut self, action: HistoryAction, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(menu) = self.history_ui.menu.take() else { return };
+    pub fn run_hist_action(&mut self, action: HistoryAction, ctx: MenuCtx, window: &mut Window, cx: &mut Context<Self>) {
+        self.history_ui.menu = None;
         cx.notify();
         let Some(repo) = self.repo.clone() else { return };
-        let ctx = menu.ctx;
         let commit = ctx.commit.clone();
         let sha = commit.sha.clone();
         // History-rewriting actions on a pushed commit: warn first.

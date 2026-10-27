@@ -6,7 +6,6 @@ mod amend;
 mod commit_detail;
 mod commit_header;
 mod commit_list;
-mod commit_menu;
 mod commit_menu_rows;
 mod commit_row;
 mod confirm;
@@ -22,10 +21,11 @@ mod selection;
 mod state;
 
 pub use commit_list::CommitList;
-pub use commit_menu::CommitMenuView;
 pub use history_dialog::HistoryDialogView;
 pub use message_resize::MessageResize;
 pub use search::matching_commits;
 #[cfg(feature = "snapshot")]
 pub use state::{ClickKind, HistoryAction};
+#[cfg(feature = "snapshot")]
+pub(crate) use handlers::menu_ctx;
 pub use state::{HistoryState, HistoryUi};

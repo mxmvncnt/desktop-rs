@@ -1,18 +1,17 @@
-//! Typed rows of an app context menu (`features/menus` renders them with
-//! `gd_ui::ContextMenu`). Features build `Vec<MenuRow>` for their menus.
-//! `A` is the action type: `MenuAction` for the generic menu, a feature's own
-//! enum for feature-owned menus (history).
+//! Typed rows of an app context menu. Features build `Vec<MenuRow<A>>` with
+//! their own action enum `A`; `Menu::new` binds them to what they do and
+//! `MenuView` renders them.
 
 use gd_ui::Icon;
 
-use crate::features::menus::MenuAction;
-
-pub enum MenuRow<A = MenuAction> {
+#[derive(Clone)]
+pub enum MenuRow<A> {
     Item(RowItem<A>),
     Separator,
 }
 
-pub struct RowItem<A = MenuAction> {
+#[derive(Clone)]
+pub struct RowItem<A> {
     pub action: A,
     pub label: String,
     pub icon: Icon,

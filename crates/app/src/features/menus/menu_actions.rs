@@ -1,30 +1,30 @@
-//! What each context-menu action does (stash actions are in features/stashes).
+//! What each Changes context-menu action does.
 
 use gd_git::{FileChange, escape_ignore};
 use gpui::{ClipboardItem, Context, Entity, Window};
 
 use super::menu_rows::extension;
-use super::state::{ConfirmDialog, MenuAction, MenuTarget};
+use super::state::{ConfirmDialog, MenuAction};
 use crate::repo::RepoModel;
 use crate::utils::paths::{copy_path, reveal};
 use crate::workspace::Workspace;
 
 impl Workspace {
-    pub fn run_menu_action(&mut self, action: MenuAction, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(menu) = self.menu.take() else { return };
+    /// `change` is the right-clicked file (`None` for the header menu).
+    pub fn run_menu_action(&mut self, action: MenuAction, change: Option<FileChange>, window: &mut Window, cx: &mut Context<Self>) {
+        self.menu = None;
         cx.notify();
-        if self.run_stash_action(action, &menu.target, window, cx) {
-            return;
-        }
         let Some(repo) = self.repo.clone() else { return };
-        match (action, menu.target) {
+        match (action, change) {
+            (MenuAction::StashAll, _) => self.open_stash_create(false, window, cx),
+            (MenuAction::StashSelected, _) => self.open_stash_create(true, window, cx),
             (MenuAction::DiscardAll, _) => {
                 let all = repo.read(cx).changes().to_vec();
                 if !all.is_empty() {
                     self.dialog = Some(ConfirmDialog::DiscardAll(all));
                 }
             }
-            (action, MenuTarget::File(change)) => self.run_file_action(action, change, &repo, cx),
+            (action, Some(change)) => self.run_file_action(action, change, &repo, cx),
             _ => {}
         }
     }

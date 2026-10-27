@@ -5,7 +5,8 @@ use gd_git::{Branch, BranchKind};
 use gpui::{ClipboardItem, Context, Focusable, Pixels, Point, Window};
 
 use super::branch_menu_rows::branch_menu_rows;
-use super::state::{BranchAction, BranchDialog, BranchMenu, RemoteBranch};
+use super::state::{BranchAction, BranchDialog, RemoteBranch};
+use crate::components::Menu;
 use crate::features::merge::MergeMode;
 use crate::utils::text::sanitize_branch_name;
 use crate::workspace::Workspace;
@@ -13,7 +14,10 @@ use crate::workspace::Workspace;
 impl Workspace {
     pub fn open_branch_menu(&mut self, branch: Branch, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
         self.merge_ui.menu = None;
-        self.branch_ui.menu = Some(BranchMenu { position, branch, selected: None });
+        let rows = branch_menu_rows(&branch, self.paused(cx));
+        self.branch_ui.menu = Some(Menu::new(position, rows, move |ws, action, w, cx| {
+            ws.run_branch_action(action, branch.clone(), w, cx)
+        }));
         self.branch_ui.menu_gen += 1;
         self.focus(window, cx);
         cx.notify();
@@ -42,50 +46,18 @@ impl Workspace {
         open
     }
 
-    pub fn branch_menu_step(&mut self, delta: isize, cx: &mut Context<Self>) {
-        let paused = self.paused(cx);
-        let Some(menu) = &mut self.branch_ui.menu else { return };
-        let rows = branch_menu_rows(&menu.branch, paused);
-        let n = rows.len() as isize;
-        let mut ix = menu.selected.map(|s| s as isize).unwrap_or(if delta > 0 { -1 } else { n });
-        for _ in 0..n {
-            ix = (ix + delta).rem_euclid(n);
-            if rows[ix as usize].is_selectable() {
-                menu.selected = Some(ix as usize);
-                break;
-            }
-        }
-        cx.notify();
-    }
-
-    /// Enter while the branch menu or the delete dialog is open. Returns whether handled.
+    /// Enter while the delete dialog is open. Returns whether handled.
     pub fn branch_ui_confirm(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
-        if let Some(menu) = &self.branch_ui.menu {
-            let rows = branch_menu_rows(&menu.branch, self.paused(cx));
-            let action = menu.selected.and_then(|s| rows.into_iter().nth(s)).and_then(|r| r.action());
-            if let Some(a) = action {
-                self.run_branch_action(a, window, cx);
-            }
-            return true;
-        }
-        if matches!(self.branch_ui.dialog, Some(BranchDialog::Delete { .. })) {
+        let delete = matches!(self.branch_ui.dialog, Some(BranchDialog::Delete { .. }));
+        if delete {
             self.branch_dialog_confirm(window, cx);
-            return true;
         }
-        false
+        delete
     }
 
-    /// Snapshot helper: run the rename (1) or delete (otherwise) menu action.
-    #[cfg(feature = "snapshot")]
-    pub fn snapshot_menu_action(&mut self, which: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let action = if which == 1 { BranchAction::Rename } else { BranchAction::Delete };
-        self.run_branch_action(action, window, cx);
-    }
-
-    pub(super) fn run_branch_action(&mut self, action: BranchAction, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(menu) = self.branch_ui.menu.take() else { return };
+    pub(crate) fn run_branch_action(&mut self, action: BranchAction, b: Branch, window: &mut Window, cx: &mut Context<Self>) {
+        self.branch_ui.menu = None;
         cx.notify();
-        let b = menu.branch;
         match action {
             BranchAction::Merge => self.open_merge_dialog(MergeMode::Merge, Some(b.name), window, cx),
             BranchAction::Rebase => self.open_merge_dialog(MergeMode::Rebase, Some(b.name), window, cx),

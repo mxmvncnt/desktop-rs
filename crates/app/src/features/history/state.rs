@@ -5,9 +5,10 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use gd_git::{Commit, ResetMode};
-use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription};
+use gpui::{AppContext, Context, Entity, Subscription};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
+use crate::components::Menu;
 use crate::repo::LoadSlot;
 use crate::workspace::Workspace;
 
@@ -44,7 +45,7 @@ pub enum ClickKind {
 /// Everything the History feature adds to `Workspace`. A plain struct (not an
 /// `Entity`): Esc/Enter/arrow routing in `workspace/actions.rs` and `menus/key_routing.rs` reads `menu`/`dialog`.
 pub struct HistoryUi {
-    pub menu: Option<HistoryMenu>,
+    pub menu: Option<Menu>,
     pub menu_gen: usize,
     pub dialog: Option<HistoryDialog>,
     /// Commit box is amending the last commit of this repository.
@@ -74,13 +75,8 @@ impl HistoryUi {
     }
 }
 
-pub struct HistoryMenu {
-    pub position: Point<Pixels>,
-    pub selected: Option<usize>,
-    pub ctx: MenuCtx,
-}
-
 /// Snapshot of everything the menu rows depend on, taken at open time.
+#[derive(Clone)]
 pub struct MenuCtx {
     pub commit: Commit,
     /// Multi-selection, newest first (empty unless 2+ are selected).

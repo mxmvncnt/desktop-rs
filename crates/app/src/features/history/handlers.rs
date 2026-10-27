@@ -5,7 +5,8 @@ use gd_git::Commit;
 use gpui::{Context, Pixels, Point, Window};
 
 use super::commit_menu_rows::commit_menu_rows;
-use super::state::{ClickKind, HistoryDialog, HistoryMenu, MenuCtx};
+use super::state::{ClickKind, HistoryDialog, MenuCtx};
+use crate::components::Menu;
 use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
@@ -21,25 +22,12 @@ impl Workspace {
         self.menu = None;
         self.dialog = None;
         self.history_ui.dialog = None;
-        self.history_ui.menu = Some(HistoryMenu { position, selected: None, ctx });
+        let rows = commit_menu_rows(&ctx);
+        self.history_ui.menu = Some(Menu::new(position, rows, move |ws, action, w, cx| {
+            ws.run_hist_action(action, ctx.clone(), w, cx)
+        }));
         self.history_ui.menu_gen += 1;
         self.focus(window, cx);
-        cx.notify();
-    }
-
-    /// Arrow keys: move the highlight, skipping separators and disabled rows.
-    pub fn hist_menu_step(&mut self, delta: isize, cx: &mut Context<Self>) {
-        let Some(menu) = &mut self.history_ui.menu else { return };
-        let rows = commit_menu_rows(&menu.ctx);
-        let n = rows.len() as isize;
-        let mut ix = menu.selected.map(|s| s as isize).unwrap_or(if delta > 0 { -1 } else { n });
-        for _ in 0..n {
-            ix = (ix + delta).rem_euclid(n);
-            if rows[ix as usize].is_selectable() {
-                menu.selected = Some(ix as usize);
-                break;
-            }
-        }
         cx.notify();
     }
 
@@ -50,9 +38,8 @@ impl Workspace {
             return true;
         }
         let Some(menu) = &self.history_ui.menu else { return false };
-        let action = menu.selected.and_then(|s| commit_menu_rows(&menu.ctx).into_iter().nth(s)).and_then(|r| r.action());
-        if let Some(a) = action {
-            self.run_hist_action(a, window, cx);
+        if let Some(run) = menu.confirm() {
+            run(self, window, cx);
         }
         true
     }
@@ -71,7 +58,7 @@ impl Workspace {
 }
 
 /// Snapshot of everything the menu rows depend on, for the commit at `ix`.
-fn menu_ctx(r: &RepoModel, ix: usize) -> Option<MenuCtx> {
+pub(crate) fn menu_ctx(r: &RepoModel, ix: usize) -> Option<MenuCtx> {
     let commit = r.commits.get(ix).cloned()?;
     let multi_ix = r.multi_indices();
     let multi = multi_ix.iter().filter_map(|&i| r.commits.get(i).cloned()).collect();

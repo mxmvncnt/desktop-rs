@@ -2,9 +2,10 @@
 //! create-from dialogs ([`BranchUi`], a plain `Workspace` field).
 
 use gd_git::Branch;
-use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription};
+use gpui::{AppContext, Context, Entity, Subscription};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
+use crate::components::Menu;
 use crate::workspace::Workspace;
 
 #[derive(Clone)]
@@ -13,12 +14,6 @@ pub enum BranchDialog {
     /// `remote` is the upstream (`origin/x`) that can be deleted along with it.
     Delete { branch: Branch, remote: Option<String>, also_remote: bool },
     CreateFrom { base: String },
-}
-
-pub struct BranchMenu {
-    pub position: Point<Pixels>,
-    pub branch: Branch,
-    pub selected: Option<usize>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -49,8 +44,8 @@ impl RemoteBranch {
 /// Everything the branch ops add to `Workspace`. A plain struct (not an
 /// `Entity`): Esc/Enter/arrow routing in `workspace/actions.rs` and `menus/key_routing.rs` reads `menu`/`dialog`.
 pub struct BranchUi {
-    pub menu: Option<BranchMenu>,
-    pub(super) menu_gen: usize,
+    pub menu: Option<Menu>,
+    pub menu_gen: usize,
     pub dialog: Option<BranchDialog>,
     /// Name typed into the rename / create-from dialogs.
     pub input: Entity<EditableTextState>,

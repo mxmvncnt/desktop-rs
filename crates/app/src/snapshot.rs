@@ -267,10 +267,11 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                             r.read(cx).branches.iter().find(|b| b.is_head == want_head && b.kind == gd_git::BranchKind::Local).cloned()
                         });
                         if let Some(b) = b {
-                            ws.open_branch_menu(b, gpui::point(px(420.0), px(150.0)), window, cx);
+                            use crate::features::branches::BranchAction;
+                            ws.open_branch_menu(b.clone(), gpui::point(px(420.0), px(150.0)), window, cx);
                             match view {
-                                "delete-dialog" => ws.snapshot_menu_action(2, window, cx),
-                                "rename-dialog" => ws.snapshot_menu_action(1, window, cx),
+                                "delete-dialog" => ws.run_branch_action(BranchAction::Delete, b, window, cx),
+                                "rename-dialog" => ws.run_branch_action(BranchAction::Rename, b, window, cx),
                                 _ => {}
                             }
                         }
@@ -503,9 +504,16 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
 /// `history-squash`, `history-reset`, `history-cherry`, `history-tag`,
 /// `history-checkout`, `history-msg-tall`, `amend-mode`.
 fn history_phase2(ws: &mut Workspace, view: &str, window: &mut gpui::Window, cx: &mut gpui::Context<Workspace>) {
-    use crate::features::history::{ClickKind, HistoryAction as HAction};
+    use crate::features::history::{ClickKind, HistoryAction as HAction, menu_ctx};
     let Some(repo) = ws.repo.clone() else { return };
     let at = gpui::point(px(150.0), px(190.0));
+    // Open the menu of commit 2 and pick `action` as a click would.
+    let pick = |ws: &mut Workspace, action, window: &mut gpui::Window, cx: &mut gpui::Context<Workspace>| {
+        ws.open_commit_menu(2, at, window, cx);
+        if let Some(ctx) = menu_ctx(repo.read(cx), 2) {
+            ws.run_hist_action(action, ctx, window, cx);
+        }
+    };
     let multi = |cx: &mut gpui::Context<Workspace>| {
         repo.update(cx, |r, cx| {
             r.click_commit(1, ClickKind::Plain, cx);
@@ -529,26 +537,15 @@ fn history_phase2(ws: &mut Workspace, view: &str, window: &mut gpui::Window, cx:
         }
         "history-squash" => {
             multi(cx);
-            ws.open_commit_menu(2, at, window, cx);
-            ws.run_hist_action(HAction::Squash, window, cx);
+            pick(ws, HAction::Squash, window, cx);
         }
-        "history-reset" => {
-            ws.open_commit_menu(2, at, window, cx);
-            ws.run_hist_action(HAction::Reset, window, cx);
-        }
-        "history-cherry" => {
-            ws.open_commit_menu(2, at, window, cx);
-            ws.run_hist_action(HAction::CherryPick, window, cx);
-        }
+        "history-reset" => pick(ws, HAction::Reset, window, cx),
+        "history-cherry" => pick(ws, HAction::CherryPick, window, cx),
         "history-tag" => {
-            ws.open_commit_menu(2, at, window, cx);
-            ws.run_hist_action(HAction::CreateTag, window, cx);
+            pick(ws, HAction::CreateTag, window, cx);
             ws.history_ui.name.update(cx, |s, cx| s.emplace("v1.2.0", cx));
         }
-        "history-checkout" => {
-            ws.open_commit_menu(2, at, window, cx);
-            ws.run_hist_action(HAction::Checkout, window, cx);
-        }
+        "history-checkout" => pick(ws, HAction::Checkout, window, cx),
         "amend-mode" => {
             let head = repo.read(cx).commits.first().cloned();
             if let Some(head) = head {

@@ -4,14 +4,16 @@
 use gd_git::FileStatus;
 use gpui::{Context, Pixels, Point, Window};
 
-use super::state::{ConfirmDialog, MenuTarget, OpenMenu};
+use super::menu_rows::{file_rows, header_rows};
+use super::state::ConfirmDialog;
+use crate::components::Menu;
 use crate::workspace::Workspace;
 
 impl Workspace {
-    pub fn open_menu(&mut self, position: Point<Pixels>, target: MenuTarget, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_menu(&mut self, menu: Menu, window: &mut Window, cx: &mut Context<Self>) {
         self.popover = None;
         self.dialog = None;
-        self.menu = Some(OpenMenu { position, target, selected: None });
+        self.menu = Some(menu);
         self.menu_gen += 1;
         // Focus the root so up/down/Enter/Esc reach us.
         self.focus(window, cx);
@@ -32,12 +34,16 @@ impl Workspace {
         if change.status == FileStatus::Conflicted {
             return self.open_conflict_menu(change, position, window, cx);
         }
-        self.open_menu(position, MenuTarget::File(change), window, cx);
+        let menu = Menu::new(position, file_rows(&change), move |ws, action, w, cx| {
+            ws.run_menu_action(action, Some(change.clone()), w, cx)
+        });
+        self.open_menu(menu, window, cx);
     }
 
     pub fn open_header_menu(&mut self, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
         if self.repo.as_ref().is_some_and(|r| !r.read(cx).changes().is_empty()) {
-            self.open_menu(position, MenuTarget::Header, window, cx);
+            let menu = Menu::new(position, header_rows(), |ws, action, w, cx| ws.run_menu_action(action, None, w, cx));
+            self.open_menu(menu, window, cx);
         }
     }
 

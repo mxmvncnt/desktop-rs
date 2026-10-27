@@ -5,7 +5,8 @@ use crate::features::accounts::AccountsUi;
 use crate::features::branches::BranchUi;
 use crate::features::diff::{DiffSelectUi, DiffView};
 use crate::features::history::HistoryUi;
-use crate::features::menus::{ConfirmDialog, OpenMenu};
+use crate::components::Menu;
+use crate::features::menus::ConfirmDialog;
 use crate::features::merge::MergeUi;
 use crate::features::settings::{Settings, SettingsPage};
 use crate::features::stashes::StashUi;
@@ -43,7 +44,7 @@ pub struct Workspace {
     pub new_branch_base: Option<String>,
     pub new_branch_base_open: bool,
     /// Open right-click menu / confirm dialog (rendered only while `Some`).
-    pub menu: Option<OpenMenu>,
+    pub menu: Option<Menu>,
     pub menu_gen: usize,
     pub dialog: Option<ConfirmDialog>,
     /// History tab: commit menu, dialogs, amend mode (features/history).
