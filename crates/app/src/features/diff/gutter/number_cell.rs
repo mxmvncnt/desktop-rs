@@ -6,9 +6,9 @@ use gd_git::{Diff, DiffLineKind};
 use gd_ui::{Theme, theme::DIFF_ROW_HEIGHT};
 use gpui::{AnyElement, Div, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Styled, div, prelude::*, px};
 
-use super::gutter_style::{CHECK_W, check_mark, line_selected_bg};
-use super::row_select::RowSelect;
-use super::state::GutterDrag;
+use super::block_handle::RowSelect;
+use super::style::{CHECK_W, check_mark, line_selected_bg};
+use crate::features::diff::state::GutterDrag;
 use crate::repo::RepoModel;
 
 /// One line-number cell holding `numbers` (one per column: two in unified

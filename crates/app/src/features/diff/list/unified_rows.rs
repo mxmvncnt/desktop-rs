@@ -6,14 +6,14 @@ use gd_git::{Diff, DiffLineKind};
 use gd_ui::Theme;
 use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, div, prelude::*, px};
 
-use super::expander::{Expander, header_hunk, trailing_row};
-use super::gutter_style::{HANDLE_W, number_cell_w};
-use super::highlight::{DiffHighlight, line_text};
-use super::number_cell::number_cell;
-use super::row_select::{BlockRow, RowSelect};
 use super::text_flow::{TextFlow, marker_cell, row_box, text_cell};
-use super::text_select::{TextSelect, TextTarget};
-use super::text_selection::TextSide;
+use crate::features::diff::expand::{Expander, header_hunk, trailing_row};
+use crate::features::diff::gutter::number_cell;
+use crate::features::diff::gutter::{BlockRow, RowSelect};
+use crate::features::diff::gutter::{HANDLE_W, number_cell_w};
+use crate::features::diff::highlight::{DiffHighlight, line_text};
+use crate::features::diff::text_selection::TextSide;
+use crate::features::diff::text_selection::{TextSelect, TextTarget};
 use crate::repo::RepoModel;
 
 /// What every unified row needs besides its index.
@@ -83,11 +83,9 @@ impl UnifiedRows<'_> {
     fn text(&self, ix: usize, fg: Hsla) -> (AnyElement, gpui::TextLayout) {
         let theme = self.theme;
         let line = &self.diff.lines[ix];
-        let font = gpui::font(theme.font_mono.clone());
-        let emph_bg = if line.kind == DiffLineKind::Add { theme.diff_add_emph } else { theme.diff_del_emph };
         let spans = self.hl.map(|h| h.row(ix)).unwrap_or(&[]);
         let selected = self.tsel.cols(ix, TextSide::Unified, line.text.len()).filter(|_| line.kind != DiffLineKind::Hunk);
-        line_text(&line.text, spans, &line.emphasis, selected.map(|r| (r, self.tsel.color)), fg, emph_bg, &font, &theme.syntax)
+        line_text(line, spans, selected.map(|r| (r, self.tsel.color)), fg, theme)
     }
 
     fn header_row(&self, row: Div, h: usize, text: AnyElement, marker_color: Hsla) -> AnyElement {

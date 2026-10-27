@@ -2,13 +2,15 @@
 //! arrows) and the trailing "expand down" row.
 
 use gd_git::{Diff, Expansion};
-use gd_ui::{Icon, Theme};
-use gpui::{AnyElement, Div, Entity, IntoElement, ParentElement, Pixels, Styled, div};
+use gd_ui::{Icon, Theme, icon, theme::DIFF_ROW_HEIGHT};
+use gpui::{
+    AnyElement, App, Div, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, RenderOnce,
+    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+};
 
-use super::diff_pane::DiffPane;
-use super::expand_button::ExpandButton;
-use super::gutter_style::handle_bg;
-use super::text_flow::{TextFlow, row_box};
+use crate::features::diff::gutter::handle_bg;
+use crate::features::diff::list::{TextFlow, row_box};
+use crate::features::diff::state::DiffPane;
 use crate::repo::RepoModel;
 
 #[derive(Clone)]
@@ -80,4 +82,45 @@ pub fn trailing_row(exp: Option<&Expander>, diff: &Diff, width: Pixels, flow: Te
 /// Hunk index of header row `ix`.
 pub fn header_hunk(diff: &Diff, ix: usize) -> Option<usize> {
     diff.hunks.binary_search_by_key(&ix, |h| h.header_index).ok()
+}
+
+#[derive(IntoElement)]
+pub struct ExpandButton {
+    pub id: usize,
+    pub icon: Icon,
+    pub tip: &'static str,
+    pub expansion: Expansion,
+    pub repo: Entity<RepoModel>,
+    pub pane: DiffPane,
+}
+
+impl RenderOnce for ExpandButton {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let theme = Theme::of(cx);
+        let (repo, pane, e) = (self.repo, self.pane, self.expansion);
+        let group = SharedString::from(format!("expand-{}", self.id));
+        let hover_fg = theme.on_accent;
+        let hover_bg = theme.accent_strong;
+        div()
+            .id(("expand", self.id))
+            .group(group.clone())
+            .flex()
+            .flex_1()
+            .h(px(DIFF_ROW_HEIGHT))
+            .items_center()
+            .justify_center()
+            .cursor_pointer()
+            .hover_style(move |s| s.bg(hover_bg))
+            .tooltip(gd_ui::tooltip(self.tip))
+            .child(
+                icon(self.icon)
+                    .size(px(12.0))
+                    .text_color(theme.text_faint)
+                    .group_hover_style(group, move |s| s.text_color(hover_fg)),
+            )
+            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                cx.stop_propagation();
+                repo.update(cx, |r, cx| r.expand_diff(pane, e, cx));
+            })
+    }
 }

@@ -6,15 +6,15 @@ use std::sync::Arc;
 use gd_ui::Theme;
 use gpui::{App, IntoElement, ListState, RenderOnce, SharedString, UniformListScrollHandle, Window, px};
 
-use super::expander::Expander;
-use super::gutter_style::{number_cell_w};
-use super::highlight::DiffHighlight;
-use super::row_select::RowSelect;
-use super::rows_list::rows_list;
-use super::split_diff::SplitDiff;
-use super::split_row::SplitRows;
+use super::rows::rows_list;
+use super::split_model::SplitDiff;
+use super::split_rows::SplitRows;
 use super::text_flow::{MARKER_W, TextFlow};
-use super::text_select::TextSelect;
+use crate::features::diff::expand::Expander;
+use crate::features::diff::gutter::RowSelect;
+use crate::features::diff::gutter::number_cell_w;
+use crate::features::diff::highlight::DiffHighlight;
+use crate::features::diff::text_selection::TextSelect;
 
 #[derive(IntoElement)]
 pub struct SplitList {

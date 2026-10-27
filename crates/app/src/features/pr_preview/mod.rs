@@ -6,5 +6,7 @@ mod pr_base_menu;
 mod pr_header;
 mod pr_preview_pane;
 mod state;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use state::PrPreviewState;

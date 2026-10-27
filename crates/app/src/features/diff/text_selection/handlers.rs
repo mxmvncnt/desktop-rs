@@ -3,7 +3,7 @@
 
 use gpui::{ClipboardItem, Context, Window};
 
-use super::text_selection::{TextPos, TextSel, TextSide, word_at};
+use super::model::{TextPos, TextSel, TextSide, word_at};
 use crate::workspace::Workspace;
 
 impl Workspace {

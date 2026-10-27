@@ -18,6 +18,8 @@ mod resize;
 mod sidebar_tabs;
 mod state;
 mod undo_strip;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use sidebar::Sidebar;
 pub use resize::SidebarResize;

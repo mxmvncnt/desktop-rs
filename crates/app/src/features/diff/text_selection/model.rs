@@ -5,7 +5,7 @@ use std::ops::Range;
 
 use gd_git::{Diff, DiffLineKind};
 
-use super::split_diff::{NONE, SplitDiff};
+use crate::features::diff::list::{NONE, SplitDiff};
 
 /// A caret position: a line of `Diff::lines` and a byte offset into its text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

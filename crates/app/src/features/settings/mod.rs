@@ -8,6 +8,8 @@ mod model;
 mod settings_modal;
 mod settings_nav;
 mod state;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use model::{Settings, ThemeMode, config_dir};
 pub use settings_modal::SettingsModal;

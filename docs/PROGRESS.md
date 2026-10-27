@@ -110,7 +110,7 @@ Branch: `main`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 
 - ✅ `notify` watcher per open repo (`app/src/watcher.rs`), 300ms trailing debounce (2s max wait), coalesced refresh.
 - ✅ `.git` filtering: only HEAD/index/refs/FETCH_HEAD/MERGE_HEAD/... count; objects, logs, `*.lock` ignored. `target/` (top level) and `node_modules` skipped.
-- ✅ Idle = zero refreshes, ~zero CPU. Verify: `cargo run --features snapshot -- --snapshot x.png <repo> watch` (asserts; mutates and restores files/a branch in the repo).
+- ✅ Idle = zero refreshes, ~zero CPU. Verify: `cargo test -p desktop-rs --features snapshot watcher` (`app/src/watcher_tests.rs`, asserts on a temp repo).
 - ✅ `gd_git::Repository::{git_dir, common_git_dir, last_fetch_time}`; toolbar caption "Last fetched 5 minutes ago" / "Never fetched".
 - ✅ Background fetch: 10s after open if stale, then every 30 min; silent on failure (logged), skipped if a remote op is running or no remote.
 - ✅ Focus refresh skipped if the watcher refreshed within 1s.
@@ -202,7 +202,13 @@ echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new 
     Esc/Enter routing in `workspace/actions.rs` reads many of these fields and must be reworked first.
   - Move `select_change` and the other `RepoModel` selection methods into `features/changes/ops.rs` / `features/history`
     by widening the diff loader's visibility.
-  - `RepoModel::new` still lists every field; group them into sub-structs (`DiffState`, `HistoryLog`, `RefreshState`).
+  - `RepoModel::new` still lists every field; group them into sub-structs (done for `ChangesState`, `HistoryLog`, `RefreshState`).
+
+## Cleanup for humans (branch `cleanup-for-humans`)
+
+- ✅ Stores (`RepoModel`, `PopoverStore`, `AccountsStore`), one overlay stack, shared `components/` and `utils/`, git reads on git2,
+  libraries for watcher/serde/keyring/assets, `features/diff/` in subfolders, per-feature snapshot views (`features/<x>/snapshot.rs`),
+  the watcher check as a unit test. What was deliberately left out is listed at the top of `CLEANUP_REPORT.md`.
 
 - ✅ Resizable sidebar: 6px drag handle on its right edge (`features/changes/sidebar_handle.rs`, `resize.rs`), clamped 220..520, double-click resets to 300, persisted as `sidebar_width` in `settings.toml`. Snapshot view `sidebar-wide`.
 

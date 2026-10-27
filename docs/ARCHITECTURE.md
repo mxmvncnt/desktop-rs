@@ -81,7 +81,7 @@ guessing APIs. To recreate them:
   On this repo's last 150 commits, 468/472 files had identical +/- counts. The rest differ where git's
   Myers heuristics are non-minimal (e.g. yarn.lock, where ours is smaller).
 
-## Partial staging (`gd-git/src/partial.rs`, `app/src/features/diff/line_selection.rs`, `number_cell.rs`, `row_select.rs`)
+## Partial staging (`gd-git/src/partial.rs`, `app/src/features/diff/gutter/`: `line_selection_store.rs`, `number_cell.rs`, `block_handle.rs`)
 
 - No `git apply`: `staged_text(diff, include)` replays the diff over `DiffSource::old` (raw lines via
   `split_inclusive`, so CRLF and a missing final newline survive) keeping only included adds/deletes.
@@ -92,9 +92,9 @@ guessing APIs. To recreate them:
   `excluded` (whole file off). `set_rows_included` normalizes: all rows off → `excluded`, none off → entry removed, so
   `partial` only holds mixed files. A reloaded diff keeps the selection only if `lines` are identical
   (`reconcile_selection`); `-w` diffs are ignored there. `partial` is cleared after a successful commit/amend.
-- UI: `render_diff(.., select: Option<Entity<RepoModel>>, ..)`. `features/diff/number_cell.rs` has `number_cell` (one cell
+- UI: `render_diff(.., select: Option<Entity<RepoModel>>, ..)`. `gutter/number_cell.rs` has `number_cell` (one cell
   holding 1 or 2 numbers; plain, or clickable/drag-extending with the blue+check included style) and
-  `RowSelect::handle_cell` in `row_select.rs` (one cell of a change block's handle), shared by the unified list and the split list's
+  `RowSelect::handle_cell` in `gutter/block_handle.rs` (one cell of a change block's handle), shared by the unified list and the split list's
   middle gutter. Handles work on change blocks (`RepoModel::change_block`: the add/delete run around a row), not git
   hunks. Pointer state (`hovered_handle: (block start, cell)`, `drag` anchor) is `Workspace.diff_select`, reset when
   the diff key changes. The cell id in `hovered_handle` makes leave/enter order between two cells of one block
@@ -106,7 +106,7 @@ guessing APIs. To recreate them:
   included/partial blocks `accent_strong` (hover `accent`).
 - Gotcha: `on_mouse_up_all` takes 5 args (event, phase, hitbox, window, cx).
 
-## Hunk expansion (`gd-git/src/expand.rs`, `features/diff/expander.rs`, `expand_button.rs`)
+## Hunk expansion (`gd-git/src/expand.rs`, `features/diff/expand/buttons.rs`)
 
 - `DiffHunk` carries 0-based `old_start/old_len/new_start/new_len`. `expand(diff, Up(h)|Down(h)|All(h))` is pure: it
   splits the flat rows into hunks, pulls context rows from `source.new` into the gap (20 = `EXPANSION_STEP`), merges
@@ -116,7 +116,7 @@ guessing APIs. To recreate them:
   `change_diff_key` (path + options) lets `load_change_diff` keep the expanded diff when a reload returns the same
   source texts. Line selection is keyed by `LineKey = (is_add, line number)` instead of row index, so it survives
   row shifts; `reconcile_selection` drops it only when the source texts change.
-- `render_diff(.., pane: DiffPane, ..)` (`render_diff.rs`): `Changes` (select + expand), `Commit` (expand), `Stash` and `Pr` (view only). `DiffPane` also names the `DiffDetail` (`RepoModel::detail(pane)`).
+- `render_diff(.., pane: DiffPane, ..)` (`diff/view.rs`): `Changes` (select + expand), `Commit` (expand), `Stash` and `Pr` (view only). `DiffPane` also names the `DiffDetail` (`RepoModel::detail(pane)`).
   Header rows render `Expander::gutter` instead of number cells; an extra trailing list row (index == rows) holds
   the last Expand Down. Buttons use `group` + `group_hover_style` so the svg icon recolors on hover.
 
@@ -231,8 +231,8 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
   Background fetch task: first check at 10s, then wakes every 60s (also re-renders
   the relative-time caption); fetches when both last fetch and last attempt are >=30 min old.
   Failures are only logged.
-- Headless test (`--snapshot ... watch`): the watcher debounces in wall-clock
-  time, so use real sleeps and poll `run_until_parked`.
+- Headless test (`cargo test -p desktop-rs --features snapshot watcher`, `watcher_tests.rs`): the watcher debounces
+  in wall-clock time, so use real sleeps and poll `run_until_parked`.
 
 ## History (`gd_git::history_ops`, `app/src/features/history/`)
 
@@ -294,7 +294,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 - Scroll reset: `Workspace::diff_key` stores the last diff identity; a change resets the list's
   `base_handle` offset and `DiffView::hscroll` to 0.
 
-## Diff options and split view (`features/diff/`: `diff_options_menu.rs`, `split_diff.rs`, `split_row.rs`)
+## Diff options and split view (`features/diff/`: `options/menu.rs`, `list/split_model.rs`, `list/split_rows.rs`)
 
 - Options are app-wide and persisted in `Settings` (`diff_split`, `diff_ignore_whitespace`, `diff_wrap`), stored in
   `settings.toml` (serde + toml, `#[serde(default)]` so missing keys are fine).
@@ -308,8 +308,8 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
   headers span both columns (`left == right`), delete/add runs are paired row by row and padded.
   Rendering is a single list (id `diff-split`); each row is `[old text | middle gutter | new text]`.
   Syntax spans reuse `DiffHighlight::row(ix)` unchanged.
-- Long lines (`text_flow.rs`, `TextFlow`): both modes share the `UnifiedRows`/`SplitRows` row renderers and
-  `rows_list` (`rows_list.rs`), which picks the list type.
+- Long lines (`list/text_flow.rs`, `TextFlow`): both modes share the `UnifiedRows`/`SplitRows` row renderers and
+  `rows_list` (`list/rows.rs`), which picks the list type.
   - Scroll (default): a vertical-only `uniform_list`. Horizontal scroll is done by hand: each text cell
     (`text_cell`) clips and shifts its text by `DiffView::hscroll`. Gutters stay fixed and both split
     columns always move together. `diff_body`'s `on_scroll_wheel` takes the x delta (shift+wheel already
@@ -414,7 +414,7 @@ Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Carg
   Bind `default_bindings()` for `DEFAULT_INPUT_CONTEXT`. Catch Enter with
   `.capture_action(|_: &editable_text::actions::Enter, ..|)` on a wrapper.
 - Headless snapshots run on a fake dispatcher clock, but **animations use wall-clock time**.
-  `snapshot.rs` sleeps for real and refreshes before capturing. Without that,
+  the harness (`snapshot.rs`) sleeps for real and refreshes before capturing. Without that,
   fades are captured at opacity 0.
 - `import`/`grim` aren't available on the dev machine. Use `--snapshot` to see the UI.
 
@@ -437,7 +437,7 @@ Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Carg
 in all four entries, run `cargo update -p gpui-ce`, rebuild, and re-check the
 gotchas above.
 
-## Diff text selection (`features/diff/text_selection.rs`, `text_select.rs`, `text_handlers.rs`)
+## Diff text selection (`features/diff/text_selection/`: `model.rs`, `mouse.rs`, `handlers.rs`)
 
 - Model `TextSel { anchor, head, side }` in (index into `Diff::lines`, byte offset) coordinates, stored in
   `DiffView::text_sel`, so it is independent of virtualization. Split view selects within one `TextSide`; lines of a

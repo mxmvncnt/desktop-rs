@@ -140,10 +140,24 @@ Exception: git writes and network ops keep shelling out to the `git` CLI
 
 ## Feature folder example: diff (hot rows)
 
-`crates/app/src/features/diff/` follows the same layout (`state.rs` = `DiffView`
-and gutter pointer state, `handlers.rs` = `impl Workspace` setters,
-`render_diff.rs` = the entry point, pure logic in `split_diff.rs`,
-`highlight.rs`, `line_selection.rs`). Decisions:
+`crates/app/src/features/diff/` has subfolders per sub-feature, each with a `mod.rs` that only lists
+what the siblings use:
+
+```
+diff/
+  view.rs         Workspace::render_diff (entry point of every pane) + DiffFrame
+  state.rs        DiffView, DiffPane, gutter pointer state
+  handlers.rs     impl Workspace setters and horizontal scroll
+  highlight.rs    syntax runs, line_text
+  list/           unified.rs split.rs (lists), unified_rows.rs split_rows.rs (hot rows), split_model.rs, rows.rs, text_flow.rs
+  gutter/         number_cell.rs, block_handle.rs (RowSelect), line_selection_store.rs (RepoModel ops), style.rs
+  text_selection/ model.rs (TextSel), mouse.rs (TextSelect, per-row binding), handlers.rs (impl Workspace)
+  expand/         buttons.rs (Expander + ExpandButton)
+  options/        button.rs menu.rs whitespace_note.rs
+  snapshot.rs     snapshot views
+```
+
+Decisions:
 
 - **Allowed exception: hot rows stay plain fns/methods.** Virtualized rows are
   rebuilt for every visible row every frame, so `UnifiedRows::row`,
@@ -156,7 +170,7 @@ and gutter pointer state, `handlers.rs` = `impl Workspace` setters,
   (`UnifiedRows { diff, hl, sel, exp, .. }`) instead of 8 positional args.
 - Keep the perf tricks when touching this folder: `Arc::ptr_eq` caches
   (`split_for`, `wrap_list_for`), `restrict_scroll_to_axis` and the manual
-  h-scroll in `rows_list`/`text_flow`, and no `h_full` on gutter cells.
+  h-scroll in `list/rows.rs`/`text_flow.rs`, and no `h_full` on gutter cells.
 - Typed replacements: `DiffPane` (not `commit: bool`), `BlockRow::{First,
   Rest}`, `HoveredHandle`/`GutterDrag` (not tuples).
 

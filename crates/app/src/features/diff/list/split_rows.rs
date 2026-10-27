@@ -6,15 +6,15 @@ use gd_git::DiffLineKind;
 use gd_ui::{Theme};
 use gpui::{AnyElement, Div, IntoElement, ParentElement, Pixels, Styled, div, prelude::*, px};
 
-use super::expander::{Expander, header_hunk, trailing_row};
-use super::highlight::{DiffHighlight, line_text};
-use super::number_cell::number_cell;
-use super::row_select::{BlockRow, RowSelect};
-use super::split_diff::{NONE, SplitDiff, SplitRow};
+use super::split_model::{NONE, SplitDiff, SplitRow};
 use super::text_flow::{TextFlow, marker_cell, row_box, text_cell};
-use super::text_select::{TextSelect, TextTarget};
-use super::text_selection::TextSide;
-use super::unified_row::{LineLook, line_look};
+use super::unified_rows::{LineLook, line_look};
+use crate::features::diff::expand::{Expander, header_hunk, trailing_row};
+use crate::features::diff::gutter::number_cell;
+use crate::features::diff::gutter::{BlockRow, RowSelect};
+use crate::features::diff::highlight::{DiffHighlight, line_text};
+use crate::features::diff::text_selection::TextSide;
+use crate::features::diff::text_selection::{TextSelect, TextTarget};
 use crate::repo::RepoModel;
 
 /// What every split row needs besides its index.
@@ -102,11 +102,9 @@ impl SplitRows<'_> {
         }
         let line = &self.split.diff.lines[ix as usize];
         let LineLook { bg, fg, marker, marker_color } = line_look(line.kind, theme);
-        let font = gpui::font(theme.font_mono.clone());
-        let emph_bg = if line.kind == DiffLineKind::Add { theme.diff_add_emph } else { theme.diff_del_emph };
         let spans = self.hl.map(|h| h.row(ix as usize)).unwrap_or(&[]);
         let selected = self.tsel.cols(ix as usize, side, line.text.len()).map(|r| (r, self.tsel.color));
-        let (text, layout) = line_text(&line.text, spans, &line.emphasis, selected, fg, emph_bg, &font, &theme.syntax);
+        let (text, layout) = line_text(line, spans, selected, fg, theme);
         let target = TextTarget { line: ix as usize, side, layout };
         let text = self.tsel.bind_text(text_cell(text, self.flow), target.clone());
         (cell.bg(bg).child(marker_cell(marker, marker_color)).child(text), Some(target))
