@@ -202,7 +202,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 
 ## History (`gd_git::history_ops`, `app/src/features/history/`)
 
-- Layout: `state.rs` (`HistoryState` on `RepoModel.history`, `HistoryUi`, `HistoryDialog`, `HistoryAction`), `ops.rs` + `selection.rs` (`impl RepoModel`), `handlers.rs`/`menu_actions.rs`/`confirm.rs`/`amend.rs` (`impl Workspace`), `commit_detail.rs` (`impl Workspace`, composes `CommitHeader`/`CommitFileList`/diff), and one `RenderOnce` per file (`CommitList`, `CommitRow`, `CommitMenuView` + `commit_menu_rows`, `HistoryDialogView`, `MultiSelectPane`, ...). Commit file rows are the shared `shared/file_change_row.rs`.
+- Layout: `state.rs` (`HistoryState` on `RepoModel.history`, `HistoryUi`, `HistoryDialog`, `HistoryAction`), `ops.rs` + `selection.rs` (`impl RepoModel`), `handlers.rs`/`menu_actions.rs`/`confirm.rs`/`amend.rs` (`impl Workspace`), `commit_detail.rs` (`impl Workspace`, composes `CommitHeader`/`FileList`/diff), and one `RenderOnce` per file (`CommitList`, `CommitRow`, `CommitMenuView` + `commit_menu_rows`, `HistoryDialogView`, `MultiSelectPane`, ...). Commit, stash and PR file lists are the shared `components/FileList` (rows: `components/FileRow`).
 
 - State: `RepoModel.history` (unpushed set, tags by sha, GitHub web URL, in-progress op, busy label,
   multi-selection as shas) reloaded in the background by `reload_push_state` on every full refresh.
@@ -310,13 +310,19 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
   Overlay hand-off: overlays call `motion::handoff(id, cx)` (and `Workspace::render` calls
   `motion::begin_frame`); an overlay that first appears while another was drawn on the previous frame
   (menu -> dialog, popover -> popover) skips its entrance and scrim fade, so nothing flashes. New overlays must do the same.
-- `components.rs`: `pressable` (row/ghost base with transitioned hover wash), `Button`
-  (Primary, Secondary, Ghost, Danger), `Checkbox`, `Tabs` (segmented), `ToolbarButton`
-  (Desktop's toolbar dropdowns), `badge`, `overlay_card`, `divider`/`vdivider`, `icon`.
-- `overlay.rs`: `ContextMenu` (positioned at the mouse, clamped to the window, `menu_in`; items with
-  icon/danger/disabled, separators, keyboard highlight via `.selected(ix)`) and `Dialog` (scrim + `dialog_in` card,
-  Cancel + primary/danger confirm). Both are stateless `RenderOnce` wrapping a `deferred` full-window layer;
-  the owner renders them only while open and handles keys.
+- `components/` (one primitive per file, re-exported at the crate root): `pressable` and the small style fns in
+  `surface.rs` (`badge`, `overlay_card`, `divider`/`vdivider`, `icon`, `empty_state`, `mixed_mark`), `Button`,
+  `Checkbox`, `CheckRow` (checkbox row with a callback), `OptionRow` (radio card), `Tabs`, `ToolbarButton`,
+  `ResizeHandle` (drag payload + double-click reset, right-edge strip or bottom grip), `Callback`/`ClickHandler`
+  (the stored-callback type aliases).
+- Overlays are stateless `RenderOnce` wrapping a `deferred` full-window layer; the owner renders them only while
+  open and handles keys. `Popover` (click-away backdrop, optional scrim, card at a window position, `menu_in` +
+  `handoff`) is the base of `ContextMenu` (positioned at the mouse, clamped to the window; icon/danger/disabled
+  items, separators, `.selected(ix)`), `PopoverLayer` and `DiffOptionsMenu`. `Dialog` (scrim + `dialog_in` card,
+  Cancel + confirm) and `modal(card, on_cancel, instant)` (the scrim + centered card used by the settings modal).
+  The `popover_dismissed` workaround (a backdrop click must not re-trigger the toolbar button) stays on
+  `Workspace` because it needs to know which popover the trigger opens.
+- App-side components used by 2+ features are in `app/src/components/` (see CONVENTIONS.md).
 - `assets.rs`: embedded Solar icons and Geist fonts. To add an icon, copy the
   SVG from `.ref/zeron/crates/ui/assets/icons/` into `crates/ui/assets/icons/`
   and add a line to the `icons!` macro. `rust-embed` embeds the folder.
