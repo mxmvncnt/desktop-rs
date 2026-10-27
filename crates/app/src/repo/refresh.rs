@@ -45,8 +45,8 @@ impl RepoModel {
     /// (coalesced) refresh. The watcher thread dies with this model.
     pub(super) fn start_watcher(&mut self, cx: &mut Context<Self>) {
         let (watcher, rx) = RepoWatcher::start(&self.repo);
-        self._watcher = Some(watcher);
-        self._watch_task = Some(cx.spawn(async move |this, cx| {
+        self.sync._watcher = Some(watcher);
+        self.sync._watch_task = Some(cx.spawn(async move |this, cx| {
             while let Ok(mut metadata_changed) = rx.recv().await {
                 while let Ok(more) = rx.try_recv() {
                     metadata_changed |= more;
@@ -54,7 +54,7 @@ impl RepoModel {
                 let scope = if metadata_changed { RefreshScope::Full } else { RefreshScope::Status };
                 let alive = this
                     .update(cx, |this, cx| {
-                        this.last_watch_refresh = Some(Instant::now());
+                        this.sync.last_watch_refresh = Some(Instant::now());
                         this.request_refresh(scope, cx);
                     })
                     .is_ok();
@@ -75,13 +75,13 @@ impl RepoModel {
     /// meanwhile collapse into exactly one follow-up run. `Full` also reloads
     /// branches and history (git metadata changed); otherwise only status.
     pub fn request_refresh(&mut self, scope: RefreshScope, cx: &mut Context<Self>) {
-        if self.refreshing {
-            self.pending_refresh = Some(self.pending_refresh.map_or(scope, |p| p.max(scope)));
+        if self.sync.refreshing {
+            self.sync.pending = Some(self.sync.pending.map_or(scope, |p| p.max(scope)));
             return;
         }
-        self.refreshing = true;
-        self.refresh_count += 1;
-        log::debug!("refresh #{} ({:?}) {}", self.refresh_count, scope, self.repo.name());
+        self.sync.refreshing = true;
+        self.sync.refresh_count += 1;
+        log::debug!("refresh #{} ({:?}) {}", self.sync.refresh_count, scope, self.repo.name());
         let repo = self.repo.clone();
         cx.spawn(async move |this, cx| {
             let data = cx.background_spawn(async move { RefreshData::read(&repo, scope) }).await;
@@ -92,7 +92,7 @@ impl RepoModel {
 
     fn finish_refresh(&mut self, data: RefreshData, scope: RefreshScope, cx: &mut Context<Self>) {
         let full = scope == RefreshScope::Full;
-        self.refreshing = false;
+        self.sync.refreshing = false;
         match data.status {
             Ok(status) => self.apply_status(status, cx),
             Err(e) => self.error = Some(e.to_string()),
@@ -100,7 +100,7 @@ impl RepoModel {
         if let Some(Ok(b)) = data.branches {
             self.branches = b;
         }
-        self.last_fetch = data.last_fetch;
+        self.sync.last_fetch = data.last_fetch;
         if full {
             self.reload_push_state(cx);
             self.reload_stashes(cx);
@@ -113,7 +113,7 @@ impl RepoModel {
             self.reload_history(cx);
         }
         cx.notify();
-        if let Some(next) = self.pending_refresh.take() {
+        if let Some(next) = self.sync.pending.take() {
             self.request_refresh(next, cx);
         }
     }

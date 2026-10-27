@@ -595,7 +595,7 @@ fn watch_check(cx: &mut HeadlessAppContext, repo: PathBuf) {
     };
     let m = model(cx);
     settle(cx, 1000);
-    let count = |cx: &mut HeadlessAppContext| cx.read_entity(&m, |r, _| r.refresh_count);
+    let count = |cx: &mut HeadlessAppContext| cx.read_entity(&m, |r, _| r.sync.refresh_count);
     let nfiles = |cx: &mut HeadlessAppContext| cx.read_entity(&m, |r, _| r.changes().len());
 
     // 1. Idle: no refreshes, no CPU.

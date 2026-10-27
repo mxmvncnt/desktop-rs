@@ -78,7 +78,7 @@ impl RemoteButton {
         }
         Self::new(
             Icon::Refresh,
-            last_fetched_caption(r.last_fetch),
+            last_fetched_caption(r.sync.last_fetch),
             format!("Fetch {remote}"),
             Some(RemoteOp::Fetch),
         )

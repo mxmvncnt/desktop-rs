@@ -115,7 +115,7 @@ fn window_subscriptions(window: &mut Window, cx: &mut Context<Workspace>) -> [Su
             if window.is_window_active() {
                 // The watcher already keeps us fresh; skip if it just refreshed.
                 let recent = this.repo.as_ref().is_some_and(|r| {
-                    r.read(cx).last_watch_refresh.is_some_and(|t| t.elapsed() < RECENT_WATCH_REFRESH)
+                    r.read(cx).sync.last_watch_refresh.is_some_and(|t| t.elapsed() < RECENT_WATCH_REFRESH)
                 });
                 if !recent {
                     this.refresh(cx);

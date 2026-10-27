@@ -56,6 +56,25 @@ pub enum RepoEvent {
 
 impl gpui::EventEmitter<RepoEvent> for RepoModel {}
 
+/// Refresh coalescing, live updates and background fetch.
+#[derive(Default)]
+pub struct RefreshState {
+    /// A refresh is running on the background executor.
+    pub(super) refreshing: bool,
+    /// A trigger arrived while refreshing: run exactly one more afterwards.
+    pub(super) pending: Option<RefreshScope>,
+    /// Number of refreshes started (debug counter; tests assert idle = stable).
+    pub refresh_count: u64,
+    /// When the file watcher last triggered a refresh (focus refresh skips if recent).
+    pub last_watch_refresh: Option<Instant>,
+    /// mtime of `.git/FETCH_HEAD`.
+    pub last_fetch: Option<SystemTime>,
+    pub(super) last_background_fetch: Option<Instant>,
+    pub(super) _watcher: Option<RepoWatcher>,
+    pub(super) _watch_task: Option<Task<()>>,
+    pub(super) _background_fetch_task: Option<Task<()>>,
+}
+
 pub struct RepoModel {
     pub repo: Repository,
     pub tab: Tab,
@@ -76,21 +95,8 @@ pub struct RepoModel {
     /// file keeps the (possibly expanded) diff on screen.
     pub change_diff_key: Option<(String, DiffOptions)>,
 
-    // ---- refresh coalescing / live updates ----
-    /// A refresh is running on the background executor.
-    pub(super) refreshing: bool,
-    /// A trigger arrived while refreshing: run exactly one more afterwards.
-    pub(super) pending_refresh: Option<RefreshScope>,
-    /// Number of refreshes started (debug counter; tests assert idle = stable).
-    pub refresh_count: u64,
-    /// When the file watcher last triggered a refresh (focus refresh skips if recent).
-    pub last_watch_refresh: Option<Instant>,
-    /// mtime of `.git/FETCH_HEAD`.
-    pub last_fetch: Option<SystemTime>,
-    pub(super) last_background_fetch: Option<Instant>,
-    pub(super) _watcher: Option<RepoWatcher>,
-    pub(super) _watch_task: Option<Task<()>>,
-    pub(super) _background_fetch_task: Option<Task<()>>,
+    /// Refresh coalescing, file watcher and background fetch.
+    pub sync: RefreshState,
 
     // ---- history ----
     pub commits: Vec<Commit>,
@@ -142,15 +148,7 @@ impl RepoModel {
             selected_change: None,
             change_detail: DiffDetail::default(),
             change_diff_key: None,
-            refreshing: false,
-            pending_refresh: None,
-            refresh_count: 0,
-            last_watch_refresh: None,
-            last_fetch: None,
-            last_background_fetch: None,
-            _watcher: None,
-            _watch_task: None,
-            _background_fetch_task: None,
+            sync: RefreshState::default(),
             commits: Vec::new(),
             history_exhausted: false,
             history_loading: false,
