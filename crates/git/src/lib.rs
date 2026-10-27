@@ -353,7 +353,7 @@ pub(crate) fn resolve_git_dir(root: &Path) -> PathBuf {
 }
 
 /// Commit message: the trimmed summary, then the description after a blank line.
-pub(crate) fn message(summary: &str, description: &str) -> String {
+pub fn message(summary: &str, description: &str) -> String {
     match description.trim() {
         "" => summary.trim().to_string(),
         d => format!("{}\n\n{d}", summary.trim()),

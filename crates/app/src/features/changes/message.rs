@@ -10,17 +10,13 @@ pub fn split(text: &str) -> (String, String) {
     (first.trim().to_string(), rest.trim().to_string())
 }
 
-pub fn join(summary: &str, description: &str) -> String {
-    if description.is_empty() { summary.to_string() } else { format!("{summary}\n\n{description}") }
-}
-
 impl Workspace {
     pub fn commit_message(&self, cx: &gpui::App) -> (String, String) {
         split(self.message.read(cx).as_str())
     }
 
     pub fn set_commit_message(&mut self, summary: &str, description: &str, cx: &mut Context<Self>) {
-        let text = join(summary, description);
+        let text = gd_git::message(summary, description);
         self.message.update(cx, |s, cx| s.emplace(&text, cx));
     }
 

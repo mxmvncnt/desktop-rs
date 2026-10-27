@@ -14,12 +14,6 @@ struct SquashMessage {
     description: String,
 }
 
-impl SquashMessage {
-    fn full(self) -> String {
-        if self.description.is_empty() { self.summary } else { format!("{}\n\n{}", self.summary, self.description) }
-    }
-}
-
 impl Workspace {
     pub fn hist_confirm(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(repo) = self.repo.clone() else { return };
@@ -40,7 +34,7 @@ impl Workspace {
             HistoryDialog::AmendPushed(c) => self.start_amend(c, window, cx),
             HistoryDialog::Squash { commits, .. } => {
                 let shas = commits.into_iter().map(|c| c.sha).collect();
-                repo.update(cx, |r, cx| r.squash(shas, message.full(), cx));
+                repo.update(cx, |r, cx| r.squash(shas, gd_git::message(&message.summary, &message.description), cx));
             }
             other => confirm_simple(other, name, &repo, cx),
         }
