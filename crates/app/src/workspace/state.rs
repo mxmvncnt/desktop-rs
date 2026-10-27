@@ -1,4 +1,4 @@
-use gpui::{Entity, FocusHandle, Pixels, Point, SharedString, Subscription, Task, UniformListScrollHandle};
+use gpui::{Entity, FocusHandle, SharedString, Subscription, Task, UniformListScrollHandle};
 use gpui_elements::editable_text::EditableTextState;
 
 use super::overlay::Overlay;
@@ -7,6 +7,7 @@ use crate::features::branches::BranchUi;
 use crate::features::diff::{DiffSelectUi, DiffView};
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
+use crate::features::pickers::PopoverStore;
 use crate::features::settings::{Settings, SettingsPage};
 use crate::features::stashes::StashUi;
 use crate::repo::RepoModel;
@@ -31,16 +32,8 @@ pub struct Workspace {
     pub overlays: Vec<Overlay>,
     /// Bumped on every overlay open so entrance animations replay.
     pub overlay_gen: usize,
-    /// Popover the backdrop just dismissed, and where that press landed. The
-    /// backdrop doesn't occlude the toolbar, so the same press also clicks
-    /// the trigger underneath; this lets the trigger ignore that click
-    /// instead of reopening.
-    pub(crate) popover_dismissed: Option<(Popover, Point<Pixels>)>,
-    pub popover_selected: usize,
-    /// New-branch popover: chosen start point (`None` = current branch) and
-    /// whether the base list is expanded.
-    pub new_branch_base: Option<String>,
-    pub new_branch_base_open: bool,
+    /// Toolbar popovers: cursor, filter / name / url inputs (features/pickers).
+    pub pickers: Entity<PopoverStore>,
     /// History tab: dialog inputs, amend mode (features/history).
     pub history_ui: HistoryUi,
     /// Input of the stash dialogs (create / rename).
@@ -59,9 +52,6 @@ pub struct Workspace {
     pub message: Entity<EditableTextState>,
     /// Placeholder last shown in `message` (see `sync_message_placeholder`).
     pub(crate) message_placeholder: Option<String>,
-    pub filter: Entity<EditableTextState>,
-    pub name_input: Entity<EditableTextState>,
-    pub url_input: Entity<EditableTextState>,
 
     /// List that ↑/↓ act on: the one last clicked (None = the tab's main list).
     pub nav_list: Option<super::navigation::NavList>,
@@ -75,7 +65,6 @@ pub struct Workspace {
     pub diff_select: DiffSelectUi,
     /// Height of the selected commit's message area (history header).
     pub commit_msg: crate::features::history::MessageResize,
-    pub popover_scroll: UniformListScrollHandle,
 
     pub(super) focus: FocusHandle,
     /// Auto-dismiss timer of the current success notice (features/notices).

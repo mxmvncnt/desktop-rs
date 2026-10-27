@@ -9,7 +9,7 @@ use crate::workspace::Workspace;
 
 impl Workspace {
     fn filter_text(&self, cx: &gpui::App) -> String {
-        self.filter.read(cx).as_str().trim().to_lowercase()
+        self.pickers.read(cx).filter.read(cx).as_str().trim().to_lowercase()
     }
 
     /// Indices into `settings.repositories` matching the filter.

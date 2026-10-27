@@ -148,8 +148,10 @@ and gutter pointer state, `handlers.rs` = `impl Workspace` setters,
 - `features/pickers`: `PickerShell` owns filter input, empty state and
   Enter/up/down capture; `RepoPicker`/`BranchPicker` pass an `on_enter` callback.
   `Workspace::repo_picker()/branch_picker()/new_branch_form()/clone_form()`
-  (handlers.rs) clamp the cursor and build the components; popover state stays
-  on `Workspace`. Hot rows `repo_row`/`branch_row` are plain fns.
+  (handlers.rs) clamp the cursor and build the components. `PopoverStore` (`store.rs`,
+  `Workspace::pickers`) owns the cursor, the three inputs and the new-branch base; the
+  picker components take `Entity<PopoverStore>` for stepping/toggling and a plain
+  callback for Enter, and keep `Entity<Workspace>` only for actions that open repositories. Hot rows `repo_row`/`branch_row` are plain fns.
 - `features/settings`: also owns the persisted `Settings` model (`model.rs`).
   `SettingsModal::open(ws, cx)` -> `Option`, one `RenderOnce` per page.
 - `features/menus`: the Changes file/header menus (`MenuAction`) and the discard

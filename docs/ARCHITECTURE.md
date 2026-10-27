@@ -171,7 +171,7 @@ guessing APIs. To recreate them:
   the root; with nothing open it falls back to leaving the PR preview), Enter = `overlay_confirm` (menu row
   or the dialog's own confirm), ↑/↓ = `overlay_step` (menus). While anything but a picker is open the root gets
   key context `"Workspace Menu"`, so `MenuNext/MenuPrevious/MenuConfirm` and `Dismiss` reach the workspace.
-  Picker cursors, text inputs and `popover_dismissed` stay on `Workspace`. The PR base dropdown lives on
+  Picker cursors, the filter/name/url inputs and `dismissed` live in `PopoverStore` (`Workspace::pickers`, `features/pickers/store.rs`). The PR base dropdown lives on
   `RepoModel.pr.base_menu` and is not an overlay.
 - **Adding a menu**: write `fn x_menu_rows(ctx) -> Vec<MenuRow<XAction>>` and `fn run_x_action(&mut self, action, ctx, ..)`
   in the feature, then `self.open_menu(Menu::new(position, rows, move |ws, a, w, cx| ws.run_x_action(a, ctx.clone(), w, cx)), w, cx)`.

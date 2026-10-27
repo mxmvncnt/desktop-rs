@@ -8,6 +8,7 @@ use gpui::{
 use gpui_elements::editable_text::EditableTextState;
 
 use super::picker_shell::{PICKER_ROW, PickerShell};
+use super::store::PopoverStore;
 use crate::workspace::{Popover, Workspace};
 
 /// One repository row of the list.
@@ -26,6 +27,7 @@ pub struct RepoPicker {
     pub selected: usize,
     pub filter: Entity<EditableTextState>,
     pub scroll: UniformListScrollHandle,
+    pub pickers: Entity<PopoverStore>,
     pub ws: Entity<Workspace>,
 }
 
@@ -76,8 +78,8 @@ impl RenderOnce for RepoPicker {
         let footer = Self::footer(&self.ws);
         let list = Self::list(self.entries, self.selected, &self.scroll, &self.ws);
         let ws = self.ws;
-        PickerShell::new("Repositories", "Filter repositories", self.filter, n, list, footer, ws)
-            .on_enter(|this, _w, cx| this.enter_repo_picker(cx))
+        PickerShell::new("Repositories", "Filter repositories", self.filter, n, list, footer, self.pickers)
+            .on_enter(move |_w, cx| ws.update(cx, |this, cx| this.enter_repo_picker(cx)))
     }
 }
 

@@ -11,6 +11,7 @@ use crate::features::accounts::AccountsUi;
 use crate::features::branches::BranchUi;
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
+use crate::features::pickers::PopoverStore;
 use crate::features::settings::{Settings, ThemeMode};
 use crate::features::stashes::StashUi;
 
@@ -24,10 +25,11 @@ fn text_state(cx: &mut App) -> Entity<EditableTextState> {
 impl Workspace {
     pub fn new(open_path: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let message = text_state(cx);
-        let filter = text_state(cx);
-        let name_input = text_state(cx);
-        let url_input = text_state(cx);
-        let mut subs = input_subscriptions([&message, &filter, &name_input, &url_input], cx);
+        let pickers = cx.new(|cx| PopoverStore::new(cx));
+        let p = pickers.read(cx);
+        let inputs = [message.clone(), p.filter.clone(), p.name_input.clone(), p.url_input.clone()];
+        let mut subs = input_subscriptions(&inputs, cx);
+        subs.push(cx.observe(&pickers, |_, _, cx| cx.notify()));
         subs.extend(window_subscriptions(window, cx));
 
         let mut this = Self {
@@ -38,8 +40,7 @@ impl Workspace {
             repo: None,
             overlays: Vec::new(),
             overlay_gen: 0,
-            popover_dismissed: None,
-            popover_selected: 0,
+            pickers,
             history_ui: HistoryUi::new(cx),
             stash_ui: StashUi::new(cx),
             merge_ui: MergeUi::new(cx),
@@ -48,11 +49,6 @@ impl Workspace {
             corner_radius: 0.0,
             message,
             message_placeholder: None,
-            filter,
-            name_input,
-            new_branch_base: None,
-            new_branch_base_open: false,
-            url_input,
             nav_list: None,
             changes_scroll: UniformListScrollHandle::new(),
             history_scroll: UniformListScrollHandle::new(),
@@ -61,7 +57,6 @@ impl Workspace {
             diff_view: Default::default(),
             diff_select: Default::default(),
             commit_msg: Default::default(),
-            popover_scroll: UniformListScrollHandle::new(),
             focus: cx.focus_handle(),
             notice_task: None,
             repo_sub: None,
@@ -90,11 +85,11 @@ impl Focusable for Workspace {
 
 /// Re-render when inputs change (commit button enablement, filtering).
 fn input_subscriptions(
-    inputs: [&Entity<EditableTextState>; 4],
+    inputs: &[Entity<EditableTextState>],
     cx: &mut Context<Workspace>,
 ) -> Vec<Subscription> {
     inputs
-        .into_iter()
+        .iter()
         .map(|input| {
             cx.subscribe(input, |this: &mut Workspace, _, _: &TextChanged, cx| {
                 this.reset_popover_selection(cx);

@@ -9,6 +9,7 @@ use gpui::{
 use gpui_elements::editable_text::EditableTextState;
 
 use super::picker_shell::{PICKER_ROW, PickerShell};
+use super::store::PopoverStore;
 use crate::features::merge::MergeMode;
 use crate::repo::RepoModel;
 use crate::components::BranchRow;
@@ -22,6 +23,7 @@ pub struct BranchPicker {
     pub repo: Entity<RepoModel>,
     pub filter: Entity<EditableTextState>,
     pub scroll: UniformListScrollHandle,
+    pub pickers: Entity<PopoverStore>,
     pub ws: Entity<Workspace>,
 }
 
@@ -72,8 +74,9 @@ impl RenderOnce for BranchPicker {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let (list, footer) = (self.list(), self.footer());
         let n = self.items.len();
-        PickerShell::new("Branches", "Filter branches", self.filter, n, list, footer, self.ws)
-            .on_enter(|this, w, cx| this.enter_branch_picker(w, cx))
+        let ws = self.ws;
+        PickerShell::new("Branches", "Filter branches", self.filter, n, list, footer, self.pickers)
+            .on_enter(move |w, cx| ws.update(cx, |this, cx| this.enter_branch_picker(w, cx)))
     }
 }
 

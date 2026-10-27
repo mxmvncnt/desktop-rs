@@ -52,7 +52,7 @@ impl Workspace {
         match self.overlays.last() {
             Some(Overlay::Popover(_)) => {
                 if let Move::By(d) = mv {
-                    self.step_popover_selection(d.signum(), cx);
+                    self.pickers.update(cx, |p, cx| p.step(d.signum(), cx));
                 }
                 return;
             }

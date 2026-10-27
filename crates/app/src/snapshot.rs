@@ -167,9 +167,9 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
                     "new-branch" => ws.toggle_popover(Popover::NewBranch, window, cx),
                     "new-branch-base" => {
                         ws.toggle_popover(Popover::NewBranch, window, cx);
-                        ws.new_branch_base = Some("staging".into());
-                        ws.new_branch_base_open = true;
-                        ws.name_input.update(cx, |s, cx| s.emplace("feature x", cx));
+                        ws.pickers.update(cx, |p, _| p.new_branch_base = Some("staging".into()));
+                        ws.pickers.update(cx, |p, _| p.new_branch_base_open = true);
+                        ws.pickers.read(cx).name_input.clone().update(cx, |s, cx| s.emplace("feature x", cx));
                     }
                     "clone" => ws.toggle_popover(Popover::Clone, window, cx),
                     "context-menu" => ws.open_file_menu(1, gpui::point(px(120.0), px(150.0)), window, cx),

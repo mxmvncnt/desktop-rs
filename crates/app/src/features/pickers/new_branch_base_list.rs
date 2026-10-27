@@ -9,7 +9,7 @@ use gpui::{
 
 use super::new_branch_base::NewBranchBase;
 use crate::components::BranchRow;
-use crate::workspace::Workspace;
+use super::store::PopoverStore;
 
 const ROW_H: f32 = 28.0;
 const VISIBLE_ROWS: f32 = 6.0;
@@ -19,7 +19,7 @@ pub struct NewBranchBaseList {
     branches: Vec<gd_git::Branch>,
     current: String,
     selected: String,
-    ws: Entity<Workspace>,
+    pickers: Entity<PopoverStore>,
 }
 
 impl NewBranchBaseList {
@@ -28,7 +28,7 @@ impl NewBranchBaseList {
             branches: base.branches.clone(),
             current: base.current.clone(),
             selected: base.effective().to_string(),
-            ws: base.ws.clone(),
+            pickers: base.pickers.clone(),
         }
     }
 }
@@ -38,7 +38,7 @@ impl RenderOnce for NewBranchBaseList {
         let theme = Theme::of(cx).clone();
         let n = self.branches.len();
         let height = (n as f32).min(VISIBLE_ROWS) * ROW_H + 8.0;
-        let Self { branches, current, selected, ws } = self;
+        let Self { branches, current, selected, pickers } = self;
         div()
             .h(px(height))
             .rounded(px(6.0))
@@ -48,7 +48,7 @@ impl RenderOnce for NewBranchBaseList {
                 uniform_list("new-branch-base-list", n, move |range, _w, cx| {
                     range
                         .filter_map(|i| Some((i, branches.get(i)?.clone())))
-                        .map(|(i, b)| base_row(i, b, &current, &selected, &ws, cx))
+                        .map(|(i, b)| base_row(i, b, &current, &selected, &pickers, cx))
                         .collect()
                 })
                 .p(px(4.0))
@@ -63,16 +63,16 @@ fn base_row(
     b: gd_git::Branch,
     current: &str,
     selected: &str,
-    ws: &Entity<Workspace>,
+    pickers: &Entity<PopoverStore>,
     cx: &mut App,
 ) -> gpui::AnyElement {
-    let ws = ws.clone();
+    let pickers = pickers.clone();
     let is_selected = b.name == selected;
     let pick = (b.name != current).then(|| b.name.clone());
     let glyph = if b.kind == BranchKind::Remote { Icon::Cloud } else { Icon::GitBranch };
     BranchRow::new("new-branch-base-row", i, b.name.clone(), move |_, cx| {
         let pick = pick.clone();
-        ws.update(cx, |this, cx| this.set_new_branch_base(pick, cx))
+        pickers.update(cx, |p, cx| p.set_base(pick, cx))
     })
     .icon(glyph)
     .height(ROW_H)
