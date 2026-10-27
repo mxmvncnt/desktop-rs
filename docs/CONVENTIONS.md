@@ -72,9 +72,7 @@ Exception: git writes and network ops keep shelling out to the `git` CLI
 - `mod.rs` only has `mod` lines and `pub use` (panel, dialog view, menu rows,
   state types). Everything else is private to the folder.
 - `state.rs`: `StashState` (model state, a field of `RepoModel`), `StashDialog`
-  enum, `StashUi` (dialog + input, still a plain `Workspace` field because
-  Esc/Enter routing in workspace/actions.rs and menus reads `stash_ui.dialog`; only
-  promote it to an `Entity` if that routing is reworked).
+  enum, `StashUi` (the dialog input; the dialogs are `Overlay::Stash`).
 - `ops.rs`: `impl RepoModel` (background git work, generation counter).
 - `handlers.rs`: `impl Workspace` handlers (open/close/confirm dialogs, menu
   actions). `pub(super)` for what sibling components call, `pub` only for what
@@ -99,19 +97,18 @@ Exception: git writes and network ops keep shelling out to the `git` CLI
   returns `Option<Self>`. Stateless with one call site and no props struct: a
   plain `fn x(..) -> impl IntoElement` is enough.
 - Panels that may be hidden expose `Component::new(..) -> Option<Self>`.
-- Context menus return `Vec<MenuRow>` (`components/menu_row.rs`:
-  `MenuRow::{Item(RowItem), Separator}`); `features/menus` renders them.
+- Context menus return `Vec<MenuRow<A>>` with the feature's own action enum
+  (`components/menu_row.rs`: `MenuRow::{Item(RowItem), Separator}`); `Menu::new` binds them to a
+  `run_*_action` closure and `components::MenuView` renders them (see ARCHITECTURE.md, "Adding a menu").
 - Dialog variants are built by one small method per variant on the
   `RenderOnce` struct, not one giant match.
-- Feature-owned menus reuse `MenuRow<A>` with their own action enum
-  (`features/history`: `MenuRow<HistoryAction>`); rows are built in one small fn
-  per group (`commit_menu_rows.rs`).
+- Every menu has its own action enum (`MenuAction`, `StashAction`, `HistoryAction`, ...); rows are built in
+  one small fn per group (`commit_menu_rows.rs`).
 - Identical rows across features live in `components/` (`FileRow` with an id
   namespace, `.leading(..)` slot and callbacks; `BranchRow` with trailing children).
 - Replace `(bool, bool)` click flags with an enum (`ClickKind`).
-- Two related features can share one overlay area without sharing state:
-  `merge` (`merge_ui`) and `branches` (`branch_ui`) each own their menu/dialog;
-  workspace/actions.rs / menus route Esc/Enter/arrows with `a() || b()`. Typed structs
+- Menus and dialogs are variants of `workspace::Overlay` (one stack on `Workspace`), never
+  per-feature `Option` fields; Esc/Enter/arrows are routed once in `workspace/overlay.rs`. Typed structs
   replace tuples (`branches::RemoteBranch`, not `(String, String)`).
 
 ## Feature folder example: diff (hot rows)
@@ -155,9 +152,8 @@ and gutter pointer state, `handlers.rs` = `impl Workspace` setters,
   on `Workspace`. Hot rows `repo_row`/`branch_row` are plain fns.
 - `features/settings`: also owns the persisted `Settings` model (`model.rs`).
   `SettingsModal::open(ws, cx)` -> `Option`, one `RenderOnce` per page.
-- `features/menus`: the generic context menu (`ContextMenuView`), discard
-  dialog (`DiscardDialogView`), `MenuAction`/`MenuTarget`, and the cross-feature
-  arrow/Enter routing (`key_routing.rs`).
+- `features/menus`: the Changes file/header menus (`MenuAction`) and the discard
+  dialog (`DiscardDialogView`).
 - `utils/text.rs`: `plural`, `split_path`, `sanitize_branch_name`, `relative_time`,
   commit authors. `utils/paths.rs`: `file_url`, `reveal`, `copy_path`.
 - Closure-heavy `RenderOnce` components call back through `Entity<Workspace>`

@@ -122,7 +122,7 @@ guessing APIs. To recreate them:
 
 ## Threading / state (`crates/app`)
 
-- `Workspace` (`workspace/`: `state.rs` struct, `init.rs`, `render.rs` root template, `actions.rs` key routing + Esc order, `repos.rs` open/add/clone, `repo_commands.rs`, `navigation.rs`) is the root view. It owns settings, popover state,
+- `Workspace` (`workspace/`: `state.rs` struct, `init.rs`, `render.rs` root template, `actions.rs` key routing + Esc order, `repos.rs` open/add/clone, `repo_commands.rs`, `navigation.rs`, `overlay.rs` overlay stack) is the root view. It owns settings, picker state,
   text-input entities, scroll handles, and an `Option<Entity<RepoModel>>`.
 - `RepoModel` (`repo/`: `state.rs`, `refresh.rs` (RefreshScope, watcher, `RefreshState` in `RepoModel::sync`), `background_fetch.rs`, `diff_detail.rs` (`DiffDetail` + the one highlight spawner, `select_file`, `expand_diff`), `change_diff.rs`/`commit_diff.rs`, `history_log.rs`, `run.rs`) owns all repository state: status, selection, diff,
   history pages, commit details, branches, and in-flight ops.
@@ -163,10 +163,23 @@ guessing APIs. To recreate them:
 
 ### Menus, dialogs, undo (`features/menus`)
 
-- `Workspace.menu` / `Workspace.dialog` hold the open state. While either is open the root gets key
-  context `"Workspace Menu"` and focus, so `MenuNext/MenuPrevious/MenuConfirm` (↑/↓/Enter) and
-  `Dismiss` (Esc) reach the workspace. Menu rows are described once in `rows(target)`, used for both
-  rendering and keyboard stepping.
+- **One overlay stack**: `Workspace::overlays: Vec<Overlay>` (`workspace/overlay.rs`) holds every open
+  menu, dialog, toolbar popover, diff-options popover and the settings modal; the last entry is the top and
+  paints last (`render.rs::overlays()` is one `match` per entry). `open_overlay` replaces the stack, so
+  openers never close the others by hand. The only real stack is `stack_overlay`: the branch context menu
+  opened over the branch picker (Esc closes the menu, then the picker). Esc = `close_overlay` (pop + refocus
+  the root; with nothing open it falls back to leaving the PR preview), Enter = `overlay_confirm` (menu row
+  or the dialog's own confirm), ↑/↓ = `overlay_step` (menus). While anything but a picker is open the root gets
+  key context `"Workspace Menu"`, so `MenuNext/MenuPrevious/MenuConfirm` and `Dismiss` reach the workspace.
+  Picker cursors, text inputs and `popover_dismissed` stay on `Workspace`. The PR base dropdown lives on
+  `RepoModel.pr.base_menu` and is not an overlay.
+- **Adding a menu**: write `fn x_menu_rows(ctx) -> Vec<MenuRow<XAction>>` and `fn run_x_action(&mut self, action, ctx, ..)`
+  in the feature, then `self.open_menu(Menu::new(position, rows, move |ws, a, w, cx| ws.run_x_action(a, ctx.clone(), w, cx)), w, cx)`.
+  `components::Menu` binds rows to the closure and owns `step()`/`confirm()`; `MenuView` renders it. The menu is
+  already popped when `run_x_action` runs.
+- **Adding a dialog**: a variant on `Overlay` holding the feature's dialog enum, an arm in `overlay_confirm` and in
+  `render.rs::overlays()`. Build it with `gd_ui::Dialog`, which handles Enter/Esc even while an input is focused
+  (`on_confirm` / `on_cancel`).
 - Right-click handlers in `uniform_list` rows capture `cx.entity()` of the Workspace and call
   `ws.update(cx, ..)` with the row index, resolved against the live model at event time.
 - `RepoModel.last_commit` records the session's commit; `undoable_commit()` hides it when the branch
@@ -222,12 +235,11 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 
 ## History (`gd_git::history_ops`, `app/src/features/history/`)
 
-- Layout: `state.rs` (`HistoryState` on `RepoModel.history`, `HistoryUi`, `HistoryDialog`, `HistoryAction`), `ops.rs` + `selection.rs` (`impl RepoModel`), `handlers.rs`/`menu_actions.rs`/`confirm.rs`/`amend.rs` (`impl Workspace`), `commit_detail.rs` (`impl Workspace`, composes `CommitHeader`/`FileList`/diff), and one `RenderOnce` per file (`CommitList`, `CommitRow`, `CommitMenuView` + `commit_menu_rows`, `HistoryDialogView`, `MultiSelectPane`, ...). Commit, stash and PR file lists are the shared `components/FileList` (rows: `components/FileRow`).
+- Layout: `state.rs` (`HistoryState` on `RepoModel.history`, `HistoryUi`, `HistoryDialog`, `HistoryAction`), `ops.rs` + `selection.rs` (`impl RepoModel`), `handlers.rs`/`menu_actions.rs`/`confirm.rs`/`amend.rs` (`impl Workspace`), `commit_detail.rs` (`impl Workspace`, composes `CommitHeader`/`FileList`/diff), and one `RenderOnce` per file (`CommitList`, `CommitRow`, `commit_menu_rows`, `HistoryDialogView`, `MultiSelectPane`, ...). Commit, stash and PR file lists are the shared `components/FileList` (rows: `components/FileRow`).
 
 - State: `RepoModel.history` (unpushed set, tags by sha, GitHub web URL, in-progress op, busy label,
   multi-selection as shas) reloaded in the background by `reload_push_state` on every full refresh.
-  UI state: `Workspace.history_ui` (menu, dialogs, amend, dialog text inputs). Own menu/dialog types so the
-  Changes menu code is untouched; `workspace/actions.rs` routes Esc/Enter/arrows to it first.
+  UI state: `Workspace.history_ui` (amend, dialog text inputs); the menu and dialogs are `Overlay`s.
 - Every op goes through `RepoModel::run` with a labeled `Op` (one at a time, then `refresh`). Menu items are
   disabled while an op, remote op, commit, or stopped merge/rebase/cherry-pick/revert is active.
 - Unpushed: revwalk from HEAD hiding the upstream ref, or hiding `refs/remotes/*` without upstream; empty with no remotes.
@@ -249,7 +261,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 - `gd-git`: `progress.rs` (`Repository::in_progress() -> Option<InProgress>`: Merge/Squash/Rebase/CherryPick/Revert, from `repo.state()`, MERGE_HEAD, `rebase-merge/` step files (libgit2 `open_rebase` rejects git's own rebases), CHERRY_PICK_HEAD, REVERT_HEAD, SQUASH_MSG+`index.has_conflicts()`; `continue_operation`, `abort_operation`, `prepared_message`) and `merge.rs` (`merge`, `merge_squash`, `rebase`, `merge_preview`, `commit_merge`, `resolve_with`, `mark_resolved`, branch rename/delete-remote/create-from). Operations return `OpOutcome::{Done, UpToDate, Conflicts}`; a pause is not an error. `Git::no_editor()` sets GIT_EDITOR=true for `--continue`.
 - The watcher already covers `rebase-*` (git dir top level) and MERGE_HEAD etc.
 - App: `RepoModel.merge: MergeState` (`features/merge/state.rs`, ops in `features/merge/ops.rs`), loaded in every refresh in the background. `RepoModel::run` with a labeled `Op` is the busy-flag write helper. A newly paused merge-like op emits `RepoEvent::PreparedMessage` (fills the commit box if empty). While merge-like ops are paused, `commit` uses `commit_merge` (no index reset).
-- Views: `features/merge/` (`MergeUi` = `Workspace.merge_ui`: `merge_dialog` + `merge_candidate_list` + `merge_preview`, `in_progress_banner`, `conflict_hint` above the diff, `conflict_menu`/`conflict_menu_rows`, `handlers`/`conflict_handlers`) and `features/branches/` (`BranchUi` = `Workspace.branch_ui`: `branch_menu`/`branch_menu_rows`, `branch_dialog` for rename/delete/create-from, `ops`, `handlers`). Esc/Enter/arrows are routed in workspace/actions.rs and menus to both. Conflicted file rows route to the conflict menu in `open_file_menu`.
+- Views: `features/merge/` (`MergeUi` = `Workspace.merge_ui`: `merge_dialog` + `merge_candidate_list` + `merge_preview`, `in_progress_banner`, `conflict_hint` above the diff, `conflict_menu_rows`, `handlers`/`conflict_handlers`) and `features/branches/` (`BranchUi` = `Workspace.branch_ui`: `branch_menu_rows`, `branch_dialog` for rename/delete/create-from, `ops`, `handlers`). Esc/Enter/arrows go through the overlay stack. Conflicted file rows route to the conflict menu in `open_file_menu`.
 - **Hooking another op (revert, cherry-pick, squash) in:** run the git command inside `RepoModel::run`, map a pause with `Repository::outcome_of`, and use `notice_for_outcome`. Banner, conflict list and Continue/Abort work automatically.
 - Gotchas: absolute overlays must themselves be `.absolute().inset_0()` (GPUI lays absolute children out against their direct parent); a focused text input turns ↑/↓/Esc into `NavUp/NavDown/Escape` actions, so dialogs use `capture_action` for those; `gen` is a reserved word in edition 2024.
 
@@ -288,7 +300,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
   `RepoModel::diff_options` holds it; `set_diff_options` reloads the visible change/commit diff via the
   normal generation counters (old diff stays on screen until the new one lands). `Workspace::apply_diff_options` pushes settings in;
   `open_repository` seeds new models.
-- `Workspace::diff_view: DiffView` holds the popover position and the cached `SplitDiff`
+- `Workspace::diff_view: DiffView` holds the cached `SplitDiff`
   (keyed by `Arc::ptr_eq` on the diff). `SplitDiff::build` is one linear pass producing
   `SplitRow { left, right }` index pairs into `Diff::lines` (`NONE` = filler): context on both sides, hunk
   headers span both columns (`left == right`), delete/add runs are paired row by row and padded.
@@ -310,7 +322,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
   - Gotcha: no `h_full` on gutter cells. A percentage height can't resolve in an auto-height (wrapped)
     row and blocks flex stretch. The cells stretch instead, are top-aligned, and keep check marks in a
     one-line-tall box.
-- The popover is a `deferred` overlay like `ContextMenu` (closes on backdrop click/Esc; counted in `overlay_open`).
+- The popover is a `deferred` overlay like `ContextMenu` (`Overlay::DiffOptions`; closes on backdrop click/Esc).
 - Gotcha: a `SplitRow` side can be `NONE`; never index `lines[left]` before checking `left == right`.
 - Snapshot views set settings fields directly (no file writes).
 
@@ -338,7 +350,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
   open and handles keys. `Popover` (click-away backdrop, optional scrim, card at a window position, `menu_in` +
   `handoff`) is the base of `ContextMenu` (positioned at the mouse, clamped to the window; icon/danger/disabled
   items, separators, `.selected(ix)`), `PopoverLayer` and `DiffOptionsMenu`. `Dialog` (scrim + `dialog_in` card,
-  Cancel + confirm) and `modal(card, on_cancel, instant)` (the scrim + centered card used by the settings modal).
+  Cancel + confirm, Enter/Esc captured while an input is focused) and `modal(card, on_cancel, instant)` (the scrim + centered card used by the settings modal).
   The `popover_dismissed` workaround (a backdrop click must not re-trigger the toolbar button) stays on
   `Workspace` because it needs to know which popover the trigger opens.
 - App-side components used by 2+ features are in `app/src/components/` (see CONVENTIONS.md).
