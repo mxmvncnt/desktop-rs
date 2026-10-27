@@ -4,7 +4,7 @@ use gd_ui::divider;
 use gpui::{App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 use gpui_elements::editable_text::EditableTextState;
 
-use crate::shared::text_field::text_field;
+use crate::components::text_field;
 
 #[derive(IntoElement)]
 pub(super) struct SearchBox {

@@ -6,7 +6,7 @@ use gd_ui::{Icon, Theme, motion};
 use gpui::{App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use crate::repo::RepoModel;
-use crate::shared::suggestion_card::SuggestionCard;
+use crate::components::SuggestionCard;
 use crate::shared::file_url::file_url;
 use crate::shared::plural::plural;
 

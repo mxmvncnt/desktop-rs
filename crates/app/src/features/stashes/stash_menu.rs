@@ -2,7 +2,7 @@
 
 use gd_ui::Icon;
 
-use crate::shared::menu_row::{MenuRow, RowItem};
+use crate::components::{MenuRow, RowItem};
 use crate::features::menus::MenuAction;
 
 pub fn stash_menu_rows() -> Vec<MenuRow> {

@@ -8,7 +8,7 @@ use gpui_elements::editable_text::{EditableTextState, actions::Enter};
 use super::state::StashDialog;
 use crate::repo::RepoModel;
 use crate::shared::plural::plural;
-use crate::shared::text_field::text_field;
+use crate::components::text_field;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]

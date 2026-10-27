@@ -14,7 +14,7 @@ use gpui_elements::editable_text::{
 };
 
 use crate::actions::{SelectNext, SelectPrevious};
-use crate::shared::text_field::text_field;
+use crate::components::text_field;
 use crate::workspace::Workspace;
 
 pub(super) const PICKER_ROW: f32 = 34.0;

@@ -10,7 +10,7 @@ use super::state::{CherryPickTarget, HistoryAction, HistoryDialog};
 use crate::components::BranchRow;
 use crate::shared::branch_name::sanitize_branch_name;
 use crate::shared::plural::plural;
-use crate::shared::text_field::text_field;
+use crate::components::{text_area, text_field};
 use crate::workspace::Workspace;
 
 const BRANCH_ROW_HEIGHT: f32 = 30.0;
@@ -153,25 +153,7 @@ impl HistoryDialogView {
     }
 
     fn squash(&self, n: usize, any_pushed: bool, cx: &App) -> Dialog {
-        let theme = Theme::of(cx).clone();
-        let desc = gpui_elements::editable_text::text_area("hist-desc")
-            .state(self.msg_desc.downgrade())
-            .placeholder("Description")
-            .placeholder_color(theme.text_faint)
-            .selection_color(theme.selection)
-            .caret_color(theme.caret)
-            .caret_blink_interval_500ms()
-            .w_full()
-            .h(px(120.0))
-            .px(px(10.0))
-            .py(px(8.0))
-            .rounded(px(gd_ui::theme::CONTROL_RADIUS + 1.0))
-            .bg(theme.input_bg)
-            .border_1()
-            .border_color(theme.border)
-            .text_size(px(13.0))
-            .text_color(theme.text)
-            .overflow_y_scroll();
+        let desc = text_area("hist-desc", &self.msg_desc, "Description", cx).w_full().h(px(120.0)).overflow_y_scroll();
         let summary = div()
             .capture_action(self.enter_confirms())
             .child(text_field("hist-summary", &self.msg_summary, "Summary (required)", cx));

@@ -3,7 +3,7 @@
 use gd_ui::Icon;
 
 use super::state::ConflictAction as A;
-use crate::shared::menu_row::MenuRow;
+use crate::components::MenuRow;
 
 pub type ConflictRow = MenuRow<A>;
 

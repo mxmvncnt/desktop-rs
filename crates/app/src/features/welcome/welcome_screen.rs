@@ -3,7 +3,7 @@
 use gd_ui::{Icon, Theme, motion};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
-use crate::shared::suggestion_card::SuggestionCard;
+use crate::components::SuggestionCard;
 use crate::workspace::{Popover, Workspace};
 
 #[derive(IntoElement)]

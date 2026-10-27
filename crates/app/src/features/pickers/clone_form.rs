@@ -4,7 +4,7 @@ use gd_ui::{Button, Theme};
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 use gpui_elements::editable_text::{EditableTextState, actions::Enter};
 
-use crate::shared::text_field::text_field;
+use crate::components::text_field;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
