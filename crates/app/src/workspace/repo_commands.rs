@@ -37,6 +37,13 @@ impl Workspace {
         self.focus(window, cx);
     }
 
+    pub fn dismiss_undo_strip(&mut self, cx: &mut Context<Self>) {
+        self.with_repo(cx, |r, cx| {
+            r.last_commit = None;
+            cx.notify()
+        });
+    }
+
     pub fn undo_commit(&mut self, cx: &mut Context<Self>) {
         self.with_repo(cx, |r, cx| r.undo_last_commit(cx));
     }

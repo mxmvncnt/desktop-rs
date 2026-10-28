@@ -1,7 +1,9 @@
 //! Desktop's "Committed just now" strip with an Undo button.
 
-use gd_ui::{Button, Icon, Theme, icon, motion};
-use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
+use gd_ui::{Button, Icon, Theme, icon, icon_button, motion};
+use gpui::{
+    App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+};
 
 use crate::repo::LastCommit;
 use crate::utils::text::relative_time;
@@ -18,9 +20,11 @@ impl RenderOnce for UndoStrip {
         let theme = Theme::of(cx).clone();
         let c = self.commit;
         let ws = self.ws;
+        let dismiss = ws.clone();
         motion::fade_quick(
             ("undo-strip", c.time as usize),
             div()
+                .group("undo-strip")
                 .flex()
                 .flex_none()
                 .items_center()
@@ -30,7 +34,29 @@ impl RenderOnce for UndoStrip {
                 .border_t_1()
                 .border_color(theme.border)
                 .bg(theme.ink(0.03))
-                .child(icon(Icon::Check).size(px(14.0)).text_color(theme.success))
+                .child(
+                    div()
+                        .relative()
+                        .flex_none()
+                        .size(px(22.0))
+                        .child(
+                            div()
+                                .absolute()
+                                .size_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .group_hover_style("undo-strip", |s| s.invisible())
+                                .child(icon(Icon::Check).size(px(14.0)).text_color(theme.success)),
+                        )
+                        .child(
+                            div().absolute().size_full().invisible().group_hover_style("undo-strip", |s| s.visible()).child(
+                                icon_button("dismiss-undo-strip", Icon::Close).compact().on_click(move |_, _, cx| {
+                                    dismiss.update(cx, |this, cx| this.dismiss_undo_strip(cx))
+                                }),
+                            ),
+                        ),
+                )
                 .child(
                     div()
                         .flex()
