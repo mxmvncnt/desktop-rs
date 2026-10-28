@@ -91,6 +91,13 @@ them with `#[cfg(test)] #[path = "tests/text.test.rs"] mod tests;` and the test 
 `use super::*;` (private items stay reachable). Feature-gated tests keep their gate on the `mod`
 line. Integration tests go in `crates/<crate>/tests/` (Cargo's own layout).
 
+Tests that need a real `Workspace` (key dispatch, overlay stack: `workspace/tests/overlay.test.rs`,
+the file watcher) use GPUI's headless test platform and are gated with
+`#[cfg(all(test, feature = "snapshot"))]` on the `mod` line. Run them with
+`cargo test -p desktop-rs --features snapshot`; plain `cargo test --workspace` skips them. They send
+keys with `Window::dispatch_keystroke`, so bindings, key contexts and focused inputs are exercised.
+Prefer a pure unit test on the state type (`components/tests/menu_view.test.rs`) when no window is needed.
+
 ## Dependencies
 
 Prefer a well-maintained crate over hand-rolled platform/utility code

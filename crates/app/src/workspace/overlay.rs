@@ -82,3 +82,7 @@ impl Workspace {
         }
     }
 }
+
+#[cfg(all(test, feature = "snapshot"))]
+#[path = "tests/overlay.test.rs"]
+mod tests;
