@@ -6,4 +6,5 @@ Exec=desktop-rs
 Icon=io.github.mxmvncnt.desktop-rs
 Terminal=false
 Categories=Development;RevisionControl;
+Keywords=git;
 StartupWMClass=desktop-rs
