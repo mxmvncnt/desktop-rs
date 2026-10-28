@@ -10,8 +10,8 @@
 
 use gd_ui::{Icon, Theme, icon};
 use gpui::{
-    AnyElement, App, CursorStyle, Decorations, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    ResizeEdge, StatefulInteractiveElement, Styled, Tiling, Window, WindowButton,
+    AnyElement, App, CursorStyle, Decorations, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, ResizeEdge, StatefulInteractiveElement, Styled, Tiling, Window, WindowButton,
     WindowButtonLayout, div, hsla, millis, prelude::*, px,
 };
 
@@ -217,8 +217,8 @@ pub fn frame(content: AnyElement, chrome: Chrome, window: &mut Window, cx: &App)
         .rounded(radius)
         .when(chrome.floating(), |d| {
             d.border_1().border_color(theme.border_strong).shadow(vec![
-                gpui::BoxShadow::new(px(0.0), px(4.0), hsla(0.0, 0.0, 0.0, 0.45))
-                    .blur_radius(px(inset * 0.9)),
+                gpui::BoxShadow::new(px(0.0), px(2.0), hsla(0.0, 0.0, 0.0, 0.25))
+                    .blur_radius(px((inset) / 2.5)),
             ])
         })
         .child(content);
@@ -249,25 +249,85 @@ pub fn frame(content: AnyElement, chrome: Chrome, window: &mut Window, cx: &App)
         let e = RESIZE_EDGE;
         // (shown, edge, cursor, [top, left, right, bottom] offsets, width, height)
         let strips = [
-            (top, ResizeEdge::Top, CursorStyle::ResizeUpDown, [Some(o), Some(o + c), Some(o + c), None], None, Some(e)),
-            (bottom, ResizeEdge::Bottom, CursorStyle::ResizeUpDown, [None, Some(o + c), Some(o + c), Some(o)], None, Some(e)),
-            (left, ResizeEdge::Left, CursorStyle::ResizeLeftRight, [Some(o + c), Some(o), None, Some(o + c)], Some(e), None),
-            (right, ResizeEdge::Right, CursorStyle::ResizeLeftRight, [Some(o + c), None, Some(o), Some(o + c)], Some(e), None),
-            (top && left, ResizeEdge::TopLeft, CursorStyle::ResizeUpLeftDownRight, [Some(o), Some(o), None, None], Some(c), Some(c)),
-            (top && right, ResizeEdge::TopRight, CursorStyle::ResizeUpRightDownLeft, [Some(o), None, Some(o), None], Some(c), Some(c)),
-            (bottom && left, ResizeEdge::BottomLeft, CursorStyle::ResizeUpRightDownLeft, [None, Some(o), None, Some(o)], Some(c), Some(c)),
-            (bottom && right, ResizeEdge::BottomRight, CursorStyle::ResizeUpLeftDownRight, [None, None, Some(o), Some(o)], Some(c), Some(c)),
+            (
+                top,
+                ResizeEdge::Top,
+                CursorStyle::ResizeUpDown,
+                [Some(o), Some(o + c), Some(o + c), None],
+                None,
+                Some(e),
+            ),
+            (
+                bottom,
+                ResizeEdge::Bottom,
+                CursorStyle::ResizeUpDown,
+                [None, Some(o + c), Some(o + c), Some(o)],
+                None,
+                Some(e),
+            ),
+            (
+                left,
+                ResizeEdge::Left,
+                CursorStyle::ResizeLeftRight,
+                [Some(o + c), Some(o), None, Some(o + c)],
+                Some(e),
+                None,
+            ),
+            (
+                right,
+                ResizeEdge::Right,
+                CursorStyle::ResizeLeftRight,
+                [Some(o + c), None, Some(o), Some(o + c)],
+                Some(e),
+                None,
+            ),
+            (
+                top && left,
+                ResizeEdge::TopLeft,
+                CursorStyle::ResizeUpLeftDownRight,
+                [Some(o), Some(o), None, None],
+                Some(c),
+                Some(c),
+            ),
+            (
+                top && right,
+                ResizeEdge::TopRight,
+                CursorStyle::ResizeUpRightDownLeft,
+                [Some(o), None, Some(o), None],
+                Some(c),
+                Some(c),
+            ),
+            (
+                bottom && left,
+                ResizeEdge::BottomLeft,
+                CursorStyle::ResizeUpRightDownLeft,
+                [None, Some(o), None, Some(o)],
+                Some(c),
+                Some(c),
+            ),
+            (
+                bottom && right,
+                ResizeEdge::BottomRight,
+                CursorStyle::ResizeUpLeftDownRight,
+                [None, None, Some(o), Some(o)],
+                Some(c),
+                Some(c),
+            ),
         ];
-        let edges = strips.into_iter().filter(|s| s.0).map(|(_, edge, cursor, [t, l, r, b], w, h)| {
-            strip(edge)
-                .cursor(cursor)
-                .when_some(t, |d, v| d.top(px(v)))
-                .when_some(l, |d, v| d.left(px(v)))
-                .when_some(r, |d, v| d.right(px(v)))
-                .when_some(b, |d, v| d.bottom(px(v)))
-                .when_some(w, |d, v| d.w(px(v)))
-                .when_some(h, |d, v| d.h(px(v)))
-        });
+        let edges =
+            strips
+                .into_iter()
+                .filter(|s| s.0)
+                .map(|(_, edge, cursor, [t, l, r, b], w, h)| {
+                    strip(edge)
+                        .cursor(cursor)
+                        .when_some(t, |d, v| d.top(px(v)))
+                        .when_some(l, |d, v| d.left(px(v)))
+                        .when_some(r, |d, v| d.right(px(v)))
+                        .when_some(b, |d, v| d.bottom(px(v)))
+                        .when_some(w, |d, v| d.w(px(v)))
+                        .when_some(h, |d, v| d.h(px(v)))
+                });
         root = root.children(edges);
     }
     root.into_any_element()
