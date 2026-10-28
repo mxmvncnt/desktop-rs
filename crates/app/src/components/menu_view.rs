@@ -91,3 +91,7 @@ fn menu_entry(row: MenuRow<Run>, ws: &Entity<Workspace>) -> MenuEntry {
         .on_select(move |w, cx| ws.update(cx, |this, cx| run(this, w, cx)));
     MenuEntry::Item(if r.danger { item.danger() } else { item })
 }
+
+#[cfg(test)]
+#[path = "tests/menu_view.test.rs"]
+mod tests;
