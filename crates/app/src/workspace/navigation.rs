@@ -114,7 +114,7 @@ impl Workspace {
         if r.pr.open {
             return NavList::Files(DiffPane::Pr);
         }
-        if r.force_push.open {
+        if self.overlays.iter().any(|o| matches!(o, Overlay::ForcePush)) {
             return NavList::Files(DiffPane::ForcePush);
         }
         match (r.tab, self.nav_list) {

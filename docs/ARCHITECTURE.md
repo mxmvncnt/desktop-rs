@@ -270,10 +270,13 @@ needs `&mut Workspace` today). Not done.
 - Force push: `WorkingStatus::rewritten` = diverged (ahead and behind) and the upstream tip appears in the branch reflog,
   i.e. we rewrote our own history (a teammate's push is not in the reflog, so that stays a Pull). The toolbar button then
   shows `RemoteOp::ForcePush` (`push --force-with-lease`). `Workspace::remote_action` never runs it directly (nor a plain Push
-  while `rewritten`): it opens the preview pane, `features/force_push/` (`RepoModel::force_push: ForcePushState`, `DiffPane::ForcePush`,
-  same shape as the PR preview). `Repository::force_push_preview` (from the last fetch, what `--force-with-lease` checks) gives the commits
-  to push / dropped from the remote and the net file changes remote tip -> HEAD (`files`, `stats`); the pane shows them with a per-file diff
-  and a Cancel / Force push header (`confirm_force_push` runs `RemoteOp::ForcePush`). Esc closes it; refresh and diff-option changes reload it.
+  while `rewritten`): it opens the preview modal (`Workspace::open_force_push` -> `Overlay::ForcePush`),
+  `features/force_push/` (`RepoModel::force_push: ForcePushState`, `DiffPane::ForcePush`). `Repository::force_push_preview` (from the last
+  fetch, what `--force-with-lease` checks) gives the commits to push / dropped from the remote and the net file changes remote tip -> HEAD
+  (`files`, `stats`); the modal shows them with a per-file diff (`render_file_diff_pane` inside `gd_ui::modal`) and a Cancel / Force push
+  header (`Workspace::confirm_force_push` closes it, then runs `RemoteOp::ForcePush`). Enter does nothing on purpose. Esc/backdrop close it.
+  `RepoModel::force_push.open` mirrors the overlay (`sync_force_push_open`, called from `stack_overlay`/`close_overlay`) so refreshes and
+  diff-option changes reload it.
 - Reorder: `move_commit` (swap with neighbour) writes a todo file into `.git/gd-rebase-todo` and runs
   `rebase -i` with `-c sequence.editor="cp '<file>'"`; removed afterwards. No drag and drop (uniform_list
   drag with autoscroll not attempted); menu "Move commit up/down" instead.

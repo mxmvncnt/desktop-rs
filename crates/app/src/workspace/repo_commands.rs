@@ -44,8 +44,7 @@ impl Workspace {
     pub(crate) fn remote_action(&mut self, op: RemoteOp, cx: &mut Context<Self>) {
         let rewritten = self.repo.as_ref().is_some_and(|r| r.read(cx).work.status.as_ref().is_some_and(|s| s.rewritten));
         if op == RemoteOp::ForcePush || (op == RemoteOp::Push && rewritten) {
-            self.overlays.clear();
-            return self.with_repo(cx, |r, cx| r.open_force_push(cx));
+            return self.open_force_push(cx);
         }
         self.with_repo(cx, |r, cx| r.remote(op, cx));
     }

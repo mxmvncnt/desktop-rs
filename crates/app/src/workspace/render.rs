@@ -73,9 +73,9 @@ impl Workspace {
         let Some(repo) = self.repo.clone() else {
             return WelcomeScreen { ws: cx.entity() }.into_any_element();
         };
-        let (tab, pr_open, force_push_open) = {
+        let (tab, pr_open) = {
             let r = repo.read(cx);
-            (r.tab, r.pr.open, r.force_push.open)
+            (r.tab, r.pr.open)
         };
         div()
             .flex()
@@ -83,7 +83,6 @@ impl Workspace {
             .min_h_0()
             .child(Sidebar::new(self, &repo, cx))
             .child(match tab {
-                _ if force_push_open => self.render_force_push(&repo, cx).into_any_element(),
                 _ if pr_open => self.render_pr_preview(&repo, cx).into_any_element(),
                 Tab::Changes => self.render_changes_main(&repo, cx).into_any_element(),
                 Tab::History => self.render_history_main(&repo, cx).into_any_element(),
@@ -107,6 +106,7 @@ impl Workspace {
                 Overlay::History(d) => Some(HistoryDialogView::new(self, d, cx).into_any_element()),
                 Overlay::Stash(d) => StashDialogView::open(self, d, cx).map(IntoElement::into_any_element),
                 Overlay::Merge(d) => MergeDialogView::open(self, d, cx).map(IntoElement::into_any_element),
+                Overlay::ForcePush => Some(self.render_force_push(cx)),
                 Overlay::Branch(d) => BranchDialogView::open(self, d, cx).map(IntoElement::into_any_element),
             });
         }

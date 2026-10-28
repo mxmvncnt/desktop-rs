@@ -4,25 +4,9 @@
 use gpui::Context;
 
 use crate::features::diff::DiffPane;
-use crate::repo::{RemoteOp, RepoModel, spawn_load};
+use crate::repo::{RepoModel, spawn_load};
 
 impl RepoModel {
-    pub fn open_force_push(&mut self, cx: &mut Context<Self>) {
-        self.force_push.open = true;
-        self.load_force_push(cx);
-    }
-
-    pub fn close_force_push(&mut self, cx: &mut Context<Self>) {
-        self.force_push.open = false;
-        self.force_push.detail.load.cancel();
-        cx.notify();
-    }
-
-    pub fn confirm_force_push(&mut self, cx: &mut Context<Self>) {
-        self.close_force_push(cx);
-        self.remote(RemoteOp::ForcePush, cx);
-    }
-
     pub fn load_force_push(&mut self, cx: &mut Context<Self>) {
         self.force_push.loading = true;
         self.force_push.error = None;

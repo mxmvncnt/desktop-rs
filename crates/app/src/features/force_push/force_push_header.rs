@@ -8,6 +8,7 @@ use gpui::{App, Entity, IntoElement, RenderOnce, SharedString, Window, div, prel
 use crate::components::DiffStat;
 use crate::repo::RepoModel;
 use crate::utils::text::plural;
+use crate::workspace::Workspace;
 
 /// Commits listed per side before "+N more".
 const COMMIT_ROWS: usize = 4;
@@ -15,6 +16,7 @@ const COMMIT_ROWS: usize = 4;
 #[derive(IntoElement)]
 pub struct ForcePushHeader {
     pub repo: Entity<RepoModel>,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for ForcePushHeader {
@@ -24,7 +26,7 @@ impl RenderOnce for ForcePushHeader {
         let preview = r.force_push.preview.as_ref();
         let remote = preview.map_or("the remote".to_string(), |p| p.remote_ref.clone());
         let ready = preview.is_some();
-        let (cancel, confirm) = (self.repo.clone(), self.repo.clone());
+        let (cancel, confirm) = (self.ws.clone(), self.ws.clone());
         let title = div()
             .flex()
             .items_center()
@@ -41,14 +43,14 @@ impl RenderOnce for ForcePushHeader {
                 Button::new("force-push-cancel")
                     .ghost()
                     .label("Cancel")
-                    .on_click(move |_, _, cx| cancel.update(cx, |r, cx| r.close_force_push(cx))),
+                    .on_click(move |_, w, cx| cancel.update(cx, |this, cx| this.close_overlay(w, cx))),
             )
             .child(
                 Button::new("force-push-confirm")
                     .style(ButtonStyle::Danger)
                     .label("Force push")
                     .disabled(!ready)
-                    .on_click(move |_, _, cx| confirm.update(cx, |r, cx| r.confirm_force_push(cx))),
+                    .on_click(move |_, w, cx| confirm.update(cx, |this, cx| this.confirm_force_push(w, cx))),
             );
         let warning = r.force_push.error.clone().unwrap_or_else(|| {
             format!(

@@ -1,4 +1,4 @@
-//! Snapshot view: the force push preview (needs a repo with a rewritten, pushed history).
+//! Snapshot view: the force push modal (needs a repo with a rewritten, pushed history).
 
 use gpui::{Context, Window};
 
@@ -10,6 +10,5 @@ pub fn views() -> &'static [View] {
 }
 
 fn open_preview(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
-    let Some(r) = &ws.repo else { return };
-    r.update(cx, |r, cx| r.open_force_push(cx));
+    ws.open_force_push(cx);
 }

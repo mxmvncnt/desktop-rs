@@ -27,6 +27,8 @@ pub enum Overlay {
     Stash(StashDialog),
     Merge(MergeDialog),
     Branch(BranchDialog),
+    /// Force push preview (modal); its data is `RepoModel::force_push`.
+    ForcePush,
 }
 
 impl Workspace {
@@ -38,12 +40,14 @@ impl Workspace {
     pub fn stack_overlay(&mut self, overlay: Overlay, cx: &mut Context<Self>) {
         self.overlays.push(overlay);
         self.overlay_gen += 1;
+        self.sync_force_push_open(cx);
         cx.notify();
     }
 
     /// Esc, a backdrop click or Cancel: close the top overlay.
     pub fn close_overlay(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.overlays.pop();
+        self.sync_force_push_open(cx);
         self.focus(window, cx);
         cx.notify();
     }
@@ -78,7 +82,7 @@ impl Workspace {
             Some(Overlay::Stash(_)) => self.stash_confirm(cx),
             Some(Overlay::Merge(_)) => self.merge_confirm(window, cx),
             Some(Overlay::Branch(_)) => self.branch_dialog_confirm(window, cx),
-            Some(Overlay::Popover(_) | Overlay::DiffOptions(_) | Overlay::Settings) | None => {}
+            Some(Overlay::Popover(_) | Overlay::DiffOptions(_) | Overlay::Settings | Overlay::ForcePush) | None => {}
         }
     }
 }

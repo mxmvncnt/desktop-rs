@@ -6,7 +6,7 @@ use crate::repo::DiffDetail;
 
 #[derive(Default)]
 pub struct ForcePushState {
-    /// The main pane shows the preview instead of the tab content.
+    /// The modal is open (mirrors `Overlay::ForcePush`; refreshes reload while it is).
     pub open: bool,
     pub loading: bool,
     pub preview: Option<ForcePushPreview>,
