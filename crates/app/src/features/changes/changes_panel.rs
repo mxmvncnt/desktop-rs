@@ -9,7 +9,7 @@ use gpui::{
 use super::changes_header::ChangesHeader;
 use super::changes_list::ChangesList;
 use super::commit_box::CommitBox;
-use super::state::{CommitButton, SelectionSummary};
+use super::state::SelectionSummary;
 use super::undo_strip::UndoStrip;
 use crate::features::stashes::StashPanel;
 use crate::repo::{LastCommit, RepoModel};
@@ -22,16 +22,14 @@ pub struct ChangesPanel {
     ws: Entity<Workspace>,
     stashes: Option<StashPanel>,
     undo: Option<UndoStrip>,
-    commit_box: CommitBox,
+    commit_box: Entity<CommitBox>,
 }
 
 impl ChangesPanel {
     pub fn new(ws: &Workspace, repo: &Entity<RepoModel>, cx: &mut Context<Workspace>) -> Self {
         let r = repo.read(cx);
         let selection = SelectionSummary::of(r);
-        let amending = ws.amending(cx);
-        let summary_ok = !ws.commit_message(cx).0.is_empty();
-        let button = CommitButton::of(r, selection.included, amending, summary_ok);
+        let amending = ws.commit_box.read(cx).amending(cx);
         let last: Option<LastCommit> = r.undoable_commit().cloned().filter(|_| !amending);
         let ws_entity = cx.entity();
         Self {
@@ -45,12 +43,7 @@ impl ChangesPanel {
             ws: ws_entity.clone(),
             stashes: StashPanel::new(repo, ws_entity.clone(), cx),
             undo: last.map(|c| UndoStrip { commit: c, ws: ws_entity.clone() }),
-            commit_box: CommitBox {
-                button,
-                message: ws.message.clone(),
-                sidebar_width: ws.sidebar_width(),
-                ws: ws_entity,
-            },
+            commit_box: ws.commit_box.clone(),
         }
     }
 }

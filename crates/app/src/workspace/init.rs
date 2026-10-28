@@ -4,11 +4,12 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use gpui::{App, AppContext, Context, Entity, Focusable, Subscription, UniformListScrollHandle, Window};
-use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
+use gpui_elements::editable_text::{EditableTextState, TextChanged};
 
 use super::state::Workspace;
 use crate::features::accounts::AccountsStore;
 use crate::features::branches::BranchUi;
+use crate::features::changes::CommitBox;
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
 use crate::features::pickers::PopoverStore;
@@ -18,16 +19,13 @@ use crate::features::stashes::StashUi;
 /// Skip the focus refresh when the watcher refreshed this recently.
 const RECENT_WATCH_REFRESH: Duration = Duration::from_secs(1);
 
-fn text_state(cx: &mut App) -> Entity<EditableTextState> {
-    cx.new(|cx| EditableTextState::new(StringStorage::default(), cx))
-}
-
 impl Workspace {
     pub fn new(open_path: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let message = text_state(cx);
+        let ws = cx.weak_entity();
+        let commit_box = cx.new(|cx| CommitBox::new(ws, cx));
         let pickers = cx.new(|cx| PopoverStore::new(cx));
         let p = pickers.read(cx);
-        let inputs = [message.clone(), p.filter.clone(), p.name_input.clone(), p.url_input.clone()];
+        let inputs = [p.filter.clone(), p.name_input.clone(), p.url_input.clone()];
         let mut subs = input_subscriptions(&inputs, cx);
         subs.push(cx.observe(&pickers, |_, _, cx| cx.notify()));
         let accounts = cx.new(|cx| AccountsStore::new(cx));
@@ -49,8 +47,7 @@ impl Workspace {
             branch_ui: BranchUi::new(cx),
             startup_error: None,
             corner_radius: 0.0,
-            message,
-            message_placeholder: None,
+            commit_box,
             nav_list: None,
             changes_scroll: UniformListScrollHandle::new(),
             history_scroll: UniformListScrollHandle::new(),

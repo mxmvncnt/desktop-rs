@@ -1,9 +1,9 @@
 use gpui::{Entity, FocusHandle, SharedString, Subscription, Task, UniformListScrollHandle};
-use gpui_elements::editable_text::EditableTextState;
 
 use super::overlay::Overlay;
 use crate::features::accounts::AccountsStore;
 use crate::features::branches::BranchUi;
+use crate::features::changes::CommitBox;
 use crate::features::diff::{DiffSelectUi, DiffView};
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
@@ -48,10 +48,8 @@ pub struct Workspace {
     /// Error shown when no repository is open (e.g. bad path on startup).
     pub startup_error: Option<String>,
 
-    /// Commit message: first line is the summary, the rest the description.
-    pub message: Entity<EditableTextState>,
-    /// Placeholder last shown in `message` (see `sync_message_placeholder`).
-    pub(crate) message_placeholder: Option<String>,
+    /// Commit message input, amend mode and commit button (features/changes).
+    pub commit_box: Entity<CommitBox>,
 
     /// List that ↑/↓ act on: the one last clicked (None = the tab's main list).
     pub nav_list: Option<super::navigation::NavList>,

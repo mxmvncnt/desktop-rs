@@ -90,7 +90,7 @@ Branch: `main`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 
 - ✅ Desktop layout: toolbar (repo ▾, branch ▾, contextual Publish/Pull/Push/Fetch), sidebar tabs, main diff.
 - ✅ Changes list: checkboxes, select-all (mixed state), status glyphs, ↑/↓.
-- ✅ Commit box: one auto-growing, wrapping message input (first line = summary, rest = description; `features/changes/message.rs`), `Commit to <branch>` (Ctrl+Enter), enabled only when valid.
+- ✅ Commit box: one auto-growing, wrapping message input (first line = summary, rest = description; `features/changes/commit_box.rs`, its own `CommitBox` entity: typing does not notify `Workspace`), `Commit to <branch>` (Ctrl+Enter), enabled only when valid.
   - Exactly one file selected: empty summary shows `Create/Update/Delete x` / `Rename a to b` as placeholder and the commit uses it (`RepoModel::default_summary`).
   - Committing keeps the selection (no empty frame): the status refresh moves it to the file now at the same row and the old diff stays until the new one loads.
 - ✅ Virtualized diff with gutters, hunk headers, add/del washes, truncation notice.
@@ -196,10 +196,10 @@ echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new 
       (`features/pickers/popover_layer.rs`) extracted as components. `repo.rs` became `repo/` (see ARCHITECTURE).
 - Verified pixel-identical: ~175 snapshots (all views, CSD, hover, `watch`) before/after.
 - Next steps (candidates, not done, behavior-changing):
-  - Split `Workspace` into child entities so typing in the commit box does not re-render the diff:
-    `CommitBoxState` (summary/description inputs), `PickerState` (popover, filter, name/url inputs, selection),
-    `SettingsModal` (settings_open/page), `DiffView`+`diff_select`+`diff_scroll` as a `DiffPane` entity.
-    Esc/Enter routing in `workspace/actions.rs` reads many of these fields and must be reworked first.
+  - Commit box is now its own `CommitBox` entity (done). `Workspace::render` still runs on every draw (see
+    ARCHITECTURE, "Commit box"); skipping the diff/file-list work needs `DiffView`+`diff_select`+`diff_scroll` as a
+    `DiffPane` entity embedded with `Entity::cached(style)`. Esc/Enter routing in `workspace/overlay.rs` reads many
+    of these fields and must be reworked first.
   - Move `select_change` and the other `RepoModel` selection methods into `features/changes/ops.rs` / `features/history`
     by widening the diff loader's visibility.
   - `RepoModel::new` still lists every field; group them into sub-structs (done for `ChangesState`, `HistoryLog`, `RefreshState`).

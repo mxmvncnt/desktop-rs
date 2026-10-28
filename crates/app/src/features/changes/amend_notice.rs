@@ -7,19 +7,19 @@ use gpui::{
     prelude::*, px,
 };
 
-use crate::workspace::Workspace;
+use super::commit_box::CommitBox;
 
 #[derive(IntoElement)]
 pub struct AmendNotice {
     pub pushed: bool,
-    pub ws: gpui::Entity<Workspace>,
+    pub commit_box: gpui::Entity<CommitBox>,
 }
 
 impl RenderOnce for AmendNotice {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let pushed = self.pushed;
-        let ws = self.ws;
+        let commit_box = self.commit_box;
         let glyph = if pushed { Icon::Warning } else { Icon::Info };
         let glyph_color = if pushed { theme.warning } else { theme.text_muted };
         motion::fade_quick(
@@ -58,7 +58,7 @@ impl RenderOnce for AmendNotice {
                                 .text_color(theme.text)
                                 .underline()
                                 .child("Stop amending")
-                                .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.stop_amend(cx))),
+                                .on_click(move |_, _, cx| commit_box.update(cx, |b, cx| b.stop_amend(cx))),
                         ),
                 ),
         )

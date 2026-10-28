@@ -33,7 +33,6 @@ impl SelectionSummary {
 pub struct CommitButton {
     pub label: SharedString,
     pub enabled: bool,
-    pub amending: bool,
     /// The commit being amended was already pushed (force push needed).
     pub head_pushed: bool,
     /// Shown as the summary placeholder and used when the summary is empty.
@@ -61,6 +60,6 @@ impl CommitButton {
             format!("Commit to {}", r.branch_name()).into()
         };
         let head_pushed = r.history.push_state_loaded && r.log.commits.first().is_some_and(|c| !r.is_unpushed(&c.sha));
-        Self { label, enabled, amending, head_pushed, default_summary }
+        Self { label, enabled, head_pushed, default_summary }
     }
 }

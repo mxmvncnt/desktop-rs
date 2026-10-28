@@ -50,10 +50,8 @@ impl Workspace {
         model.update(cx, |m, _| {
             m.diff_options.ignore_whitespace = self.settings.diff_ignore_whitespace
         });
-        self.repo_sub = Some(cx.observe(&model, |this, model, cx| {
-            this.sync_message_placeholder(cx);
-            observe_notices(this, model, cx)
-        }));
+        self.repo_sub = Some(cx.observe(&model, observe_notices));
+        self.commit_box.update(cx, |b, cx| b.attach(&model, cx));
         self.repo_event_sub = Some(cx.subscribe(&model, |this, _, ev: &RepoEvent, cx| this.on_repo_event(ev, cx)));
         self.repo = Some(model);
         self.overlays.clear();
@@ -61,13 +59,15 @@ impl Workspace {
 
     fn on_repo_event(&mut self, ev: &RepoEvent, cx: &mut Context<Self>) {
         match ev {
-            RepoEvent::CommitUndone { summary, description } => self.set_commit_message(summary, description, cx),
+            RepoEvent::CommitUndone { summary, description } => self.commit_box.update(cx, |b, cx| b.set_text(summary, description, cx)),
             RepoEvent::SwitchBranchWithChanges(branch) => self.open_switch_dialog(branch.clone(), cx),
             RepoEvent::PreparedMessage { summary, description } => {
                 // A merge paused: show git's prepared message unless the user typed one.
-                if self.message.read(cx).as_str().trim().is_empty() {
-                    self.set_commit_message(summary, description, cx);
-                }
+                self.commit_box.update(cx, |b, cx| {
+                    if b.message.read(cx).as_str().trim().is_empty() {
+                        b.set_text(summary, description, cx);
+                    }
+                });
             }
         }
     }
