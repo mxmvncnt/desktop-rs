@@ -8,7 +8,7 @@ use gpui::{
 };
 
 /// Width the toolbar leaves free for the traffic lights.
-const TRAFFIC_LIGHTS_WIDTH: f32 = 78.0;
+const TRAFFIC_LIGHTS_WIDTH: f32 = 72.0;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Chrome {

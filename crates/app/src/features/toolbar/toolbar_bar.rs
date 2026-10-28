@@ -12,6 +12,8 @@ use super::remote_button::RemoteButton;
 use crate::platform::Chrome;
 use crate::workspace::{Popover, Workspace};
 
+const EDGE_GAP: f32 = 12.0;
+
 #[derive(IntoElement)]
 pub struct Toolbar {
     ws: Entity<Workspace>,
@@ -48,8 +50,8 @@ impl RenderOnce for Toolbar {
             .flex_none()
             .items_center()
             .h(px(TOOLBAR_HEIGHT))
-            .pl(px(6.0 + chrome.leading_inset()))
-            .pr(px(6.0))
+            .pl(px(EDGE_GAP + chrome.leading_inset()))
+            .pr(px(EDGE_GAP))
             .py(px(6.0))
             .gap(px(4.0))
             .bg(theme.surface)

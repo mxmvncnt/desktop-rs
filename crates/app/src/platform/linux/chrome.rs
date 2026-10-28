@@ -124,7 +124,6 @@ pub fn caption_buttons(
             .flex_none()
             .items_center()
             .gap(px(4.0))
-            .px(px(6.0))
             .children(buttons.iter().flatten().map(|b| {
                 let (id, glyph, close): (&'static str, Icon, bool) = match b {
                     WindowButton::Minimize => ("caption-minimize", Icon::WindowMinimize, false),
