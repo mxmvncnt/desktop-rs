@@ -10,7 +10,6 @@ mod changes_pane;
 mod changes_panel;
 mod commit_box;
 mod file_header;
-mod message;
 mod no_changes;
 mod ops;
 mod sidebar;
@@ -21,5 +20,6 @@ mod undo_strip;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
 
+pub use commit_box::CommitBox;
 pub use sidebar::Sidebar;
 pub use resize::SidebarResize;

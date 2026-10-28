@@ -2,7 +2,6 @@
 //! and the Workspace side ([`HistoryUi`]: menu, dialog, amend mode, inputs).
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
 
 use gd_git::{Commit, ResetMode};
 use gpui::{AppContext, Context, Entity, Subscription};
@@ -41,11 +40,9 @@ pub enum ClickKind {
     Range,
 }
 
-/// Everything the History feature adds to `Workspace`: the dialog inputs and
-/// amend mode (the menu and dialogs are `Overlay`s).
+/// Everything the History feature adds to `Workspace`: the dialog inputs
+/// (the menu and dialogs are `Overlay`s).
 pub struct HistoryUi {
-    /// Commit box is amending the last commit of this repository.
-    pub amend: Option<PathBuf>,
     /// Inputs shared by the dialogs (squash message, branch / tag name).
     pub msg_summary: Entity<EditableTextState>,
     pub msg_desc: Entity<EditableTextState>,
@@ -63,7 +60,7 @@ impl HistoryUi {
             .into_iter()
             .map(|i| cx.subscribe(i, |_: &mut Workspace, _, _: &TextChanged, cx| cx.notify()))
             .collect();
-        Self { amend: None, msg_summary, msg_desc, name, search, _subs: subs }
+        Self { msg_summary, msg_desc, name, search, _subs: subs }
     }
 }
 

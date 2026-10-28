@@ -35,7 +35,7 @@ fn select_file(ws: &mut Workspace, view: &str, _: &mut Window, cx: &mut Context<
 fn commit_long(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
     let body = (1..=12).map(|i| format!("Line {i} of a long description that wraps around the box")).collect::<Vec<_>>().join("\n");
     let summary = "A fairly long summary supercalifragilisticexpialidocious_unbreakable_identifier_name_here_and_more";
-    ws.set_commit_message(summary, &body, cx);
+    ws.commit_box.update(cx, |b, cx| b.set_text(summary, &body, cx));
 }
 
 fn undo_strip(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
