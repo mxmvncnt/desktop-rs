@@ -96,7 +96,7 @@ impl Theme {
             text_muted: c(p.muted),
             text_faint: c(p.faint),
             solid: c(p.text),
-            solid_hover: hsla(0.0, 0.0, 1.0 - wash, 1.0),
+            solid_hover: hsla(0.0, 0.0, wash, 1.0),
             on_solid: c(p.bg),
             accent,
             accent_strong: c(p.accent_strong),
