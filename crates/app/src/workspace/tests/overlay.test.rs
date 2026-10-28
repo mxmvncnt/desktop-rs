@@ -252,7 +252,7 @@ fn backdrop_click_closes_the_picker_and_swallows_the_trigger_click_that_follows(
 #[test]
 fn enter_and_esc_work_in_a_discard_dialog() {
     let mut f = fixture();
-    let dialog = || Overlay::Discard(crate::features::menus::ConfirmDialog::DiscardAll(Vec::new()));
+    let dialog = || Overlay::Discard(crate::features::menus::ConfirmDialog::All(Vec::new()));
     f.with(|ws, w, cx| {
         ws.open_overlay(dialog(), cx);
         ws.focus(w, cx)

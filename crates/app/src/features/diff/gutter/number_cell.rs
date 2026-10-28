@@ -84,6 +84,7 @@ fn selectable_cell(
 ) -> AnyElement {
     let (repo_down, ws_down) = (sel.repo.clone(), sel.ws.clone());
     let (repo_move, ws_move) = (sel.repo.clone(), sel.ws.clone());
+    let ws_menu = sel.ws.clone();
     cell.id(id)
         .cursor_pointer()
         .map(|d| {
@@ -99,6 +100,9 @@ fn selectable_cell(
         .on_mouse_down(MouseButton::Left, move |_, _, cx| {
             let include = repo_down.update(cx, |r, cx| r.toggle_row(ix, cx));
             ws_down.update(cx, |w, _| w.diff_select.drag = Some(GutterDrag { anchor: ix, include }));
+        })
+        .on_mouse_down(MouseButton::Right, move |e, w, cx| {
+            ws_menu.update(cx, |this, cx| this.open_discard_rows_menu(vec![ix], false, e.position, w, cx))
         })
         .on_mouse_move(move |e, _, cx| {
             if e.pressed_button != Some(MouseButton::Left) {

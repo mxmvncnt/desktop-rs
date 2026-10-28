@@ -1,15 +1,20 @@
-use gd_git::FileChange;
+use std::sync::Arc;
+
+use gd_git::{Diff, FileChange};
 
 #[derive(Clone)]
 pub enum ConfirmDialog {
-    DiscardFile(FileChange),
-    DiscardAll(Vec<FileChange>),
+    File(FileChange),
+    All(Vec<FileChange>),
+    /// Changed `rows` of the working diff of `path`: one line or a whole chunk.
+    Rows { path: String, diff: Arc<Diff>, rows: Vec<usize> },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MenuAction {
     Discard,
     DiscardAll,
+    DiscardRows,
     Ignore,
     IgnoreExt,
     CopyPath,

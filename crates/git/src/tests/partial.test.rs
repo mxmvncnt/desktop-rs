@@ -40,3 +40,12 @@ fn missing_final_newline() {
 fn crlf_kept() {
     assert_eq!(stage("a\r\nb\r\n", "a\r\nB\r\n", |l| l.kind == DiffLineKind::Add), "a\r\nb\r\nB\r\n");
 }
+
+#[test]
+fn discard_rows_reverts_only_picked_lines() {
+    let (old, new) = ("a\nb\nc\n", "a\nB\nc\nd\n");
+    // Reverting just the added "d" keeps the b -> B edit.
+    let d = diff_texts(old, new, DiffOptions::default());
+    let rows: Vec<usize> = (0..d.lines.len()).filter(|&i| d.lines[i].text == "d").collect();
+    assert_eq!(staged_text(&d, |ix| !rows.contains(&ix)).unwrap(), "a\nB\nc\n");
+}

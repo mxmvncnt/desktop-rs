@@ -1,7 +1,9 @@
 //! RepoModel operations of the Changes tab: what is included in the next
 //! commit, committing, ignoring, discarding and undoing the last commit.
 
-use gd_git::{FileChange, FileStatus};
+use std::sync::Arc;
+
+use gd_git::{Diff, FileChange, FileStatus};
 use gpui::Context;
 
 use crate::repo::{LastCommit, Op, RepoEvent, RepoModel};
@@ -105,6 +107,11 @@ impl RepoModel {
 
     pub fn discard(&mut self, changes: Vec<FileChange>, cx: &mut Context<Self>) {
         self.run(Op::default(), move |r| r.discard(&changes), |_, _, _| {}, cx);
+    }
+
+    /// Revert the changed `rows` of `diff` in the working-tree file `path`.
+    pub fn discard_rows(&mut self, path: String, diff: Arc<Diff>, rows: Vec<usize>, cx: &mut Context<Self>) {
+        self.run(Op::default(), move |r| r.discard_rows(&path, &diff, &rows), |_, _, _| {}, cx);
     }
 
     /// Soft-reset HEAD~1 and hand the message back via [`RepoEvent::CommitUndone`].

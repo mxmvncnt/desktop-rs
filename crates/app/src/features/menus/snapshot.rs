@@ -17,6 +17,6 @@ pub fn views() -> &'static [View] {
 
 fn discard_dialog(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
     if let Some(c) = ws.repo.as_ref().and_then(|r| r.read(cx).changes().get(1).cloned()) {
-        ws.open_overlay(Overlay::Discard(ConfirmDialog::DiscardFile(c)), cx);
+        ws.open_overlay(Overlay::Discard(ConfirmDialog::File(c)), cx);
     }
 }

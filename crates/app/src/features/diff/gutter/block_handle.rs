@@ -51,7 +51,7 @@ impl RowSelect {
         let hovered = self.hovered_block == Some(start);
         let state = r.block_state(rows.clone());
         let (repo, ws) = (self.repo.clone(), self.ws.clone());
-        let ws_hover = self.ws.clone();
+        let (ws_hover, ws_menu, menu_rows) = (self.ws.clone(), self.ws.clone(), rows.clone());
         base.id(("hunk-handle", cell))
             .cursor_pointer()
             .bg(match (state, hovered) {
@@ -78,6 +78,10 @@ impl RowSelect {
                 cx.stop_propagation();
                 ws.update(cx, |w, _| w.diff_select.drag = None);
                 repo.update(cx, |r, cx| r.toggle_block(rows.clone(), cx));
+            })
+            .on_mouse_down(MouseButton::Right, move |e, w, cx| {
+                cx.stop_propagation();
+                ws_menu.update(cx, |this, cx| this.open_discard_rows_menu(menu_rows.clone().collect(), true, e.position, w, cx));
             })
             .into_any_element()
     }

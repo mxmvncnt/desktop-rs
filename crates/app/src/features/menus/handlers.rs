@@ -4,9 +4,11 @@
 use gd_git::FileStatus;
 use gpui::{Context, Pixels, Point, Window};
 
+use gd_ui::Icon;
+
 use super::menu_rows::{file_rows, header_rows};
-use super::state::ConfirmDialog;
-use crate::components::Menu;
+use super::state::{ConfirmDialog, MenuAction};
+use crate::components::{Menu, MenuRow, RowItem};
 use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
@@ -37,14 +39,28 @@ impl Workspace {
         }
     }
 
+    /// Right-click on a diff gutter: offer to discard `rows` (one line, or a
+    /// whole chunk when `chunk`) of the displayed working diff.
+    pub fn open_discard_rows_menu(&mut self, rows: Vec<usize>, chunk: bool, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(repo) = self.repo.as_ref().map(|r| r.read(cx)) else { return };
+        let (Some(path), Some(diff)) = (repo.selected_path(), repo.work.detail.diff.clone()) else { return };
+        let label = if chunk { "Discard chunk…" } else { "Discard line…" };
+        let item = MenuRow::Item(RowItem::new(MenuAction::DiscardRows, label, Icon::Trash).danger());
+        let menu = Menu::new(position, vec![item], move |ws, _, _, cx| {
+            let dialog = ConfirmDialog::Rows { path: path.clone(), diff: diff.clone(), rows: rows.clone() };
+            ws.open_overlay(Overlay::Discard(dialog), cx)
+        });
+        self.open_menu(menu, window, cx);
+    }
+
     pub fn confirm_dialog(&mut self, cx: &mut Context<Self>) {
         let Some(Overlay::Discard(dialog)) = self.overlays.pop_if(|o| matches!(o, Overlay::Discard(_))) else { return };
         cx.notify();
         let Some(repo) = self.repo.clone() else { return };
-        let changes = match dialog {
-            ConfirmDialog::DiscardFile(c) => vec![c],
-            ConfirmDialog::DiscardAll(all) => all,
-        };
-        repo.update(cx, |r, cx| r.discard(changes, cx));
+        match dialog {
+            ConfirmDialog::File(c) => repo.update(cx, |r, cx| r.discard(vec![c], cx)),
+            ConfirmDialog::All(all) => repo.update(cx, |r, cx| r.discard(all, cx)),
+            ConfirmDialog::Rows { path, diff, rows } => repo.update(cx, |r, cx| r.discard_rows(path, diff, rows, cx)),
+        }
     }
 }

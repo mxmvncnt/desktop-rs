@@ -19,7 +19,7 @@ impl Workspace {
             (MenuAction::DiscardAll, _) => {
                 let all = repo.read(cx).changes().to_vec();
                 if !all.is_empty() {
-                    self.open_overlay(Overlay::Discard(ConfirmDialog::DiscardAll(all)), cx);
+                    self.open_overlay(Overlay::Discard(ConfirmDialog::All(all)), cx);
                 }
             }
             (action, Some(change)) => self.run_file_action(action, change, &repo, cx),
@@ -30,7 +30,7 @@ impl Workspace {
     fn run_file_action(&mut self, action: MenuAction, c: FileChange, repo: &Entity<RepoModel>, cx: &mut Context<Self>) {
         let root = repo.read(cx).repo.root().to_path_buf();
         match action {
-            MenuAction::Discard => self.open_overlay(Overlay::Discard(ConfirmDialog::DiscardFile(c)), cx),
+            MenuAction::Discard => self.open_overlay(Overlay::Discard(ConfirmDialog::File(c)), cx),
             MenuAction::CopyPath => copy_path(&root, &c.path, cx),
             MenuAction::CopyRelPath => cx.write_to_clipboard(ClipboardItem::new_string(c.path)),
             MenuAction::Reveal => reveal(&root, &c.path, cx),

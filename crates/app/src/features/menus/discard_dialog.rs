@@ -18,12 +18,12 @@ pub struct DiscardDialogView {
 impl DiscardDialogView {
     pub fn new(dialog: ConfirmDialog, ws: Entity<Workspace>) -> Self {
         let (title, body, confirm_label) = match &dialog {
-            ConfirmDialog::DiscardFile(c) => (
+            ConfirmDialog::File(c) => (
                 "Confirm discard changes".to_string(),
                 format!("Are you sure you want to discard all changes to {}?", c.path),
                 "Discard changes",
             ),
-            ConfirmDialog::DiscardAll(all) => (
+            ConfirmDialog::All(all) => (
                 "Confirm discard all changes".to_string(),
                 format!(
                     "Are you sure you want to discard all changes to {} file{}?",
@@ -31,6 +31,15 @@ impl DiscardDialogView {
                     plural(all.len() as u32)
                 ),
                 "Discard all changes",
+            ),
+            ConfirmDialog::Rows { path, rows, .. } => (
+                "Confirm discard changes".to_string(),
+                format!(
+                    "Are you sure you want to discard {} changed line{} in {path}?",
+                    rows.len(),
+                    plural(rows.len() as u32)
+                ),
+                "Discard changes",
             ),
         };
         Self { title, body, confirm_label, ws }

@@ -116,6 +116,19 @@ impl Repository {
         Ok(())
     }
 
+    /// Revert the changed `rows` of `diff` in the working-tree file `path`,
+    /// keeping every other change. Refuses if the file changed on disk since
+    /// the diff was made.
+    pub fn discard_rows(&self, path: &str, diff: &Diff, rows: &[usize]) -> Result<()> {
+        let src = diff.source.as_ref().ok_or_else(|| GitError::Invalid(format!("{path} has no text diff")))?;
+        if self.read_side(&Side::Worktree(path.to_string())).unwrap_or_default() != src.new.as_bytes() {
+            return Err(GitError::Invalid(format!("{path} changed on disk; reopen it and try again")));
+        }
+        let content = staged_text(diff, |ix| !rows.contains(&ix))
+            .ok_or_else(|| GitError::Invalid(format!("{path} is too large to discard lines")))?;
+        std::fs::write(self.root().join(path), content).map_err(|e| GitError::Io(format!("{path}: {e}")))
+    }
+
     /// File mode for the staged entry: the working-tree executable bit on
     /// unix, else the mode in HEAD, else a regular file.
     fn index_mode(&self, f: &PartialFile) -> Result<&'static str> {
