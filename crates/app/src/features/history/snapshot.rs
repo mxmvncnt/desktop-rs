@@ -72,6 +72,7 @@ fn commit_state(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Co
             multi(cx);
             pick(ws, HistoryAction::Squash, window, cx);
         }
+        "history-reword" => pick(ws, HistoryAction::Reword, window, cx),
         "history-reset" => pick(ws, HistoryAction::Reset, window, cx),
         "history-cherry" => pick(ws, HistoryAction::CherryPick, window, cx),
         "history-tag" => {

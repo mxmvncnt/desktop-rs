@@ -264,6 +264,9 @@ needs `&mut Workspace` today). Not done.
   parent). If the run ends at HEAD, `update-ref` moves the branch (working tree and index untouched).
   Otherwise `rebase --autostash --onto <new> <newest>` replays the later commits; they apply cleanly
   because the tree is unchanged.
+- Reword (non-HEAD; HEAD uses Amend): `reword_commit` builds the new commit with `commit-tree` (same tree and parents, original
+  author via `GIT_AUTHOR_*`), then `update-ref` at HEAD or `rebase --autostash --onto <new> <old>` for the later commits.
+  Dialog `HistoryDialog::Reword` reuses the squash message inputs (`HistoryUi::msg_summary/msg_desc`). Warns first on pushed commits.
 - Reorder: `move_commit` (swap with neighbour) writes a todo file into `.git/gd-rebase-todo` and runs
   `rebase -i` with `-c sequence.editor="cp '<file>'"`; removed afterwards. No drag and drop (uniform_list
   drag with autoscroll not attempted); menu "Move commit up/down" instead.

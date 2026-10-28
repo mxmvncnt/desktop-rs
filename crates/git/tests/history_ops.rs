@@ -198,3 +198,31 @@ fn history_ops() {
     println!("amend OK");
     println!("ALL HISTORY OPS OK");
 }
+
+#[test]
+fn reword_keeps_author_and_replays_later_commits() {
+    let tmp = common::tempdir();
+    let work = tmp.path().to_path_buf();
+    sh(&work, &["init", "-q", "-b", "main"]);
+    for (k, v) in [("user.name", "Tester"), ("user.email", "t@example.com")] {
+        sh(&work, &["config", k, v]);
+    }
+    let repo = Repository::open(&work).unwrap();
+    let c1 = commit(&work, "a.txt", "1\n", "c1");
+    let c2 = commit(&work, "b.txt", "2\n", "c2");
+    commit(&work, "c.txt", "3\n", "c3");
+    let author = |rev: &str| sh(&work, &["log", "-1", "--format=%an <%ae> %ad", "--date=raw", rev]);
+    let before = author(&c2);
+
+    sh(&work, &["config", "user.name", "Someone Else"]);
+    assert!(matches!(repo.reword_commit(&c2, "new c2\n\nbody").unwrap(), OpOutcome::Done));
+    assert_eq!(summaries(&repo), ["c3", "new c2", "c1"]);
+    assert_eq!(author("HEAD~1"), before);
+    assert_eq!(sh(&work, &["log", "-1", "--format=%b", "HEAD~1"]).trim(), "body");
+
+    assert!(matches!(repo.reword_commit(&sh(&work, &["rev-parse", "HEAD"]), "new c3").unwrap(), OpOutcome::Done));
+    assert_eq!(summaries(&repo), ["new c3", "new c2", "c1"]);
+    assert!(matches!(repo.reword_commit(&c1, "new c1").unwrap(), OpOutcome::Done));
+    assert_eq!(summaries(&repo), ["new c3", "new c2", "new c1"]);
+    assert!(repo.reword_commit(&c1, "  ").is_err());
+}

@@ -46,6 +46,7 @@ fn head_rows(c: &MenuCtx) -> Vec<HistoryRow> {
 
 fn rewrite_rows(c: &MenuCtx) -> Vec<HistoryRow> {
     vec![
+        item(A::Reword, "Reword commit…", Icon::Pen, c.blocked || c.is_head),
         item(A::Reset, "Reset to commit…", Icon::ArrowLeft, c.blocked || c.is_head),
         item(A::Checkout, "Checkout commit", Icon::GitBranch, c.blocked || c.is_head),
         item(A::MoveUp, "Move commit up (newer)", Icon::ChevronUp, c.blocked || !c.can_up),

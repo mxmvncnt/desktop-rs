@@ -83,6 +83,7 @@ pub struct MenuCtx {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum HistoryAction {
     Amend,
+    Reword,
     Undo,
     Reset,
     Checkout,
@@ -102,7 +103,7 @@ pub enum HistoryAction {
 impl HistoryAction {
     /// Rewrites history, so it warns first when the commit is already pushed.
     pub fn rewrites_history(&self) -> bool {
-        matches!(self, Self::Undo | Self::Reset | Self::MoveUp | Self::MoveDown)
+        matches!(self, Self::Reword | Self::Undo | Self::Reset | Self::MoveUp | Self::MoveDown)
     }
 }
 
@@ -119,6 +120,7 @@ pub enum HistoryDialog {
     Reset { commit: Commit, mode: ResetMode },
     Checkout(Commit),
     AmendPushed(Commit),
+    Reword(Commit),
     /// Undo / reset / move on a commit that's already on the remote: allowed,
     /// but warn that the branch will need a force push. Confirm runs `action`.
     PushedRewrite { action: HistoryAction, commit: Commit },

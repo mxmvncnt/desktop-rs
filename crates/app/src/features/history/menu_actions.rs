@@ -22,6 +22,7 @@ impl Workspace {
         match action {
             HistoryAction::Amend if ctx.unpushed => self.start_amend(commit, window, cx),
             HistoryAction::Amend => self.open_overlay(Overlay::History(HistoryDialog::AmendPushed(commit)), cx),
+            HistoryAction::Reword => self.open_reword(commit, window, cx),
             HistoryAction::Undo => repo.update(cx, |r, cx| r.undo_head_commit(cx)),
             HistoryAction::Reset => self.open_overlay(Overlay::History(reset_dialog(commit)), cx),
             HistoryAction::Checkout => self.open_overlay(Overlay::History(HistoryDialog::Checkout(commit)), cx),
@@ -62,6 +63,13 @@ impl Workspace {
         let selected = branches.iter().position(|b| Some(b) != current.as_ref()).unwrap_or(0);
         let target = CherryPickTarget { branches, current, selected };
         self.open_overlay(Overlay::History(HistoryDialog::CherryPick { commits, target }), cx);
+    }
+
+    pub(super) fn open_reword(&mut self, commit: Commit, window: &mut Window, cx: &mut Context<Self>) {
+        self.history_ui.msg_summary.update(cx, |s, cx| s.emplace(&commit.summary, cx));
+        self.history_ui.msg_desc.update(cx, |s, cx| s.emplace(&commit.body, cx));
+        self.open_overlay(Overlay::History(HistoryDialog::Reword(commit)), cx);
+        focus_input(&self.history_ui.msg_summary.clone(), window, cx);
     }
 
     fn open_squash(&mut self, ctx: MenuCtx, repo: &Entity<RepoModel>, window: &mut Window, cx: &mut Context<Self>) {

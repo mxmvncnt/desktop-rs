@@ -287,6 +287,49 @@ impl Repository {
         Ok(OpOutcome::Done)
     }
 
+    /// Change the message of `sha` (summary + body), keeping its tree and author.
+    ///
+    /// Same technique as [`squash_commits`](Self::squash_commits): `commit-tree` builds the
+    /// reworded commit, then `update-ref` (HEAD) or `rebase --onto` replays the later commits.
+    pub fn reword_commit(&self, sha: &str, message: &str) -> Result<OpOutcome> {
+        if message.trim().is_empty() {
+            return Err(GitError::Invalid("commit message is empty".into()));
+        }
+        self.ensure_idle("reword")?;
+        let walk = self.first_parent_walk()?;
+        let p = walk
+            .iter()
+            .position(|n| n.sha == sha)
+            .ok_or_else(|| GitError::Invalid("commit is not on the current branch (or too far back)".into()))?;
+        if walk[..=p].iter().any(|n| n.parents.len() > 1) {
+            return Err(GitError::Invalid("Can't reword: there is a merge commit between HEAD and this commit.".into()));
+        }
+        let (name, email, date) = {
+            let repo = self.repo()?;
+            let commit = repo.find_commit(repo.revparse_single(sha)?.id())?;
+            let author = commit.author();
+            let offset = author.when().offset_minutes();
+            let date = format!("{} {}{:02}{:02}", author.when().seconds(), if offset < 0 { '-' } else { '+' }, offset.abs() / 60, offset.abs() % 60);
+            (author.name().unwrap_or_default().to_string(), author.email().unwrap_or_default().to_string(), date)
+        };
+        let mut ct = self
+            .git()
+            .args(["commit-tree", &format!("{sha}^{{tree}}")])
+            .env("GIT_AUTHOR_NAME", name)
+            .env("GIT_AUTHOR_EMAIL", email)
+            .env("GIT_AUTHOR_DATE", date);
+        if let Some(parent) = walk[p].parents.first() {
+            ct = ct.args(["-p", parent.as_str()]);
+        }
+        let new = ct.args(["-F", "-"]).stdin(format!("{}\n", message.trim())).run()?.trim().to_string();
+        if p == 0 {
+            self.git().args(["update-ref", "-m", "reword", "HEAD", new.as_str(), sha]).run()?;
+            return Ok(OpOutcome::Done);
+        }
+        let res = self.git().args(["-c", "core.editor=true", "rebase", "--autostash", "--onto", new.as_str(), sha]).exec();
+        self.outcome_of(res)
+    }
+
     /// Move `sha` one place towards the tip (`up`, newer) or towards the
     /// root (`!up`, older) with a non-interactive `rebase -i`: the todo list
     /// is written to a file inside `.git` and installed by a

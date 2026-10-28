@@ -22,7 +22,7 @@ impl Workspace {
         // Validate before consuming the dialog.
         match self.overlays.last() {
             Some(Overlay::History(HistoryDialog::CreateBranch(_) | HistoryDialog::CreateTag(_))) if name.is_empty() => return,
-            Some(Overlay::History(HistoryDialog::Squash { .. })) if message.summary.is_empty() => return,
+            Some(Overlay::History(HistoryDialog::Squash { .. } | HistoryDialog::Reword(_))) if message.summary.is_empty() => return,
             Some(Overlay::History(_)) => {}
             _ => return,
         }
@@ -30,8 +30,11 @@ impl Workspace {
         self.focus(window, cx);
         cx.notify();
         match dialog {
-            HistoryDialog::PushedRewrite { action, commit } => self.confirm_rewrite(action, commit, &repo, cx),
+            HistoryDialog::PushedRewrite { action, commit } => self.confirm_rewrite(action, commit, &repo, window, cx),
             HistoryDialog::AmendPushed(c) => self.start_amend(c, window, cx),
+            HistoryDialog::Reword(c) => {
+                repo.update(cx, |r, cx| r.reword(c.sha, gd_git::message(&message.summary, &message.description), cx));
+            }
             HistoryDialog::Squash { commits, .. } => {
                 let shas = commits.into_iter().map(|c| c.sha).collect();
                 repo.update(cx, |r, cx| r.squash(shas, gd_git::message(&message.summary, &message.description), cx));
@@ -50,10 +53,12 @@ impl Workspace {
         action: HistoryAction,
         commit: gd_git::Commit,
         repo: &Entity<RepoModel>,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         match action {
             HistoryAction::Undo => repo.update(cx, |r, cx| r.undo_head_commit(cx)),
+            HistoryAction::Reword => self.open_reword(commit, window, cx),
             HistoryAction::MoveUp => repo.update(cx, |r, cx| r.move_commit(commit.sha, true, cx)),
             HistoryAction::MoveDown => repo.update(cx, |r, cx| r.move_commit(commit.sha, false, cx)),
             // Reset still asks for the soft/mixed mode next.

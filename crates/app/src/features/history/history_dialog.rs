@@ -49,6 +49,7 @@ impl RenderOnce for HistoryDialogView {
             HistoryDialog::CreateBranch(c) => self.create_branch(c, cx),
             HistoryDialog::CreateTag(c) => self.create_tag(c, cx),
             HistoryDialog::CherryPick { commits, target } => self.cherry_pick(commits, target),
+            HistoryDialog::Reword(c) => self.reword(c, cx),
             HistoryDialog::Squash { commits, any_pushed } => self.squash(commits.len(), *any_pushed, cx),
         };
         let (ws, ws2) = (self.ws.clone(), self.ws);
@@ -147,10 +148,22 @@ impl HistoryDialogView {
         .h(px(BRANCH_ROW_HEIGHT * n.clamp(1, BRANCH_ROWS_VISIBLE) as f32))
     }
 
-    fn squash(&self, n: usize, any_pushed: bool, cx: &App) -> Dialog {
+    fn message_fields(&self, cx: &App) -> gpui::Div {
         let desc = text_area("hist-desc", &self.msg_desc, "Description", cx).w_full().h(px(120.0)).overflow_y_scroll();
         let summary = text_field("hist-summary", &self.msg_summary, "Summary (required)", cx);
-        let content = div().flex().flex_col().gap(px(8.0)).pt(px(4.0)).child(summary).child(desc);
+        div().flex().flex_col().gap(px(8.0)).pt(px(4.0)).child(summary).child(desc)
+    }
+
+    fn reword(&self, c: &Commit, cx: &App) -> Dialog {
+        Dialog::new("hist-dialog", "Reword commit")
+            .body(format!("Change the message of {}.", short(c)))
+            .confirm_label("Reword")
+            .confirm_disabled(self.msg_summary.read(cx).as_str().trim().is_empty())
+            .content(self.message_fields(cx))
+    }
+
+    fn squash(&self, n: usize, any_pushed: bool, cx: &App) -> Dialog {
+        let content = self.message_fields(cx);
         let mut d = Dialog::new("hist-dialog", format!("Squash {n} commits"))
             .body("Combine them into one commit with this message.")
             .confirm_label("Squash commits")
@@ -181,7 +194,7 @@ fn checkout(c: &Commit) -> Dialog {
 fn pushed_rewrite(action: &HistoryAction, commit: &Commit) -> Dialog {
     let label = match action {
         HistoryAction::Undo => "Undo anyway",
-        HistoryAction::Reset => "Continue",
+        HistoryAction::Reset | HistoryAction::Reword => "Continue",
         _ => "Move anyway",
     };
     Dialog::new("hist-dialog", "Rewrite pushed history?")

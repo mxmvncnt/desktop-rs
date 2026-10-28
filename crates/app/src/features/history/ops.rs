@@ -141,6 +141,16 @@ impl RepoModel {
         );
     }
 
+    pub fn reword(&mut self, sha: String, message: String, cx: &mut Context<Self>) {
+        self.last_commit = None;
+        self.run(
+            Op::labeled("Rewording"),
+            move |r| r.reword_commit(&sha, &message),
+            |this, o, _| this.notice_for_outcome(o, "Reworded commit".into(), "Nothing to reword".into()),
+            cx,
+        );
+    }
+
     pub fn move_commit(&mut self, sha: String, up: bool, cx: &mut Context<Self>) {
         self.last_commit = None;
         self.run(

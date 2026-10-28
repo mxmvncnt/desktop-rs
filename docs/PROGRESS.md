@@ -214,3 +214,5 @@ echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new 
 
 ## Pull request preview
 - ✅ Branch > Preview Pull Request (`ctrl-alt-p`, also a card in the no-changes pane): base selector (default `origin/HEAD`), `N commits from head into base`, merge-base file list + read-only diff, "Create pull request" opens the GitHub/GitLab/Bitbucket compare URL; hints for unpublished branch / unknown host. Code: `features/pr_preview/`, `gd-git/src/pr_preview.rs`. Snapshot views: `pr-preview`, `pr-preview-menu`.
+
+- ✅ Reword old commits: History menu > "Reword commit…" (`reword_commit` in `gd-git/src/history_ops.rs`, test in `crates/git/tests/history_ops.rs`). Snapshot view `history-reword`.
