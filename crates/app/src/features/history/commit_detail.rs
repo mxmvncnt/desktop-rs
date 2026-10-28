@@ -21,7 +21,7 @@ impl Workspace {
         let Some(commit) = shown.or_else(|| r.log.selected.and_then(|ix| r.log.commits.get(ix))).cloned() else {
             return div().flex_1().into_any_element();
         };
-        let header = CommitHeader::new(commit, detail.files.len(), DiffOptionsButton {
+        let header = CommitHeader::new(commit, detail.files.len(), detail.stats, DiffOptionsButton {
             ws: cx.entity(),
         }, self.commit_msg.height, cx.entity());
         self.render_file_diff_pane(header, repo, DiffPane::Commit, cx)

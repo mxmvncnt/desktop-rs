@@ -4,7 +4,7 @@
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 
 use crate::diff::{Diff, DiffOptions, blob_sides};
-use crate::tree_diff::tree_changes;
+use crate::tree_diff::{LineStats, tree_changes, tree_stats};
 use crate::remote::{Host, host_of, split_remote};
 use crate::{FileChange, GitError, Repository, Result};
 
@@ -18,6 +18,7 @@ pub struct Comparison {
     /// Commits on base that head doesn't have yet (`head..base`).
     pub behind: u32,
     pub files: Vec<FileChange>,
+    pub stats: LineStats,
 }
 
 impl Repository {
@@ -46,8 +47,10 @@ impl Repository {
             .merge_base(base_commit.id(), head_commit.id())
             .map_err(|_| GitError::Io(format!("{head} and {base} have no common history")))?;
         let (ahead, behind) = repo.graph_ahead_behind(head_commit.id(), base_commit.id())?;
-        let files = tree_changes(&repo, Some(&repo.find_commit(merge_base)?.tree()?), &head_commit.tree()?)?;
-        Ok(Comparison { merge_base: merge_base.to_string(), ahead: ahead as u32, behind: behind as u32, files })
+        let (base_tree, head_tree) = (repo.find_commit(merge_base)?.tree()?, head_commit.tree()?);
+        let files = tree_changes(&repo, Some(&base_tree), &head_tree)?;
+        let stats = tree_stats(&repo, Some(&base_tree), &head_tree)?;
+        Ok(Comparison { merge_base: merge_base.to_string(), ahead: ahead as u32, behind: behind as u32, files, stats })
     }
 
     /// Diff of one file of a [`Comparison`] (`merge_base` -> `head`).

@@ -77,6 +77,9 @@ guessing APIs. To recreate them:
 - `Diff::source` keeps the exact old/new texts (for partial staging). It's `None` when either side
   isn't valid UTF-8, so staging never writes back lossily decoded bytes. Binary = NUL in the first 8000
   bytes, like git. `too_large` above 8 MB per side.
+- Line counts: per file they come from `Diff::added/deleted`, shown by `components/DiffStat` above the diff in the commit,
+  stash and PR panes (never in the Changes pane). Totals per commit / PR are `Repository::commit_stats` and
+  `Comparison::stats` (`tree_stats`: libgit2 diff stats with rename detection), stored in `DiffDetail::stats`.
 - Cross-check vs git: `cargo run --release -p gd-git --example diff_compare -- <repo> [N]`.
   On this repo's last 150 commits, 468/472 files had identical +/- counts. The rest differ where git's
   Myers heuristics are non-minimal (e.g. yarn.lock, where ours is smaller).

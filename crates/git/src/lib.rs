@@ -41,6 +41,7 @@ pub use remote::{Host, github_web_url, host_of};
 pub use progress::{InProgress, OpOutcome};
 pub use refs::{Branch, BranchKind};
 pub use stash::Stash;
+pub use tree_diff::LineStats;
 pub use status::{AheadBehind, FileChange, FileStatus, WorkingStatus};
 
 use std::path::{Path, PathBuf};

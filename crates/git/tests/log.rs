@@ -44,6 +44,7 @@ fn tree_changes_for_commit_and_comparison() {
     sh(&dir, &["add", "."]);
     sh(&dir, &["commit", "-qm", "root"]);
     let root = repo.log(0, 1).unwrap().remove(0);
+    assert_eq!(repo.commit_stats(&root.sha).unwrap(), LineStats { added: 12, deleted: 0 });
     let files: Vec<_> = repo.commit_files(&root.sha).unwrap().into_iter().map(|f| (f.path, f.status)).collect();
     assert_eq!(files, [("gone".into(), FileStatus::New), ("keep".into(), FileStatus::New), ("old".into(), FileStatus::New)]);
 
@@ -53,6 +54,9 @@ fn tree_changes_for_commit_and_comparison() {
     std::fs::write(dir.join("keep"), "changed\n").unwrap();
     sh(&dir, &["add", "-A"]);
     sh(&dir, &["commit", "-qm", "feat"]);
+    // The rename counts for nothing; `keep` goes from 4 lines to 1 and `gone` loses 4.
+    assert_eq!(repo.commit_stats("HEAD").unwrap(), LineStats { added: 1, deleted: 8 });
+    assert_eq!(repo.compare("main", "feat").unwrap().stats, LineStats { added: 1, deleted: 8 });
     let got: Vec<_> = repo.commit_files("HEAD").unwrap().into_iter().map(|f| (f.path, f.old_path, f.status)).collect();
     assert_eq!(
         got,

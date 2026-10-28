@@ -1,6 +1,6 @@
 //! History: commit list and per-commit file lists.
 
-use crate::tree_diff::tree_changes;
+use crate::tree_diff::{LineStats, tree_changes, tree_stats};
 use crate::{FileChange, Repository, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -79,6 +79,14 @@ impl Repository {
         let commit = repo.revparse_single(sha)?.peel_to_commit()?;
         let parent = commit.parent(0).ok().map(|p| p.tree()).transpose()?;
         tree_changes(&repo, parent.as_ref(), &commit.tree()?)
+    }
+
+    /// Total added / deleted lines of `sha` (same base as [`Self::commit_files`]).
+    pub fn commit_stats(&self, sha: &str) -> Result<LineStats> {
+        let repo = self.repo()?;
+        let commit = repo.revparse_single(sha)?.peel_to_commit()?;
+        let parent = commit.parent(0).ok().map(|p| p.tree()).transpose()?;
+        tree_stats(&repo, parent.as_ref(), &commit.tree()?)
     }
 }
 

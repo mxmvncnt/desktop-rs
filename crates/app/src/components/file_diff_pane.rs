@@ -1,9 +1,9 @@
 //! Main pane of a commit, a stash or a pull request: header, file list and diff.
 
-use gd_ui::vdivider;
+use gd_ui::{Theme, vdivider};
 use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
 
-use super::FileList;
+use super::{DiffStat, FileList};
 use crate::features::diff::DiffPane;
 use crate::repo::RepoModel;
 use crate::workspace::{NavList, Workspace, nav_focus};
@@ -33,7 +33,29 @@ impl Workspace {
             .w(px(260.0))
             .py(px(4.0))
             .child(FileList { repo: repo.clone(), pane });
+        let stat = diff.as_ref().map(|d| DiffStat { added: d.added, deleted: d.deleted });
+        let theme = Theme::of(cx).clone();
+        let path = detail.path.clone().unwrap_or_default();
         let diff = self.render_diff(diff, hl, key, pane, repo, cx);
+        let diff = div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_w_0()
+            .child(
+                div()
+                    .flex()
+                    .flex_none()
+                    .items_center()
+                    .gap(px(8.0))
+                    .h(px(32.0))
+                    .px(px(16.0))
+                    .border_b_1()
+                    .border_color(theme.border)
+                    .child(div().flex_1().min_w_0().truncate().text_size(px(12.5)).text_color(theme.text_muted).child(path))
+                    .children(stat),
+            )
+            .child(diff);
         div()
             .flex()
             .flex_col()

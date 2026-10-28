@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use gd_git::{Diff, DiffOptions, Expansion, FileChange, Repository};
+use gd_git::{Diff, DiffOptions, Expansion, FileChange, LineStats, Repository};
 use gpui::{Context, UniformListScrollHandle};
 
 use super::run::{LoadSlot, spawn_load};
@@ -17,6 +17,8 @@ pub struct DiffDetail {
     /// whose list is the working status).
     pub files: Vec<FileChange>,
     pub selected: Option<usize>,
+    /// Lines added / deleted over all `files` (zero for stashes).
+    pub stats: LineStats,
     /// The commit or stash sha, or PR merge base, that `files` belong to. Lags
     /// behind the selection while a load is in flight, so a pane switches in one go.
     pub base: Option<String>,
@@ -35,6 +37,7 @@ impl DiffDetail {
     pub fn clear(&mut self) {
         self.files.clear();
         self.selected = None;
+        self.stats = LineStats::default();
         self.base = None;
         self.diff = None;
         self.path = None;
@@ -110,12 +113,14 @@ impl RepoModel {
         pane: DiffPane,
         base: String,
         files: Vec<FileChange>,
+        stats: LineStats,
         first: Option<(Diff, String)>,
         cx: &mut Context<Self>,
     ) {
         let detail = self.detail_mut(pane);
         detail.selected = (!files.is_empty()).then_some(0);
         detail.files = files;
+        detail.stats = stats;
         detail.base = Some(base);
         self.show_diff(pane, first, cx);
     }
@@ -127,17 +132,17 @@ impl RepoModel {
         self.load(
             move |this| &mut this.detail_mut(pane).load,
             move |repo| {
-                let files = match pane {
-                    DiffPane::Stash => repo.stash_files(&sha)?,
-                    _ => repo.commit_files(&sha)?,
+                let (files, stats) = match pane {
+                    DiffPane::Stash => (repo.stash_files(&sha)?, LineStats::default()),
+                    _ => (repo.commit_files(&sha)?, repo.commit_stats(&sha)?),
                 };
                 let first = match files.first() {
                     Some(f) => Some((pane.file_diff(repo, &sha, f, opts)?, f.path.clone())),
                     None => None,
                 };
-                Ok((files, first))
+                Ok((files, stats, first))
             },
-            move |this, (files, first), cx| this.show_files(pane, loaded, files, first, cx),
+            move |this, (files, stats, first), cx| this.show_files(pane, loaded, files, stats, first, cx),
             cx,
         );
     }

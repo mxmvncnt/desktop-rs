@@ -103,9 +103,9 @@ impl RepoModel {
         }
         match l.comparison {
             Some(c) => {
-                let (merge_base, files) = (c.merge_base.clone(), c.files.clone());
+                let (merge_base, files, stats) = (c.merge_base.clone(), c.files.clone(), c.stats);
                 self.pr.comparison = Some(c);
-                self.show_files(DiffPane::Pr, merge_base, files, l.first, cx);
+                self.show_files(DiffPane::Pr, merge_base, files, stats, l.first, cx);
             }
             None => {
                 self.pr.comparison = None;

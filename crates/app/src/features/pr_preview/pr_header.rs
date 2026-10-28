@@ -6,6 +6,7 @@ use gd_ui::{Button, Icon, Theme, badge, icon};
 use gpui::{App, Entity, IntoElement, RenderOnce, SharedString, Window, div, prelude::*, px};
 
 use super::pr_base_menu::PrBaseMenu;
+use crate::components::DiffStat;
 use crate::repo::RepoModel;
 use crate::utils::text::plural;
 
@@ -99,6 +100,7 @@ impl PrHeader {
             .gap(px(8.0))
             .text_color(theme.text_muted)
             .child(summary)
+            .children(pr.comparison.as_ref().map(|c| DiffStat { added: c.stats.added, deleted: c.stats.deleted }))
             .child("from")
             .child(badge(r.branch_name(), cx).text_color(theme.accent))
             .child("into")

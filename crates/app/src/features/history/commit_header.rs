@@ -1,11 +1,12 @@
 //! Header of the commit detail pane: summary, body, author, sha, time, file count.
 
-use gd_git::Commit;
+use gd_git::{Commit, LineStats};
 use gd_ui::{Icon, ResizeHandle, Theme, icon};
 use gpui::{AnyElement, App, DragMoveEvent, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 use super::message_resize::MessageDrag;
 use super::message_resize::MSG_DEFAULT_MAX;
+use crate::components::DiffStat;
 use crate::workspace::Workspace;
 use crate::utils::text::{authors_text, body_without_trailers};
 use crate::utils::text::relative_time;
@@ -15,6 +16,8 @@ use crate::utils::text::plural;
 pub struct CommitHeader {
     commit: Commit,
     n_files: usize,
+    /// Lines added / deleted by the whole commit.
+    stats: LineStats,
     /// Trailing control (the diff options button).
     trailing: AnyElement,
     /// User-set height of the message area (`None` = fit up to the default).
@@ -26,11 +29,12 @@ impl CommitHeader {
     pub fn new(
         commit: Commit,
         n_files: usize,
+        stats: LineStats,
         trailing: impl IntoElement,
         msg_height: Option<f32>,
         ws: Entity<Workspace>,
     ) -> Self {
-        Self { commit, n_files, trailing: trailing.into_any_element(), msg_height, ws }
+        Self { commit, n_files, stats, trailing: trailing.into_any_element(), msg_height, ws }
     }
 }
 
@@ -117,5 +121,6 @@ impl CommitHeader {
             )
             .child(relative_time(c.time))
             .child(format!("{} changed file{}", self.n_files, plural(self.n_files as u32)))
+            .child(DiffStat { added: self.stats.added, deleted: self.stats.deleted })
     }
 }

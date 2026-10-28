@@ -1,33 +1,26 @@
-//! Header above the diff: file path (with the old path for renames), +/- counts
-//! and the diff options button.
+//! Header above the diff: file path (with the old path for renames) and the
+//! diff options button.
 
-use gd_git::{Diff, FileChange};
+use gd_git::FileChange;
 use gd_ui::{Icon, Theme, icon};
-use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px};
+use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use crate::features::diff::DiffOptionsButton;
 use crate::workspace::Workspace;
 
-/// Added / deleted line counts of the shown diff.
-struct DiffStat {
-    added: u32,
-    deleted: u32,
-}
-
 #[derive(IntoElement)]
 pub struct FileHeader {
     title: String,
-    stat: Option<DiffStat>,
     ws: Entity<Workspace>,
 }
 
 impl FileHeader {
-    pub fn new(change: &FileChange, diff: Option<&Diff>, ws: Entity<Workspace>) -> Self {
+    pub fn new(change: &FileChange, ws: Entity<Workspace>) -> Self {
         let title = match &change.old_path {
             Some(old) => format!("{old} → {}", change.path),
             None => change.path.clone(),
         };
-        Self { title, stat: diff.map(|d| DiffStat { added: d.added, deleted: d.deleted }), ws }
+        Self { title, ws }
     }
 }
 
@@ -53,17 +46,6 @@ impl RenderOnce for FileHeader {
                     .text_color(theme.text_muted)
                     .child(self.title),
             )
-            .when_some(self.stat, |d, s| {
-                d.child(
-                    div()
-                        .flex()
-                        .gap(px(8.0))
-                        .text_size(px(12.0))
-                        .font_family(theme.font_mono.clone())
-                        .child(div().text_color(theme.diff_add).child(format!("+{}", s.added)))
-                        .child(div().text_color(theme.diff_del).child(format!("−{}", s.deleted))),
-                )
-            })
             .child(DiffOptionsButton { ws: self.ws })
     }
 }
