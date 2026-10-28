@@ -7,7 +7,7 @@ use std::time::{Instant, SystemTime};
 use gd_git::{Branch, InProgress, Repository, WorkingStatus};
 use gpui::{AppContext, Context};
 
-use super::state::{RefreshScope, RepoModel, Tab};
+use super::state::{RefreshScope, RepoEvent, RepoModel, Tab};
 use crate::watcher::RepoWatcher;
 
 /// Everything one refresh reads from git (gathered off the UI thread).
@@ -45,16 +45,16 @@ impl RepoModel {
     /// (coalesced) refresh. The watcher thread dies with this model.
     pub(super) fn start_watcher(&mut self, cx: &mut Context<Self>) {
         let (watcher, rx) = RepoWatcher::start(&self.repo);
-        self._watcher = Some(watcher);
-        self._watch_task = Some(cx.spawn(async move |this, cx| {
+        self.sync._watcher = Some(watcher);
+        self.sync._watch_task = Some(cx.spawn(async move |this, cx| {
             while let Ok(mut metadata_changed) = rx.recv().await {
                 while let Ok(more) = rx.try_recv() {
                     metadata_changed |= more;
                 }
-                let scope = RefreshScope::from_metadata_changed(metadata_changed);
+                let scope = if metadata_changed { RefreshScope::Full } else { RefreshScope::Status };
                 let alive = this
                     .update(cx, |this, cx| {
-                        this.last_watch_refresh = Some(Instant::now());
+                        this.sync.last_watch_refresh = Some(Instant::now());
                         this.request_refresh(scope, cx);
                     })
                     .is_ok();
@@ -75,13 +75,13 @@ impl RepoModel {
     /// meanwhile collapse into exactly one follow-up run. `Full` also reloads
     /// branches and history (git metadata changed); otherwise only status.
     pub fn request_refresh(&mut self, scope: RefreshScope, cx: &mut Context<Self>) {
-        if self.refreshing {
-            self.pending_refresh = Some(self.pending_refresh.map_or(scope, |p| p.or(scope)));
+        if self.sync.refreshing {
+            self.sync.pending = Some(self.sync.pending.map_or(scope, |p| p.max(scope)));
             return;
         }
-        self.refreshing = true;
-        self.refresh_count += 1;
-        log::debug!("refresh #{} ({:?}) {}", self.refresh_count, scope, self.repo.name());
+        self.sync.refreshing = true;
+        self.sync.refresh_count += 1;
+        log::debug!("refresh #{} ({:?}) {}", self.sync.refresh_count, scope, self.repo.name());
         let repo = self.repo.clone();
         cx.spawn(async move |this, cx| {
             let data = cx.background_spawn(async move { RefreshData::read(&repo, scope) }).await;
@@ -92,7 +92,7 @@ impl RepoModel {
 
     fn finish_refresh(&mut self, data: RefreshData, scope: RefreshScope, cx: &mut Context<Self>) {
         let full = scope == RefreshScope::Full;
-        self.refreshing = false;
+        self.sync.refreshing = false;
         match data.status {
             Ok(status) => self.apply_status(status, cx),
             Err(e) => self.error = Some(e.to_string()),
@@ -100,7 +100,7 @@ impl RepoModel {
         if let Some(Ok(b)) = data.branches {
             self.branches = b;
         }
-        self.last_fetch = data.last_fetch;
+        self.sync.last_fetch = data.last_fetch;
         if full {
             self.reload_push_state(cx);
             self.reload_stashes(cx);
@@ -109,11 +109,11 @@ impl RepoModel {
             }
         }
         self.apply_progress(data.paused, cx);
-        if full && (!self.commits.is_empty() || self.tab == Tab::History) {
+        if full && (!self.log.commits.is_empty() || self.tab == Tab::History) {
             self.reload_history(cx);
         }
         cx.notify();
-        if let Some(next) = self.pending_refresh.take() {
+        if let Some(next) = self.sync.pending.take() {
             self.request_refresh(next, cx);
         }
     }
@@ -129,19 +129,19 @@ impl RepoModel {
             && self.merge.in_progress.as_ref().map(std::mem::discriminant) != new.as_ref().map(std::mem::discriminant);
         self.merge.in_progress = new;
         if let (true, Some((summary, description))) = (newly, msg) {
-            cx.emit(crate::features::merge::message_event(summary, description));
+            cx.emit(RepoEvent::PreparedMessage { summary, description });
         }
     }
 
     fn apply_status(&mut self, status: WorkingStatus, cx: &mut Context<Self>) {
         // Keep the selection on the same path across refreshes.
-        let old_ix = self.selected_change;
+        let old_ix = self.work.selected;
         let selected_path = old_ix.and_then(|ix| self.changes().get(ix)).map(|c| c.path.clone());
         let paths: HashSet<&str> = status.files.iter().map(|f| f.path.as_str()).collect();
-        self.excluded.retain(|p| paths.contains(p.as_str()));
-        self.partial.retain(|p, _| paths.contains(p.as_str()));
-        self.status = Some(status);
-        self.selected_change = selected_path
+        self.work.excluded.retain(|p| paths.contains(p.as_str()));
+        self.work.partial.retain(|p, _| paths.contains(p.as_str()));
+        self.work.status = Some(status);
+        self.work.selected = selected_path
             .and_then(|p| self.changes().iter().position(|c| c.path == p))
             // The selected file is gone (committed): the file now at its row,
             // i.e. the next one, or the last.

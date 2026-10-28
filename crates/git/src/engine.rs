@@ -114,20 +114,15 @@ pub fn diff_texts(old: &str, new: &str, opts: DiffOptions) -> Diff {
         let new_start = first.new_range().start;
         let old_len = last.old_range().end - old_start;
         let new_len = last.new_range().end - new_start;
-        diff.hunks.push(DiffHunk {
+        let hunk = DiffHunk {
             header_index: diff.lines.len(),
             old_start,
             old_len,
             new_start,
             new_len,
-        });
-        diff.lines.push(DiffLine {
-            kind: DiffLineKind::Hunk,
-            old_line: None,
-            new_line: None,
-            text: hunk_header(old_start, old_len, new_start, new_len),
-            emphasis: Vec::new(),
-        });
+        };
+        diff.lines.push(DiffLine::hunk(&hunk));
+        diff.hunks.push(hunk);
         for op in &group {
             let (tag, o, n) = op.as_tag_tuple();
             match tag {
@@ -196,30 +191,16 @@ fn push_line(
         DiffLineKind::Delete => diff.deleted += 1,
         _ => {}
     }
-    // Tabs render at inconsistent widths in proportional fallbacks; expand
-    // once here instead of at every paint.
-    let text = if text.contains('\t') { text.replace('\t', "    ") } else { text.to_string() };
-    if text.len() > diff.lines.get(*longest).map_or(0, |l| l.text.len()) {
+    let line = DiffLine::new(kind, old_ix, new_ix, text);
+    if line.text.len() > diff.lines.get(*longest).map_or(0, |l| l.text.len()) {
         *longest = diff.lines.len();
     }
-    diff.lines.push(DiffLine {
-        kind,
-        old_line: old_ix.map(|i| i as u32 + 1),
-        new_line: new_ix.map(|i| i as u32 + 1),
-        text,
-        emphasis: Vec::new(),
-    });
+    diff.lines.push(line);
 }
 
 fn no_newline_marker(diff: &mut Diff, lines: &[Line<'_>], ix: usize) {
     if !lines[ix].terminated {
-        diff.lines.push(DiffLine {
-            kind: DiffLineKind::NoNewline,
-            old_line: None,
-            new_line: None,
-            text: "\\ No newline at end of file".into(),
-            emphasis: Vec::new(),
-        });
+        diff.lines.push(DiffLine::no_newline());
     }
 }
 
@@ -271,8 +252,11 @@ fn tokenize(s: &str) -> Vec<Range<usize>> {
     out
 }
 
+/// Byte ranges of a line that changed.
+type Emphasis = Vec<(usize, usize)>;
+
 /// Byte ranges that differ between `old` and `new`, merged when adjacent.
-pub fn word_emphasis(old: &str, new: &str) -> (Vec<(usize, usize)>, Vec<(usize, usize)>) {
+pub fn word_emphasis(old: &str, new: &str) -> (Emphasis, Emphasis) {
     if old.len() > EMPHASIS_MAX_LINE || new.len() > EMPHASIS_MAX_LINE {
         return (Vec::new(), Vec::new());
     }
@@ -281,8 +265,8 @@ pub fn word_emphasis(old: &str, new: &str) -> (Vec<(usize, usize)>, Vec<(usize, 
     let ok: Vec<&str> = ot.iter().map(|r| &old[r.clone()]).collect();
     let nk: Vec<&str> = nt.iter().map(|r| &new[r.clone()]).collect();
     let ops = capture_diff_slices_deadline(Algorithm::Myers, &ok, &nk, Some(Instant::now() + Duration::from_millis(5)));
-    let mut oe: Vec<(usize, usize)> = Vec::new();
-    let mut ne: Vec<(usize, usize)> = Vec::new();
+    let mut oe: Emphasis = Vec::new();
+    let mut ne: Emphasis = Vec::new();
     let push = |v: &mut Vec<(usize, usize)>, toks: &[Range<usize>], r: Range<usize>| {
         if r.is_empty() {
             return;

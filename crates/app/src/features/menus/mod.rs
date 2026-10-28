@@ -1,16 +1,14 @@
-//! Context menu of the Changes list (file rows, "N changed files" header,
-//! stash rows), the discard confirm dialog, and the Esc/Enter/arrow routing
-//! across every open menu and dialog (`key_routing.rs`).
-//! Built on `gd_ui::{ContextMenu, Dialog}`; only rendered while open.
+//! Context menus of the Changes list (file rows, "N changed files" header) and
+//! the discard confirm dialog. Rendered by `components::MenuView` / `gd_ui::Dialog`;
+//! Esc/Enter/arrow routing is `workspace/overlay.rs`.
 
-mod context_menu_view;
 mod discard_dialog;
 mod handlers;
-mod key_routing;
 mod menu_actions;
 mod menu_rows;
 mod state;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
-pub use context_menu_view::ContextMenuView;
 pub use discard_dialog::DiscardDialogView;
-pub use state::{ConfirmDialog, MenuAction, MenuTarget, OpenMenu};
+pub use state::ConfirmDialog;

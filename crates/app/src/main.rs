@@ -1,15 +1,19 @@
 //! desktop-rs — Rust + GPUI-CE app (POC). See docs/.
 
 mod actions;
+mod components;
 mod features;
 mod frame_debug;
 mod platform;
 mod repo;
-mod shared;
+mod utils;
 #[cfg(feature = "snapshot")]
 mod snapshot;
 
 mod watcher;
+#[cfg(all(test, feature = "snapshot"))]
+#[path = "tests/watcher_tests.test.rs"]
+mod watcher_tests;
 mod workspace;
 
 use gpui::{App, AppContext, Bounds, TitlebarOptions, WindowBounds, WindowOptions, px, size};
@@ -25,6 +29,7 @@ fn main() {
     {
         let args: Vec<String> = std::env::args().collect();
         if args.get(1).map(String::as_str) == Some("--snapshot") {
+            keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
             let out = args
                 .get(2)
                 .map(std::path::PathBuf::from)

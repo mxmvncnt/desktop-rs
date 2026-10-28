@@ -16,7 +16,7 @@ impl RepoModel {
     /// Fetch every 30 minutes, first check shortly after opening. Errors are
     /// only logged. Wakes once a minute (also to refresh "Last fetched Nm ago").
     pub(super) fn start_background_fetch(&mut self, cx: &mut Context<Self>) {
-        self._background_fetch_task = Some(cx.spawn(async move |this, cx| {
+        self.sync._background_fetch_task = Some(cx.spawn(async move |this, cx| {
             cx.background_executor().timer(BACKGROUND_FETCH_FIRST_CHECK).await;
             loop {
                 if this
@@ -35,8 +35,8 @@ impl RepoModel {
 
     fn fetch_is_due(&self) -> bool {
         let due = |t: Option<Duration>| t.is_none_or(|d| d >= BACKGROUND_FETCH_INTERVAL);
-        let since_fetch = self.last_fetch.and_then(|t| t.elapsed().ok());
-        let since_attempt = self.last_background_fetch.map(|t| t.elapsed());
+        let since_fetch = self.sync.last_fetch.and_then(|t| t.elapsed().ok());
+        let since_attempt = self.sync.last_background_fetch.map(|t| t.elapsed());
         due(since_fetch) && due(since_attempt)
     }
 
@@ -44,7 +44,7 @@ impl RepoModel {
         if self.remote_op.is_some() || !self.fetch_is_due() {
             return;
         }
-        self.last_background_fetch = Some(Instant::now());
+        self.sync.last_background_fetch = Some(Instant::now());
         let repo = self.repo.clone();
         cx.spawn(async move |this, cx| {
             let has_remote = cx

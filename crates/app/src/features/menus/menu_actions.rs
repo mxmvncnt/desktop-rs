@@ -1,31 +1,28 @@
-//! What each context-menu action does (stash actions are in features/stashes).
-
-use std::path::Path;
+//! What each Changes context-menu action does.
 
 use gd_git::{FileChange, escape_ignore};
 use gpui::{ClipboardItem, Context, Entity, Window};
 
 use super::menu_rows::extension;
-use super::state::{ConfirmDialog, MenuAction, MenuTarget};
+use super::state::{ConfirmDialog, MenuAction};
 use crate::repo::RepoModel;
-use crate::workspace::Workspace;
+use crate::utils::paths::{copy_path, reveal};
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
-    pub fn run_menu_action(&mut self, action: MenuAction, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(menu) = self.menu.take() else { return };
-        cx.notify();
-        if self.run_stash_action(action, &menu.target, window, cx) {
-            return;
-        }
+    /// `change` is the right-clicked file (`None` for the header menu).
+    pub fn run_menu_action(&mut self, action: MenuAction, change: Option<FileChange>, window: &mut Window, cx: &mut Context<Self>) {
         let Some(repo) = self.repo.clone() else { return };
-        match (action, menu.target) {
+        match (action, change) {
+            (MenuAction::StashAll, _) => self.open_stash_create(false, window, cx),
+            (MenuAction::StashSelected, _) => self.open_stash_create(true, window, cx),
             (MenuAction::DiscardAll, _) => {
                 let all = repo.read(cx).changes().to_vec();
                 if !all.is_empty() {
-                    self.dialog = Some(ConfirmDialog::DiscardAll(all));
+                    self.open_overlay(Overlay::Discard(ConfirmDialog::DiscardAll(all)), cx);
                 }
             }
-            (action, MenuTarget::File(change)) => self.run_file_action(action, change, &repo, cx),
+            (action, Some(change)) => self.run_file_action(action, change, &repo, cx),
             _ => {}
         }
     }
@@ -33,10 +30,8 @@ impl Workspace {
     fn run_file_action(&mut self, action: MenuAction, c: FileChange, repo: &Entity<RepoModel>, cx: &mut Context<Self>) {
         let root = repo.read(cx).repo.root().to_path_buf();
         match action {
-            MenuAction::Discard => self.dialog = Some(ConfirmDialog::DiscardFile(c)),
-            MenuAction::CopyPath => {
-                cx.write_to_clipboard(ClipboardItem::new_string(root.join(&c.path).display().to_string()))
-            }
+            MenuAction::Discard => self.open_overlay(Overlay::Discard(ConfirmDialog::DiscardFile(c)), cx),
+            MenuAction::CopyPath => copy_path(&root, &c.path, cx),
             MenuAction::CopyRelPath => cx.write_to_clipboard(ClipboardItem::new_string(c.path)),
             MenuAction::Reveal => reveal(&root, &c.path, cx),
             MenuAction::Ignore => {
@@ -46,13 +41,6 @@ impl Workspace {
             _ => {}
         }
     }
-}
-
-fn reveal(root: &Path, path: &str, cx: &mut gpui::App) {
-    let abs = root.join(path);
-    // Deleted files no longer exist: reveal the folder instead.
-    let target = if abs.exists() { abs } else { abs.parent().unwrap_or(root).to_path_buf() };
-    cx.reveal_path(&target);
 }
 
 fn ignore_extension(path: &str, repo: &Entity<RepoModel>, cx: &mut gpui::App) {

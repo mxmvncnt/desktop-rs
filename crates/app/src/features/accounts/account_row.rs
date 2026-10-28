@@ -4,18 +4,12 @@ use gd_ui::{Button, Icon, Theme, icon, theme::CONTROL_RADIUS};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use super::model::Account;
-use crate::workspace::Workspace;
+use super::state::AccountsStore;
 
 #[derive(IntoElement)]
 pub struct AccountRow {
-    account: Account,
-    ws: Entity<Workspace>,
-}
-
-impl AccountRow {
-    pub fn new(account: Account, ws: Entity<Workspace>) -> Self {
-        Self { account, ws }
-    }
+    pub account: Account,
+    pub store: Entity<AccountsStore>,
 }
 
 impl RenderOnce for AccountRow {
@@ -23,7 +17,7 @@ impl RenderOnce for AccountRow {
         let theme = Theme::of(cx).clone();
         let a = self.account;
         let id = a.id.clone();
-        let ws = self.ws;
+        let store = self.store;
         let token = if a.token.is_empty() { "no token" } else { "token saved" };
         let detail = if a.username.is_empty() {
             format!("{} · {} · {token}", a.provider.full_label(), a.host)
@@ -53,7 +47,7 @@ impl RenderOnce for AccountRow {
                     .compact()
                     .icon(Icon::Pen)
                     .label("Edit")
-                    .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.open_account_form(Some(id.clone()), cx))),
+                    .on_click(move |_, _, cx| store.update(cx, |this, cx| this.open_account_form(Some(id.clone()), cx))),
             )
     }
 }

@@ -16,8 +16,14 @@ pub enum GitError {
     Io(String),
     #[error("{0}")]
     Invalid(String),
-    #[error("could not parse git output: {0}")]
-    Parse(String),
+    #[error("{0}")]
+    Lib(String),
+}
+
+impl From<git2::Error> for GitError {
+    fn from(e: git2::Error) -> Self {
+        Self::Lib(e.message().to_string())
+    }
 }
 
 pub(crate) struct Git {
@@ -25,7 +31,6 @@ pub(crate) struct Git {
     args: Vec<OsString>,
     stdin: Option<String>,
     network: bool,
-    allow_exit_one: bool,
     env: Vec<(OsString, OsString)>,
 }
 
@@ -38,17 +43,7 @@ fn portal_layout(cwd: &Path, args: &[OsString]) -> Option<[OsString; 2]> {
     if !cwd.starts_with("/run/flatpak/doc") || args.first().is_some_and(|a| a == "clone" || a == "init") {
         return None;
     }
-    let dot_git = cwd.join(".git");
-    // `.git` is a file (`gitdir: <path>`) in linked worktrees and submodules.
-    let git_dir = if dot_git.is_file() {
-        let text = std::fs::read_to_string(&dot_git).ok()?;
-        let target = Path::new(text.trim().strip_prefix("gitdir:")?.trim());
-        cwd.join(target)
-    } else if dot_git.is_dir() {
-        dot_git
-    } else {
-        return None;
-    };
+    let git_dir = git2::Repository::open(cwd).ok()?.path().to_path_buf();
     let mut git_dir_arg = OsString::from("--git-dir=");
     git_dir_arg.push(git_dir);
     let mut work_tree_arg = OsString::from("--work-tree=");
@@ -63,7 +58,6 @@ impl Git {
             args: Vec::new(),
             stdin: None,
             network: false,
-            allow_exit_one: false,
             env: Vec::new(),
         }
     }
@@ -107,21 +101,11 @@ impl Git {
         self.env("GIT_EDITOR", "true").env("GIT_SEQUENCE_EDITOR", "true")
     }
 
-    /// Treat exit code 1 as success (`git diff --no-index` exits 1 when the
-    /// inputs differ).
-    pub fn allow_exit_one(mut self) -> Self {
-        self.allow_exit_one = true;
-        self
-    }
-
     fn command(&self) -> Command {
         let mut cmd = Command::new("git");
         let portal = portal_layout(&self.cwd, &self.args);
-        // Stable, parseable output regardless of user locale/config.
         cmd.current_dir(portal.as_ref().map_or(self.cwd.as_path(), |_| Path::new("/")))
-            .env("LC_ALL", "C")
             .env("GIT_OPTIONAL_LOCKS", "0")
-            .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
             .args(portal.iter().flatten())
             .args(&self.args)
             .stdout(Stdio::piped())
@@ -143,24 +127,27 @@ impl Git {
         cmd
     }
 
+    /// Run, discarding stdout.
+    pub fn exec(self) -> Result<(), GitError> {
+        self.run_bytes().map(drop)
+    }
+
     /// Run and return stdout as (lossy) UTF-8.
     pub fn run(self) -> Result<String, GitError> {
         self.run_bytes()
             .map(|b| String::from_utf8_lossy(&b).into_owned())
     }
 
-    pub fn run_bytes(self) -> Result<Vec<u8>, GitError> {
+    fn run_bytes(self) -> Result<Vec<u8>, GitError> {
         let start = std::time::Instant::now();
         let mut child = self
             .command()
             .spawn()
             .map_err(|e| GitError::Spawn(e.to_string()))?;
-        if let Some(input) = &self.stdin {
-            if let Some(mut stdin) = child.stdin.take() {
-                stdin
-                    .write_all(input.as_bytes())
-                    .map_err(|e| GitError::Io(e.to_string()))?;
-            }
+        if let Some(input) = &self.stdin
+            && let Some(mut stdin) = child.stdin.take()
+        {
+            stdin.write_all(input.as_bytes()).map_err(|e| GitError::Io(e.to_string()))?;
         }
         let out = child
             .wait_with_output()
@@ -172,7 +159,7 @@ impl Git {
             .collect::<Vec<_>>()
             .join(" ");
         log::debug!("git {args} ({:?})", start.elapsed());
-        if out.status.success() || (self.allow_exit_one && out.status.code() == Some(1)) {
+        if out.status.success() {
             Ok(out.stdout)
         } else {
             let mut stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();

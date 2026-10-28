@@ -23,6 +23,7 @@ anyhow = "1"
 similar = { version = "2", features = ["unicode"] }
 thiserror = "2"
 log = "0.4"
+rust-embed = { version = "8", features = ["debug-embed", "include-exclude"] }
 env_logger = "0.11"
 smol = "2"
 notify = "8"

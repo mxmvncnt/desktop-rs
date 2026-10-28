@@ -5,15 +5,23 @@ use gd_ui::Theme;
 use gpui::{Context, Window};
 
 use super::{SettingsPage, ThemeMode};
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     pub fn toggle_settings(&mut self, cx: &mut Context<Self>) {
-        self.settings_open = !self.settings_open;
-        if self.settings_open && self.settings_page == SettingsPage::Accounts {
+        if matches!(self.overlays.last(), Some(Overlay::Settings)) {
+            self.overlays.pop();
+            return cx.notify();
+        }
+        self.open_overlay(Overlay::Settings, cx);
+        if self.settings_page == SettingsPage::Accounts {
             self.load_identity(cx);
         }
-        cx.notify();
+    }
+
+    fn load_identity(&mut self, cx: &mut Context<Self>) {
+        let repo = self.repo.as_ref().map(|r| r.read(cx).repo.clone());
+        self.accounts.update(cx, |a, cx| a.load_identity(repo, cx));
     }
 
     pub(super) fn set_settings_page(&mut self, page: SettingsPage, cx: &mut Context<Self>) {

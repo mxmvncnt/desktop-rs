@@ -8,7 +8,7 @@
 //! unchanged; only context rows and headers are new.
 
 use crate::diff::{Diff, DiffHunk, DiffLine, DiffLineKind};
-use crate::engine::{hunk_header, split_lines};
+use crate::engine::split_lines;
 
 /// Lines revealed per click, as in Desktop (`DefaultDiffExpansionStep`).
 pub const EXPANSION_STEP: usize = 20;
@@ -46,21 +46,8 @@ pub fn expandable(diff: &Diff) -> bool {
 }
 
 struct Hunk {
-    old_start: usize,
-    old_len: usize,
-    new_start: usize,
-    new_len: usize,
+    meta: DiffHunk,
     rows: Vec<DiffLine>,
-}
-
-fn context_row(text: &str, old_ix: usize, new_ix: usize) -> DiffLine {
-    DiffLine {
-        kind: DiffLineKind::Context,
-        old_line: Some(old_ix as u32 + 1),
-        new_line: Some(new_ix as u32 + 1),
-        text: if text.contains('\t') { text.replace('\t', "    ") } else { text.to_string() },
-        emphasis: Vec::new(),
-    }
 }
 
 /// `diff` with `e` applied, or `None` if there is nothing to reveal.
@@ -78,10 +65,7 @@ pub fn expand(diff: &Diff, e: Expansion) -> Option<Diff> {
         .map(|(i, h)| {
             let end = diff.hunks.get(i + 1).map_or(diff.lines.len(), |n| n.header_index);
             Hunk {
-                old_start: h.old_start,
-                old_len: h.old_len,
-                new_start: h.new_start,
-                new_len: h.new_len,
+                meta: h.clone(),
                 rows: diff.lines[h.header_index + 1..end].to_vec(),
             }
         })
@@ -96,36 +80,30 @@ pub fn expand(diff: &Diff, e: Expansion) -> Option<Diff> {
     }
     let hunk = &mut hunks[h];
     if up {
-        let (os, ns) = (hunk.old_start - count, hunk.new_start - count);
-        let rows: Vec<DiffLine> = (0..count).map(|i| context_row(new_lines[ns + i].text, os + i, ns + i)).collect();
+        let (os, ns) = (hunk.meta.old_start - count, hunk.meta.new_start - count);
+        let rows: Vec<DiffLine> = (0..count).map(|i| DiffLine::new(DiffLineKind::Context, Some(os + i), Some(ns + i), new_lines[ns + i].text)).collect();
         hunk.rows.splice(0..0, rows);
-        hunk.old_start = os;
-        hunk.new_start = ns;
+        hunk.meta.old_start = os;
+        hunk.meta.new_start = ns;
     } else {
-        let (os, ns) = (hunk.old_start + hunk.old_len, hunk.new_start + hunk.new_len);
+        let (os, ns) = (hunk.meta.old_start + hunk.meta.old_len, hunk.meta.new_start + hunk.meta.new_len);
         for i in 0..count {
             let line = &new_lines[ns + i];
-            hunk.rows.push(context_row(line.text, os + i, ns + i));
+            hunk.rows.push(DiffLine::new(DiffLineKind::Context, Some(os + i), Some(ns + i), line.text));
             if !line.terminated {
-                hunk.rows.push(DiffLine {
-                    kind: DiffLineKind::NoNewline,
-                    old_line: None,
-                    new_line: None,
-                    text: "\\ No newline at end of file".into(),
-                    emphasis: Vec::new(),
-                });
+                hunk.rows.push(DiffLine::no_newline());
             }
         }
     }
-    hunk.old_len += count;
-    hunk.new_len += count;
+    hunk.meta.old_len += count;
+    hunk.meta.new_len += count;
     // Merge hunks that now touch.
     let mut merged: Vec<Hunk> = Vec::with_capacity(hunks.len());
     for hunk in hunks {
         match merged.last_mut() {
-            Some(prev) if prev.new_start + prev.new_len >= hunk.new_start => {
-                prev.old_len = hunk.old_start + hunk.old_len - prev.old_start;
-                prev.new_len = hunk.new_start + hunk.new_len - prev.new_start;
+            Some(prev) if prev.meta.new_start + prev.meta.new_len >= hunk.meta.new_start => {
+                prev.meta.old_len = hunk.meta.old_start + hunk.meta.old_len - prev.meta.old_start;
+                prev.meta.new_len = hunk.meta.new_start + hunk.meta.new_len - prev.meta.new_start;
                 prev.rows.extend(hunk.rows);
             }
             _ => merged.push(hunk),
@@ -134,20 +112,9 @@ pub fn expand(diff: &Diff, e: Expansion) -> Option<Diff> {
     // Re-flatten.
     let mut out = Diff { source: diff.source.clone(), added: diff.added, deleted: diff.deleted, ..Default::default() };
     for hunk in merged {
-        out.hunks.push(DiffHunk {
-            header_index: out.lines.len(),
-            old_start: hunk.old_start,
-            old_len: hunk.old_len,
-            new_start: hunk.new_start,
-            new_len: hunk.new_len,
-        });
-        out.lines.push(DiffLine {
-            kind: DiffLineKind::Hunk,
-            old_line: None,
-            new_line: None,
-            text: hunk_header(hunk.old_start, hunk.old_len, hunk.new_start, hunk.new_len),
-            emphasis: Vec::new(),
-        });
+        let meta = DiffHunk { header_index: out.lines.len(), ..hunk.meta };
+        out.lines.push(DiffLine::hunk(&meta));
+        out.hunks.push(meta);
         out.lines.extend(hunk.rows);
     }
     out.longest_line = (0..out.lines.len()).max_by_key(|&i| out.lines[i].text.len()).unwrap_or(0);
@@ -155,62 +122,5 @@ pub fn expand(diff: &Diff, e: Expansion) -> Option<Diff> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::DiffOptions;
-    use crate::engine::diff_texts;
-
-    fn file(n: usize) -> String {
-        (1..=n).map(|i| format!("{i}\n")).collect()
-    }
-
-    /// Context rows must always show the line they claim to be.
-    fn check_rows(d: &Diff, new: &str) {
-        let lines: Vec<&str> = new.lines().collect();
-        for l in &d.lines {
-            if l.kind == DiffLineKind::Context {
-                assert_eq!(l.text, lines[l.new_line.unwrap() as usize - 1]);
-            }
-        }
-    }
-
-    #[test]
-    fn up_down_and_merge() {
-        let old = file(100);
-        let new = old.replace("10\n", "ten\n").replace("60\n", "sixty\n");
-        let d = diff_texts(&old, &new, DiffOptions::default());
-        assert_eq!(d.hunks.len(), 2);
-        assert_eq!(gap_above(&d, 0), 6); // lines 1..=6 hidden
-        assert_eq!(gap_above(&d, 1), 43); // lines 14..=56 hidden
-        assert_eq!(gap_below(&d, 1), 100 - 63);
-
-        let up = expand(&d, Expansion::Up(0)).unwrap();
-        assert_eq!(gap_above(&up, 0), 0);
-        assert_eq!(up.lines[0].text, "@@ -1,13 +1,13 @@");
-        check_rows(&up, &new);
-
-        let down = expand(&d, Expansion::Down(1)).unwrap();
-        assert_eq!(gap_below(&down, 1), 37 - 20);
-        check_rows(&down, &new);
-
-        let all = expand(&d, Expansion::All(1)).unwrap();
-        assert_eq!(all.hunks.len(), 1);
-        assert_eq!(all.lines.iter().filter(|l| l.kind == DiffLineKind::Hunk).count(), 1);
-        check_rows(&all, &new);
-        // Changes and staging are unaffected by expansion.
-        assert_eq!((all.added, all.deleted), (d.added, d.deleted));
-        let pick = |d: &Diff| crate::staged_text(d, |ix| d.lines[ix].text == "ten" || d.lines[ix].text == "10").unwrap();
-        assert_eq!(pick(&all), pick(&d));
-    }
-
-    #[test]
-    fn down_to_eof_without_newline() {
-        let old = "a\nb\nc\nd\ne\nf\ng";
-        let new = "A\nb\nc\nd\ne\nf\ng";
-        let d = diff_texts(old, new, DiffOptions::default());
-        let down = expand(&d, Expansion::Down(0)).unwrap();
-        assert_eq!(down.lines.last().unwrap().kind, DiffLineKind::NoNewline);
-        assert_eq!(gap_below(&down, 0), 0);
-        assert!(expand(&down, Expansion::Down(0)).is_none());
-    }
-}
+#[path = "tests/expand.test.rs"]
+mod tests;

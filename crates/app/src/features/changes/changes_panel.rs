@@ -9,7 +9,7 @@ use gpui::{
 use super::changes_header::ChangesHeader;
 use super::changes_list::ChangesList;
 use super::commit_box::CommitBox;
-use super::state::{CommitButton, SelectionSummary};
+use super::state::SelectionSummary;
 use super::undo_strip::UndoStrip;
 use crate::features::stashes::StashPanel;
 use crate::repo::{LastCommit, RepoModel};
@@ -22,25 +22,28 @@ pub struct ChangesPanel {
     ws: Entity<Workspace>,
     stashes: Option<StashPanel>,
     undo: Option<UndoStrip>,
-    commit_box: CommitBox,
+    commit_box: Entity<CommitBox>,
 }
 
 impl ChangesPanel {
     pub fn new(ws: &Workspace, repo: &Entity<RepoModel>, cx: &mut Context<Workspace>) -> Self {
         let r = repo.read(cx);
         let selection = SelectionSummary::of(r);
-        let amending = ws.amending(cx);
-        let summary_ok = !ws.commit_message(cx).0.is_empty();
-        let button = CommitButton::of(r, selection.included, amending, summary_ok);
+        let amending = ws.commit_box.read(cx).amending(cx);
         let last: Option<LastCommit> = r.undoable_commit().cloned().filter(|_| !amending);
         let ws_entity = cx.entity();
         Self {
-            header: ChangesHeader::new(selection, repo.clone(), ws_entity.clone()),
-            list: ChangesList::new(selection.total, repo.clone(), ws_entity.clone(), ws.changes_scroll.clone()),
+            header: ChangesHeader { selection, repo: repo.clone(), ws: ws_entity.clone() },
+            list: ChangesList {
+                count: selection.total,
+                repo: repo.clone(),
+                ws: ws_entity.clone(),
+                scroll: ws.changes_scroll.clone(),
+            },
             ws: ws_entity.clone(),
             stashes: StashPanel::new(repo, ws_entity.clone(), cx),
-            undo: last.map(|c| UndoStrip::new(c, ws_entity.clone())),
-            commit_box: CommitBox::new(button, ws.message.clone(), ws.sidebar_width(), ws_entity),
+            undo: last.map(|c| UndoStrip { commit: c, ws: ws_entity.clone() }),
+            commit_box: ws.commit_box.clone(),
         }
     }
 }

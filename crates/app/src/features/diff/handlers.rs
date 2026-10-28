@@ -4,29 +4,19 @@
 use std::sync::Arc;
 
 use gd_git::{Diff, DiffOptions};
-use gpui::{Context, Pixels, Point, Window, point, px};
+use gd_ui::Theme;
+use gpui::{Context, Pixels, Point, TextRun, Window, point, px};
 
-use super::split_diff::SplitDiff;
-use crate::workspace::Workspace;
+use super::list::SplitDiff;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     pub fn open_diff_options(&mut self, pos: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
-        if self.diff_view.menu.take().is_some() {
-            cx.notify();
-            return;
+        if matches!(self.overlays.last(), Some(Overlay::DiffOptions(_))) {
+            return self.close_overlay(window, cx);
         }
-        self.popover = None;
-        self.menu = None;
-        self.diff_view.menu = Some(pos);
-        self.diff_view.menu_gen += 1;
+        self.open_overlay(Overlay::DiffOptions(pos), cx);
         self.focus(window, cx);
-        cx.notify();
-    }
-
-    pub fn close_diff_options(&mut self, cx: &mut Context<Self>) {
-        if self.diff_view.menu.take().is_some() {
-            cx.notify();
-        }
     }
 
     pub fn set_diff_split(&mut self, split: bool, cx: &mut Context<Self>) {
@@ -67,20 +57,45 @@ impl Workspace {
     /// Push the persisted options into the repository model (reloads diffs if changed).
     pub fn apply_diff_options(&mut self, cx: &mut Context<Self>) {
         let opts = DiffOptions { ignore_whitespace: self.settings.diff_ignore_whitespace };
-        if let Some(repo) = &self.repo {
-            repo.update(cx, |r, cx| r.set_diff_options(opts, cx));
-        }
+        self.with_repo(cx, |r, cx| r.set_diff_options(opts, cx));
     }
 
     /// Paired rows for `diff`, built once per loaded diff and cached.
     pub fn split_for(&mut self, diff: &Arc<Diff>) -> Arc<SplitDiff> {
-        if let Some(s) = &self.diff_view.split_cache {
-            if Arc::ptr_eq(&s.diff, diff) {
-                return s.clone();
-            }
+        if let Some(s) = self.diff_view.split_cache.as_ref().filter(|s| Arc::ptr_eq(&s.diff, diff)) {
+            return s.clone();
         }
         let s = Arc::new(SplitDiff::build(diff));
         self.diff_view.split_cache = Some(s.clone());
         s
+    }
+}
+
+impl Workspace {
+    /// Wheel/trackpad horizontal scroll of the (non-wrapped) diff, shared by
+    /// both split columns. Clamped so the widest line can just be read to its end.
+    pub fn scroll_diff_x(&mut self, by: Pixels, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(ext) = &self.diff_view.extent else { return };
+        let Some(line) = ext.diff.lines.get(ext.diff.longest_line).filter(|l| !l.text.is_empty()) else {
+            return;
+        };
+        let run = TextRun {
+            len: line.text.len(),
+            font: gpui::font(Theme::of(cx).font_mono.clone()),
+            color: gpui::black(),
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+            letter_spacing: None,
+        };
+        let width = window.text_system().shape_line(line.text.clone().into(), px(12.0), &[run]).width;
+        let view = self.diff_scroll.0.borrow().base_handle.bounds().size.width;
+        let visible = (view - ext.fixed) / ext.columns;
+        let max = (width + px(24.0) - visible).max(px(0.0));
+        let next = (self.diff_view.hscroll + by).min(max).max(px(0.0));
+        if next != self.diff_view.hscroll {
+            self.diff_view.hscroll = next;
+            cx.notify();
+        }
     }
 }

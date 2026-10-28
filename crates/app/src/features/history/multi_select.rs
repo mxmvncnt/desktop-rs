@@ -8,19 +8,13 @@ use crate::repo::RepoModel;
 
 #[derive(IntoElement)]
 pub struct MultiSelectPane {
-    repo: Entity<RepoModel>,
-}
-
-impl MultiSelectPane {
-    pub fn new(repo: Entity<RepoModel>) -> Self {
-        Self { repo }
-    }
+    pub repo: Entity<RepoModel>,
 }
 
 impl RenderOnce for MultiSelectPane {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let r = self.repo.read(cx);
-        let commits: Vec<Commit> = r.multi_indices().iter().filter_map(|&i| r.commits.get(i).cloned()).collect();
+        let commits: Vec<Commit> = r.multi_indices().iter().filter_map(|&i| r.log.commits.get(i).cloned()).collect();
         let pushed = commits.iter().filter(|c| !r.is_unpushed(&c.sha)).count();
         let n = commits.len();
         div()

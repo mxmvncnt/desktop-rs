@@ -1,29 +1,24 @@
 //! Left sidebar: Changes / History tabs and the selected tab's body.
 
-use gd_ui::{Theme, divider};
+use gd_ui::{ResizeHandle, Theme, divider};
 use gpui::{
-    App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+    AnyElement, App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
 };
 
 use super::changes_panel::ChangesPanel;
-use super::sidebar_handle::SidebarHandle;
+use super::resize::SidebarResize;
 use super::sidebar_tabs::SidebarTabs;
 use crate::features::history::CommitList;
 use crate::repo::{RepoModel, Tab};
 use crate::workspace::Workspace;
 
-enum SidebarBody {
-    Changes(ChangesPanel),
-    History(CommitList),
-}
-
 #[derive(IntoElement)]
 pub struct Sidebar {
     tabs: SidebarTabs,
-    body: SidebarBody,
+    body: AnyElement,
     corner_radius: f32,
     width: f32,
-    handle: SidebarHandle,
+    handle: ResizeHandle<SidebarResize>,
 }
 
 impl Sidebar {
@@ -31,12 +26,21 @@ impl Sidebar {
         let r = repo.read(cx);
         let (tab, count) = (r.tab, r.changes().len());
         let body = match tab {
-            Tab::Changes => SidebarBody::Changes(ChangesPanel::new(ws, repo, cx)),
-            Tab::History => SidebarBody::History(CommitList::new(repo.clone(), cx.entity(), ws.history_scroll.clone(), ws.history_ui.search.clone())),
+            Tab::Changes => ChangesPanel::new(ws, repo, cx).into_any_element(),
+            Tab::History => CommitList {
+                repo: repo.clone(),
+                ws: cx.entity(),
+                scroll: ws.history_scroll.clone(),
+                search: ws.history_ui.search.clone(),
+            }
+            .into_any_element(),
         };
-        Self { tabs: SidebarTabs::new(tab, count, repo.clone()), body, corner_radius: ws.corner_radius,
+        Self { tabs: SidebarTabs { tab, change_count: count, repo: repo.clone() }, body, corner_radius: ws.corner_radius,
             width: ws.sidebar_width(),
-            handle: SidebarHandle::new(cx.entity()),
+            handle: ResizeHandle::right_edge("sidebar-handle", SidebarResize).on_reset({
+                let ws = cx.entity();
+                move |_, cx| ws.update(cx, |this, cx| this.reset_sidebar_width(cx))
+            }),
         }
     }
 }
@@ -58,10 +62,7 @@ impl RenderOnce for Sidebar {
             .child(div().p(px(8.0)).child(self.tabs))
             .child(divider(cx))
             .child(self.handle)
-            .child(match self.body {
-                SidebarBody::Changes(p) => p.into_any_element(),
-                SidebarBody::History(l) => l.into_any_element(),
-            })
+            .child(self.body)
     }
 }
 

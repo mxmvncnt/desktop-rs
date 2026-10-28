@@ -4,19 +4,13 @@ use gd_ui::{Button, Icon, Theme, icon, motion};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use crate::repo::LastCommit;
-use crate::shared::relative_time::relative_time;
+use crate::utils::text::relative_time;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct UndoStrip {
-    commit: LastCommit,
-    ws: Entity<Workspace>,
-}
-
-impl UndoStrip {
-    pub fn new(commit: LastCommit, ws: Entity<Workspace>) -> Self {
-        Self { commit, ws }
-    }
+    pub commit: LastCommit,
+    pub ws: Entity<Workspace>,
 }
 
 impl RenderOnce for UndoStrip {
@@ -35,7 +29,7 @@ impl RenderOnce for UndoStrip {
                 .py(px(8.0))
                 .border_t_1()
                 .border_color(theme.border)
-                .bg(gd_ui::theme::ink(0.03))
+                .bg(theme.ink(0.03))
                 .child(icon(Icon::Check).size(px(14.0)).text_color(theme.success))
                 .child(
                     div()

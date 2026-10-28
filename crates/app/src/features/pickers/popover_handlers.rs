@@ -1,8 +1,8 @@
 //! `impl Workspace`: opening, toggling and closing the toolbar popovers.
 
-use gpui::{ClickEvent, Context, Focusable, ScrollStrategy, Window};
+use gpui::{ClickEvent, Context, Focusable, Window};
 
-use crate::workspace::{Popover, Workspace};
+use crate::workspace::{Overlay, Popover, Workspace};
 
 impl Workspace {
     /// Toolbar trigger click: toggles `p`, unless this press is the one that
@@ -14,7 +14,7 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let dismissed = self.popover_dismissed.take();
+        let dismissed = self.pickers.update(cx, |p, _| p.dismissed.take());
         if let (Some((was, at)), ClickEvent::Mouse(m)) = (dismissed, ev)
             && popover_trigger(was) == p
             && at == m.down.position
@@ -25,26 +25,26 @@ impl Workspace {
     }
 
     pub fn toggle_popover(&mut self, p: Popover, window: &mut Window, cx: &mut Context<Self>) {
-        if self.popover == Some(p) {
-            self.close_popover(window, cx);
+        if self.popover() == Some(p) {
+            self.close_overlay(window, cx);
             return;
         }
         if matches!(p, Popover::Branches | Popover::NewBranch) && self.repo.is_none() {
             return;
         }
-        self.popover = Some(p);
-        self.popover_gen += 1;
-        self.new_branch_base = None;
-        self.new_branch_base_open = false;
+        self.open_overlay(Overlay::Popover(p), cx);
+        let store = self.pickers.read(cx);
+        let inputs = [store.filter.clone(), store.name_input.clone(), store.url_input.clone()];
+        let target = match p {
+            Popover::Repositories | Popover::Branches => &inputs[0],
+            Popover::NewBranch => &inputs[1],
+            Popover::Clone => &inputs[2],
+        };
+        self.pickers.update(cx, |p, cx| p.set_base(None, cx));
         self.reset_popover_selection(cx);
-        for input in [&self.filter, &self.name_input, &self.url_input] {
+        for input in &inputs {
             input.update(cx, |s, cx| s.emplace("", cx));
         }
-        let target = match p {
-            Popover::Repositories | Popover::Branches => &self.filter,
-            Popover::NewBranch => &self.name_input,
-            Popover::Clone => &self.url_input,
-        };
         window.focus(&target.focus_handle(cx), cx);
         cx.notify();
     }
@@ -54,14 +54,13 @@ impl Workspace {
     /// the first row.
     /// Runs on open and on every input change, including the clear on open.
     pub(crate) fn reset_popover_selection(&mut self, cx: &mut Context<Self>) {
-        let unfiltered = self.filter.read(cx).as_str().trim().is_empty();
-        self.popover_selected = match self.popover {
+        let unfiltered = self.pickers.read(cx).filter.read(cx).as_str().trim().is_empty();
+        let row = match self.popover() {
             Some(Popover::Repositories) if unfiltered => self.settings.selected.unwrap_or(0),
             Some(Popover::Branches) if unfiltered => self.head_branch_row(cx),
             _ => 0,
         };
-        self.popover_scroll
-            .scroll_to_item(self.popover_selected, ScrollStrategy::Nearest);
+        self.pickers.update(cx, |p, cx| p.select(row, cx));
     }
 
     /// Row of the checked-out branch in the unfiltered branch list.
@@ -72,20 +71,6 @@ impl Workspace {
             .iter()
             .position(|&i| r.branches.get(i).is_some_and(|b| b.is_head))
             .unwrap_or(0)
-    }
-
-    pub fn close_popover(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.popover = None;
-        self.focus(window, cx);
-        cx.notify();
-    }
-
-    /// Up/down inside an open popover.
-    pub(crate) fn step_popover_selection(&mut self, delta: isize, cx: &mut Context<Self>) {
-        self.popover_selected = (self.popover_selected as isize + delta).max(0) as usize;
-        self.popover_scroll
-            .scroll_to_item(self.popover_selected, ScrollStrategy::Nearest);
-        cx.notify();
     }
 }
 

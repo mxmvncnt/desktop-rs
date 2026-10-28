@@ -5,7 +5,7 @@
 - Merged in: CSD window chrome, diff options (split view, hide whitespace), multiple stashes,
   merge/squash/rebase + in-progress banner + conflict resolution, and history ops
   (push status, full commit context menu, multi-select squash, amend, reorder via menu).
-- All git smoke suites pass on the integrated tree: `smoke`, `merge_smoke`, `stash_smoke`, `history_ops`.
+- The gd-git suites (`crates/git/tests/`: `write_ops`, `merge`, `stash`, `history_ops`, `identity`) run with `cargo test -p gd-git`.
 - Idle is still zero renders (`GD_DEBUG_FRAMES=1`). RSS is ~67 MB (release, small repo).
 - Still untested by hand: everything interactive in the new menus and dialogs.
 
@@ -13,12 +13,11 @@
 
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
       per-repo override for the open repo with "in effect" line, provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
-      add/edit/remove. Metadata in `<config>/accounts`, tokens in `<config>/tokens` (0600). No keyring crate: its D-Bus tree is
-      heavy and fails headless; tokens are plain text protected by file mode only. Token input is not masked (gpui-ce
+      add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the OS keyring (`keyring` crate, service `desktop-rs`; snapshot mode uses the mock store). Token input is not masked (gpui-ce
       `text_input` has no masking) and tokens are not validated online (no HTTP client dependency).
 - [x] Credentials wired: `gd_git::set_credentials` registers tokens; every `.network()` git command gets per-host
       `credential.https://<host>.helper` via `GIT_CONFIG_COUNT/KEY/VALUE` env (secret only in the child env). HTTPS only; SSH untouched.
-- Verify: `cargo run -p gd-git --example identity_smoke -- /tmp/desktop-rs/identity` (uses scratch `GIT_CONFIG_GLOBAL`);
+- Verify: `cargo test -p gd-git --test identity` (scratch `GIT_CONFIG_GLOBAL`);
   snapshot views `settings-accounts[-light|-form|-edit|-norepo]`.
 
 ## Settings modal + light/dark/system theme (2026-10-21)
@@ -28,7 +27,7 @@
       Opens from the toolbar gear, `Ctrl/Cmd+,`, macOS "Settings…"; Esc/close button/backdrop closes. `settings_open` counts as
       `overlay_open`; Esc is checked first in `Dismiss`. Diff page reuses `CheckOptionRow` and the `set_diff_*` setters.
       To add a category: extend `SettingsPage` (label/icon) and add a page fn.
-- [x] Theme mode `System|Light|Dark` persisted as `theme=` in the `display` file. System follows
+- [x] Theme mode `System|Light|Dark` persisted as `theme` in `settings.toml`. System follows
       `window.appearance()` and re-applies live via `observe_window_appearance`.
 - Not done: identities/providers, ~~multiple color themes~~ (done: see ARCHITECTURE UI kit, Color themes). Snapshot views: `settings`,
   `settings-light`, `settings-diff`, `changes-light`.
@@ -52,7 +51,7 @@
 
 ## Status at end of session 1 (2026-10-20, overnight autonomous run)
 
-- `rust-rewrite` holds the POC plus three merged feature branches (fs-watcher,
+- `rust-rewrite` (since merged into `main`) held the POC plus three merged feature branches (fs-watcher,
   changes-actions, diff-syntax). Everything builds warning-free in dev, snapshot and release.
 - Measured (release, Linux/Wayland, small repo): **~65 MB RSS, 0 CPU ticks over
   10 s idle**. The highlighter takes ~125 ms on an 18k-line diff, in the background.
@@ -64,7 +63,7 @@
   `.worktrees/<name>` (branch `rust/<name>`), then merge with `--no-ff`
   and resolve the predictable conflicts (`repo.rs` fields, `snapshot.rs` view list, docs).
 
-Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
+Branch: `main`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 
 ## POC (session 1, 2026-10-20)
 
@@ -78,7 +77,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 ### Git operations (`gd-git`, all verified by `examples/smoke.rs`)
 
 - ✅ open / init / clone
-- ✅ status (porcelain v2: branch, upstream, ahead/behind, renames, conflicts, untracked)
+- ✅ status (libgit2 `statuses`: branch, upstream, ahead/behind, renames, conflicts, untracked)
 - ✅ working diff (tracked, untracked, unborn HEAD) and commit diff
 - ✅ commit selected files (checkbox semantics) with summary and description
 - ✅ discard changes (tracked and untracked); undo last commit (soft reset); `ignore` (append to `.gitignore`, `escape_ignore` helper).
@@ -91,7 +90,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 
 - ✅ Desktop layout: toolbar (repo ▾, branch ▾, contextual Publish/Pull/Push/Fetch), sidebar tabs, main diff.
 - ✅ Changes list: checkboxes, select-all (mixed state), status glyphs, ↑/↓.
-- ✅ Commit box: one auto-growing, wrapping message input (first line = summary, rest = description; `features/changes/message.rs`), `Commit to <branch>` (Ctrl+Enter), enabled only when valid.
+- ✅ Commit box: one auto-growing, wrapping message input (first line = summary, rest = description; `features/changes/commit_box.rs`, its own `CommitBox` entity: typing does not notify `Workspace`), `Commit to <branch>` (Ctrl+Enter), enabled only when valid.
   - Exactly one file selected: empty summary shows `Create/Update/Delete x` / `Rename a to b` as placeholder and the commit uses it (`RepoModel::default_summary`).
   - Committing keeps the selection (no empty frame): the status refresh moves it to the file now at the same row and the old diff stays until the new one loads.
 - ✅ Virtualized diff with gutters, hunk headers, add/del washes, truncation notice.
@@ -99,7 +98,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
   Co-authors: `gd_git::parse_co_authors` fills `Commit::co_authors` while loading the log (off-thread); rows and header show "A and B" (`shared/commit_authors.rs`), trailers hidden from the header body.
   History rewrites keep the selection index but change the sha: `apply_reloaded_log` reloads files/diff when the sha at the selected slot changed.
   Commit message area is scrollable and drag-resizable (handle under it, double-click resets; `features/history/message_resize.rs`, not persisted). Snapshot view `history-msg-tall`.
-- ✅ History search: box above the commit list (`features/history/search_box.rs`, input in `HistoryUi.search`). Every word must match summary/body/author/co-authors, or be a sha prefix (`search.rs`, case-insensitive). Client-side over the loaded pages; while fewer than 50 rows match it keeps paging in more history. Rows keep their index into `RepoModel.commits`, so selection/menus are unchanged; ↑/↓ navigation steps through the matches (`workspace/navigation.rs`). Shift-range select still spans hidden commits. Snapshot view `history-search`.
+- ✅ History search: box above the commit list (`features/history/search_box.rs`, input in `HistoryUi.search`). Every word must match summary/body/author/co-authors, or be a sha prefix (`search.rs`, case-insensitive). Client-side over the loaded pages; while fewer than 50 rows match it keeps paging in more history. Rows keep their index into `RepoModel.log.commits`, so selection/menus are unchanged; ↑/↓ navigation steps through the matches (`workspace/navigation.rs`). Shift-range select still spans hidden commits. Snapshot view `history-search`.
 - ✅ Repository picker: filter, ↑/↓/Enter, remove (hover ×), add existing (folder dialog), clone.
 - ✅ Branch picker: filter, local + remote (deduped), ↑/↓/Enter checkout, new branch (sanitized name).
 - ✅ No-changes view (push/pull/open-folder suggestions), welcome screen.
@@ -111,7 +110,7 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 
 - ✅ `notify` watcher per open repo (`app/src/watcher.rs`), 300ms trailing debounce (2s max wait), coalesced refresh.
 - ✅ `.git` filtering: only HEAD/index/refs/FETCH_HEAD/MERGE_HEAD/... count; objects, logs, `*.lock` ignored. `target/` (top level) and `node_modules` skipped.
-- ✅ Idle = zero refreshes, ~zero CPU. Verify: `cargo run --features snapshot -- --snapshot x.png <repo> watch` (asserts; mutates and restores files/a branch in the repo).
+- ✅ Idle = zero refreshes, ~zero CPU. Verify: `cargo test -p desktop-rs --features snapshot watcher` (`app/src/tests/watcher_tests.test.rs`, asserts on a temp repo).
 - ✅ `gd_git::Repository::{git_dir, common_git_dir, last_fetch_time}`; toolbar caption "Last fetched 5 minutes ago" / "Never fetched".
 - ✅ Background fetch: 10s after open if stale, then every 30 min; silent on failure (logged), skipped if a remote op is running or no remote.
 - ✅ Focus refresh skipped if the watcher refreshed within 1s.
@@ -136,14 +135,14 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
    - Checkout with uncommitted changes always opens Desktop's dialog (Leave my changes on X = stash / Bring my changes to Y). If checkout fails after stashing, the stash is popped back.
    - Conflicts on apply/pop: the error is shown, the working tree is left conflicted (files show "!") for the user to resolve, and a conflicted pop keeps the stash. No dedicated conflict UI (belongs to the in-progress banner work).
    - Known gaps: stashes dropped externally are noticed on the next full refresh (focus/F5/any op), since `git stash drop` of a non-top entry only rewrites the reflog; no auto-restore of the switch-stash when returning to the branch; "Stash selected files" is always enabled in the menu (notice if none checked).
-   - Snapshot views: `stash-list`, `stash-all`, `stash-detail`, `stash-detail-untracked`, `stash-menu`, `stash-dialog`, `stash-drop-dialog`, `switch-branch-dialog`. Smoke: `cargo run -p gd-git --example stash_smoke -- /tmp/desktop-rs/stash-smoke [--keep]`.
+   - Snapshot views: `stash-list`, `stash-all`, `stash-detail`, `stash-detail-untracked`, `stash-menu`, `stash-dialog`, `stash-drop-dialog`, `switch-branch-dialog`. Test: `cargo test -p gd-git --test stash` (the old `--keep` scratch-repo mode is gone: build snapshot repos with plain `git`).
 6. ✅ Merge / squash / rebase into current branch; operation-in-progress banner; conflict resolution; branch context menu.
-   - Branch popover footer "Merge into current branch…" (ctrl+shift+M): dialog with Merge | Squash and merge | Rebase modes, filter, ↑/↓/Enter, Desktop-style preview line ("This will merge N commits from X into Y" / "up to date", plus expected conflicts via `git merge-tree`), computed in the background.
+   - Branch popover footer "Merge into current branch…" (ctrl+shift+M): dialog with Merge | Squash and merge | Rebase modes, filter, ↑/↓/Enter, Desktop-style preview line ("This will merge N commits from X into Y" / "up to date", plus expected conflicts via libgit2 `merge_commits`), computed in the background.
    - New-branch popover has a "Based on" selector (current branch by default, any local/remote branch via `pickers/new_branch_base*.rs`); uses `create_branch_from` (`--no-track`). Snapshot view `new-branch-base`.
    - Squash tab has a "Squash commit summary" field (default "Squash merge X into Y", reset when the highlighted branch changes); `merge_squash(branch, Some(summary))` uses it as the subject, body lists the squashed commits. Modal/menu backdrops `.occlude()` so nothing behind is clickable.
    - Right-click a branch: merge, rebase onto, create from, rename, copy name, delete (also offers deleting the remote branch). Conflicted file rows: Use ours / Use theirs / Mark as resolved / Open in default editor.
    - Banner with Continue/Abort for merge, squash, rebase, cherry-pick, revert; commit box prefilled with MERGE_MSG and commits via `merge --continue`-equivalent; Continue disabled while conflicts remain.
-   - Snapshot views: `merge-dialog`, `squash-dialog`, `rebase-dialog`, `branch-menu`, `delete-dialog`, `rename-dialog`, `conflict-menu`, and `changes` on a conflicted repo (`cargo run -p gd-git --example merge_smoke -- <dir> --keep-conflict`).
+   - Snapshot views: `merge-dialog`, `squash-dialog`, `rebase-dialog`, `branch-menu`, `delete-dialog`, `rename-dialog`, `conflict-menu`, and `changes` on a conflicted repo (make a conflicted repo with plain `git`; the old `merge_smoke --keep-conflict` is gone).
    - Not verified with a real mouse/keyboard. Not done: remote rename, rebase `--autostash`, interactive conflict resolution inside the app, banner for stash-conflicts. Picker ↑/↓ now also capture NavUp/NavDown (the LIST-context bindings never reached a focused input).
 7. ✅ Partial (line/hunk) staging in the diff gutter (Changes tab, unified and split).
    - Desktop layout: split view is `[old text | old no · handle · new no | new text]` (numbers in the middle);
@@ -161,16 +160,16 @@ Branch: `rust-rewrite`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
      clears partial selections.
    - Not selectable: history/stash diffs, "Hide whitespace changes" on (selection is kept for later), truncated or
      non-UTF-8 diffs, conflicted files, while a merge commit is pending. Stash "selected files" still stashes whole files.
-   - Verified: `cargo test -p gd-git` (staged_text), `smoke` example (real partial commit). Snapshot views
+   - Verified: `cargo test -p gd-git` (staged_text), `write_ops` test (real partial commit). Snapshot views
      `partial[@N]`, `partial-split[@N]`. Not yet clicked with a real mouse.
-8. 🟨 Split diff view and whitespace toggle done (gear button in both diff headers: Unified/Split + Hide whitespace changes, persisted in `display` settings file, `-w` via `gd_git::DiffOptions`). Image diffs still open. Split view clips long lines (no horizontal scroll). Snapshot views: `split`, `split-ws`, `split-history`, `hide-ws`, `diff-options-menu`. Split row build: 0.36 ms for an 18k-line diff (cached per loaded diff), so toggling is instant.
+8. 🟨 Split diff view and whitespace toggle done (gear button in both diff headers: Unified/Split + Hide whitespace changes, persisted in `settings.toml`, `-w` via `gd_git::DiffOptions`). Image diffs still open. Split view clips long lines (no horizontal scroll). Snapshot views: `split`, `split-ws`, `split-history`, `hide-ws`, `diff-options-menu`. Split row build: 0.36 ms for an 18k-line diff (cached per loaded diff), so toggling is instant.
 9. ⬜ Pull requests list (GitHub API); create PR; CI status.
 10. ✅ (branch `rust/history-ops`) History commit actions and push status:
 
 - Unpushed commits get an arrow-up icon with tooltip ("hasn't been pushed to the remote repository yet"); tags show as pills. Refreshed on every full refresh (push/fetch/commit/checkout).
 - Right-click menu: Amend, Undo, Reset to commit (soft/mixed dialog), Checkout commit (detached warning), Move commit up/down (reorder), Revert, Create branch from commit, Create/Delete tag, Cherry-pick (branch picker), Copy SHA/tags, View on GitHub. Multi-select (ctrl/cmd-click, shift-click range) offers Cherry-pick N and Squash N (message dialog).
 - Amend mode in the commit box ("Amend last commit", Stop amending, force-push warning if pushed).
-- Verified by `cargo run -p gd-git --example history_ops -- /tmp/desktop-rs/hops` (bare scratch remote). Snapshot views: `history-menu`, `-menu-head`, `-menu-pushed`, `-multiselect`, `-multimenu`, `-squash`, `-reset`, `-cherry`, `-tag`, `-checkout`, `amend-mode`.
+- Verified by `cargo test -p gd-git --test history_ops` (bare scratch remote). Snapshot views: `history-menu`, `-menu-head`, `-menu-pushed`, `-multiselect`, `-multimenu`, `-squash`, `-reset`, `-cherry`, `-tag`, `-checkout`, `amend-mode`.
 - Skipped: drag-and-drop reorder (menu Move up/down instead), Delete tag restricted to unpushed tags (needs remote tag knowledge; all tags deletable locally), non-adjacent squash (menu item disabled), own conflict UI (uses the generic in-progress banner via `run_op`). Not exercised with a real mouse.
 
 11. ⬜ Tags, branch rename/delete UI, compare branches.
@@ -197,15 +196,21 @@ echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new 
       (`features/pickers/popover_layer.rs`) extracted as components. `repo.rs` became `repo/` (see ARCHITECTURE).
 - Verified pixel-identical: ~175 snapshots (all views, CSD, hover, `watch`) before/after.
 - Next steps (candidates, not done, behavior-changing):
-  - Split `Workspace` into child entities so typing in the commit box does not re-render the diff:
-    `CommitBoxState` (summary/description inputs), `PickerState` (popover, filter, name/url inputs, selection),
-    `SettingsModal` (settings_open/page), `DiffView`+`diff_select`+`diff_scroll` as a `DiffPane` entity.
-    Esc/Enter routing in `workspace/actions.rs` reads many of these fields and must be reworked first.
+  - Commit box is now its own `CommitBox` entity (done). `Workspace::render` still runs on every draw (see
+    ARCHITECTURE, "Commit box"); skipping the diff/file-list work needs `DiffView`+`diff_select`+`diff_scroll` as a
+    `DiffPane` entity embedded with `Entity::cached(style)`. Esc/Enter routing in `workspace/overlay.rs` reads many
+    of these fields and must be reworked first.
   - Move `select_change` and the other `RepoModel` selection methods into `features/changes/ops.rs` / `features/history`
     by widening the diff loader's visibility.
-  - `RepoModel::new` still lists every field; group them into sub-structs (`DiffState`, `HistoryLog`, `RefreshState`).
+  - `RepoModel::new` still lists every field; group them into sub-structs (done for `ChangesState`, `HistoryLog`, `RefreshState`).
 
-- ✅ Resizable sidebar: 6px drag handle on its right edge (`features/changes/sidebar_handle.rs`, `resize.rs`), clamped 220..520, double-click resets to 300, persisted as `sidebar_width` in the `display` file. Snapshot view `sidebar-wide`.
+## Cleanup for humans (branch `cleanup-for-humans`)
+
+- ✅ Stores (`RepoModel`, `PopoverStore`, `AccountsStore`), one overlay stack, shared `components/` and `utils/`, git reads on git2,
+  libraries for watcher/serde/keyring/assets, `features/diff/` in subfolders, per-feature snapshot views (`features/<x>/snapshot.rs`),
+  the watcher check as a unit test. What was deliberately left out is listed at the top of `CLEANUP_REPORT.md`.
+
+- ✅ Resizable sidebar: 6px drag handle on its right edge (`features/changes/sidebar_handle.rs`, `resize.rs`), clamped 220..520, double-click resets to 300, persisted as `sidebar_width` in `settings.toml`. Snapshot view `sidebar-wide`.
 
 ## Pull request preview
 - ✅ Branch > Preview Pull Request (`ctrl-alt-p`, also a card in the no-changes pane): base selector (default `origin/HEAD`), `N commits from head into base`, merge-base file list + read-only diff, "Create pull request" opens the GitHub/GitLab/Bitbucket compare URL; hints for unpublished branch / unknown host. Code: `features/pr_preview/`, `gd-git/src/pr_preview.rs`. Snapshot views: `pr-preview`, `pr-preview-menu`.

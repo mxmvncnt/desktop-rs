@@ -1,9 +1,10 @@
 //! Dropdown listing the branches a pull request can target.
 
 use gd_git::BranchKind;
-use gd_ui::{Icon, Theme, icon, overlay_card, pressable};
-use gpui::{App, Entity, IntoElement, MouseButton, RenderOnce, Window, deferred, div, prelude::*, px, uniform_list};
+use gd_ui::{Icon, overlay_card};
+use gpui::{App, Entity, IntoElement, RenderOnce, Window, deferred, div, prelude::*, px, uniform_list};
 
+use crate::components::BranchRow;
 use crate::repo::RepoModel;
 
 const ROW: f32 = 28.0;
@@ -25,7 +26,7 @@ impl RenderOnce for PrBaseMenu {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let r = self.repo.read(cx);
         let head = r.branch_name();
-        let upstream = r.status.as_ref().and_then(|s| s.upstream.clone());
+        let upstream = r.work.status.as_ref().and_then(|s| s.upstream.clone());
         let names: Vec<(String, bool)> = r
             .branches
             .iter()
@@ -36,25 +37,19 @@ impl RenderOnce for PrBaseMenu {
         let scroll = r.pr.base_scroll.clone();
         let height = ROW * names.len().clamp(1, MAX_ROWS) as f32 + 8.0;
         let repo = self.repo;
-        let list = uniform_list("pr-base-list", names.len(), move |range, _w, cx| {
-            let theme = Theme::of(cx).clone();
+        let list = uniform_list("pr-base-list", names.len(), move |range, _w, _cx| {
             range
                 .filter_map(|ix| {
                     let (name, remote) = names.get(ix)?.clone();
                     let (repo, picked) = (repo.clone(), name.clone());
+                    let picked_now = chosen.as_deref() == Some(&name);
                     Some(
-                        pressable(("pr-base", ix), chosen.as_deref() == Some(&name), cx)
-                            .flex()
-                            .items_center()
-                            .gap(px(8.0))
-                            .h(px(ROW))
-                            .px(px(8.0))
-                            .rounded(px(6.0))
-                            .child(icon(if remote { Icon::Cloud } else { Icon::GitBranch }).size(px(13.0)).text_color(theme.text_faint))
-                            .child(div().truncate().child(name))
-                            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                                repo.update(cx, |r, cx| r.set_pr_base(picked.clone(), cx))
-                            }),
+                        BranchRow::new("pr-base", ix, name, move |_, cx| {
+                            repo.update(cx, |r, cx| r.set_pr_base(picked.clone(), cx))
+                        })
+                        .icon(if remote { Icon::Cloud } else { Icon::GitBranch })
+                        .height(ROW)
+                        .selected(picked_now),
                     )
                 })
                 .collect()

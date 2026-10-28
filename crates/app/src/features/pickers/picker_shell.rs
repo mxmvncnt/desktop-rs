@@ -3,9 +3,9 @@
 //! filter input turns up/down into NavUp/NavDown, so those are captured here
 //! too (the workspace-level list bindings never reach a focused input).
 
-use gd_ui::{Theme, divider};
+use gd_ui::{Theme, divider, empty_state};
 use gpui::{
-    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window,
+    AnyElement, App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window,
     div, prelude::*, px,
 };
 use gpui_elements::editable_text::{
@@ -14,13 +14,13 @@ use gpui_elements::editable_text::{
 };
 
 use crate::actions::{SelectNext, SelectPrevious};
-use crate::shared::text_field::text_field;
-use crate::workspace::Workspace;
+use crate::components::text_field;
+use super::store::PopoverStore;
 
 pub(super) const PICKER_ROW: f32 = 34.0;
 const PICKER_MAX_ROWS: usize = 10;
 
-type EnterHandler = Box<dyn Fn(&mut Workspace, &mut Window, &mut Context<Workspace>)>;
+type EnterHandler = Box<dyn Fn(&mut Window, &mut App)>;
 
 #[derive(IntoElement)]
 pub(super) struct PickerShell {
@@ -31,7 +31,7 @@ pub(super) struct PickerShell {
     list: AnyElement,
     footer: AnyElement,
     on_enter: EnterHandler,
-    ws: Entity<Workspace>,
+    pickers: Entity<PopoverStore>,
 }
 
 impl PickerShell {
@@ -42,7 +42,7 @@ impl PickerShell {
         rows: usize,
         list: impl IntoElement,
         footer: impl IntoElement,
-        ws: Entity<Workspace>,
+        pickers: Entity<PopoverStore>,
     ) -> Self {
         Self {
             title,
@@ -51,25 +51,20 @@ impl PickerShell {
             rows,
             list: list.into_any_element(),
             footer: footer.into_any_element(),
-            on_enter: Box::new(|_, _, _| {}),
-            ws,
+            on_enter: Box::new(|_, _| {}),
+            pickers,
         }
     }
 
-    pub fn on_enter(mut self, f: impl Fn(&mut Workspace, &mut Window, &mut Context<Workspace>) + 'static) -> Self {
+    pub fn on_enter(mut self, f: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_enter = Box::new(f);
         self
     }
 
-    fn body(&self, theme: &Theme) -> gpui::Div {
+    fn body(&self, cx: &App) -> gpui::Div {
         let height = (self.rows.clamp(1, PICKER_MAX_ROWS) as f32) * PICKER_ROW + 8.0;
         div().h(px(height)).py(px(4.0)).when(self.rows == 0, |d| {
-            d.flex()
-                .items_center()
-                .justify_center()
-                .text_size(px(12.0))
-                .text_color(theme.text_faint)
-                .child("No matches")
+            d.child(empty_state("No matches", cx).size_full())
         })
     }
 }
@@ -77,15 +72,14 @@ impl PickerShell {
 impl RenderOnce for PickerShell {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let body = self.body(&theme).when(self.rows > 0, |d| d.child(self.list));
-        let ws = self.ws;
+        let body = self.body(cx).when(self.rows > 0, |d| d.child(self.list));
+        let pickers = self.pickers;
         let on_enter = self.on_enter;
-        let enter_ws = ws.clone();
         let step = move |delta: isize| {
-            let ws = ws.clone();
+            let pickers = pickers.clone();
             move |cx: &mut App| {
                 cx.stop_propagation();
-                ws.update(cx, |this, cx| this.step_picker(delta, cx))
+                pickers.update(cx, |p, cx| p.step(delta, cx))
             }
         };
         let (down, up, next, prev) = (step(1), step(-1), step(1), step(-1));
@@ -94,7 +88,7 @@ impl RenderOnce for PickerShell {
             .flex_col()
             .capture_action(move |_: &Enter, w, cx| {
                 cx.stop_propagation();
-                enter_ws.update(cx, |this, cx| on_enter(this, w, cx))
+                on_enter(w, cx)
             })
             .capture_action(move |_: &NavDown, _, cx| down(cx))
             .capture_action(move |_: &NavUp, _, cx| up(cx))
@@ -119,6 +113,6 @@ impl RenderOnce for PickerShell {
             .child(divider(cx))
             .child(body)
             .child(divider(cx))
-            .child(div().flex().gap(px(6.0)).p(px(8.0)).bg(gd_ui::theme::ink(0.02)).child(self.footer))
+            .child(div().flex().gap(px(6.0)).p(px(8.0)).bg(theme.ink(0.02)).child(self.footer))
     }
 }

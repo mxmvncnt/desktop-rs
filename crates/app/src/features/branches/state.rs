@@ -2,7 +2,7 @@
 //! create-from dialogs ([`BranchUi`], a plain `Workspace` field).
 
 use gd_git::Branch;
-use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription};
+use gpui::{AppContext, Context, Entity, Subscription};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
 use crate::workspace::Workspace;
@@ -13,12 +13,6 @@ pub enum BranchDialog {
     /// `remote` is the upstream (`origin/x`) that can be deleted along with it.
     Delete { branch: Branch, remote: Option<String>, also_remote: bool },
     CreateFrom { base: String },
-}
-
-pub struct BranchMenu {
-    pub position: Point<Pixels>,
-    pub branch: Branch,
-    pub selected: Option<usize>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -46,12 +40,9 @@ impl RemoteBranch {
     }
 }
 
-/// Everything the branch ops add to `Workspace`. A plain struct (not an
-/// `Entity`): Esc/Enter/arrow routing in workspace.rs/menus.rs reads `menu`/`dialog`.
+/// What the branch ops add to `Workspace` besides their overlays (the menu
+/// and the dialogs).
 pub struct BranchUi {
-    pub menu: Option<BranchMenu>,
-    pub(super) menu_gen: usize,
-    pub dialog: Option<BranchDialog>,
     /// Name typed into the rename / create-from dialogs.
     pub input: Entity<EditableTextState>,
     _subs: Vec<Subscription>,
@@ -61,12 +52,6 @@ impl BranchUi {
     pub fn new(cx: &mut Context<Workspace>) -> Self {
         let input = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
         let subs = vec![cx.subscribe(&input, |_: &mut Workspace, _, _: &TextChanged, cx| cx.notify())];
-        Self { menu: None, menu_gen: 0, dialog: None, input, _subs: subs }
-    }
-
-    /// Whether the root should carry the "Menu" key context (↑/↓/Enter/Esc
-    /// reach the workspace instead of an input).
-    pub fn wants_menu_context(&self) -> bool {
-        self.menu.is_some() || matches!(self.dialog, Some(BranchDialog::Delete { .. }))
+        Self { input, _subs: subs }
     }
 }

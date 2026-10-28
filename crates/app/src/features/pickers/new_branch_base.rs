@@ -9,7 +9,7 @@ use gpui::{
 };
 
 use super::new_branch_base_list::NewBranchBaseList;
-use crate::workspace::Workspace;
+use super::store::PopoverStore;
 
 #[derive(IntoElement)]
 pub struct NewBranchBase {
@@ -20,7 +20,7 @@ pub struct NewBranchBase {
     /// Whether the branch list is expanded.
     pub open: bool,
     pub branches: Vec<Branch>,
-    pub ws: Entity<Workspace>,
+    pub pickers: Entity<PopoverStore>,
 }
 
 impl NewBranchBase {
@@ -33,7 +33,7 @@ impl NewBranchBase {
 impl RenderOnce for NewBranchBase {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let ws = self.ws.clone();
+        let pickers = self.pickers.clone();
         let chevron = if self.open { Icon::ChevronUp } else { Icon::ChevronDown };
         let label = if self.chosen.is_none() {
             format!("{} (current)", self.current)
@@ -52,7 +52,7 @@ impl RenderOnce for NewBranchBase {
             .child(icon(Icon::GitBranch).size(px(14.0)).text_color(theme.text_faint))
             .child(div().flex_1().min_w_0().truncate().text_color(theme.text).child(label))
             .child(icon(chevron).size(px(14.0)).text_color(theme.text_faint))
-            .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.toggle_new_branch_base(cx)));
+            .on_click(move |_, _, cx| pickers.update(cx, |p, cx| p.toggle_base_list(cx)));
         div()
             .flex()
             .flex_col()

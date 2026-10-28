@@ -1,4 +1,4 @@
-use gd_ui::theme::{self, CONTROL_RADIUS, hairline};
+use gd_ui::theme::CONTROL_RADIUS;
 use gd_ui::themes::COLOR_THEMES;
 use gd_ui::{Tabs, Theme};
 use gpui::{
@@ -11,15 +11,12 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct AppearancePage {
-    mode: ThemeMode,
-    color_theme: String,
-    ws: Entity<Workspace>,
+    pub mode: ThemeMode,
+    pub color_theme: String,
+    pub ws: Entity<Workspace>,
 }
 
 impl AppearancePage {
-    pub fn new(mode: ThemeMode, color_theme: String, ws: Entity<Workspace>) -> Self {
-        Self { mode, color_theme, ws }
-    }
 
     fn mode_tabs(&self) -> impl IntoElement {
         let ws = self.ws.clone();
@@ -35,14 +32,14 @@ impl AppearancePage {
 
     fn theme_grid(&self, cx: &App) -> impl IntoElement {
         let current = Theme::of(cx).clone();
-        let light = theme::is_light();
+        let light = current.light;
         let cards = COLOR_THEMES.iter().map(|t| {
-            let preview = Theme::preview(t.id, light);
+            let preview = Theme::for_family(t.id, light);
             let ws = self.ws.clone();
             let id = t.id;
             let selected = t.id == self.color_theme;
-            let border = if selected { current.accent } else { hairline(0.14) };
-            let dots = [preview.accent, preview.syntax.keyword, preview.syntax.string, preview.syntax.number, preview.danger];
+            let border = if selected { current.accent } else { current.ink(0.14) };
+            let dots = [preview.accent, preview.syntax.indigo, preview.syntax.emerald, preview.syntax.amber, preview.danger];
             div()
                 .id(format!("color-theme-{id}"))
                 .w(px(122.0))

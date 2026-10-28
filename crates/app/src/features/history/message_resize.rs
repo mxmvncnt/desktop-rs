@@ -1,5 +1,5 @@
 //! Height of the commit message area in the history header: clamping and
-//! drag updates (the handle is `message_handle.rs`).
+//! drag updates (the handle is a `gd_ui::ResizeHandle`).
 
 use gpui::Context;
 
@@ -9,6 +9,10 @@ use crate::workspace::Workspace;
 pub const MSG_DEFAULT_MAX: f32 = 120.0;
 pub const MSG_MIN: f32 = 40.0;
 pub const MSG_MAX: f32 = 520.0;
+
+/// Drag payload marking an in-progress message-area resize.
+#[derive(Clone)]
+pub struct MessageDrag;
 
 #[derive(Default)]
 pub struct MessageResize {

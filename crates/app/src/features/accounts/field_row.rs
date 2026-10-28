@@ -4,7 +4,7 @@ use gd_ui::Theme;
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px};
 use gpui_elements::editable_text::EditableTextState;
 
-use crate::shared::text_field::text_field;
+use crate::components::text_field;
 
 #[derive(IntoElement)]
 pub struct FieldRow {

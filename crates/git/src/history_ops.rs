@@ -13,7 +13,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::{GitError, OpOutcome, Repository, Result};
+use crate::refs::upstream_ref;
+use crate::{message, GitError, OpOutcome, Repository, Result};
 
 /// How `git reset` treats the index and working tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,41 +48,35 @@ impl Repository {
         if !self.has_head() {
             return Ok(HashSet::new());
         }
-        let has_upstream = self
-            .git()
-            .args(["rev-parse", "--verify", "-q", "@{upstream}"])
-            .run()
-            .is_ok();
-        let out = if has_upstream {
-            self.git().args(["rev-list", "@{upstream}..HEAD"]).run()?
-        } else {
-            if self.remotes()?.is_empty() {
-                return Ok(HashSet::new());
-            }
-            self.git().args(["rev-list", "HEAD", "--not", "--remotes"]).run()?
-        };
-        Ok(out.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect())
+        let repo = self.repo()?;
+        let mut walk = repo.revwalk()?;
+        walk.push_head()?;
+        let upstream = repo
+            .head()?
+            .name()
+            .ok()
+            .and_then(|head| upstream_ref(&repo, head))
+            .filter(|upstream| repo.refname_to_id(upstream).is_ok());
+        match upstream {
+            Some(upstream) => walk.hide_ref(&upstream)?,
+            None if repo.remotes()?.is_empty() => return Ok(HashSet::new()),
+            None => walk.hide_glob("refs/remotes/*")?,
+        }
+        walk.map(|oid| Ok(oid?.to_string())).collect()
     }
 
     /// Tags by the commit they point at (annotated tags are peeled).
     pub fn tags_by_commit(&self) -> Result<HashMap<String, Vec<String>>> {
-        let out = self
-            .git()
-            .args([
-                "for-each-ref",
-                "--format=%(objectname)%00%(*objectname)%00%(refname:short)",
-                "refs/tags",
-            ])
-            .run()?;
+        let repo = self.repo()?;
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
-        for line in out.lines() {
-            let f: Vec<&str> = line.split('\0').collect();
-            if f.len() < 3 {
-                continue;
+        repo.tag_foreach(|oid, name| {
+            let tag = String::from_utf8_lossy(name);
+            if let Ok(commit) = repo.find_object(oid, None).and_then(|o| o.peel_to_commit()) {
+                let tag = tag.strip_prefix("refs/tags/").unwrap_or(&tag).to_string();
+                map.entry(commit.id().to_string()).or_default().push(tag);
             }
-            let sha = if f[1].is_empty() { f[0] } else { f[1] };
-            map.entry(sha.to_string()).or_default().push(f[2].to_string());
-        }
+            true
+        })?;
         Ok(map)
     }
 
@@ -89,18 +84,17 @@ impl Repository {
     /// from the current branch's remote (or the default remote). `None` when
     /// there is no remote or it is not a GitHub host.
     pub fn github_web_url(&self) -> Option<String> {
-        github_web_url(&self.tracking_remote_url()?)
+        crate::remote::github_web_url(&self.tracking_remote_url()?)
     }
 
     /// Fetch URL of the current branch's remote (else `origin`, else the first remote).
     pub fn tracking_remote_url(&self) -> Option<String> {
         let remotes = self.remotes().ok()?;
-        let upstream_remote = self
-            .git()
-            .args(["rev-parse", "--abbrev-ref", "@{upstream}"])
-            .run()
+        let repo = self.repo().ok()?;
+        let upstream_remote = repo
+            .branch_upstream_remote(repo.head().ok()?.name().ok()?)
             .ok()
-            .and_then(|u| u.trim().split_once('/').map(|(r, _)| r.to_string()));
+            .and_then(|name| name.as_str().ok().map(String::from));
         upstream_remote
             .and_then(|n| remotes.iter().find(|(r, _)| *r == n))
             .or_else(|| remotes.iter().find(|(n, _)| n == "origin"))
@@ -128,36 +122,25 @@ impl Repository {
             ResetMode::Soft => "--soft",
             ResetMode::Mixed => "--mixed",
         };
-        self.git().args(["reset", "-q", flag, sha]).run()?;
-        Ok(())
+        self.git().args(["reset", "-q", flag, sha]).exec()
     }
 
     /// Detach HEAD at `sha`.
     pub fn checkout_commit(&self, sha: &str) -> Result<()> {
         self.ensure_idle("check out a commit")?;
-        self.git().args(["checkout", "-q", "--detach", sha]).run()?;
-        Ok(())
-    }
-
-    /// Create `name` at `sha` and switch to it.
-    pub fn create_branch_at(&self, name: &str, sha: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name, sha]).run()?;
-        Ok(())
+        self.git().args(["checkout", "-q", "--detach", sha]).exec()
     }
 
     pub fn create_tag(&self, name: &str, sha: &str) -> Result<()> {
-        self.git().args(["tag", "-a", "-m", "", name, sha]).run()?;
-        Ok(())
+        self.git().args(["tag", "-a", "-m", "", name, sha]).exec()
     }
 
     pub fn delete_tag(&self, name: &str) -> Result<()> {
-        self.git().args(["tag", "-d", name]).run()?;
-        Ok(())
+        self.git().args(["tag", "-d", name]).exec()
     }
 
     fn parent_count(&self, sha: &str) -> Result<usize> {
-        let out = self.git().args(["rev-list", "--parents", "-n", "1", sha]).run()?;
-        Ok(out.split_whitespace().count().saturating_sub(1))
+        Ok(self.repo()?.revparse_single(sha)?.peel_to_commit()?.parent_count())
     }
 
     /// New commit undoing `sha` (`-m 1` for merge commits). On conflicts the
@@ -168,7 +151,7 @@ impl Repository {
         if self.parent_count(sha)? > 1 {
             g = g.args(["-m", "1"]);
         }
-        let res = g.arg(sha).run().map(|_| ());
+        let res = g.arg(sha).exec();
         self.outcome_of(res)
     }
 
@@ -180,7 +163,7 @@ impl Repository {
         }
         self.ensure_idle("cherry-pick")?;
         self.git().args(["checkout", "-q", target]).run()?;
-        let res = self.git().arg("cherry-pick").args(shas).run().map(|_| ());
+        let res = self.git().arg("cherry-pick").args(shas).exec();
         self.outcome_of(res)
     }
 
@@ -199,41 +182,28 @@ impl Repository {
         }
         self.ensure_idle("amend")?;
         self.git().args(["reset", "-q", "--", "."]).run()?;
-        for chunk in paths.chunks(500) {
-            self.git().args(["add", "-A", "--"]).args(chunk.iter().map(String::as_str)).run()?;
-        }
-        self.stage_partial(partial)?;
-        let mut message = summary.trim().to_string();
-        if !description.trim().is_empty() {
-            message.push_str("\n\n");
-            message.push_str(description.trim());
-        }
+        self.stage(paths, partial)?;
         self.git()
             .args(["commit", "-q", "--amend", "--allow-empty", "-F", "-"])
-            .stdin(message)
-            .run()?;
-        Ok(self.git().args(["rev-parse", "HEAD"]).run()?.trim().to_string())
+            .stdin(message(summary, description))
+            .exec()?;
+        self.head_sha()
     }
 
     // ---- squash / reorder -------------------------------------------------
 
     fn first_parent_walk(&self) -> Result<Vec<Node>> {
-        let out = self
-            .git()
-            .args(["rev-list", "--first-parent", "--parents"])
-            .arg(format!("--max-count={WALK_LIMIT}"))
-            .arg("HEAD")
-            .run()?;
-        Ok(out
-            .lines()
-            .filter_map(|l| {
-                let mut it = l.split_whitespace();
-                Some(Node {
-                    sha: it.next()?.to_string(),
-                    parents: it.map(String::from).collect(),
-                })
+        let repo = self.repo()?;
+        let mut walk = repo.revwalk()?;
+        walk.simplify_first_parent()?;
+        walk.push_head()?;
+        walk.take(WALK_LIMIT)
+            .map(|oid| {
+                let oid = oid?;
+                let parents = repo.find_commit(oid)?.parent_ids().map(|p| p.to_string()).collect();
+                Ok(Node { sha: oid.to_string(), parents })
             })
-            .collect())
+            .collect()
     }
 
     /// Whether `shas` form one adjacent run of non-merge commits on the
@@ -311,8 +281,7 @@ impl Repository {
             let res = self
                 .git()
                 .args(["-c", "core.editor=true", "rebase", "--autostash", "--onto", new.as_str(), walk[newest].sha.as_str()])
-                .run()
-                .map(|_| ());
+                .exec();
             return self.outcome_of(res);
         }
         Ok(OpOutcome::Done)
@@ -363,35 +332,6 @@ impl Repository {
         };
         let res = g.run();
         let _ = std::fs::remove_file(&path);
-        self.outcome_of(res.map(|_| ()))
+        self.outcome_of(res)
     }
-}
-
-/// Split a git remote URL (ssh scp-style, `ssh://`, `https://`, `git://`)
-/// into a lowercase host and the repository path (no `.git`, no slashes
-/// around). `None` when the path is not `owner/repo`-shaped.
-pub(crate) fn split_remote(remote: &str) -> Option<(String, String)> {
-    let remote = remote.trim();
-    let (host, path) = if let Some((_, rest)) = remote.split_once("://") {
-        let (authority, path) = rest.split_once('/')?;
-        let host = authority.rsplit('@').next()?;
-        (host.split(':').next()?.to_string(), path.to_string())
-    } else {
-        // scp-like: [user@]host:owner/repo.git
-        let (authority, path) = remote.split_once(':')?;
-        (authority.rsplit('@').next()?.to_string(), path.to_string())
-    };
-    let path = path.trim_matches('/');
-    let path = path.strip_suffix(".git").unwrap_or(path);
-    if path.split('/').count() < 2 || path.is_empty() {
-        return None;
-    }
-    Some((host.to_ascii_lowercase(), path.to_string()))
-}
-
-/// Convert a git remote URL into the repository's GitHub web URL. Hosts must
-/// look like GitHub (`github.com`, or a GitHub Enterprise host containing "github").
-pub fn github_web_url(remote: &str) -> Option<String> {
-    let (host, path) = split_remote(remote)?;
-    host.contains("github").then(|| format!("https://{host}/{path}"))
 }

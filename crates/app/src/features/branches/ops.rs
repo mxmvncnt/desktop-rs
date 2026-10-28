@@ -1,16 +1,16 @@
 //! Branch rename / delete / create ops on [`RepoModel`], run through
-//! [`RepoModel::run_op`] (background thread, busy flag, refresh).
+//! [`RepoModel::run`] (background thread, busy label, refresh).
 
 use gd_git::{Branch, BranchKind};
 use gpui::Context;
 
 use super::state::RemoteBranch;
-use crate::repo::{RepoEvent, RepoModel};
+use crate::repo::{Op, RepoEvent, RepoModel};
 
 impl RepoModel {
     pub fn rename_branch(&mut self, old: String, new: String, cx: &mut Context<Self>) {
-        self.run_op(
-            "Renaming…",
+        self.run(
+            Op::labeled("Renaming…"),
             {
                 let (o, n) = (old.clone(), new.clone());
                 move |r| r.rename_branch(&o, &n)
@@ -24,8 +24,8 @@ impl RepoModel {
     pub fn delete_branch(&mut self, branch: Branch, remote: Option<RemoteBranch>, cx: &mut Context<Self>) {
         let name = branch.name.clone();
         let local = branch.kind == BranchKind::Local;
-        self.run_op(
-            "Deleting…",
+        self.run(
+            Op::labeled("Deleting…"),
             move |r| {
                 if local {
                     r.delete_branch(&branch.name, true)?;
@@ -41,15 +41,14 @@ impl RepoModel {
     }
 
     pub fn create_branch_from(&mut self, name: String, base: String, cx: &mut Context<Self>) {
-        self.run_op(
-            "Creating…",
+        self.run(
+            Op::labeled("Creating…"),
             {
                 let (n, b) = (name.clone(), base.clone());
-                move |r| r.create_branch_from(&n, &b)
+                move |r| r.create_branch(&n, Some(&b))
             },
             move |this, _, _| {
-                this.commits.clear();
-                this.selected_commit = None;
+                this.reset_history_selection();
                 this.notice = Some(format!("Created {name} from {base}"));
             },
             cx,
@@ -68,10 +67,10 @@ impl RepoModel {
 
     pub fn checkout_now(&mut self, branch: Branch, cx: &mut Context<Self>) {
         self.run(
+            Op::default(),
             move |r| r.checkout(&branch),
             |this, _, _| {
-                this.commits.clear();
-                this.selected_commit = None;
+                this.reset_history_selection();
                 this.last_commit = None;
             },
             cx,
@@ -79,6 +78,6 @@ impl RepoModel {
     }
 
     pub fn create_branch(&mut self, name: String, cx: &mut Context<Self>) {
-        self.run(move |r| r.create_branch(&name), |_, _, _| {}, cx);
+        self.run(Op::default(), move |r| r.create_branch(&name, None), |_, _, _| {}, cx);
     }
 }

@@ -1,11 +1,12 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
-use gd_git::{Branch, Commit, Diff, DiffOptions, FileChange, Repository, WorkingStatus};
+use gd_git::{Branch, Commit, DiffOptions, FileChange, Repository, WorkingStatus};
 use gpui::{Context, Task};
 
-use crate::features::diff::{DiffHighlight, HighlightCache};
+use super::diff_detail::DiffDetail;
+use super::run::LoadSlot;
+use crate::features::diff::HighlightCache;
 use crate::watcher::RepoWatcher;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -23,23 +24,12 @@ pub enum RemoteOp {
 }
 
 /// How much a refresh reloads.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum RefreshScope {
     /// Worktree status only (files edited).
     Status,
     /// Also branches, stashes, push state and history (git metadata changed).
     Full,
-}
-
-impl RefreshScope {
-    pub fn from_metadata_changed(changed: bool) -> Self {
-        if changed { Self::Full } else { Self::Status }
-    }
-
-    /// The wider of the two.
-    pub fn or(self, other: Self) -> Self {
-        if self == Self::Full || other == Self::Full { Self::Full } else { Self::Status }
-    }
 }
 
 /// The commit made in this session, offered for undo (Desktop's strip above
@@ -66,40 +56,13 @@ pub enum RepoEvent {
 
 impl gpui::EventEmitter<RepoEvent> for RepoModel {}
 
-/// Identity of the loaded commit detail (see `RepoModel::commit_shown`).
-#[derive(Clone, PartialEq)]
-pub struct ShownCommit {
-    pub sha: String,
-    /// Path of the file whose diff is loaded, if any.
-    pub path: Option<String>,
-}
-
-pub struct RepoModel {
-    pub repo: Repository,
-    pub tab: Tab,
-    /// App-wide diff options (set by the Workspace); changing them reloads the visible diffs.
-    pub diff_options: DiffOptions,
-
-    // ---- working directory ----
-    pub status: Option<WorkingStatus>,
-    /// Paths excluded from the next commit (Desktop's unchecked boxes). We
-    /// store the *excluded* set so new files default to included.
-    pub excluded: HashSet<String>,
-    /// Files with only some lines selected (see `line_selection.rs`).
-    pub partial: HashMap<String, crate::features::diff::LineSelection>,
-    pub selected_change: Option<usize>,
-    pub change_diff: Option<Arc<Diff>>,
-    pub(super) change_diff_gen: u64,
-    /// What `change_diff` was loaded for, so a reload of the same unchanged
-    /// file keeps the (possibly expanded) diff on screen.
-    pub change_diff_key: Option<(String, DiffOptions)>,
-    pub(super) _change_diff_task: Option<Task<()>>,
-
-    // ---- refresh coalescing / live updates ----
+/// Refresh coalescing, live updates and background fetch.
+#[derive(Default)]
+pub struct RefreshState {
     /// A refresh is running on the background executor.
     pub(super) refreshing: bool,
     /// A trigger arrived while refreshing: run exactly one more afterwards.
-    pub(super) pending_refresh: Option<RefreshScope>,
+    pub(super) pending: Option<RefreshScope>,
     /// Number of refreshes started (debug counter; tests assert idle = stable).
     pub refresh_count: u64,
     /// When the file watcher last triggered a refresh (focus refresh skips if recent).
@@ -110,26 +73,51 @@ pub struct RepoModel {
     pub(super) _watcher: Option<RepoWatcher>,
     pub(super) _watch_task: Option<Task<()>>,
     pub(super) _background_fetch_task: Option<Task<()>>,
-    /// Syntax colors for `change_diff`; `None` until the background pass lands.
-    pub change_hl: Option<Arc<DiffHighlight>>,
-    pub(super) _change_hl_task: Option<Task<()>>,
+}
 
-    // ---- history ----
+/// The working directory: status, what the next commit includes, and the selected diff.
+#[derive(Default)]
+pub struct ChangesState {
+    pub status: Option<WorkingStatus>,
+    /// Paths excluded from the next commit (Desktop's unchecked boxes). We
+    /// store the *excluded* set so new files default to included.
+    pub excluded: HashSet<String>,
+    /// Files with only some lines selected (see `line_selection.rs`).
+    pub partial: HashMap<String, crate::features::diff::LineSelection>,
+    pub selected: Option<usize>,
+    /// Diff of `selected` (its `files` stay empty: the list is `status`).
+    pub detail: DiffDetail,
+    /// What `detail.diff` was loaded for, so a reload of the same unchanged
+    /// file keeps the (possibly expanded) diff on screen.
+    pub diff_key: Option<(String, DiffOptions)>,
+}
+
+/// The paged commit log and the selected commit.
+#[derive(Default)]
+pub struct HistoryLog {
     pub commits: Vec<Commit>,
-    pub history_exhausted: bool,
-    pub(super) history_loading: bool,
-    pub selected_commit: Option<usize>,
-    pub commit_files: Vec<FileChange>,
-    pub selected_commit_file: Option<usize>,
-    pub commit_diff: Option<Arc<Diff>>,
-    /// Which commit/file `commit_files` + `commit_diff` belong to. Lags behind
-    /// the selection while a load is in flight, so the pane switches in one go.
-    pub commit_shown: Option<ShownCommit>,
-    pub commit_hl: Option<Arc<DiffHighlight>>,
-    pub(super) commit_gen: u64,
-    /// Generation of the newest commit load applied; older results are dropped.
-    pub(super) commit_applied_gen: u64,
-    pub(super) _commit_hl_task: Option<Task<()>>,
+    pub exhausted: bool,
+    pub(super) loading: bool,
+    pub selected: Option<usize>,
+    /// Files and diff of the selected commit (`base` = its sha).
+    pub detail: DiffDetail,
+}
+
+pub struct RepoModel {
+    pub repo: Repository,
+    pub tab: Tab,
+    /// App-wide diff options (set by the Workspace); changing them reloads the visible diffs.
+    pub diff_options: DiffOptions,
+
+    /// Working directory status, selection and diff.
+    pub work: ChangesState,
+
+    /// Refresh coalescing, file watcher and background fetch.
+    pub sync: RefreshState,
+
+    /// Commit log, selection and diff.
+    pub log: HistoryLog,
+    /// Shared by every pane's highlighter.
     pub(super) hl_cache: HighlightCache,
     /// Push status, tags, multi-select (see `features/history`).
     pub history: crate::features::history::HistoryState,
@@ -166,37 +154,9 @@ impl RepoModel {
             repo,
             tab: Tab::Changes,
             diff_options: DiffOptions::default(),
-            status: None,
-            excluded: HashSet::new(),
-            partial: HashMap::new(),
-            selected_change: None,
-            change_diff: None,
-            change_diff_gen: 0,
-            change_diff_key: None,
-            _change_diff_task: None,
-            refreshing: false,
-            pending_refresh: None,
-            refresh_count: 0,
-            last_watch_refresh: None,
-            last_fetch: None,
-            last_background_fetch: None,
-            _watcher: None,
-            _watch_task: None,
-            _background_fetch_task: None,
-            change_hl: None,
-            _change_hl_task: None,
-            commits: Vec::new(),
-            history_exhausted: false,
-            history_loading: false,
-            selected_commit: None,
-            commit_files: Vec::new(),
-            selected_commit_file: None,
-            commit_diff: None,
-            commit_shown: None,
-            commit_hl: None,
-            commit_gen: 0,
-            commit_applied_gen: 0,
-            _commit_hl_task: None,
+            work: Default::default(),
+            sync: Default::default(),
+            log: HistoryLog { detail: DiffDetail { load: LoadSlot::late(), ..Default::default() }, ..Default::default() },
             hl_cache: HighlightCache::default(),
             history: Default::default(),
             branches: Vec::new(),
@@ -212,20 +172,39 @@ impl RepoModel {
     }
 
     pub fn branch_name(&self) -> String {
-        match &self.status {
+        match &self.work.status {
             Some(s) => s.branch.clone().unwrap_or_else(|| "(detached HEAD)".into()),
             None => "…".into(),
         }
+    }
+
+    pub fn current_branch(&self) -> Option<&str> {
+        self.work.status.as_ref()?.branch.as_deref()
+    }
+
+    /// A merge-like operation is paused and the next commit finishes it.
+    pub fn merging(&self) -> bool {
+        self.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes())
+    }
+
+    pub fn selected_change_file(&self) -> Option<&FileChange> {
+        self.work.selected.and_then(|ix| self.changes().get(ix))
+    }
+
+    /// The history list is stale after the branch moved.
+    pub(crate) fn reset_history_selection(&mut self) {
+        self.log.commits.clear();
+        self.log.selected = None;
     }
 
     /// The undoable commit, only while still on the branch it was made on.
     pub fn undoable_commit(&self) -> Option<&LastCommit> {
         self.last_commit
             .as_ref()
-            .filter(|c| self.status.as_ref().and_then(|s| s.branch.as_deref()) == Some(c.branch.as_str()))
+            .filter(|c| self.current_branch() == Some(c.branch.as_str()))
     }
 
     pub fn changes(&self) -> &[FileChange] {
-        self.status.as_ref().map(|s| s.files.as_slice()).unwrap_or(&[])
+        self.work.status.as_ref().map(|s| s.files.as_slice()).unwrap_or(&[])
     }
 }

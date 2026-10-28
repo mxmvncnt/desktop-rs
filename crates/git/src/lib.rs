@@ -1,13 +1,12 @@
 //! `gd-git` — the git layer for desktop-rs.
 //!
 //! Design (see `docs/ARCHITECTURE.md` §Git layer):
-//! - Shells out to the user's `git` binary, the same strategy as the Electron
-//!   app's `dugite`. Hooks, credential helpers, config and LFS behave exactly
-//!   like the CLI, and we avoid libgit2's partial feature coverage.
+//! - Reads go through `git2` (libgit2) and return typed data. Writes and network
+//!   operations shell out to the user's `git` binary, the same strategy as the
+//!   Electron app's `dugite`, so hooks, credential helpers, config and LFS behave
+//!   exactly like the CLI. No CLI output is parsed.
 //! - Every function is **blocking**. The UI runs them on GPUI's background
 //!   executor (`cx.background_spawn`) and never on the main thread.
-//! - Machine-readable formats only (`status --porcelain=v2 -z`, NUL-separated
-//!   `log` formats) so parsing is cheap and locale-independent.
 
 mod credentials;
 mod diff;
@@ -22,25 +21,23 @@ mod partial;
 mod pr_preview;
 mod progress;
 mod refs;
+mod remote;
 mod stash;
 mod status;
+mod tree_diff;
 
 pub use credentials::{HostCredential, set_credentials};
 pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity};
 
-#[doc(hidden)]
-pub fn credential_env_for_tests() -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
-    credentials::env()
-}
-
 pub use diff::{Side, Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};
 pub use exec::GitError;
 pub use expand::{EXPANSION_STEP, Expansion, expand, expandable, gap_above, gap_below};
-pub use history_ops::{ResetMode, github_web_url};
-pub use log::{CoAuthor, Commit, CommitFile, parse_co_authors};
+pub use history_ops::ResetMode;
+pub use log::{CoAuthor, Commit};
 pub use merge::{MergePreview, default_squash_summary};
 pub use partial::{PartialFile, selectable, staged_text};
-pub use pr_preview::{Comparison, Host, compare_url, host_of};
+pub use pr_preview::{Comparison, compare_url};
+pub use remote::{Host, github_web_url, host_of};
 pub use progress::{InProgress, OpOutcome};
 pub use refs::{Branch, BranchKind};
 pub use stash::Stash;
@@ -61,11 +58,10 @@ pub struct Repository {
 impl Repository {
     /// Open the repository containing `path` (any subdirectory works).
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        let out = Git::new(path.as_ref())
-            .args(["rev-parse", "--show-toplevel"])
-            .run()?;
-        let root = PathBuf::from(out.trim_end_matches(['\n', '\r']));
-        Ok(Self { root })
+        let repo = git2::Repository::discover(path)?;
+        let workdir = repo.workdir().ok_or_else(|| GitError::Invalid("bare repositories are not supported".into()))?;
+        // `workdir()` ends with a slash.
+        Ok(Self { root: workdir.components().collect() })
     }
 
     /// Initialize a new repository at `path` (creating the directory).
@@ -101,16 +97,18 @@ impl Repository {
             .unwrap_or_else(|| self.root.display().to_string())
     }
 
+    /// Fresh libgit2 handle for reads. Open one per call: it caches the index.
+    pub(crate) fn repo(&self) -> Result<git2::Repository> {
+        Ok(git2::Repository::open(&self.root)?)
+    }
+
     pub(crate) fn git(&self) -> Git {
         Git::new(&self.root)
     }
 
     /// Whether `HEAD` resolves to a commit (false in a freshly-initialized repo).
     pub fn has_head(&self) -> bool {
-        self.git()
-            .args(["rev-parse", "--verify", "-q", "HEAD"])
-            .run()
-            .is_ok()
+        self.repo().is_ok_and(|r| r.head().is_ok())
     }
 
     // ---- write operations -------------------------------------------------
@@ -146,28 +144,28 @@ impl Repository {
                 .args(["rm", "-q", "-r", "--cached", "--ignore-unmatch", "--", "."])
                 .run();
         }
-        for chunk in paths.chunks(500) {
-            self.git()
-                .args(["add", "-A", "--"])
-                .args(chunk.iter().map(String::as_str))
-                .run()?;
-        }
-        self.stage_partial(partial)?;
-        let mut message = summary.trim().to_string();
-        if !description.trim().is_empty() {
-            message.push_str("\n\n");
-            message.push_str(description.trim());
-        }
+        self.stage(paths, partial)?;
         self.git()
             .args(["commit", "-q", "-F", "-"])
-            .stdin(message)
-            .run()?;
-        Ok(self
-            .git()
-            .args(["rev-parse", "HEAD"])
-            .run()?
-            .trim()
-            .to_string())
+            .stdin(message(summary, description))
+            .exec()?;
+        self.head_sha()
+    }
+
+    /// Stage `paths` (adds, edits and deletions) and the selected lines of
+    /// `partial` files. Paths go through stdin, so the list length is unbounded.
+    pub(crate) fn stage(&self, paths: &[String], partial: &[PartialFile]) -> Result<()> {
+        if !paths.is_empty() {
+            self.git()
+                .args(["add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul"])
+                .stdin(paths.join("\0"))
+                .exec()?;
+        }
+        self.stage_partial(partial)
+    }
+
+    pub(crate) fn head_sha(&self) -> Result<String> {
+        Ok(self.repo()?.head()?.peel_to_commit()?.id().to_string())
     }
 
     /// Discard working-tree changes for `paths`. Untracked files are deleted.
@@ -201,37 +199,6 @@ impl Repository {
         Ok(())
     }
 
-    /// Switch to an existing local branch, or create a tracking branch for a
-    /// remote one (`origin/foo` → `foo`).
-    pub fn checkout(&self, branch: &Branch) -> Result<()> {
-        match branch.kind {
-            BranchKind::Local => self.git().args(["checkout", "-q", &branch.name]).run()?,
-            BranchKind::Remote => {
-                let local = branch
-                    .name
-                    .split_once('/')
-                    .map(|(_, rest)| rest)
-                    .unwrap_or(&branch.name);
-                self.git()
-                    .args(["checkout", "-q", "-b", local, "--track", &branch.name])
-                    .run()?
-            }
-        };
-        Ok(())
-    }
-
-    /// Create a branch from HEAD and switch to it.
-    pub fn create_branch(&self, name: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name]).run()?;
-        Ok(())
-    }
-
-    pub fn delete_branch(&self, name: &str, force: bool) -> Result<()> {
-        let flag = if force { "-D" } else { "-d" };
-        self.git().args(["branch", flag, name]).run()?;
-        Ok(())
-    }
-
     pub fn fetch(&self) -> Result<()> {
         // Fetch the default remote strictly, then the others best-effort, so
         // a broken secondary remote (e.g. a mistyped `upstream` URL) doesn't
@@ -244,15 +211,14 @@ impl Repository {
             .run()?;
         for (name, _) in self.remotes()?.into_iter().filter(|(n, _)| *n != default) {
             if let Err(e) = self.git().args(["fetch", "--prune", &name]).network().run() {
-                eprintln!("fetch of remote '{name}' failed: {e}");
+                ::log::warn!("fetch of remote '{name}' failed: {e}");
             }
         }
         Ok(())
     }
 
     pub fn pull(&self) -> Result<()> {
-        self.git().args(["pull", "--ff", "--no-edit"]).network().run()?;
-        Ok(())
+        self.git().args(["pull", "--ff", "--no-edit"]).network().exec()
     }
 
     /// Fetch, then push only if the remote has no commits we lack. Returns
@@ -312,22 +278,19 @@ impl Repository {
 
     /// Undo the last commit, keeping its changes in the working tree.
     pub fn undo_last_commit(&self) -> Result<()> {
-        self.git().args(["reset", "-q", "--soft", "HEAD~1"]).run()?;
-        Ok(())
+        self.git().args(["reset", "-q", "--soft", "HEAD~1"]).exec()
     }
 
     pub fn remotes(&self) -> Result<Vec<(String, String)>> {
-        let out = self.git().args(["remote", "-v"]).run()?;
-        let mut v: Vec<(String, String)> = out
-            .lines()
-            .filter(|l| l.ends_with("(fetch)"))
-            .filter_map(|l| {
-                let mut it = l.split_whitespace();
-                Some((it.next()?.to_string(), it.next()?.to_string()))
+        let repo = self.repo()?;
+        let names = repo.remotes()?;
+        names
+            .iter()
+            .map(|name| {
+                let name = name?.unwrap_or_default();
+                Ok((name.to_string(), repo.find_remote(name)?.url().unwrap_or_default().to_string()))
             })
-            .collect();
-        v.dedup();
-        Ok(v)
+            .collect()
     }
 
     fn default_remote(&self) -> Result<Option<String>> {
@@ -340,37 +303,20 @@ impl Repository {
     }
 }
 
-// ---- filesystem-level helpers (no process spawn) ----------------------------
+// ---- git directory ----------------------------------------------------------
 
 impl Repository {
     /// The repository's git directory (`<root>/.git`, or the target of a
-    /// `.git` *file* as used by linked worktrees and submodules). Reads the
-    /// filesystem only, so it is cheap and never spawns git.
+    /// `.git` *file* as used by linked worktrees and submodules).
     pub fn git_dir(&self) -> PathBuf {
-        let dot_git = self.root.join(".git");
-        if dot_git.is_file() {
-            if let Ok(s) = std::fs::read_to_string(&dot_git) {
-                if let Some(p) = s.trim().strip_prefix("gitdir:") {
-                    let p = PathBuf::from(p.trim());
-                    return if p.is_absolute() { p } else { self.root.join(p) };
-                }
-            }
-        }
-        dot_git
+        self.repo().map_or_else(|_| self.root.join(".git"), |r| r.path().to_path_buf())
     }
 
     /// The directory shared between linked worktrees (holds `refs`,
     /// `FETCH_HEAD`, `config`). Equal to [`git_dir`](Self::git_dir) for a
     /// normal repository.
     pub fn common_git_dir(&self) -> PathBuf {
-        let dir = self.git_dir();
-        match std::fs::read_to_string(dir.join("commondir")) {
-            Ok(s) => {
-                let p = PathBuf::from(s.trim());
-                if p.is_absolute() { p } else { dir.join(p) }
-            }
-            Err(_) => dir,
-        }
+        self.repo().map_or_else(|_| self.root.join(".git"), |r| r.commondir().to_path_buf())
     }
 
     /// When the repository last fetched, from the mtime of `FETCH_HEAD`
@@ -380,6 +326,14 @@ impl Repository {
         std::fs::metadata(self.common_git_dir().join("FETCH_HEAD"))
             .and_then(|m| m.modified())
             .ok()
+    }
+}
+
+/// Commit message: the trimmed summary, then the description after a blank line.
+pub fn message(summary: &str, description: &str) -> String {
+    match description.trim() {
+        "" => summary.trim().to_string(),
+        d => format!("{}\n\n{d}", summary.trim()),
     }
 }
 

@@ -8,16 +8,14 @@ mod account_list;
 mod account_row;
 mod accounts_page;
 mod field_row;
-mod handlers;
 mod identity_block;
 mod identity_section;
 mod model;
+mod ops;
 mod state;
 mod status_text;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use accounts_page::AccountsPage;
-#[cfg(feature = "snapshot")]
-pub use model::{Account, Provider};
-#[cfg(feature = "snapshot")]
-pub use state::{AccountForm, StatusLine};
-pub use state::AccountsUi;
+pub use state::AccountsStore;

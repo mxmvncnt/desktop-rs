@@ -12,7 +12,7 @@ impl RepoModel {
         self.tab = tab;
         self.pr.open = false;
         self.pr.base_menu = false;
-        if tab == Tab::History && self.commits.is_empty() {
+        if tab == Tab::History && self.log.commits.is_empty() {
             self.reload_history(cx);
         }
         cx.notify();
@@ -22,12 +22,12 @@ impl RepoModel {
     /// is still there.
     pub(super) fn reload_history(&mut self, cx: &mut Context<Self>) {
         let repo = self.repo.clone();
-        let count = self.commits.len().max(HISTORY_PAGE);
-        self.history_loading = true;
+        let count = self.log.commits.len().max(HISTORY_PAGE);
+        self.log.loading = true;
         cx.spawn(async move |this, cx| {
             let res = cx.background_spawn(async move { repo.log(0, count) }).await;
             this.update(cx, |this, cx| {
-                this.history_loading = false;
+                this.log.loading = false;
                 match res {
                     Ok(commits) => this.apply_reloaded_log(commits, count, cx),
                     Err(e) => this.error = Some(e.to_string()),
@@ -40,44 +40,41 @@ impl RepoModel {
     }
 
     fn apply_reloaded_log(&mut self, commits: Vec<gd_git::Commit>, count: usize, cx: &mut Context<Self>) {
-        let selected_sha = self.selected_commit.and_then(|ix| self.commits.get(ix)).map(|c| c.sha.clone());
-        self.history_exhausted = commits.len() < count;
-        self.commits = commits;
+        let selected_sha = self.log.selected.and_then(|ix| self.log.commits.get(ix)).map(|c| c.sha.clone());
+        self.log.exhausted = commits.len() < count;
+        self.log.commits = commits;
         let ix = selected_sha.clone()
-            .and_then(|s| self.commits.iter().position(|c| c.sha == s))
-            .or(if self.commits.is_empty() { None } else { Some(0) });
+            .and_then(|s| self.log.commits.iter().position(|c| c.sha == s))
+            .or(if self.log.commits.is_empty() { None } else { Some(0) });
         // History rewrites (amend, reword, squash, reorder, undo) can leave the
         // selection at the same index but on a different (new) sha: reload it.
-        let sha_changed = ix.and_then(|i| self.commits.get(i)).map(|c| &c.sha) != selected_sha.as_ref();
-        if ix != self.selected_commit || self.commit_files.is_empty() || sha_changed {
-            self.selected_commit = None;
+        let sha_changed = ix.and_then(|i| self.log.commits.get(i)).map(|c| &c.sha) != selected_sha.as_ref();
+        if ix != self.log.selected || self.log.detail.files.is_empty() || sha_changed {
+            self.log.selected = None;
             if let Some(ix) = ix {
                 self.select_commit(ix, cx);
             } else {
-                self.commit_files.clear();
-                self.commit_diff = None;
-                self.commit_shown = None;
-                self.commit_hl = None;
+                self.log.detail.clear();
             }
         }
     }
 
     /// Called by the history list when the user scrolls near the end.
     pub fn load_more_history(&mut self, cx: &mut Context<Self>) {
-        if self.history_loading || self.history_exhausted {
+        if self.log.loading || self.log.exhausted {
             return;
         }
-        self.history_loading = true;
+        self.log.loading = true;
         let repo = self.repo.clone();
-        let skip = self.commits.len();
+        let skip = self.log.commits.len();
         cx.spawn(async move |this, cx| {
             let res = cx.background_spawn(async move { repo.log(skip, HISTORY_PAGE) }).await;
             this.update(cx, |this, cx| {
-                this.history_loading = false;
+                this.log.loading = false;
                 if let Ok(mut more) = res {
-                    this.history_exhausted = more.len() < HISTORY_PAGE;
-                    if this.commits.len() == skip {
-                        this.commits.append(&mut more);
+                    this.log.exhausted = more.len() < HISTORY_PAGE;
+                    if this.log.commits.len() == skip {
+                        this.log.commits.append(&mut more);
                     }
                 }
                 cx.notify();

@@ -8,5 +8,7 @@ publish.workspace = true
 [dependencies]
 gd-syntax.workspace = true
 gpui.workspace = true
+gpui_elements.workspace = true
 anyhow.workspace = true
 log.workspace = true
+rust-embed.workspace = true

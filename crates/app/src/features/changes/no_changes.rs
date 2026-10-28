@@ -1,11 +1,14 @@
 //! "No local changes" pane with push / pull / open-folder suggestions.
 
+use std::path::Path;
+
 use gd_ui::{Icon, Theme, motion};
 use gpui::{App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use crate::repo::RepoModel;
-use crate::shared::suggestion_card::SuggestionCard;
-use crate::shared::plural::plural;
+use crate::components::SuggestionCard;
+use crate::utils::paths::file_url;
+use crate::utils::text::plural;
 
 #[derive(IntoElement)]
 pub struct NoChanges {
@@ -18,7 +21,7 @@ pub struct NoChanges {
 impl NoChanges {
     pub fn new(r: &RepoModel) -> Self {
         let ahead_behind = r
-            .status
+            .work.status
             .as_ref()
             .filter(|s| s.upstream.is_some())
             .map(|s| (s.ahead_behind.ahead, s.ahead_behind.behind));
@@ -67,7 +70,7 @@ impl NoChanges {
                 "View the files of your repository",
                 self.root.clone(),
                 "Open folder",
-                move |_, _, cx| cx.open_url(&format!("file://{root}")),
+                move |_, _, cx| cx.open_url(&file_url(Path::new(&root))),
             ))
     }
 }

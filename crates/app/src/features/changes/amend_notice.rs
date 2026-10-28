@@ -7,25 +7,19 @@ use gpui::{
     prelude::*, px,
 };
 
-use crate::workspace::Workspace;
+use super::commit_box::CommitBox;
 
 #[derive(IntoElement)]
 pub struct AmendNotice {
-    pushed: bool,
-    ws: gpui::Entity<Workspace>,
-}
-
-impl AmendNotice {
-    pub fn new(pushed: bool, ws: gpui::Entity<Workspace>) -> Self {
-        Self { pushed, ws }
-    }
+    pub pushed: bool,
+    pub commit_box: gpui::Entity<CommitBox>,
 }
 
 impl RenderOnce for AmendNotice {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let pushed = self.pushed;
-        let ws = self.ws;
+        let commit_box = self.commit_box;
         let glyph = if pushed { Icon::Warning } else { Icon::Info };
         let glyph_color = if pushed { theme.warning } else { theme.text_muted };
         motion::fade_quick(
@@ -36,7 +30,7 @@ impl RenderOnce for AmendNotice {
                 .gap(px(8.0))
                 .p(px(10.0))
                 .rounded(px(gd_ui::theme::CONTROL_RADIUS + 1.0))
-                .bg(gd_ui::theme::ink(0.04))
+                .bg(theme.ink(0.04))
                 .border_1()
                 .border_color(theme.border)
                 .child(icon(glyph).size(px(14.0)).text_color(glyph_color))
@@ -64,7 +58,7 @@ impl RenderOnce for AmendNotice {
                                 .text_color(theme.text)
                                 .underline()
                                 .child("Stop amending")
-                                .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.stop_amend(cx))),
+                                .on_click(move |_, _, cx| commit_box.update(cx, |b, cx| b.stop_amend(cx))),
                         ),
                 ),
         )

@@ -6,7 +6,7 @@ use gpui::SharedString;
 
 use super::last_fetched::last_fetched_caption;
 use crate::repo::{RemoteOp, RepoModel};
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 
 pub(super) struct RemoteButton {
     pub icon: Icon,
@@ -35,7 +35,7 @@ impl RemoteButton {
     }
 
     fn for_model(r: &RepoModel) -> Self {
-        let st = r.status.as_ref();
+        let st = r.work.status.as_ref();
         let upstream = st.and_then(|s| s.upstream.clone());
         let ab = st.map(|s| s.ahead_behind).unwrap_or_default();
         let remote = upstream
@@ -78,7 +78,7 @@ impl RemoteButton {
         }
         Self::new(
             Icon::Refresh,
-            last_fetched_caption(r.last_fetch),
+            last_fetched_caption(r.sync.last_fetch),
             format!("Fetch {remote}"),
             Some(RemoteOp::Fetch),
         )

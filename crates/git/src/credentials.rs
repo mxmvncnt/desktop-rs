@@ -61,3 +61,7 @@ pub(crate) fn env() -> Vec<(OsString, OsString)> {
     out.push(("GIT_CONFIG_COUNT".into(), n.to_string().into()));
     out
 }
+
+#[cfg(test)]
+#[path = "tests/credentials.test.rs"]
+mod tests;

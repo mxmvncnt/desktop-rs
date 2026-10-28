@@ -3,7 +3,7 @@
 use gd_ui::Icon;
 
 use super::state::{HistoryAction as A, MenuCtx};
-use crate::shared::menu_row::{MenuRow, RowItem};
+use crate::components::{MenuRow, RowItem};
 
 pub type HistoryRow = MenuRow<A>;
 

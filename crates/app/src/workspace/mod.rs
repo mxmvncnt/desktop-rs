@@ -15,10 +15,12 @@
 mod actions;
 mod init;
 mod navigation;
+mod overlay;
 mod render;
 mod repo_commands;
 mod repos;
 mod state;
 
 pub use navigation::{NavList, nav_focus};
+pub use overlay::Overlay;
 pub use state::{Popover, Workspace};

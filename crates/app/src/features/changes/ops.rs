@@ -4,21 +4,26 @@
 use gd_git::{FileChange, FileStatus};
 use gpui::Context;
 
-use crate::repo::{LastCommit, RepoEvent, RepoModel};
+use crate::repo::{LastCommit, Op, RepoEvent, RepoModel};
+use crate::utils::text::plural;
 
 impl RepoModel {
     pub fn included_paths(&self) -> Vec<String> {
         self.changes()
             .iter()
-            .filter(|c| !self.excluded.contains(&c.path) && !self.partial.contains_key(&c.path))
+            .filter(|c| !self.work.excluded.contains(&c.path) && !self.work.partial.contains_key(&c.path))
             .map(|c| c.path.clone())
             .collect()
     }
 
     /// Name used when the summary is left empty and exactly one file is
     /// selected: "Create x" / "Update x" / "Delete x" / "Rename a to b".
-    pub fn default_summary(&self) -> Option<String> {
-        let mut selected = self.changes().iter().filter(|c| !self.excluded.contains(&c.path));
+    /// Never while amending or merging.
+    pub fn default_summary(&self, amending: bool) -> Option<String> {
+        if amending || self.merging() {
+            return None;
+        }
+        let mut selected = self.changes().iter().filter(|c| !self.work.excluded.contains(&c.path));
         let c = selected.next()?;
         if selected.next().is_some() {
             return None;
@@ -34,20 +39,20 @@ impl RepoModel {
 
     /// File checkbox: a partially selected file becomes fully included.
     pub fn toggle_included(&mut self, path: &str, cx: &mut Context<Self>) {
-        if self.partial.remove(path).is_some() {
-            self.excluded.remove(path);
-        } else if !self.excluded.remove(path) {
-            self.excluded.insert(path.to_string());
+        if self.work.partial.remove(path).is_some() {
+            self.work.excluded.remove(path);
+        } else if !self.work.excluded.remove(path) {
+            self.work.excluded.insert(path.to_string());
         }
         cx.notify();
     }
 
     pub fn set_all_included(&mut self, included: bool, cx: &mut Context<Self>) {
-        self.partial.clear();
+        self.work.partial.clear();
         if included {
-            self.excluded.clear();
+            self.work.excluded.clear();
         } else {
-            self.excluded = self.changes().iter().map(|c| c.path.clone()).collect();
+            self.work.excluded = self.changes().iter().map(|c| c.path.clone()).collect();
         }
         cx.notify();
     }
@@ -57,13 +62,12 @@ impl RepoModel {
         let partial = self.partial_files();
         let n = paths.len() + partial.len();
         let branch = self.branch_name();
-        self.committing = true;
-        cx.notify();
-        if self.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes()) {
+        if self.merging() {
             return self.commit_merge(summary, description, cx);
         }
         let message = (summary.clone(), description.clone());
         self.run(
+            Op { committing: true, ..Op::default() },
             move |r| r.commit_partial(&summary, &description, &paths, &partial),
             move |this, _sha, _| {
                 this.last_commit = Some(LastCommit {
@@ -77,13 +81,13 @@ impl RepoModel {
                 });
                 this.notice = Some(format!(
                     "Committed {n} file{}",
-                    if n == 1 { "" } else { "s" }
+                    plural(n as u32)
                 ));
                 // Keep the selection: the status refresh moves it to the next
                 // file and the old diff stays up until the new one is loaded,
                 // so there is no empty frame in between.
                 // Row indices refer to diffs that no longer exist.
-                this.partial.clear();
+                this.work.partial.clear();
             },
             cx,
         );
@@ -92,6 +96,7 @@ impl RepoModel {
     /// Append gitignore `patterns` to `.gitignore`, then refresh.
     pub fn ignore(&mut self, patterns: Vec<String>, notice: String, cx: &mut Context<Self>) {
         self.run(
+            Op::default(),
             move |r| r.ignore(&patterns),
             move |this, _, _| this.notice = Some(notice),
             cx,
@@ -99,17 +104,17 @@ impl RepoModel {
     }
 
     pub fn discard(&mut self, changes: Vec<FileChange>, cx: &mut Context<Self>) {
-        self.run(move |r| r.discard(&changes), |_, _, _| {}, cx);
+        self.run(Op::default(), move |r| r.discard(&changes), |_, _, _| {}, cx);
     }
 
     /// Soft-reset HEAD~1 and hand the message back via [`RepoEvent::CommitUndone`].
     pub fn undo_last_commit(&mut self, cx: &mut Context<Self>) {
         let last = self.last_commit.take();
         self.run(
+            Op::default(),
             |r| r.undo_last_commit(),
             move |this, _, cx| {
-                this.commits.clear();
-                this.selected_commit = None;
+                this.reset_history_selection();
                 if let Some(c) = last {
                     cx.emit(RepoEvent::CommitUndone {
                         summary: c.summary,

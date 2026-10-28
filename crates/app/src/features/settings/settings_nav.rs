@@ -1,6 +1,6 @@
 //! Category sidebar of the settings modal.
 
-use gd_ui::{Theme, icon, pressable, theme::ink};
+use gd_ui::{Theme, icon, pressable};
 use gpui::{
     App, Entity, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
     Window, div, px,
@@ -11,14 +11,11 @@ use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct SettingsNav {
-    page: SettingsPage,
-    ws: Entity<Workspace>,
+    pub page: SettingsPage,
+    pub ws: Entity<Workspace>,
 }
 
 impl SettingsNav {
-    pub fn new(page: SettingsPage, ws: Entity<Workspace>) -> Self {
-        Self { page, ws }
-    }
 
     fn item(&self, p: SettingsPage, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
@@ -52,7 +49,7 @@ impl RenderOnce for SettingsNav {
                 .flex_none()
                 .border_r_1()
                 .border_color(theme.border)
-                .bg(ink(0.02)),
+                .bg(theme.ink(0.02)),
             |nav, p| nav.child(self.item(p, cx)),
         )
     }

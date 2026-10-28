@@ -1,8 +1,9 @@
-//! Merge / squash / rebase into the current branch, conflict resolution, and
-//! branch management used by the branch context menu.
+//! Merge / squash / rebase into the current branch, and conflict resolution.
+
+use std::path::Path;
 
 use crate::progress::OpOutcome;
-use crate::{GitError, Repository, Result};
+use crate::{message, GitError, Repository, Result};
 
 /// What merging (or rebasing onto) `branch` would do, computed without
 /// touching the working tree.
@@ -13,9 +14,8 @@ pub struct MergePreview {
     pub ahead: u32,
     /// Commits reachable from HEAD but not from `branch` (`branch..HEAD`).
     pub behind: u32,
-    /// Files that would conflict, when both sides diverged and
-    /// `git merge-tree --write-tree` is available.
-    pub conflicts: Option<Vec<String>>,
+    /// Files that would conflict (only checked when both sides diverged).
+    pub conflicts: Vec<String>,
 }
 
 /// Default subject of a squash-merge commit.
@@ -24,44 +24,34 @@ pub fn default_squash_summary(branch: &str, current: &str) -> String {
 }
 
 impl Repository {
-    fn count(&self, range: &str) -> Result<u32> {
-        let out = self.git().args(["rev-list", "--count", range, "--"]).run()?;
-        out.trim().parse().map_err(|_| GitError::Parse(out))
-    }
-
-    /// Number of commits `branch` has that HEAD lacks (`git rev-list --count HEAD..branch`).
+    /// Number of commits `branch` has that HEAD lacks (`HEAD..branch`).
     pub fn commits_ahead(&self, branch: &str) -> Result<u32> {
-        self.count(&format!("HEAD..{branch}"))
+        let repo = self.repo()?;
+        let head = repo.head()?.peel_to_commit()?.id();
+        let (ahead, _) = repo.graph_ahead_behind(repo.revparse_single(branch)?.peel_to_commit()?.id(), head)?;
+        Ok(ahead as u32)
     }
 
     pub fn merge_preview(&self, branch: &str) -> Result<MergePreview> {
-        let ahead = self.commits_ahead(branch)?;
-        let behind = self.count(&format!("{branch}..HEAD"))?;
-        let conflicts = if ahead > 0 && behind > 0 {
-            self.git()
-                .args(["merge-tree", "--write-tree", "--name-only", "--no-messages", "HEAD", branch])
-                .allow_exit_one()
-                .run()
-                .ok()
-                .map(|out| {
-                    out.lines()
-                        .skip(1)
-                        .take_while(|l| !l.is_empty())
-                        .map(String::from)
-                        .collect()
-                })
-        } else {
-            Some(Vec::new())
-        };
-        Ok(MergePreview { branch: branch.to_string(), ahead, behind, conflicts })
+        let repo = self.repo()?;
+        let head = repo.head()?.peel_to_commit()?;
+        let other = repo.revparse_single(branch)?.peel_to_commit()?;
+        let (ahead, behind) = repo.graph_ahead_behind(other.id(), head.id())?;
+        let mut conflicts = Vec::new();
+        if ahead > 0 && behind > 0 {
+            for conflict in repo.merge_commits(&head, &other, None)?.conflicts()? {
+                let conflict = conflict?;
+                if let Some(entry) = conflict.our.or(conflict.their).or(conflict.ancestor) {
+                    conflicts.push(String::from_utf8_lossy(&entry.path).into_owned());
+                }
+            }
+        }
+        Ok(MergePreview { branch: branch.to_string(), ahead: ahead as u32, behind: behind as u32, conflicts })
     }
 
     fn current_branch_name(&self) -> String {
-        self.git()
-            .args(["rev-parse", "--abbrev-ref", "HEAD"])
-            .run()
-            .map(|s| s.trim().to_string())
-            .unwrap_or_else(|_| "HEAD".into())
+        let head = self.repo().and_then(|r| Ok(r.head()?.shorthand().map(String::from)?));
+        head.unwrap_or_else(|_| "HEAD".into())
     }
 
     /// Regular merge (`git merge --no-edit`). Conflicts leave the merge paused.
@@ -70,7 +60,7 @@ impl Repository {
             return Ok(OpOutcome::UpToDate);
         }
         let res = self.git().no_editor().args(["merge", "--no-edit", branch]).run();
-        self.outcome_of(res.map(|_| ()))
+        self.outcome_of(res)
     }
 
     /// `git merge --squash` followed by one commit. `summary` is the commit
@@ -82,24 +72,27 @@ impl Repository {
             return Ok(OpOutcome::UpToDate);
         }
         let res = self.git().no_editor().args(["merge", "--squash", branch]).run();
-        if self.outcome_of(res.map(|_| ()))? == OpOutcome::Conflicts {
+        if self.outcome_of(res)? == OpOutcome::Conflicts {
             return Ok(OpOutcome::Conflicts);
         }
+        let repo = self.repo()?;
         // Nothing staged (e.g. the branch only reverted its own changes).
-        if self.git().args(["diff", "--cached", "--quiet"]).run().is_ok() {
+        if repo.diff_tree_to_index(Some(&repo.head()?.peel_to_tree()?), None, None)?.deltas().len() == 0 {
             return Ok(OpOutcome::UpToDate);
         }
-        let subjects = self
-            .git()
-            .args(["log", "--reverse", "--format=* %s", &format!("HEAD..{branch}")])
-            .run()
-            .unwrap_or_default();
+        let mut walk = repo.revwalk()?;
+        walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME | git2::Sort::REVERSE)?;
+        walk.push(repo.revparse_single(branch)?.id())?;
+        walk.hide_head()?;
+        let subjects = walk
+            .map(|oid| Ok(format!("* {}", repo.find_commit(oid?)?.summary().ok().flatten().unwrap_or_default())))
+            .collect::<Result<Vec<_>>>()?
+            .join("\n");
         let subject = match summary.map(str::trim) {
             Some(s) if !s.is_empty() => s.to_string(),
             _ => default_squash_summary(branch, &self.current_branch_name()),
         };
-        let message = format!("{subject}\n\n{}", subjects.trim());
-        self.git().args(["commit", "-q", "-F", "-"]).stdin(message).run()?;
+        self.git().args(["commit", "-q", "-F", "-"]).stdin(message(&subject, &subjects)).exec()?;
         Ok(OpOutcome::Done)
     }
 
@@ -109,7 +102,7 @@ impl Repository {
             return Ok(OpOutcome::UpToDate);
         }
         let res = self.git().no_editor().args(["rebase", onto]).run();
-        self.outcome_of(res.map(|_| ()))
+        self.outcome_of(res)
     }
 
     /// Commit during a merge-like operation (merge, squash, cherry-pick,
@@ -119,19 +112,12 @@ impl Repository {
         if summary.trim().is_empty() {
             return Err(GitError::Invalid("commit summary is empty".into()));
         }
-        for chunk in paths.chunks(500) {
-            self.git()
-                .args(["add", "-A", "--"])
-                .args(chunk.iter().map(String::as_str))
-                .run()?;
-        }
-        let mut message = summary.trim().to_string();
-        if !description.trim().is_empty() {
-            message.push_str("\n\n");
-            message.push_str(description.trim());
-        }
-        self.git().no_editor().args(["commit", "-q", "-F", "-"]).stdin(message).run()?;
-        Ok(())
+        self.stage(paths, &[])?;
+        self.git()
+            .no_editor()
+            .args(["commit", "-q", "-F", "-"])
+            .stdin(message(summary, description))
+            .exec()
     }
 
     // ---- conflict resolution --------------------------------------------
@@ -139,41 +125,18 @@ impl Repository {
     /// Resolve `path` with our side (`ours`) or theirs, then stage it. If that
     /// side deleted the file, the file is removed instead.
     pub fn resolve_with(&self, path: &str, theirs: bool) -> Result<()> {
-        let side = if theirs { "--theirs" } else { "--ours" };
-        match self.git().args(["checkout", side, "--", path]).run() {
-            Ok(_) => {
-                self.git().args(["add", "-A", "--", path]).run()?;
-            }
-            Err(GitError::Failed { stderr, .. }) if stderr.contains("does not have") => {
-                self.git().args(["rm", "-q", "--", path]).run()?;
-            }
-            Err(e) => return Err(e),
+        let stage = if theirs { 3 } else { 2 };
+        if self.repo()?.index()?.get_path(Path::new(path), stage).is_some() {
+            self.git().args(["checkout", if theirs { "--theirs" } else { "--ours" }, "--", path]).run()?;
+            self.git().args(["add", "-A", "--", path]).run()?;
+        } else {
+            self.git().args(["rm", "-q", "--", path]).run()?;
         }
         Ok(())
     }
 
     /// Mark `path` resolved with whatever is in the working tree.
     pub fn mark_resolved(&self, path: &str) -> Result<()> {
-        self.git().args(["add", "-A", "--", path]).run()?;
-        Ok(())
-    }
-
-    // ---- branch management ------------------------------------------------
-
-    pub fn rename_branch(&self, old: &str, new: &str) -> Result<()> {
-        self.git().args(["branch", "-m", old, new]).run()?;
-        Ok(())
-    }
-
-    /// Delete `branch` on `remote` (`git push <remote> --delete <branch>`).
-    pub fn delete_remote_branch(&self, remote: &str, branch: &str) -> Result<()> {
-        self.git().args(["push", remote, "--delete", branch]).network().run()?;
-        Ok(())
-    }
-
-    /// Create `name` at `base` (any branch or commit-ish) and switch to it.
-    pub fn create_branch_from(&self, name: &str, base: &str) -> Result<()> {
-        self.git().args(["checkout", "-q", "-b", name, base, "--no-track"]).run()?;
-        Ok(())
+        self.git().args(["add", "-A", "--", path]).exec()
     }
 }

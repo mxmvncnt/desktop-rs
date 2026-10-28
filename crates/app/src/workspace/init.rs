@@ -4,59 +4,50 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use gpui::{App, AppContext, Context, Entity, Focusable, Subscription, UniformListScrollHandle, Window};
-use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
+use gpui_elements::editable_text::{EditableTextState, TextChanged};
 
 use super::state::Workspace;
-use crate::features::accounts::AccountsUi;
+use crate::features::accounts::AccountsStore;
 use crate::features::branches::BranchUi;
+use crate::features::changes::CommitBox;
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
+use crate::features::pickers::PopoverStore;
 use crate::features::settings::{Settings, ThemeMode};
 use crate::features::stashes::StashUi;
 
 /// Skip the focus refresh when the watcher refreshed this recently.
 const RECENT_WATCH_REFRESH: Duration = Duration::from_secs(1);
 
-fn text_state(cx: &mut App) -> Entity<EditableTextState> {
-    cx.new(|cx| EditableTextState::new(StringStorage::default(), cx))
-}
-
 impl Workspace {
     pub fn new(open_path: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let message = text_state(cx);
-        let filter = text_state(cx);
-        let name_input = text_state(cx);
-        let url_input = text_state(cx);
-        let mut subs = input_subscriptions([&message, &filter, &name_input, &url_input], cx);
+        let ws = cx.weak_entity();
+        let commit_box = cx.new(|cx| CommitBox::new(ws, cx));
+        let pickers = cx.new(|cx| PopoverStore::new(cx));
+        let p = pickers.read(cx);
+        let inputs = [p.filter.clone(), p.name_input.clone(), p.url_input.clone()];
+        let mut subs = input_subscriptions(&inputs, cx);
+        subs.push(cx.observe(&pickers, |_, _, cx| cx.notify()));
+        let accounts = cx.new(|cx| AccountsStore::new(cx));
+        subs.push(cx.observe(&accounts, |_, _, cx| cx.notify()));
         subs.extend(window_subscriptions(window, cx));
 
         let mut this = Self {
             settings: Settings::load(),
             sidebar_width_dirty: false,
-            settings_open: false,
             settings_page: Default::default(),
-            accounts_ui: AccountsUi::new(cx),
+            accounts,
             repo: None,
-            popover: None,
-            popover_gen: 0,
-            popover_dismissed: None,
-            popover_selected: 0,
-            menu: None,
-            menu_gen: 0,
-            dialog: None,
+            overlays: Vec::new(),
+            overlay_gen: 0,
+            pickers,
             history_ui: HistoryUi::new(cx),
             stash_ui: StashUi::new(cx),
             merge_ui: MergeUi::new(cx),
             branch_ui: BranchUi::new(cx),
             startup_error: None,
             corner_radius: 0.0,
-            message,
-            message_placeholder: None,
-            filter,
-            name_input,
-            new_branch_base: None,
-            new_branch_base_open: false,
-            url_input,
+            commit_box,
             nav_list: None,
             changes_scroll: UniformListScrollHandle::new(),
             history_scroll: UniformListScrollHandle::new(),
@@ -64,9 +55,7 @@ impl Workspace {
             diff_key: None,
             diff_view: Default::default(),
             diff_select: Default::default(),
-            commit_files_scroll: UniformListScrollHandle::new(),
             commit_msg: Default::default(),
-            popover_scroll: UniformListScrollHandle::new(),
             focus: cx.focus_handle(),
             notice_task: None,
             repo_sub: None,
@@ -95,11 +84,11 @@ impl Focusable for Workspace {
 
 /// Re-render when inputs change (commit button enablement, filtering).
 fn input_subscriptions(
-    inputs: [&Entity<EditableTextState>; 4],
+    inputs: &[Entity<EditableTextState>],
     cx: &mut Context<Workspace>,
 ) -> Vec<Subscription> {
     inputs
-        .into_iter()
+        .iter()
         .map(|input| {
             cx.subscribe(input, |this: &mut Workspace, _, _: &TextChanged, cx| {
                 this.reset_popover_selection(cx);
@@ -116,7 +105,7 @@ fn window_subscriptions(window: &mut Window, cx: &mut Context<Workspace>) -> [Su
             if window.is_window_active() {
                 // The watcher already keeps us fresh; skip if it just refreshed.
                 let recent = this.repo.as_ref().is_some_and(|r| {
-                    r.read(cx).last_watch_refresh.is_some_and(|t| t.elapsed() < RECENT_WATCH_REFRESH)
+                    r.read(cx).sync.last_watch_refresh.is_some_and(|t| t.elapsed() < RECENT_WATCH_REFRESH)
                 });
                 if !recent {
                     this.refresh(cx);

@@ -5,6 +5,7 @@
 //! is a flat `Vec<DiffLine>` (hunk headers included) rather than nested hunks:
 //! row `i` of the list is `lines[i]`, O(1).
 
+use crate::engine::hunk_header;
 use crate::{FileChange, FileStatus, Repository, Result};
 
 
@@ -38,6 +39,30 @@ pub struct DiffLine {
     pub emphasis: Vec<(usize, usize)>,
 }
 
+impl DiffLine {
+    /// A numbered row (0-based line indexes); tabs are expanded once here
+    /// instead of at every paint.
+    pub(crate) fn new(kind: DiffLineKind, old_ix: Option<usize>, new_ix: Option<usize>, text: &str) -> Self {
+        DiffLine {
+            kind,
+            old_line: old_ix.map(|i| i as u32 + 1),
+            new_line: new_ix.map(|i| i as u32 + 1),
+            text: if text.contains('\t') { text.replace('\t', "    ") } else { text.to_string() },
+            emphasis: Vec::new(),
+        }
+    }
+
+    pub(crate) fn hunk(h: &DiffHunk) -> Self {
+        let text = hunk_header(h.old_start, h.old_len, h.new_start, h.new_len);
+        DiffLine { kind: DiffLineKind::Hunk, old_line: None, new_line: None, text, emphasis: Vec::new() }
+    }
+
+    pub(crate) fn no_newline() -> Self {
+        let text = "\\ No newline at end of file".into();
+        DiffLine { kind: DiffLineKind::NoNewline, old_line: None, new_line: None, text, emphasis: Vec::new() }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffHunk {
     /// Index into [`Diff::lines`] of the hunk header.
@@ -64,7 +89,7 @@ pub struct Diff {
     /// A side exceeded `engine::MAX_BYTES`; nothing was diffed.
     pub too_large: bool,
     /// Full old/new texts the diff came from (for partial staging). `None`
-    /// for binary, non-UTF-8, or parsed-from-git diffs.
+    /// for binary or non-UTF-8 files.
     pub source: Option<std::sync::Arc<crate::engine::DiffSource>>,
 }
 
@@ -73,10 +98,29 @@ pub struct Diff {
 pub enum Side {
     /// The file doesn't exist on this side (added / deleted).
     Empty,
-    /// `git cat-file blob <rev>:<path>`. A path missing at `rev` reads as empty.
+    /// The blob at `<rev>:<path>`. A path missing at `rev` reads as empty.
     Blob { rev: String, path: String },
     /// The working-tree file (symlinks read as their target, like git).
     Worktree(String),
+}
+
+/// Sides of `file` between two revisions: empty before an added file and
+/// after a deleted one.
+pub(crate) fn blob_sides(old_rev: &str, new_rev: &str, file: &FileChange) -> (Side, Side) {
+    let old = if file.status == FileStatus::New {
+        Side::Empty
+    } else {
+        Side::Blob {
+            rev: old_rev.to_string(),
+            path: file.old_path.clone().unwrap_or_else(|| file.path.clone()),
+        }
+    };
+    let new = if file.status == FileStatus::Deleted {
+        Side::Empty
+    } else {
+        Side::Blob { rev: new_rev.to_string(), path: file.path.clone() }
+    };
+    (old, new)
 }
 
 impl Repository {
@@ -100,25 +144,7 @@ impl Repository {
 
     /// Diff of one file within a commit (against its first parent).
     pub fn commit_diff(&self, sha: &str, file: &FileChange, opts: DiffOptions) -> Result<Diff> {
-        let has_parent = self
-            .git()
-            .args(["rev-parse", "--verify", "-q"])
-            .arg(format!("{sha}^1"))
-            .run()
-            .is_ok();
-        let old = if !has_parent || file.status == FileStatus::New {
-            Side::Empty
-        } else {
-            Side::Blob {
-                rev: format!("{sha}^1"),
-                path: file.old_path.clone().unwrap_or_else(|| file.path.clone()),
-            }
-        };
-        let new = if file.status == FileStatus::Deleted {
-            Side::Empty
-        } else {
-            Side::Blob { rev: sha.to_string(), path: file.path.clone() }
-        };
+        let (old, new) = blob_sides(&format!("{sha}^1"), sha, file);
         self.diff_sides(&old, &new, opts)
     }
 
@@ -126,18 +152,12 @@ impl Repository {
     pub fn read_side(&self, side: &Side) -> Result<Vec<u8>> {
         match side {
             Side::Empty => Ok(Vec::new()),
-            Side::Blob { rev, path } => {
-                match self.git().args(["cat-file", "blob"]).arg(format!("{rev}:{path}")).run_bytes() {
-                    Ok(b) => Ok(b),
-                    // Path absent at that revision (e.g. staged-new file vs HEAD).
-                    Err(crate::GitError::Failed { stderr, .. })
-                        if stderr.contains("does not exist") || stderr.contains("Not a valid object") =>
-                    {
-                        Ok(Vec::new())
-                    }
-                    Err(e) => Err(e),
-                }
-            }
+            Side::Blob { rev, path } => match self.repo()?.revparse_single(&format!("{rev}:{path}")) {
+                Ok(object) => Ok(object.peel_to_blob()?.content().to_vec()),
+                // Path (or parent commit) absent at that revision, e.g. staged-new file vs HEAD.
+                Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(Vec::new()),
+                Err(e) => Err(e.into()),
+            },
             Side::Worktree(path) => {
                 let p = self.root().join(path);
                 let meta = std::fs::symlink_metadata(&p).map_err(|e| crate::GitError::Io(format!("{path}: {e}")))?;

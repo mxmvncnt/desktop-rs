@@ -1,14 +1,15 @@
 //! Scrollable list of branches to start a new branch from.
 
 use gd_git::BranchKind;
-use gd_ui::{Icon, Theme, icon, pressable};
+use gd_ui::{Icon, Theme, icon};
 use gpui::{
-    App, Entity, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
-    Window, div, prelude::FluentBuilder, px, uniform_list,
+    App, Entity, IntoElement, ParentElement, RenderOnce, Styled,
+    Window, div, px, uniform_list,
 };
 
 use super::new_branch_base::NewBranchBase;
-use crate::workspace::Workspace;
+use crate::components::BranchRow;
+use super::store::PopoverStore;
 
 const ROW_H: f32 = 28.0;
 const VISIBLE_ROWS: f32 = 6.0;
@@ -18,7 +19,7 @@ pub struct NewBranchBaseList {
     branches: Vec<gd_git::Branch>,
     current: String,
     selected: String,
-    ws: Entity<Workspace>,
+    pickers: Entity<PopoverStore>,
 }
 
 impl NewBranchBaseList {
@@ -27,7 +28,7 @@ impl NewBranchBaseList {
             branches: base.branches.clone(),
             current: base.current.clone(),
             selected: base.effective().to_string(),
-            ws: base.ws.clone(),
+            pickers: base.pickers.clone(),
         }
     }
 }
@@ -37,7 +38,7 @@ impl RenderOnce for NewBranchBaseList {
         let theme = Theme::of(cx).clone();
         let n = self.branches.len();
         let height = (n as f32).min(VISIBLE_ROWS) * ROW_H + 8.0;
-        let Self { branches, current, selected, ws } = self;
+        let Self { branches, current, selected, pickers } = self;
         div()
             .h(px(height))
             .rounded(px(6.0))
@@ -47,7 +48,7 @@ impl RenderOnce for NewBranchBaseList {
                 uniform_list("new-branch-base-list", n, move |range, _w, cx| {
                     range
                         .filter_map(|i| Some((i, branches.get(i)?.clone())))
-                        .map(|(i, b)| base_row(i, b, &current, &selected, &ws, cx))
+                        .map(|(i, b)| base_row(i, b, &current, &selected, &pickers, cx))
                         .collect()
                 })
                 .p(px(4.0))
@@ -62,36 +63,20 @@ fn base_row(
     b: gd_git::Branch,
     current: &str,
     selected: &str,
-    ws: &Entity<Workspace>,
+    pickers: &Entity<PopoverStore>,
     cx: &mut App,
 ) -> gpui::AnyElement {
-    let theme = Theme::of(cx).clone();
-    let ws = ws.clone();
+    let pickers = pickers.clone();
     let is_selected = b.name == selected;
     let pick = (b.name != current).then(|| b.name.clone());
     let glyph = if b.kind == BranchKind::Remote { Icon::Cloud } else { Icon::GitBranch };
-    pressable(("new-branch-base-row", i), false, cx)
-        .flex()
-        .items_center()
-        .gap(px(8.0))
-        .h(px(ROW_H))
-        .w_full()
-        .px(px(6.0))
-        .rounded(px(5.0))
-        .text_size(px(13.0))
-        .child(icon(glyph).size(px(14.0)).text_color(theme.text_faint))
-        .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .truncate()
-                .text_color(if is_selected { theme.text } else { theme.text_muted })
-                .child(b.name.clone()),
-        )
-        .when(is_selected, |d| d.child(icon(Icon::Check).size(px(14.0)).text_color(theme.text)))
-        .on_click(move |_, _, cx| {
-            let pick = pick.clone();
-            ws.update(cx, |this, cx| this.set_new_branch_base(pick, cx))
-        })
-        .into_any_element()
+    BranchRow::new("new-branch-base-row", i, b.name.clone(), move |_, cx| {
+        let pick = pick.clone();
+        pickers.update(cx, |p, cx| p.set_base(pick, cx))
+    })
+    .icon(glyph)
+    .height(ROW_H)
+    .bright(is_selected)
+    .children(is_selected.then(|| icon(Icon::Check).size(px(14.0)).text_color(Theme::of(cx).text)))
+    .into_any_element()
 }

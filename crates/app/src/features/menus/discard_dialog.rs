@@ -1,10 +1,10 @@
 //! Confirm dialog for discarding one file or all changes.
 
 use gd_ui::Dialog;
-use gpui::{App, Context, Entity, IntoElement, RenderOnce, Window};
+use gpui::{App, Entity, IntoElement, RenderOnce, Window};
 
 use super::state::ConfirmDialog;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -16,9 +16,8 @@ pub struct DiscardDialogView {
 }
 
 impl DiscardDialogView {
-    /// `None` when no confirm dialog is open.
-    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
-        let (title, body, confirm_label) = match ws.dialog.as_ref()? {
+    pub fn new(dialog: ConfirmDialog, ws: Entity<Workspace>) -> Self {
+        let (title, body, confirm_label) = match &dialog {
             ConfirmDialog::DiscardFile(c) => (
                 "Confirm discard changes".to_string(),
                 format!("Are you sure you want to discard all changes to {}?", c.path),
@@ -34,7 +33,7 @@ impl DiscardDialogView {
                 "Discard all changes",
             ),
         };
-        Some(Self { title, body, confirm_label, ws: cx.entity() })
+        Self { title, body, confirm_label, ws }
     }
 }
 
@@ -47,6 +46,6 @@ impl RenderOnce for DiscardDialogView {
             .confirm_label(self.confirm_label)
             .danger()
             .on_confirm(move |_, cx| ok.update(cx, |this, cx| this.confirm_dialog(cx)))
-            .on_cancel(move |_, cx| cancel.update(cx, |this, cx| this.close_dialog(cx)))
+            .on_cancel(move |w, cx| cancel.update(cx, |this, cx| this.close_overlay(w, cx)))
     }
 }

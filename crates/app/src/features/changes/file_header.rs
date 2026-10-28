@@ -64,6 +64,6 @@ impl RenderOnce for FileHeader {
                         .child(div().text_color(theme.diff_del).child(format!("−{}", s.deleted))),
                 )
             })
-            .child(DiffOptionsButton::new(self.ws))
+            .child(DiffOptionsButton { ws: self.ws })
     }
 }

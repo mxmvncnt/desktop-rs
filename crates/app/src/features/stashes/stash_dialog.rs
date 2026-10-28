@@ -1,15 +1,14 @@
 //! The stash dialogs: create / rename / drop and the switch-branch choice.
 
 use gd_git::{Branch, Stash};
-use gd_ui::Dialog;
-use gpui::{App, Context, Div, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
-use gpui_elements::editable_text::{EditableTextState, actions::Enter};
+use gd_ui::{Dialog, OptionRow};
+use gpui::{App, Context, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
+use gpui_elements::editable_text::EditableTextState;
 
-use super::option_row::OptionRow;
 use super::state::StashDialog;
 use crate::repo::RepoModel;
-use crate::shared::plural::plural;
-use crate::shared::text_field::text_field;
+use crate::utils::text::plural;
+use crate::components::text_field;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -21,10 +20,10 @@ pub struct StashDialogView {
 }
 
 impl StashDialogView {
-    /// `None` when no stash dialog is open.
-    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
+    /// `None` without an open repository.
+    pub fn open(ws: &Workspace, dialog: StashDialog, cx: &mut Context<Workspace>) -> Option<Self> {
         Some(Self {
-            dialog: ws.stash_ui.dialog.clone()?,
+            dialog,
             ws: cx.entity(),
             repo: ws.repo.clone()?,
             input: ws.stash_ui.input.clone(),
@@ -43,7 +42,7 @@ impl RenderOnce for StashDialogView {
         let (ws, ws2) = (self.ws.clone(), self.ws);
         dialog
             .on_confirm(move |_, cx| ws.update(cx, |this, cx| this.stash_confirm(cx)))
-            .on_cancel(move |_, cx| ws2.update(cx, |this, cx| this.close_stash_dialog(cx)))
+            .on_cancel(move |w, cx| ws2.update(cx, |this, cx| this.close_overlay(w, cx)))
     }
 }
 
@@ -52,7 +51,7 @@ impl StashDialogView {
         let r = self.repo.read(cx);
         let n = r.changes().len();
         // Stashing works on whole files, partially selected ones included.
-        let m = r.changes().iter().filter(|c| !r.excluded.contains(&c.path)).count();
+        let m = r.changes().iter().filter(|c| !r.work.excluded.contains(&c.path)).count();
         let count = if selected_only { m } else { n };
         let current = r.branch_name();
         let mut content = div().flex().flex_col().gap(px(10.0)).pt(px(4.0));
@@ -119,14 +118,8 @@ impl StashDialogView {
         })
     }
 
-    fn message_field(&self, placeholder: &str, cx: &App) -> Div {
-        let ws = self.ws.clone();
-        div()
-            .capture_action(move |_: &Enter, _, cx| {
-                cx.stop_propagation();
-                ws.update(cx, |this, cx| this.stash_confirm(cx))
-            })
-            .child(text_field("stash-message", &self.input, placeholder, cx))
+    fn message_field(&self, placeholder: &str, cx: &App) -> impl IntoElement + use<> {
+        text_field("stash-message", &self.input, placeholder, cx)
     }
 }
 

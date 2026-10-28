@@ -1,13 +1,11 @@
 //! Stash state: the list/selection model (`RepoModel::stashes`) and the
 //! Workspace-side dialog state ([`StashUi`]).
 
-use std::sync::Arc;
-
-use gd_git::{Branch, Diff, FileChange, Stash};
-use gpui::{App, AppContext, Entity, Task, UniformListScrollHandle};
+use gd_git::{Branch, Stash};
+use gpui::{App, AppContext, Entity, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
-use crate::features::diff::{DiffHighlight, HighlightCache};
+use crate::repo::DiffDetail;
 
 #[derive(Default)]
 pub struct StashState {
@@ -21,16 +19,9 @@ pub struct StashState {
     pub viewing: bool,
     /// Sha of the selected stash (indices shift, shas don't).
     pub selected: Option<String>,
-    pub files: Vec<FileChange>,
-    pub selected_file: Option<usize>,
-    pub diff: Option<Arc<Diff>>,
-    pub hl: Option<Arc<DiffHighlight>>,
-    pub files_scroll: UniformListScrollHandle,
+    /// Files and diff of the selected stash (`base` = its sha).
+    pub detail: DiffDetail,
     pub list_scroll: UniformListScrollHandle,
-    pub(super) gen_: u64,
-    pub(super) task: Option<Task<()>>,
-    pub(super) hl_task: Option<Task<()>>,
-    pub(super) cache: HighlightCache,
 }
 
 impl StashState {
@@ -50,6 +41,15 @@ impl StashState {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StashAction {
+    Apply,
+    Pop,
+    Drop,
+    Rename,
+    Copy,
+}
+
 #[derive(Clone)]
 pub enum StashDialog {
     /// New stash. `selected_only` stashes just the checked files.
@@ -60,19 +60,14 @@ pub enum StashDialog {
     Switch { branch: Branch, stash: bool },
 }
 
-/// The one Workspace field for stash UI. It stays a plain struct (not an
-/// `Entity`) because Esc/Enter routing in workspace.rs and menus.rs consults
-/// `dialog` directly.
+/// The Workspace field for stash UI: the input of the create / rename dialogs
+/// (the dialogs themselves are `Overlay::Stash`).
 pub struct StashUi {
-    pub dialog: Option<StashDialog>,
     pub input: Entity<EditableTextState>,
 }
 
 impl StashUi {
     pub fn new(cx: &mut App) -> Self {
-        Self {
-            dialog: None,
-            input: cx.new(|cx| EditableTextState::new(StringStorage::default(), cx)),
-        }
+        Self { input: cx.new(|cx| EditableTextState::new(StringStorage::default(), cx)) }
     }
 }

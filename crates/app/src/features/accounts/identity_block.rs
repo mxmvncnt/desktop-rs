@@ -6,7 +6,6 @@ use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, St
 use gpui_elements::editable_text::EditableTextState;
 
 use super::field_row::FieldRow;
-use super::state::StatusLine;
 use super::status_text::StatusText;
 
 #[derive(IntoElement)]
@@ -18,7 +17,7 @@ pub struct IdentityBlock {
     name: Entity<EditableTextState>,
     email: Entity<EditableTextState>,
     buttons: Vec<Button>,
-    status: Option<StatusLine>,
+    status: Option<StatusText>,
 }
 
 impl IdentityBlock {
@@ -45,7 +44,7 @@ impl IdentityBlock {
         self
     }
 
-    pub fn status(mut self, s: Option<StatusLine>) -> Self {
+    pub fn status(mut self, s: Option<StatusText>) -> Self {
         self.status = s;
         self
     }
@@ -73,7 +72,7 @@ impl RenderOnce for IdentityBlock {
                     .items_center()
                     .gap(px(8.0))
                     .children(self.buttons)
-                    .children(self.status.as_ref().map(StatusText::new)),
+                    .children(self.status),
             )
     }
 }

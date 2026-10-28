@@ -5,7 +5,9 @@
 
 use gpui::{Context, Entity, InteractiveElement, ScrollStrategy, Window};
 
+use super::overlay::Overlay;
 use super::state::Workspace;
+use crate::features::diff::DiffPane;
 use crate::features::history::matching_commits;
 use crate::repo::{RepoModel, Tab};
 
@@ -17,10 +19,9 @@ pub const PAGE: isize = 10;
 pub enum NavList {
     Changes,
     Commits,
-    CommitFiles,
     Stashes,
-    StashFiles,
-    PrFiles,
+    /// The file list of a commit, stash or pull request.
+    Files(DiffPane),
 }
 
 #[derive(Clone, Copy)]
@@ -48,29 +49,30 @@ impl Workspace {
         if window.focused(cx).is_some_and(|h| h != self.focus) {
             return;
         }
-        if self.popover.is_some() {
-            if let Move::By(d) = mv {
-                self.step_popover_selection(d.signum(), cx);
+        match self.overlays.last() {
+            Some(Overlay::Popover(_)) => {
+                if let Move::By(d) = mv {
+                    self.pickers.update(cx, |p, cx| p.step(d.signum(), cx));
+                }
+                return;
             }
-            return;
-        }
-        if self.overlay_open() {
-            return;
+            Some(_) => return,
+            None => {}
         }
         let Some(repo) = self.repo.clone() else { return };
         let list = self.effective_nav_list(repo.read(cx));
         let query = self.history_ui.search.read(cx).as_str().to_string();
         repo.update(cx, |r, cx| match list {
             NavList::Changes => {
-                if let Some(ix) = target(r.selected_change, r.changes().len(), mv) {
+                if let Some(ix) = target(r.work.selected, r.changes().len(), mv) {
                     r.select_change(ix, cx);
                     self.changes_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
                 }
             }
             NavList::Commits => {
-                let visible = matching_commits(&r.commits, &query);
-                let n = visible.as_ref().map_or(r.commits.len(), Vec::len);
-                let cur = r.selected_commit.and_then(|ix| match &visible {
+                let visible = matching_commits(&r.log.commits, &query);
+                let n = visible.as_ref().map_or(r.log.commits.len(), Vec::len);
+                let cur = r.log.selected.and_then(|ix| match &visible {
                     Some(v) => v.iter().position(|&i| i == ix),
                     None => Some(ix),
                 });
@@ -78,20 +80,13 @@ impl Workspace {
                     let ix = visible.as_ref().map_or(pos, |v| v[pos]);
                     r.select_commit(ix, cx);
                     self.history_scroll.scroll_to_item(pos, ScrollStrategy::Nearest);
-                    if ix + 20 >= r.commits.len() {
+                    if ix + 20 >= r.log.commits.len() {
                         r.load_more_history(cx);
                     }
                 }
             }
-            NavList::CommitFiles => {
-                if let Some(ix) = target(r.selected_commit_file, r.commit_files.len(), mv) {
-                    r.select_commit_file(ix, cx);
-                    self.commit_files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
-                }
-            }
             NavList::Stashes => {
-                let branch = r.status.as_ref().and_then(|s| s.branch.clone());
-                let visible = r.stashes.visible(branch.as_deref());
+                let visible = r.stashes.visible(r.current_branch());
                 let cur = r
                     .stashes
                     .selected
@@ -104,17 +99,11 @@ impl Workspace {
                     r.stashes.list_scroll.scroll_to_item(pos, ScrollStrategy::Nearest);
                 }
             }
-            NavList::PrFiles => {
-                let n = r.pr.comparison.as_ref().map_or(0, |c| c.files.len());
-                if let Some(ix) = target(r.pr.selected_file, n, mv) {
-                    r.select_pr_file(ix, cx);
-                    r.pr.files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
-                }
-            }
-            NavList::StashFiles => {
-                if let Some(ix) = target(r.stashes.selected_file, r.stashes.files.len(), mv) {
-                    r.select_stash_file(ix, cx);
-                    r.stashes.files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+            NavList::Files(pane) => {
+                let detail = r.detail(pane);
+                if let Some(ix) = target(detail.selected, detail.files.len(), mv) {
+                    detail.files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+                    r.select_file(pane, ix, cx);
                 }
             }
         });
@@ -123,13 +112,13 @@ impl Workspace {
     /// The clicked list if it is still on screen, else the tab's main list.
     fn effective_nav_list(&self, r: &RepoModel) -> NavList {
         if r.pr.open {
-            return NavList::PrFiles;
+            return NavList::Files(DiffPane::Pr);
         }
         match (r.tab, self.nav_list) {
             (Tab::Changes, Some(NavList::Stashes)) if r.stashes.list.is_empty() => NavList::Changes,
             (Tab::Changes, Some(l @ (NavList::Changes | NavList::Stashes))) => l,
-            (Tab::Changes, Some(NavList::StashFiles)) if r.stashes.viewing => NavList::StashFiles,
-            (Tab::History, Some(l @ (NavList::Commits | NavList::CommitFiles))) => l,
+            (Tab::Changes, Some(NavList::Files(DiffPane::Stash))) if r.stashes.viewing => NavList::Files(DiffPane::Stash),
+            (Tab::History, Some(l @ (NavList::Commits | NavList::Files(DiffPane::Commit)))) => l,
             (Tab::Changes, _) => NavList::Changes,
             (Tab::History, _) => NavList::Commits,
         }

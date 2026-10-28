@@ -15,17 +15,24 @@
    from this tree) lives in git history, e.g. `git show development:app/src/...`;
    read it for behavior, don't try to restore it.
 3. Work on your own branch and commit your own work (see Workflow). Never
-   push or force-push, and never rewrite `rust-rewrite` history.
+   push or force-push, and never rewrite `main` history.
 4. Performance is a primary goal. Follow the rules in ARCHITECTURE.md
    §Performance: no git on the UI thread, virtualize lists, no idle repeating animations.
 
+## Code style for every agent
+
+Follow `docs/CONVENTIONS.md`. In short: minimal, easy-to-read code; no helper function,
+wrapper or abstraction unless it removes duplication at 2+ call sites or clearly helps
+readability; delete the code you replace; prefer a crate over hand-rolled code; tests go in
+`tests/<file>.test.rs`. Put this rule in the prompt of every subagent you start.
+
 ## Workflow for parallel subagents
 
-- Integration branch: `rust-rewrite`.
+- Integration branch: `main` (or the current cleanup branch the coordinator names).
 - Each subagent gets its own git worktree inside the project:
   ```sh
   cd <repo-root>
-  git worktree add .worktrees/<name> -b rust/<name> rust-rewrite
+  git worktree add .worktrees/<name> -b rust/<name> main
   # Don't copy target/ from another checkout: cargo fingerprints include the
   # absolute path, so it rebuilds everything anyway (~4 min cold, ~7.5 GB).
   cd .worktrees/<name>
@@ -33,7 +40,7 @@
 - Commit in small, logical commits with clear messages on `rust/<name>`.
 - Before your final commit: `cargo build` and `cargo build --features snapshot`
   must be warning-free, and you must check your UI with a `--snapshot` PNG.
-- The coordinator (main session) merges `rust/<name>` into `rust-rewrite` and
+- The coordinator (main session) merges `rust/<name>` into `main` and
   removes the worktree.
 
 ## Verifying UI without a display
@@ -45,8 +52,12 @@ cargo run --features snapshot -- --snapshot /tmp/desktop-rs/x.png <repo> <view>
 Then look at the PNG. Make test repos under `/tmp/desktop-rs/` (see PROGRESS.md for a
 script). The snapshot can't click, but it can hover (`GD_SNAPSHOT_MOUSE=x,y`) and
 drag with the left button (`GD_SNAPSHOT_DRAG=x1,y1,x2,y2`, logical window px). For
-other interaction states, add a view name to `crates/app/src/snapshot.rs` that sets
-up the state directly.
+other interaction states, add a view: in `crates/app/src/features/<feature>/snapshot.rs`
+(`#[cfg(feature = "snapshot")] pub mod snapshot;` in the feature's `mod.rs`), add a
+`View { name: "my-view", steps: &[step] }` to `views()` and write `step(ws, view, window, cx)`, a plain fn
+that sets the state directly. A name ending in `*` matches by prefix (`select*`); later steps run after the loads
+of the earlier ones finished. A new feature adds its `snapshot::views` to `FEATURES` in `crates/app/src/snapshot.rs`
+(the harness: window, steps, mouse/drag, capture).
 
 ## Documentation duty
 

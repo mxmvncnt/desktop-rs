@@ -1,10 +1,8 @@
 //! Backdrop + positioned card hosting whichever popover is open.
 
-use gd_ui::{motion, theme::{TOOLBAR_HEIGHT, scrim}};
-use gpui::{
-    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, MouseButton,
-    ParentElement, RenderOnce, Styled, Window, deferred, div, px,
-};
+use gd_ui::theme::TOOLBAR_HEIGHT;
+use gpui::{AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Window, div, point, px};
+use gpui_elements::editable_text::actions::Escape;
 
 use crate::workspace::{Popover, Workspace};
 
@@ -17,9 +15,7 @@ pub struct PopoverLayer {
 }
 
 impl PopoverLayer {
-    /// `None` when no popover is open.
-    pub fn open(ws: &mut Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
-        let popover = ws.popover?;
+    pub fn open(ws: &mut Workspace, popover: Popover, cx: &mut Context<Workspace>) -> Self {
         let content = match popover {
             Popover::Repositories => ws.repo_picker(cx).into_any_element(),
             Popover::Branches => match ws.branch_picker(cx) {
@@ -29,52 +25,31 @@ impl PopoverLayer {
             Popover::NewBranch => ws.new_branch_form(cx).into_any_element(),
             Popover::Clone => ws.clone_form(cx).into_any_element(),
         };
-        Some(Self { ws: cx.entity(), popover, generation: ws.popover_gen, content })
+        Self { ws: cx.entity(), popover, generation: ws.overlay_gen, content }
     }
 }
 
 impl RenderOnce for PopoverLayer {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let (left, width) = match self.popover {
             Popover::Repositories | Popover::Clone => (8.0, 380.0),
             Popover::Branches | Popover::NewBranch => (296.0, 380.0),
         };
         let ws = self.ws;
-        let key = gpui::ElementId::from(("popover", self.generation));
-        let instant = motion::handoff(&key, cx);
-        deferred(
-            div()
-                .absolute()
-                .inset_0()
-                .child(
-                    // Backdrop: click outside closes. Very light scrim like zeron menus.
-                    div()
-                        .id("popover-backdrop")
-                        .absolute()
-                        .inset_0()
-                        .bg(scrim(0.18))
-                        .on_mouse_down(MouseButton::Left, move |ev, window, cx| {
-                            ws.update(cx, |this, cx| {
-                                this.popover_dismissed = this.popover.map(|p| (p, ev.position));
-                                this.close_popover(window, cx)
-                            })
-                        }),
-                )
-                .child(
-                    div()
-                        .absolute()
-                        .top(px(TOOLBAR_HEIGHT - 2.0))
-                        .left(px(left))
-                        .w(px(width))
-                        .child(motion::menu_in(
-                            key,
-                            gd_ui::overlay_card(cx)
-                                .id("popover-card")
-                                .occlude()
-                                .child(self.content),
-                            instant,
-                        )),
-                ),
-        )
+        let esc_ws = ws.clone();
+        // The filter input turns Esc into its own action (blur), so capture it to close the picker.
+        let content = div().capture_action(move |_: &Escape, w, cx| {
+            cx.stop_propagation();
+            esc_ws.update(cx, |this, cx| this.close_overlay(w, cx))
+        });
+        gd_ui::Popover::new(("popover", self.generation), point(px(left), px(TOOLBAR_HEIGHT - 2.0)), width, content.child(self.content))
+            .scrim(0.18)
+            .on_dismiss(move |ev, window, cx| {
+                ws.update(cx, |this, cx| {
+                    let dismissed = this.popover().map(|p| (p, ev.position));
+                    this.pickers.update(cx, |p, _| p.dismissed = dismissed);
+                    this.close_overlay(window, cx)
+                })
+            })
     }
 }

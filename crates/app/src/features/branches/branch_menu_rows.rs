@@ -4,7 +4,7 @@ use gd_git::{Branch, BranchKind};
 use gd_ui::Icon;
 
 use super::state::BranchAction as A;
-use crate::shared::menu_row::{MenuRow, RowItem};
+use crate::components::{MenuRow, RowItem};
 
 pub type BranchRow = MenuRow<A>;
 

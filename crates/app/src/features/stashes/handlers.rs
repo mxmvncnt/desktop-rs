@@ -5,42 +5,31 @@
 use gd_git::{Branch, Stash};
 use gpui::{ClipboardItem, Context, Focusable, Pixels, Point, Window};
 
-use super::state::StashDialog;
+use super::stash_menu::stash_menu_rows;
+use super::state::{StashAction, StashDialog};
+use crate::components::Menu;
 use crate::repo::RepoModel;
-use crate::features::menus::{MenuAction, MenuTarget};
-use crate::workspace::Workspace;
+use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
-    /// Handles stash-related menu actions; returns false for other actions.
-    pub fn run_stash_action(
-        &mut self,
-        action: MenuAction,
-        target: &MenuTarget,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> bool {
-        let stash = match target {
-            MenuTarget::Stash(s) => Some(s.clone()),
-            _ => None,
-        };
-        match (action, stash) {
-            (MenuAction::StashAll, _) => self.open_stash_create(false, window, cx),
-            (MenuAction::StashSelected, _) => self.open_stash_create(true, window, cx),
-            (MenuAction::StashApply, Some(s)) => self.stash_op(cx, move |r, cx| r.stash_apply(s.sha, cx)),
-            (MenuAction::StashPop, Some(s)) => self.stash_op(cx, move |r, cx| r.stash_pop(s.sha, cx)),
-            (MenuAction::StashDrop, Some(s)) => self.open_stash_dialog(StashDialog::Drop(s), window, cx),
-            (MenuAction::StashRename, Some(s)) => {
+    fn run_stash_action(&mut self, action: StashAction, s: Stash, window: &mut Window, cx: &mut Context<Self>) {
+        match action {
+            StashAction::Apply => self.with_repo(cx, move |r, cx| r.stash_apply(s.sha, cx)),
+            StashAction::Pop => self.with_repo(cx, move |r, cx| r.stash_pop(s.sha, cx)),
+            StashAction::Drop => self.open_stash_dialog(StashDialog::Drop(s), window, cx),
+            StashAction::Rename => {
                 self.set_stash_input(&s.message, cx);
                 self.open_stash_dialog(StashDialog::Rename(s), window, cx)
             }
-            (MenuAction::StashCopy, Some(s)) => cx.write_to_clipboard(ClipboardItem::new_string(s.title())),
-            _ => return false,
+            StashAction::Copy => cx.write_to_clipboard(ClipboardItem::new_string(s.title())),
         }
-        true
     }
 
     pub fn open_stash_menu(&mut self, stash: Stash, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
-        self.open_menu(position, MenuTarget::Stash(stash), window, cx);
+        let menu = Menu::new(position, stash_menu_rows(), move |ws, action, w, cx| {
+            ws.run_stash_action(action, stash.clone(), w, cx)
+        });
+        self.open_menu(menu, window, cx);
     }
 
     /// Ctrl+Shift+S / the header menu. `selected_only` stashes the checked files.
@@ -63,28 +52,20 @@ impl Workspace {
 
     /// Called when a checkout was requested with a dirty working tree.
     pub fn open_switch_dialog(&mut self, branch: Branch, cx: &mut Context<Self>) {
-        self.menu = None;
-        self.popover = None;
-        self.dialog = None;
         // Desktop's default: leave the changes behind (stash).
-        self.stash_ui.dialog = Some(StashDialog::Switch { branch, stash: true });
-        cx.notify();
+        self.open_overlay(Overlay::Stash(StashDialog::Switch { branch, stash: true }), cx);
     }
 
     /// Swap the open dialog's content (option rows toggling a choice).
     pub(super) fn update_stash_dialog(&mut self, d: StashDialog, cx: &mut Context<Self>) {
-        self.stash_ui.dialog = Some(d);
-        cx.notify();
-    }
-
-    pub fn close_stash_dialog(&mut self, cx: &mut Context<Self>) {
-        if self.stash_ui.dialog.take().is_some() {
+        if let Some(Overlay::Stash(open)) = self.overlays.last_mut() {
+            *open = d;
             cx.notify();
         }
     }
 
     pub fn stash_confirm(&mut self, cx: &mut Context<Self>) {
-        let Some(d) = self.stash_ui.dialog.take() else { return };
+        let Some(Overlay::Stash(d)) = self.overlays.pop_if(|o| matches!(o, Overlay::Stash(_))) else { return };
         cx.notify();
         let Some(repo) = self.repo.clone() else { return };
         let text = self.stash_ui.input.read(cx).as_str().trim().to_string();
@@ -103,22 +84,13 @@ impl Workspace {
 
     pub(super) fn open_stash_dialog(&mut self, d: StashDialog, window: &mut Window, cx: &mut Context<Self>) {
         let wants_input = matches!(d, StashDialog::Create { .. } | StashDialog::Rename(_));
-        self.menu = None;
-        self.popover = None;
-        self.dialog = None;
-        self.stash_ui.dialog = Some(d);
+        self.open_overlay(Overlay::Stash(d), cx);
         if wants_input {
             window.focus(&self.stash_ui.input.focus_handle(cx), cx);
         } else {
             self.focus(window, cx);
         }
         cx.notify();
-    }
-
-    fn stash_op(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&mut RepoModel, &mut Context<RepoModel>)) {
-        if let Some(repo) = &self.repo {
-            repo.update(cx, f);
-        }
     }
 
     fn set_stash_input(&mut self, text: &str, cx: &mut Context<Self>) {
@@ -131,7 +103,7 @@ impl Workspace {
 fn stash_paths(r: &RepoModel) -> Vec<String> {
     let mut v = Vec::new();
     for c in r.changes() {
-        if r.excluded.contains(&c.path) {
+        if r.work.excluded.contains(&c.path) {
             continue;
         }
         v.push(c.path.clone());

@@ -6,8 +6,8 @@ use gpui::{App, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelu
 
 use super::state::ClickKind;
 use crate::repo::RepoModel;
-use crate::shared::commit_authors::authors_text;
-use crate::shared::relative_time::relative_time;
+use crate::utils::text::authors_text;
+use crate::utils::text::relative_time;
 use crate::workspace::Workspace;
 
 pub const COMMIT_ROW_HEIGHT: f32 = 50.0;
@@ -29,7 +29,7 @@ impl CommitRow {
     /// Reads the row's display state from the model; `None` past the end.
     pub fn from_model(ix: usize, repo: &Entity<RepoModel>, ws: &Entity<Workspace>, cx: &App) -> Option<Self> {
         let r = repo.read(cx);
-        let commit = r.commits.get(ix)?.clone();
+        let commit = r.log.commits.get(ix)?.clone();
         Some(Self {
             ix,
             selected: r.commit_selected(ix),
@@ -131,7 +131,7 @@ fn tag_pills(tags: &[String], theme: &Theme) -> Vec<gpui::AnyElement> {
             .px(px(6.0))
             .py(px(1.0))
             .rounded(px(5.0))
-            .bg(gd_ui::theme::ink(0.07))
+            .bg(theme.ink(0.07))
             .text_size(px(10.5))
             .text_color(theme.text_muted)
             .child(text)

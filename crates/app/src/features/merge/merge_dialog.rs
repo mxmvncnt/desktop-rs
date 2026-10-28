@@ -1,6 +1,6 @@
 //! The "Merge into current branch" dialog: mode tabs, filter, candidate list
-//! and preview sentence. Esc/Enter/arrows are captured here so the filter
-//! input doesn't swallow them.
+//! and preview sentence. The arrows are captured here so the filter input
+//! doesn't swallow them.
 
 use gd_git::{Branch, MergePreview};
 use gd_ui::{Dialog, Tabs, Theme};
@@ -10,13 +10,13 @@ use gpui::{
 };
 use gpui_elements::editable_text::{
     EditableTextState,
-    actions::{Enter, Escape, NavDown, NavUp},
+    actions::{NavDown, NavUp},
 };
 
 use super::merge_candidate_list::{MergeCandidateList, ROW_HEIGHT};
 use super::merge_preview::MergePreviewLine;
-use super::state::MergeMode;
-use crate::shared::text_field::text_field;
+use super::state::{MergeDialog, MergeMode};
+use crate::components::text_field;
 use crate::workspace::Workspace;
 
 const LIST_ROWS: usize = 7;
@@ -37,15 +37,14 @@ pub struct MergeDialogView {
 }
 
 impl MergeDialogView {
-    /// `None` when the merge dialog is closed.
-    pub fn open(ws: &Workspace, cx: &mut Context<Workspace>) -> Option<Self> {
-        let d = ws.merge_ui.dialog.as_ref()?;
+    /// `None` without an open repository.
+    pub fn open(ws: &Workspace, d: MergeDialog, cx: &mut Context<Workspace>) -> Option<Self> {
         Some(Self {
             mode: d.mode,
             ix: d.ix,
             loading: d.loading,
             ready: ws.merge_ready(),
-            preview: d.preview.clone(),
+            preview: d.preview,
             current: ws.repo.as_ref()?.read(cx).branch_name(),
             candidates: ws.merge_candidates(cx),
             filter: ws.merge_ui.filter.clone(),
@@ -65,11 +64,7 @@ impl RenderOnce for MergeDialogView {
             .confirm_label(confirm_label(self.mode))
             .confirm_disabled(!self.ready)
             .on_confirm(move |w, cx| ws_ok.update(cx, |this, cx| this.merge_confirm(w, cx)))
-            .on_cancel(move |w, cx| {
-                ws_cancel.update(cx, |this, cx| {
-                    this.close_merge_ui(w, cx);
-                })
-            });
+            .on_cancel(move |w, cx| ws_cancel.update(cx, |this, cx| this.close_overlay(w, cx)));
         key_capture(&self.ws).child(dialog)
     }
 }
@@ -77,14 +72,19 @@ impl RenderOnce for MergeDialogView {
 impl MergeDialogView {
     fn content(&self, cx: &App) -> impl IntoElement + use<> {
         let theme = Theme::of(cx).clone();
-        let list = MergeCandidateList::new(self.candidates.clone(), self.ix, self.scroll.clone(), self.ws.clone());
-        let status = MergePreviewLine::new(
-            self.mode,
-            self.current.clone(),
-            self.preview.clone(),
-            self.loading,
-            !self.candidates.is_empty(),
-        );
+        let list = MergeCandidateList {
+            branches: self.candidates.clone(),
+            selected: self.ix,
+            scroll: self.scroll.clone(),
+            ws: self.ws.clone(),
+        };
+        let status = MergePreviewLine {
+            mode: self.mode,
+            current: self.current.clone(),
+            preview: self.preview.clone(),
+            loading: self.loading,
+            has_candidates: !self.candidates.is_empty(),
+        };
         div()
             .flex()
             .flex_col()
@@ -100,7 +100,7 @@ impl MergeDialogView {
                     .rounded(px(8.0))
                     .border_1()
                     .border_color(theme.border)
-                    .bg(gd_ui::theme::ink(0.02))
+                    .bg(theme.ink(0.02))
                     .child(list),
             )
             .child(div().min_h(px(36.0)).child(status))
@@ -131,29 +131,19 @@ impl MergeDialogView {
     }
 }
 
-/// Full-screen wrapper capturing Enter / arrows / Esc before the input sees them.
+/// Full-screen wrapper capturing the arrows before the filter input sees them.
 fn key_capture(ws: &Entity<Workspace>) -> gpui::Div {
-    let (w1, w2, w3, w4) = (ws.clone(), ws.clone(), ws.clone(), ws.clone());
+    let (down, up) = (ws.clone(), ws.clone());
     div()
         .absolute()
         .inset_0()
-        .capture_action(move |_: &Enter, w, cx| {
-            cx.stop_propagation();
-            w1.update(cx, |this, cx| this.merge_confirm(w, cx))
-        })
         .capture_action(move |_: &NavDown, _, cx| {
             cx.stop_propagation();
-            w2.update(cx, |this, cx| this.merge_step(1, cx))
+            down.update(cx, |this, cx| this.merge_step(1, cx))
         })
         .capture_action(move |_: &NavUp, _, cx| {
             cx.stop_propagation();
-            w3.update(cx, |this, cx| this.merge_step(-1, cx))
-        })
-        .capture_action(move |_: &Escape, w, cx| {
-            cx.stop_propagation();
-            w4.update(cx, |this, cx| {
-                this.close_merge_ui(w, cx);
-            })
+            up.update(cx, |this, cx| this.merge_step(-1, cx))
         })
 }
 

@@ -1,12 +1,14 @@
 //! Detection (and generic continue/abort) of a multi-step operation that is
 //! paused in the git directory: merge, squash-merge, rebase, cherry-pick, revert.
 //!
-//! Detection only reads the filesystem (plus one tiny `git` call to name things),
-//! so the UI loads it on every status refresh. Other features (revert,
+//! Detection reads the git directory through libgit2, so the UI loads it on
+//! every status refresh. Other features (revert,
 //! cherry-pick, squash from History) need no extra code to get the banner,
 //! the conflict list and Continue/Abort: they only need to start their `git`
 //! command and let the operation pause.
 
+
+use git2::RepositoryState;
 
 use crate::{Repository, Result};
 
@@ -61,10 +63,6 @@ pub enum OpOutcome {
     Conflicts,
 }
 
-fn read(path: std::path::PathBuf) -> Option<String> {
-    std::fs::read_to_string(path).ok().map(|s| s.trim().to_string())
-}
-
 /// `Merge branch 'feat' into main` / `Merge remote-tracking branch 'origin/x'` -> `feat`.
 fn merge_branch_from_msg(msg: &str) -> Option<String> {
     let first = msg.lines().next()?;
@@ -73,75 +71,61 @@ fn merge_branch_from_msg(msg: &str) -> Option<String> {
     Some(first[start..end].to_string())
 }
 
+/// Branch name if one points at `oid`, else the short sha.
+fn describe_commit(repo: &git2::Repository, oid: git2::Oid) -> String {
+    let branch = repo.branches(None).ok().and_then(|branches| {
+        branches.flatten().find_map(|(b, _)| {
+            (b.get().target() == Some(oid)).then(|| b.name().ok().flatten().map(String::from)).flatten()
+        })
+    });
+    branch.unwrap_or_else(|| oid.to_string().chars().take(7).collect())
+}
+
 impl Repository {
     /// The paused operation, if any. Cheap; call from a background task.
     pub fn in_progress(&self) -> Option<InProgress> {
-        let dir = self.git_dir();
-        // Rebase first: a rebase step can leave CHERRY_PICK_HEAD behind.
-        for sub in ["rebase-merge", "rebase-apply"] {
-            let d = dir.join(sub);
-            if d.is_dir() {
-                let branch = read(d.join("head-name"))
-                    .map(|h| h.strip_prefix("refs/heads/").unwrap_or(&h).to_string())
-                    .filter(|h| h != "detached HEAD");
-                let onto = read(d.join("onto")).map(|sha| self.describe_commit(&sha));
-                let (step, total) = if sub == "rebase-merge" {
-                    (read(d.join("msgnum")), read(d.join("end")))
-                } else {
-                    (read(d.join("next")), read(d.join("last")))
-                };
-                return Some(InProgress::Rebase {
-                    branch,
-                    onto,
-                    step: step.and_then(|s| s.parse().ok()).unwrap_or(0),
-                    total: total.and_then(|s| s.parse().ok()).unwrap_or(0),
-                });
-            }
-        }
-        if let Some(head) = read(dir.join("MERGE_HEAD")) {
-            let branch = read(dir.join("MERGE_MSG")).and_then(|m| merge_branch_from_msg(&m));
-            return Some(InProgress::Merge { branch, head: head.lines().next().unwrap_or("").into() });
-        }
-        for (file, revert) in [("CHERRY_PICK_HEAD", false), ("REVERT_HEAD", true)] {
-            if let Some(sha) = read(dir.join(file)) {
-                let subject = self
-                    .git()
-                    .args(["log", "-1", "--format=%s", &sha])
-                    .run()
-                    .map(|s| s.trim().to_string())
-                    .unwrap_or_default();
-                let sha = sha.chars().take(7).collect();
-                return Some(if revert {
-                    InProgress::Revert { sha, subject }
-                } else {
-                    InProgress::CherryPick { sha, subject }
-                });
-            }
-        }
-        if dir.join("SQUASH_MSG").is_file() && self.has_unmerged() {
-            return Some(InProgress::Squash);
-        }
-        None
+        self.paused_operation().ok().flatten()
     }
 
-    /// Branch name for a commit if one points at it, else the short sha.
-    fn describe_commit(&self, sha: &str) -> String {
-        self.git()
-            .args(["name-rev", "--name-only", "--no-undefined", "--refs=refs/heads/*", "--refs=refs/remotes/*", sha])
-            .run()
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty() && !s.contains(['~', '^']))
-            .unwrap_or_else(|| sha.chars().take(7).collect())
+    fn paused_operation(&self) -> Result<Option<InProgress>> {
+        let repo = self.repo()?;
+        Ok(Some(match repo.state() {
+            // libgit2's `open_rebase` rejects the `interactive` marker that git's own
+            // merge backend writes, so the step files are read directly.
+            RepositoryState::Rebase | RepositoryState::RebaseInteractive | RepositoryState::RebaseMerge => {
+                let dir = repo.path().join("rebase-merge");
+                let read = |file: &str| std::fs::read_to_string(dir.join(file)).ok().map(|s| s.trim().to_string());
+                InProgress::Rebase {
+                    branch: read("head-name")
+                        .map(|h| h.strip_prefix("refs/heads/").unwrap_or(&h).to_string())
+                        .filter(|h| h != "detached HEAD"),
+                    onto: read("onto").and_then(|sha| git2::Oid::from_str(&sha).ok()).map(|oid| describe_commit(&repo, oid)),
+                    step: read("msgnum").and_then(|s| s.parse().ok()).unwrap_or(0),
+                    total: read("end").and_then(|s| s.parse().ok()).unwrap_or(0),
+                }
+            }
+            RepositoryState::Merge => InProgress::Merge {
+                branch: repo.message().ok().and_then(|m| merge_branch_from_msg(&m)),
+                head: repo.revparse_single("MERGE_HEAD")?.id().to_string(),
+            },
+            state @ (RepositoryState::CherryPick
+            | RepositoryState::CherryPickSequence
+            | RepositoryState::Revert
+            | RepositoryState::RevertSequence) => {
+                let revert = matches!(state, RepositoryState::Revert | RepositoryState::RevertSequence);
+                let commit = repo.revparse_single(if revert { "REVERT_HEAD" } else { "CHERRY_PICK_HEAD" })?.peel_to_commit()?;
+                let sha = commit.id().to_string().chars().take(7).collect();
+                let subject = commit.summary().ok().flatten().unwrap_or_default().to_string();
+                if revert { InProgress::Revert { sha, subject } } else { InProgress::CherryPick { sha, subject } }
+            }
+            _ if repo.path().join("SQUASH_MSG").is_file() && repo.index()?.has_conflicts() => InProgress::Squash,
+            _ => return Ok(None),
+        }))
     }
 
     /// Whether the index has unmerged (conflicted) entries.
     pub fn has_unmerged(&self) -> bool {
-        self.git()
-            .args(["ls-files", "-u", "-z"])
-            .run_bytes()
-            .map(|o| !o.is_empty())
-            .unwrap_or(false)
+        self.repo().and_then(|r| Ok(r.index()?.has_conflicts())).unwrap_or(false)
     }
 
     /// The message git prepared for the operation (`MERGE_MSG`, else
@@ -181,7 +165,7 @@ impl Repository {
             }
             InProgress::Revert { .. } => self.git().no_editor().args(["revert", "--continue"]).run(),
         };
-        self.outcome_of(res.map(|_| ()))
+        self.outcome_of(res)
     }
 
     /// Abort the paused operation and restore the pre-operation state.
@@ -193,14 +177,13 @@ impl Repository {
             InProgress::CherryPick { .. } => &["cherry-pick", "--abort"],
             InProgress::Revert { .. } => &["revert", "--abort"],
         };
-        self.git().no_editor().args(args.iter().copied()).run()?;
-        Ok(())
+        self.git().no_editor().args(args.iter().copied()).exec()
     }
 
     /// Map a failed git command to `Conflicts` when it merely paused.
-    pub(crate) fn outcome_of(&self, res: Result<()>) -> Result<OpOutcome> {
+    pub(crate) fn outcome_of<T>(&self, res: Result<T>) -> Result<OpOutcome> {
         match res {
-            Ok(()) => Ok(OpOutcome::Done),
+            Ok(_) => Ok(OpOutcome::Done),
             Err(e) => {
                 if self.in_progress().is_some() && self.has_unmerged() {
                     Ok(OpOutcome::Conflicts)

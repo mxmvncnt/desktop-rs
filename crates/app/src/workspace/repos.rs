@@ -33,7 +33,7 @@ impl Workspace {
         };
         self.settings.selected = Some(ix);
         self.settings.save();
-        self.popover = None;
+        self.overlays.clear();
         match Repository::open(&path) {
             Ok(repo) => self.attach_model(repo, cx),
             Err(e) => {
@@ -50,25 +50,24 @@ impl Workspace {
         model.update(cx, |m, _| {
             m.diff_options.ignore_whitespace = self.settings.diff_ignore_whitespace
         });
-        self.repo_sub = Some(cx.observe(&model, |this, model, cx| {
-            this.sync_message_placeholder(cx);
-            observe_notices(this, model, cx)
-        }));
+        self.repo_sub = Some(cx.observe(&model, observe_notices));
+        self.commit_box.update(cx, |b, cx| b.attach(&model, cx));
         self.repo_event_sub = Some(cx.subscribe(&model, |this, _, ev: &RepoEvent, cx| this.on_repo_event(ev, cx)));
         self.repo = Some(model);
-        self.menu = None;
-        self.dialog = None;
+        self.overlays.clear();
     }
 
     fn on_repo_event(&mut self, ev: &RepoEvent, cx: &mut Context<Self>) {
         match ev {
-            RepoEvent::CommitUndone { summary, description } => self.set_commit_message(summary, description, cx),
+            RepoEvent::CommitUndone { summary, description } => self.commit_box.update(cx, |b, cx| b.set_text(summary, description, cx)),
             RepoEvent::SwitchBranchWithChanges(branch) => self.open_switch_dialog(branch.clone(), cx),
             RepoEvent::PreparedMessage { summary, description } => {
                 // A merge paused: show git's prepared message unless the user typed one.
-                if self.message.read(cx).as_str().trim().is_empty() {
-                    self.set_commit_message(summary, description, cx);
-                }
+                self.commit_box.update(cx, |b, cx| {
+                    if b.message.read(cx).as_str().trim().is_empty() {
+                        b.set_text(summary, description, cx);
+                    }
+                });
             }
         }
     }
@@ -91,13 +90,13 @@ impl Workspace {
     }
 
     pub fn prompt_add_repository(&mut self, cx: &mut Context<Self>) {
-        self.popover = None;
+        self.overlays.clear();
         let paths = cx.prompt_for_paths(directory_prompt("Add repository"));
         cx.spawn(async move |this, cx| {
-            if let Ok(Ok(Some(paths))) = paths.await {
-                if let Some(path) = paths.into_iter().next() {
-                    this.update(cx, |this, cx| this.add_repository(path, cx)).ok();
-                }
+            if let Ok(Ok(Some(paths))) = paths.await
+                && let Some(path) = paths.into_iter().next()
+            {
+                this.update(cx, |this, cx| this.add_repository(path, cx)).ok();
             }
         })
         .detach();
@@ -109,7 +108,7 @@ impl Workspace {
             return;
         }
         let paths = cx.prompt_for_paths(directory_prompt("Clone into…"));
-        self.popover = None;
+        self.overlays.clear();
         cx.spawn(async move |this, cx| {
             let Ok(Ok(Some(paths))) = paths.await else { return };
             let Some(parent) = paths.into_iter().next() else { return };

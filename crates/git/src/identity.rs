@@ -1,7 +1,7 @@
 //! Git identity (`user.name` / `user.email`): global and per-repository.
 //!
-//! Global reads/writes use `git config --global`, so `GIT_CONFIG_GLOBAL`
-//! (tests) is honored. Blocking, like everything in this crate.
+//! Reads go through libgit2, writes through `git config`; both honor
+//! `GIT_CONFIG_GLOBAL` (tests). Blocking, like everything in this crate.
 
 use std::path::Path;
 
@@ -52,12 +52,9 @@ impl Scope {
     }
 }
 
-fn read(cwd: &Path, scope: Scope) -> Result<Identity> {
-    let get = |key: &str| -> Result<String> {
-        let out = Git::new(cwd).args(["config", scope.flag(), "--get", key]).allow_exit_one().run()?;
-        Ok(out.trim().to_string())
-    };
-    Ok(Identity { name: get("user.name")?, email: get("user.email")? })
+fn read(config: &git2::Config) -> Identity {
+    let get = |key: &str| config.get_string(key).unwrap_or_default().trim().to_string();
+    Identity { name: get("user.name"), email: get("user.email") }
 }
 
 /// Set both keys; an empty value unsets the key.
@@ -76,7 +73,12 @@ fn write(cwd: &Path, scope: Scope, id: &Identity) -> Result<()> {
 
 /// The global identity (`~/.gitconfig` or `$GIT_CONFIG_GLOBAL`).
 pub fn global_identity() -> Result<Identity> {
-    read(&std::env::temp_dir(), Scope::Global)
+    // libgit2 ignores `GIT_CONFIG_GLOBAL`, which `git config --global` (the write side) honors.
+    let config = match std::env::var_os("GIT_CONFIG_GLOBAL") {
+        Some(path) => git2::Config::open(Path::new(&path))?,
+        None => git2::Config::open_default()?,
+    };
+    Ok(read(&config))
 }
 
 pub fn set_global_identity(id: &Identity) -> Result<()> {
@@ -86,7 +88,7 @@ pub fn set_global_identity(id: &Identity) -> Result<()> {
 impl Repository {
     /// The repository-local override (empty fields = not overridden).
     pub fn local_identity(&self) -> Result<Identity> {
-        read(self.root(), Scope::Local)
+        Ok(read(&self.repo()?.config()?.open_level(git2::ConfigLevel::Local)?))
     }
 
     pub fn set_local_identity(&self, id: &Identity) -> Result<()> {

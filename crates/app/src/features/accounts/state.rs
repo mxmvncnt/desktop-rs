@@ -2,26 +2,12 @@
 //! git identity as last read, and the text inputs of both.
 
 use gd_git::{EffectiveIdentity, Identity};
-use gpui::{App, AppContext, Entity, Task};
+use gpui::{App, AppContext, Entity};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::model::{self, Account, Provider};
-
-/// A one-line result shown under a section.
-#[derive(Clone, Debug)]
-pub struct StatusLine {
-    pub text: String,
-    pub error: bool,
-}
-
-impl StatusLine {
-    pub fn ok(text: impl Into<String>) -> Self {
-        Self { text: text.into(), error: false }
-    }
-    pub fn err(text: impl Into<String>) -> Self {
-        Self { text: text.into(), error: true }
-    }
-}
+use super::status_text::StatusText;
+use crate::repo::LoadSlot;
 
 /// The add/edit account form (its text lives in [`AccountInputs`]).
 #[derive(Clone, Debug)]
@@ -39,7 +25,7 @@ pub struct IdentityState {
     pub global: Identity,
     pub local: Identity,
     pub effective: Option<EffectiveIdentity>,
-    pub message: Option<StatusLine>,
+    pub message: Option<StatusText>,
 }
 
 #[derive(Clone)]
@@ -54,16 +40,15 @@ pub struct AccountInputs {
     pub token: Entity<EditableTextState>,
 }
 
-pub struct AccountsUi {
+pub struct AccountsStore {
     pub accounts: Vec<Account>,
     pub form: Option<AccountForm>,
     pub identity: IdentityState,
     pub inputs: AccountInputs,
-    pub(super) load_gen: u64,
-    pub(super) task: Option<Task<()>>,
+    pub(super) identity_load: LoadSlot,
 }
 
-impl AccountsUi {
+impl AccountsStore {
     /// Loads the saved accounts and registers their tokens for git network ops.
     pub fn new(cx: &mut App) -> Self {
         let mk = |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
@@ -83,8 +68,7 @@ impl AccountsUi {
                 username: mk(cx),
                 token: mk(cx),
             },
-            load_gen: 0,
-            task: None,
+            identity_load: LoadSlot::default(),
         }
     }
 }

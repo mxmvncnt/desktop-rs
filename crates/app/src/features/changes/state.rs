@@ -5,7 +5,7 @@ use gd_ui::CheckState;
 use gpui::SharedString;
 
 use crate::repo::RepoModel;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 
 /// State of the "select all" checkbox and the count above the list.
 #[derive(Clone, Copy)]
@@ -19,10 +19,10 @@ pub struct SelectionSummary {
 impl SelectionSummary {
     pub fn of(r: &RepoModel) -> Self {
         let total = r.changes().len();
-        let included = total - r.changes().iter().filter(|c| r.excluded.contains(&c.path)).count();
+        let included = total - r.changes().iter().filter(|c| r.work.excluded.contains(&c.path)).count();
         let all = match included {
             0 => CheckState::Unchecked,
-            i if i == total && r.partial.is_empty() => CheckState::Checked,
+            i if i == total && r.work.partial.is_empty() => CheckState::Checked,
             _ => CheckState::Mixed,
         };
         Self { total, included, all }
@@ -33,23 +33,16 @@ impl SelectionSummary {
 pub struct CommitButton {
     pub label: SharedString,
     pub enabled: bool,
-    pub amending: bool,
     /// The commit being amended was already pushed (force push needed).
     pub head_pushed: bool,
     /// Shown as the summary placeholder and used when the summary is empty.
     pub default_summary: Option<String>,
 }
 
-/// Summary used when the box is left empty; never while amending or merging.
-pub fn default_summary(r: &RepoModel, amending: bool) -> Option<String> {
-    let merging = r.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes());
-    if amending || merging { None } else { r.default_summary() }
-}
-
 impl CommitButton {
     pub fn of(r: &RepoModel, included: usize, amending: bool, summary_typed: bool) -> Self {
-        let merging = r.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes());
-        let default_summary = default_summary(r, amending);
+        let merging = r.merging();
+        let default_summary = r.default_summary(amending);
         let summary_ok = summary_typed || default_summary.is_some();
         let committing = r.committing;
         let conflicts = r.conflict_count();
@@ -66,7 +59,7 @@ impl CommitButton {
         } else {
             format!("Commit to {}", r.branch_name()).into()
         };
-        let head_pushed = r.history.push_state_loaded && r.commits.first().is_some_and(|c| !r.is_unpushed(&c.sha));
-        Self { label, enabled, amending, head_pushed, default_summary }
+        let head_pushed = r.history.push_state_loaded && r.log.commits.first().is_some_and(|c| !r.is_unpushed(&c.sha));
+        Self { label, enabled, head_pushed, default_summary }
     }
 }

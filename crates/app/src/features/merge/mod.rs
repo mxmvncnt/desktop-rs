@@ -4,7 +4,6 @@
 
 mod conflict_handlers;
 mod conflict_hint;
-mod conflict_menu;
 mod conflict_menu_rows;
 mod handlers;
 mod in_progress_banner;
@@ -13,10 +12,10 @@ mod merge_dialog;
 mod merge_preview;
 mod ops;
 mod state;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub use conflict_hint::ConflictHint;
-pub use conflict_menu::ConflictMenuView;
 pub use in_progress_banner::InProgressBanner;
 pub use merge_dialog::MergeDialogView;
-pub(crate) use ops::message_event;
-pub use state::{MergeMode, MergeState, MergeUi};
+pub use state::{MergeDialog, MergeMode, MergeState, MergeUi};

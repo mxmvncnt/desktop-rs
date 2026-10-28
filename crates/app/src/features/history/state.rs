@@ -2,12 +2,12 @@
 //! and the Workspace side ([`HistoryUi`]: menu, dialog, amend mode, inputs).
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
 
 use gd_git::{Commit, ResetMode};
-use gpui::{AppContext, Context, Entity, Pixels, Point, Subscription, Task};
+use gpui::{AppContext, Context, Entity, Subscription};
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
+use crate::repo::LoadSlot;
 use crate::workspace::Workspace;
 
 /// Everything the History tab needs beyond the commit list itself.
@@ -26,8 +26,7 @@ pub struct HistoryState {
     pub web_url: Option<String>,
     /// Multi-selection (shas). Empty means "just `selected_commit`".
     pub multi: HashSet<String>,
-    pub(super) load_gen: u64,
-    pub(super) task: Option<Task<()>>,
+    pub(super) push_load: LoadSlot,
 }
 
 /// How a click on a history row changes the selection.
@@ -41,14 +40,9 @@ pub enum ClickKind {
     Range,
 }
 
-/// Everything the History feature adds to `Workspace`. A plain struct (not an
-/// `Entity`): Esc/Enter/arrow routing in workspace.rs reads `menu`/`dialog`.
+/// Everything the History feature adds to `Workspace`: the dialog inputs
+/// (the menu and dialogs are `Overlay`s).
 pub struct HistoryUi {
-    pub menu: Option<HistoryMenu>,
-    pub menu_gen: usize,
-    pub dialog: Option<HistoryDialog>,
-    /// Commit box is amending the last commit of this repository.
-    pub amend: Option<AmendState>,
     /// Inputs shared by the dialogs (squash message, branch / tag name).
     pub msg_summary: Entity<EditableTextState>,
     pub msg_desc: Entity<EditableTextState>,
@@ -56,10 +50,6 @@ pub struct HistoryUi {
     /// Search box above the commit list.
     pub search: Entity<EditableTextState>,
     _subs: Vec<Subscription>,
-}
-
-pub struct AmendState {
-    pub root: PathBuf,
 }
 
 impl HistoryUi {
@@ -70,21 +60,12 @@ impl HistoryUi {
             .into_iter()
             .map(|i| cx.subscribe(i, |_: &mut Workspace, _, _: &TextChanged, cx| cx.notify()))
             .collect();
-        Self { menu: None, menu_gen: 0, dialog: None, amend: None, msg_summary, msg_desc, name, search, _subs: subs }
+        Self { msg_summary, msg_desc, name, search, _subs: subs }
     }
-
-    pub fn is_open(&self) -> bool {
-        self.menu.is_some() || self.dialog.is_some()
-    }
-}
-
-pub struct HistoryMenu {
-    pub position: Point<Pixels>,
-    pub selected: Option<usize>,
-    pub ctx: MenuCtx,
 }
 
 /// Snapshot of everything the menu rows depend on, taken at open time.
+#[derive(Clone)]
 pub struct MenuCtx {
     pub commit: Commit,
     /// Multi-selection, newest first (empty unless 2+ are selected).

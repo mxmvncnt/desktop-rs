@@ -1,6 +1,6 @@
 //! Virtualized, infinitely-paged list of commits (History tab sidebar).
 
-use gd_ui::Theme;
+use gd_ui::empty_state;
 use gpui::{App, Entity, IntoElement, RenderOnce, UniformListScrollHandle, Window, div, prelude::*, px, uniform_list};
 
 use gpui_elements::editable_text::EditableTextState;
@@ -18,16 +18,10 @@ const MIN_MATCHES: usize = 50;
 
 #[derive(IntoElement)]
 pub struct CommitList {
-    repo: Entity<RepoModel>,
-    ws: Entity<Workspace>,
-    scroll: UniformListScrollHandle,
-    search: Entity<EditableTextState>,
-}
-
-impl CommitList {
-    pub fn new(repo: Entity<RepoModel>, ws: Entity<Workspace>, scroll: UniformListScrollHandle, search: Entity<EditableTextState>) -> Self {
-        Self { repo, ws, scroll, search }
-    }
+    pub repo: Entity<RepoModel>,
+    pub ws: Entity<Workspace>,
+    pub scroll: UniformListScrollHandle,
+    pub search: Entity<EditableTextState>,
 }
 
 impl RenderOnce for CommitList {
@@ -39,7 +33,7 @@ impl RenderOnce for CommitList {
             .flex_col()
             .flex_1()
             .min_h_0()
-            .child(SearchBox::new(self.search))
+            .child(SearchBox { input: self.search })
             .child(body)
     }
 }
@@ -49,7 +43,7 @@ impl CommitList {
         let (repo, ws) = (self.repo.clone(), self.ws.clone());
         let (total, visible) = {
             let r = repo.read(cx);
-            (r.commits.len(), matching_commits(&r.commits, query))
+            (r.log.commits.len(), matching_commits(&r.log.commits, query))
         };
         let searching = visible.is_some();
         let n = visible.as_ref().map_or(total, Vec::len);
@@ -60,7 +54,9 @@ impl CommitList {
             }
         }
         if n == 0 {
-            return empty(if searching { "No matching commits" } else { "No commits yet" }, cx).into_any_element();
+            return empty_state(if searching { "No matching commits" } else { "No commits yet" }, cx)
+                .flex_1()
+                .into_any_element();
         }
         let nav_ws = ws.clone();
         let list = uniform_list("history", n, move |range, _w, cx| {
@@ -80,15 +76,4 @@ impl CommitList {
         .flex_1();
         nav_focus(div(), NavList::Commits, nav_ws).flex().flex_col().flex_1().min_h_0().py(px(4.0)).child(list).into_any_element()
     }
-}
-
-fn empty(text: &'static str, cx: &App) -> impl IntoElement + use<> {
-    div()
-        .flex_1()
-        .flex()
-        .items_center()
-        .justify_center()
-        .text_size(px(12.0))
-        .text_color(Theme::of(cx).text_faint)
-        .child(text)
 }

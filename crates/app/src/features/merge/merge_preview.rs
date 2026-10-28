@@ -6,33 +6,21 @@ use gd_ui::{Icon, Theme, icon};
 use gpui::{App, Hsla, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px};
 
 use super::state::MergeMode;
-use crate::shared::plural::plural;
+use crate::utils::text::plural;
 
 #[derive(IntoElement)]
 pub struct MergePreviewLine {
-    mode: MergeMode,
-    current: String,
-    preview: Option<MergePreview>,
-    loading: bool,
-    has_candidates: bool,
+    pub mode: MergeMode,
+    pub current: String,
+    pub preview: Option<MergePreview>,
+    pub loading: bool,
+    pub has_candidates: bool,
 }
 
 /// A piece of the sentence; `Bold` is a branch name or a count.
 enum Part {
     Plain(String),
     Bold(String),
-}
-
-impl MergePreviewLine {
-    pub fn new(
-        mode: MergeMode,
-        current: String,
-        preview: Option<MergePreview>,
-        loading: bool,
-        has_candidates: bool,
-    ) -> Self {
-        Self { mode, current, preview, loading, has_candidates }
-    }
 }
 
 impl RenderOnce for MergePreviewLine {
@@ -70,16 +58,17 @@ impl MergePreviewLine {
         if p.ahead == 0 {
             return None;
         }
-        match &p.conflicts {
-            Some(c) if !c.is_empty() => Some(note(
+        let n = p.conflicts.len();
+        if n > 0 {
+            Some(note(
                 Icon::Warning,
                 theme.warning,
-                format!("{} conflicted file{} expected. You'll resolve them next.", c.len(), plural(c.len() as u32)),
-            )),
-            Some(_) if p.behind > 0 && self.mode != MergeMode::Rebase => {
-                Some(note(Icon::Check, theme.success, "No conflicts expected.".to_string()))
-            }
-            _ => None,
+                format!("{n} conflicted file{} expected. You'll resolve them next.", plural(n as u32)),
+            ))
+        } else if p.behind > 0 && self.mode != MergeMode::Rebase {
+            Some(note(Icon::Check, theme.success, "No conflicts expected.".to_string()))
+        } else {
+            None
         }
     }
 }
