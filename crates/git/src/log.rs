@@ -43,6 +43,21 @@ fn parse_co_authors(message: &str) -> Vec<CoAuthor> {
     out
 }
 
+pub(crate) fn commit_info(commit: &git2::Commit) -> Result<Commit> {
+    let author = commit.author();
+    Ok(Commit {
+        sha: commit.id().to_string(),
+        short_sha: commit.as_object().short_id()?.as_str().unwrap_or_default().to_string(),
+        author_name: author.name().unwrap_or_default().to_string(),
+        author_email: author.email().unwrap_or_default().to_string(),
+        time: author.when().seconds(),
+        summary: commit.summary().ok().flatten().unwrap_or_default().to_string(),
+        body: commit.body().ok().flatten().unwrap_or_default().trim_end().to_string(),
+        parents: commit.parent_ids().map(|p| p.to_string()).collect(),
+        co_authors: parse_co_authors(commit.message().unwrap_or_default()),
+    })
+}
+
 impl Repository {
     /// Commits reachable from HEAD, newest first. Paged with `skip`/`limit`
     /// so the history list can load lazily as the user scrolls.
@@ -54,22 +69,7 @@ impl Repository {
         let mut walk = repo.revwalk()?;
         walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)?;
         walk.push_head()?;
-        walk.skip(skip).take(limit).map(|oid| -> Result<Commit> {
-            let commit = repo.find_commit(oid?)?;
-            let message = commit.message().unwrap_or_default();
-            let author = commit.author();
-            Ok(Commit {
-                sha: commit.id().to_string(),
-                short_sha: commit.as_object().short_id()?.as_str().unwrap_or_default().to_string(),
-                author_name: author.name().unwrap_or_default().to_string(),
-                author_email: author.email().unwrap_or_default().to_string(),
-                time: author.when().seconds(),
-                summary: commit.summary().ok().flatten().unwrap_or_default().to_string(),
-                body: commit.body().ok().flatten().unwrap_or_default().trim_end().to_string(),
-                parents: commit.parent_ids().map(|p| p.to_string()).collect(),
-                co_authors: parse_co_authors(message),
-            })
-        }).collect()
+        walk.skip(skip).take(limit).map(|oid| commit_info(&repo.find_commit(oid?)?)).collect()
     }
 
     /// Files changed by `sha` (against its first parent; root commits against

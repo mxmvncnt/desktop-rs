@@ -65,6 +65,9 @@ impl RepoModel {
         if self.pr.open {
             self.load_pr_comparison(cx);
         }
+        if self.force_push.open {
+            self.load_force_push(cx);
+        }
         cx.notify();
     }
 }

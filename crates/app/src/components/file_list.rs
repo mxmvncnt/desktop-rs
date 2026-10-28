@@ -19,6 +19,7 @@ impl RenderOnce for FileList {
         let id = match pane {
             DiffPane::Commit => "commit-file",
             DiffPane::Stash => "stash-file",
+            DiffPane::ForcePush => "force-push-file",
             _ => "pr-file",
         };
         let detail = repo.read(cx).detail(pane);

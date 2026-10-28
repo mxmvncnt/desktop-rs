@@ -107,6 +107,9 @@ impl RepoModel {
             if self.pr.open {
                 self.load_pr_comparison(cx);
             }
+            if self.force_push.open {
+                self.load_force_push(cx);
+            }
         }
         self.apply_progress(data.paused, cx);
         if full && (!self.log.commits.is_empty() || self.tab == Tab::History) {

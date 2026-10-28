@@ -54,10 +54,12 @@ fn bind_menu_keys(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<
 }
 
 impl Workspace {
-    /// Esc: close the top overlay, else leave the pull request preview.
+    /// Esc: close the top overlay, else leave the force push / pull request preview.
     fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.overlays.is_empty() {
-            self.close_pr_preview_key(cx);
+            if !self.close_force_push_key(cx) {
+                self.close_pr_preview_key(cx);
+            }
         } else {
             self.close_overlay(window, cx);
         }

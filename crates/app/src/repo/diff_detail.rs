@@ -54,7 +54,7 @@ impl DiffPane {
             Self::Changes => repo.working_diff(file, opts),
             Self::Commit => repo.commit_diff(base, file, opts),
             Self::Stash => repo.stash_diff(base, file),
-            Self::Pr => repo.compare_file_diff(base, "HEAD", file, opts),
+            Self::Pr | Self::ForcePush => repo.compare_file_diff(base, "HEAD", file, opts),
         }
     }
 }
@@ -66,6 +66,7 @@ impl RepoModel {
             DiffPane::Commit => &self.log.detail,
             DiffPane::Stash => &self.stashes.detail,
             DiffPane::Pr => &self.pr.detail,
+            DiffPane::ForcePush => &self.force_push.detail,
         }
     }
 
@@ -75,6 +76,7 @@ impl RepoModel {
             DiffPane::Commit => &mut self.log.detail,
             DiffPane::Stash => &mut self.stashes.detail,
             DiffPane::Pr => &mut self.pr.detail,
+            DiffPane::ForcePush => &mut self.force_push.detail,
         }
     }
 

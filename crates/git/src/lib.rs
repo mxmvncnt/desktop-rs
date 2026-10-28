@@ -32,7 +32,7 @@ pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity,
 pub use diff::{Side, Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};
 pub use exec::GitError;
 pub use expand::{EXPANSION_STEP, Expansion, expand, expandable, gap_above, gap_below};
-pub use history_ops::ResetMode;
+pub use history_ops::{ForcePushPreview, ResetMode};
 pub use log::{CoAuthor, Commit};
 pub use merge::{MergePreview, default_squash_summary};
 pub use partial::{PartialFile, selectable, staged_text};

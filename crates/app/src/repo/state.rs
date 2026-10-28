@@ -137,6 +137,7 @@ pub struct RepoModel {
     pub stashes: crate::features::stashes::StashState,
     /// Pull-request preview (see `features/pr_preview`).
     pub pr: crate::features::pr_preview::PrPreviewState,
+    pub force_push: crate::features::force_push::ForcePushState,
     /// Merge / rebase / conflict state (see `features/merge/`).
     pub merge: crate::features::merge::MergeState,
 }
@@ -168,6 +169,7 @@ impl RepoModel {
             notice: None,
             stashes: Default::default(),
             pr: Default::default(),
+            force_push: Default::default(),
             merge: Default::default(),
         }
     }

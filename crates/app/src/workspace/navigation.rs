@@ -114,6 +114,9 @@ impl Workspace {
         if r.pr.open {
             return NavList::Files(DiffPane::Pr);
         }
+        if r.force_push.open {
+            return NavList::Files(DiffPane::ForcePush);
+        }
         match (r.tab, self.nav_list) {
             (Tab::Changes, Some(NavList::Stashes)) if r.stashes.list.is_empty() => NavList::Changes,
             (Tab::Changes, Some(l @ (NavList::Changes | NavList::Stashes))) => l,

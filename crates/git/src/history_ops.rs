@@ -13,8 +13,10 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::log::commit_info;
 use crate::refs::upstream_ref;
-use crate::{message, GitError, OpOutcome, Repository, Result};
+use crate::tree_diff::{tree_changes, tree_stats};
+use crate::{message, Commit, FileChange, GitError, LineStats, OpOutcome, Repository, Result};
 
 /// How `git reset` treats the index and working tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,6 +25,21 @@ pub enum ResetMode {
     Soft,
     /// Reset the index: undone changes stay in the working tree, unstaged.
     Mixed,
+}
+
+/// What a force push would change on the remote.
+#[derive(Debug, Clone)]
+pub struct ForcePushPreview {
+    pub remote_ref: String,
+    /// Sha of the remote tip: the left side of every file diff.
+    pub remote_tip: String,
+    /// Net file changes the remote would receive (remote tip -> HEAD).
+    pub files: Vec<FileChange>,
+    pub stats: LineStats,
+    /// Local commits the remote doesn't have, newest first.
+    pub outgoing: Vec<Commit>,
+    /// Remote commits that would be thrown away, newest first.
+    pub replaced: Vec<Commit>,
 }
 
 /// A node of the first-parent history walk.
@@ -188,6 +205,34 @@ impl Repository {
             .stdin(message(summary, description))
             .exec()?;
         self.head_sha()
+    }
+
+    /// The commits a force push would send and the ones it would drop, as of
+    /// the last fetch (what `--force-with-lease` checks against).
+    pub fn force_push_preview(&self) -> Result<ForcePushPreview> {
+        let repo = self.repo()?;
+        let head = repo.head()?;
+        let branch = head.name().unwrap_or_default();
+        let remote_ref = upstream_ref(&repo, branch)
+            .ok_or_else(|| GitError::Invalid("the branch has no upstream to push to".into()))?;
+        let (local, remote) = (head.peel_to_commit()?.id(), repo.refname_to_id(&remote_ref)?);
+        let only_in = |tip, hidden| -> Result<Vec<Commit>> {
+            let mut walk = repo.revwalk()?;
+            walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)?;
+            walk.push(tip)?;
+            walk.hide(hidden)?;
+            walk.map(|oid| commit_info(&repo.find_commit(oid?)?)).collect()
+        };
+        let remote_ref = remote_ref.strip_prefix("refs/remotes/").unwrap_or(&remote_ref).to_string();
+        let (remote_tree, local_tree) = (repo.find_commit(remote)?.tree()?, repo.find_commit(local)?.tree()?);
+        Ok(ForcePushPreview {
+            remote_ref,
+            remote_tip: remote.to_string(),
+            files: tree_changes(&repo, Some(&remote_tree), &local_tree)?,
+            stats: tree_stats(&repo, Some(&remote_tree), &local_tree)?,
+            outgoing: only_in(local, remote)?,
+            replaced: only_in(remote, local)?,
+        })
     }
 
     // ---- squash / reorder -------------------------------------------------

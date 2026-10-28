@@ -264,3 +264,33 @@ fn rewritten_history_needs_force_push_not_pull() {
     let st = repo.status().unwrap();
     assert!(!st.rewritten && st.ahead_behind == AheadBehind { ahead: 1, behind: 1 });
 }
+
+#[test]
+fn force_push_preview_lists_both_sides() {
+    let tmp = common::tempdir();
+    let base = tmp.path().to_path_buf();
+    let work = base.join("work");
+    sh(&base, &["init", "-q", "--bare", "-b", "main", "remote.git"]);
+    sh(&base, &["clone", "-q", base.join("remote.git").to_str().unwrap(), "work"]);
+    for (k, v) in [("user.name", "Tester"), ("user.email", "t@example.com")] {
+        sh(&work, &["config", k, v]);
+    }
+    sh(&work, &["checkout", "-q", "-b", "main"]);
+    let repo = Repository::open(&work).unwrap();
+    commit(&work, "a.txt", "1\n", "c1");
+    let c2 = commit(&work, "b.txt", "2\n", "c2");
+    commit(&work, "c.txt", "3\n", "c3");
+    repo.push("main", false).unwrap();
+    repo.reword_commit(&c2, "new c2").unwrap();
+    let p = repo.force_push_preview().unwrap();
+    assert_eq!(p.remote_ref, "origin/main");
+    let names = |v: &[Commit]| v.iter().map(|c| c.summary.clone()).collect::<Vec<_>>();
+    assert_eq!(names(&p.outgoing), ["c3", "new c2"]);
+    assert_eq!(names(&p.replaced), ["c3", "c2"]);
+    // Same trees on both sides: the net change is empty, but a new file shows up as added.
+    assert!(p.files.is_empty());
+    commit(&work, "d.txt", "4\n", "c4");
+    let p = repo.force_push_preview().unwrap();
+    assert_eq!(p.files.len(), 1);
+    assert_eq!((p.files[0].path.as_str(), p.files[0].status), ("d.txt", FileStatus::New));
+}

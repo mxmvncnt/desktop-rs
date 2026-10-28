@@ -119,4 +119,6 @@ pub enum DiffPane {
     Stash,
     /// Pull-request preview: view only.
     Pr,
+    /// Force push preview (remote tip -> HEAD): view only.
+    ForcePush,
 }
