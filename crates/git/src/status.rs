@@ -54,6 +54,9 @@ pub struct WorkingStatus {
     pub upstream: Option<String>,
     /// Only meaningful when `upstream` is set.
     pub ahead_behind: AheadBehind,
+    /// The branch diverged from its upstream because local history was rewritten
+    /// (the upstream tip used to be a tip of this branch): needs a force push, not a pull.
+    pub rewritten: bool,
     pub files: Vec<FileChange>,
 }
 
@@ -70,6 +73,10 @@ impl Repository {
             if let (Some(local), Ok(remote)) = (&st.head_oid, repo.refname_to_id(&upstream)) {
                 let (ahead, behind) = repo.graph_ahead_behind(local.parse()?, remote)?;
                 st.ahead_behind = AheadBehind { ahead: ahead as u32, behind: behind as u32 };
+                if ahead > 0 && behind > 0 {
+                    let log = repo.reflog(&format!("refs/heads/{}", st.branch.as_deref().unwrap_or_default()))?;
+                    st.rewritten = log.iter().any(|e| e.id_old() == remote || e.id_new() == remote);
+                }
             }
         }
 

@@ -249,6 +249,13 @@ impl Repository {
         Ok(())
     }
 
+    /// Force push the current branch to its upstream, refusing if the remote
+    /// moved since the last fetch (`--force-with-lease`).
+    pub fn push_force(&self) -> Result<()> {
+        self.git().args(["push", "--force-with-lease"]).network().run()?;
+        Ok(())
+    }
+
     /// Append `patterns` to the repository's root `.gitignore` (created if
     /// missing). Patterns already present are skipped. Use [`escape_ignore`]
     /// for literal paths.

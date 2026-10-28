@@ -267,6 +267,9 @@ needs `&mut Workspace` today). Not done.
 - Reword (non-HEAD; HEAD uses Amend): `reword_commit` builds the new commit with `commit-tree` (same tree and parents, original
   author via `GIT_AUTHOR_*`), then `update-ref` at HEAD or `rebase --autostash --onto <new> <old>` for the later commits.
   Dialog `HistoryDialog::Reword` reuses the squash message inputs (`HistoryUi::msg_summary/msg_desc`). Warns first on pushed commits.
+- Force push: `WorkingStatus::rewritten` = diverged (ahead and behind) and the upstream tip appears in the branch reflog,
+  i.e. we rewrote our own history (a teammate's push is not in the reflog, so that stays a Pull). The toolbar button then
+  shows `RemoteOp::ForcePush` (`push --force-with-lease`). No confirm dialog: the rewrite dialogs already warn.
 - Reorder: `move_commit` (swap with neighbour) writes a todo file into `.git/gd-rebase-todo` and runs
   `rebase -i` with `-c sequence.editor="cp '<file>'"`; removed afterwards. No drag and drop (uniform_list
   drag with autoscroll not attempted); menu "Move commit up/down" instead.

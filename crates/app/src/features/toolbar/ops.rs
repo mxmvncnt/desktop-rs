@@ -22,6 +22,7 @@ impl RepoModel {
                 // refreshed toolbar offers Pull, then Push after the merge.
                 RemoteOp::Push if has_upstream => r.push_if_up_to_date(&branch),
                 RemoteOp::Push => r.push(&branch, false).map(|_| true),
+                RemoteOp::ForcePush => r.push_force().map(|_| true),
             },
             move |this, done, _| this.notice = Some(done_message(op, done).into()),
             cx,
@@ -31,9 +32,9 @@ impl RepoModel {
 
 fn done_message(op: RemoteOp, done: bool) -> &'static str {
     match (op, done) {
-        (RemoteOp::Push, false) => "Remote has new commits: pull to merge them, then push",
+        (RemoteOp::Push | RemoteOp::ForcePush, false) => "Remote has new commits: pull to merge them, then push",
         (RemoteOp::Fetch, _) => "Fetched from remote",
         (RemoteOp::Pull, _) => "Pulled from remote",
-        (RemoteOp::Push, true) => "Pushed to remote",
+        (RemoteOp::Push | RemoteOp::ForcePush, true) => "Pushed to remote",
     }
 }

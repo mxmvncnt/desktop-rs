@@ -55,6 +55,7 @@ impl RemoteButton {
             RemoteOp::Fetch => Self::new(Icon::Refresh, "Fetching…", format!("Fetch {remote}"), None),
             RemoteOp::Pull => Self::new(Icon::ArrowDown, "Pulling…", format!("Pull {remote}"), None),
             RemoteOp::Push => Self::new(Icon::ArrowUp, "Pushing…", format!("Push {remote}"), None),
+            RemoteOp::ForcePush => Self::new(Icon::ArrowUp, "Force pushing…", format!("Force push {remote}"), None),
         }
         .busy()
     }
@@ -66,6 +67,14 @@ impl RemoteButton {
                 "Publish this branch to the remote",
                 "Publish branch",
                 Some(RemoteOp::Push),
+            );
+        }
+        if has_upstream && r.work.status.as_ref().is_some_and(|s| s.rewritten) {
+            return Self::new(
+                Icon::ArrowUp,
+                "History rewritten: needs a force push",
+                format!("Force push {remote}"),
+                Some(RemoteOp::ForcePush),
             );
         }
         if has_upstream && ab.behind > 0 {

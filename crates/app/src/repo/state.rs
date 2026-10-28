@@ -21,6 +21,7 @@ pub enum RemoteOp {
     Fetch,
     Pull,
     Push,
+    ForcePush,
 }
 
 /// How much a refresh reloads.

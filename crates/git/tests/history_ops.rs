@@ -226,3 +226,41 @@ fn reword_keeps_author_and_replays_later_commits() {
     assert_eq!(summaries(&repo), ["new c3", "new c2", "new c1"]);
     assert!(repo.reword_commit(&c1, "  ").is_err());
 }
+
+#[test]
+fn rewritten_history_needs_force_push_not_pull() {
+    let tmp = common::tempdir();
+    let base = tmp.path().to_path_buf();
+    let work = base.join("work");
+    sh(&base, &["init", "-q", "--bare", "-b", "main", "remote.git"]);
+    sh(&base, &["clone", "-q", base.join("remote.git").to_str().unwrap(), "work"]);
+    for (k, v) in [("user.name", "Tester"), ("user.email", "t@example.com")] {
+        sh(&work, &["config", k, v]);
+    }
+    sh(&work, &["checkout", "-q", "-b", "main"]);
+    let repo = Repository::open(&work).unwrap();
+    commit(&work, "a.txt", "1\n", "c1");
+    let c2 = commit(&work, "b.txt", "2\n", "c2");
+    repo.push("main", false).unwrap();
+    assert!(!repo.status().unwrap().rewritten);
+
+    repo.reword_commit(&c2, "new c2").unwrap();
+    let st = repo.status().unwrap();
+    assert!(st.rewritten && st.ahead_behind == AheadBehind { ahead: 1, behind: 1 });
+    repo.push_force().unwrap();
+    let st = repo.status().unwrap();
+    assert!(!st.rewritten && st.ahead_behind == AheadBehind { ahead: 0, behind: 0 });
+
+    // A teammate's commit on the remote is a real divergence: pull, not force push.
+    sh(&base, &["clone", "-q", base.join("remote.git").to_str().unwrap(), "other"]);
+    let other = base.join("other");
+    for (k, v) in [("user.name", "Mate"), ("user.email", "m@example.com")] {
+        sh(&other, &["config", k, v]);
+    }
+    commit(&other, "m.txt", "m\n", "mate");
+    sh(&other, &["push", "-q"]);
+    commit(&work, "w.txt", "w\n", "mine");
+    repo.fetch().unwrap();
+    let st = repo.status().unwrap();
+    assert!(!st.rewritten && st.ahead_behind == AheadBehind { ahead: 1, behind: 1 });
+}
