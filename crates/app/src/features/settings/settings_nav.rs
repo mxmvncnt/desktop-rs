@@ -39,7 +39,8 @@ impl SettingsNav {
 impl RenderOnce for SettingsNav {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        SettingsPage::ALL.into_iter().fold(
+        let [top @ .., about] = SettingsPage::ALL;
+        top.into_iter().fold(
             div()
                 .flex()
                 .flex_col()
@@ -52,5 +53,7 @@ impl RenderOnce for SettingsNav {
                 .bg(theme.ink(0.02)),
             |nav, p| nav.child(self.item(p, cx)),
         )
+        .child(div().flex_1())
+        .child(self.item(about, cx))
     }
 }

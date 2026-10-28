@@ -10,6 +10,7 @@ use gpui::{
 };
 
 use crate::features::accounts::AccountsPage;
+use super::about_page::AboutPage;
 use super::appearance_page::AppearancePage;
 use super::diff_page::DiffPage;
 use super::settings_nav::SettingsNav;
@@ -48,6 +49,7 @@ impl SettingsModal {
                 ws: self.ws.clone(),
             }.into_any_element(),
             SettingsPage::Diff => DiffPage { ws: self.ws }.into_any_element(),
+            SettingsPage::About => AboutPage.into_any_element(),
             SettingsPage::Accounts => self.accounts.map_or_else(|| div().into_any_element(), IntoElement::into_any_element),
         }
     }

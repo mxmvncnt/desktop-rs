@@ -22,7 +22,7 @@
 
 ## Settings modal + light/dark/system theme (2026-10-21)
 
-- [x] Settings modal (`features/settings/`): two panes, a category sidebar (Appearance, Diff) and the selected page
+- [x] Settings modal (`features/settings/`): two panes, a category sidebar (Appearance, Diff, Accounts, About pinned at the bottom) and the selected page
       (`Workspace::settings_page`). Custom overlay built from `overlay_card` + scrim like `Dialog`, since `Dialog` is single-column.
       Opens from the toolbar gear, `Ctrl/Cmd+,`, macOS "Settings…"; Esc/close button/backdrop closes. `settings_open` counts as
       `overlay_open`; Esc is checked first in `Dismiss`. Diff page reuses `CheckOptionRow` and the `set_diff_*` setters.
@@ -30,7 +30,7 @@
 - [x] Theme mode `System|Light|Dark` persisted as `theme` in `settings.toml`. System follows
       `window.appearance()` and re-applies live via `observe_window_appearance`.
 - Not done: identities/providers, ~~multiple color themes~~ (done: see ARCHITECTURE UI kit, Color themes). Snapshot views: `settings`,
-  `settings-light`, `settings-diff`, `changes-light`.
+  `settings-light`, `settings-diff`, `settings-about`, `changes-light`.
 
 ## Diff text selection
 

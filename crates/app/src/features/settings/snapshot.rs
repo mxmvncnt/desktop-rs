@@ -12,6 +12,7 @@ pub fn views() -> &'static [View] {
         View { name: "settings", steps: &[page] },
         View { name: "settings-light", steps: &[page] },
         View { name: "settings-diff", steps: &[page] },
+        View { name: "settings-about", steps: &[page] },
         View { name: "changes-light", steps: &[page] },
     ]
 }
@@ -37,7 +38,9 @@ fn page(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Wo
     if view.starts_with("settings") {
         ws.overlays.push(Overlay::Settings);
     }
-    if view == "settings-diff" {
-        ws.settings_page = SettingsPage::Diff;
+    match view {
+        "settings-diff" => ws.settings_page = SettingsPage::Diff,
+        "settings-about" => ws.settings_page = SettingsPage::About,
+        _ => {}
     }
 }
