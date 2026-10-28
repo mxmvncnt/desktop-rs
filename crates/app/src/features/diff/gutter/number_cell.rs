@@ -89,8 +89,7 @@ fn selectable_cell(
         .cursor_pointer()
         .map(|d| {
             if included {
-                // A step darker than the chunk handle so lines read apart from it.
-                let hover = theme.accent_strong;
+                let hover = theme.accent;
                 d.bg(line_selected_bg()).text_color(theme.on_accent).hover_style(move |s| s.bg(hover))
             } else {
                 let hover = theme.text_muted;
