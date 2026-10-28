@@ -3,11 +3,11 @@
 
 use gd_git::{Commit, ResetMode};
 use gd_ui::{Dialog, Icon, Tabs, Theme, icon};
-use gpui::{App, Context, Entity, IntoElement, RenderOnce, SharedString, Window, div, prelude::*, px, uniform_list};
+use gpui::{App, Context, Entity, IntoElement, RenderOnce, SharedString, Window, div, prelude::*, px};
 use gpui_elements::editable_text::EditableTextState;
 
 use super::state::{CherryPickTarget, HistoryAction, HistoryDialog};
-use crate::components::BranchRow;
+use crate::components::{BranchRow, LIST_INSET_Y, list};
 use crate::utils::text::sanitize_branch_name;
 use crate::utils::text::plural;
 use crate::components::{text_area, text_field};
@@ -127,7 +127,7 @@ impl HistoryDialogView {
         let n = target.branches.len();
         let (branches, current, sel) = (target.branches.clone(), target.current.clone(), target.selected);
         let ws = self.ws.clone();
-        uniform_list("cp-branches", n, move |range, _w, cx| {
+        list("cp-branches", n, move |range, _w, cx| {
             let (text, faint) = (Theme::of(cx).text, Theme::of(cx).text_faint);
             range
                 .filter_map(|ix| {
@@ -145,7 +145,7 @@ impl HistoryDialogView {
                 })
                 .collect()
         })
-        .h(px(BRANCH_ROW_HEIGHT * n.clamp(1, BRANCH_ROWS_VISIBLE) as f32))
+        .h(px(BRANCH_ROW_HEIGHT * n.clamp(1, BRANCH_ROWS_VISIBLE) as f32 + LIST_INSET_Y))
     }
 
     fn message_fields(&self, cx: &App) -> gpui::Div {

@@ -1,7 +1,8 @@
 //! The virtualized list of stash rows inside the sidebar panel.
 
-use gpui::{App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px, uniform_list};
+use gpui::{App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
+use crate::components::{LIST_INSET_Y, list};
 use super::stash_row::{STASH_ROW_HEIGHT, StashRow};
 use crate::repo::RepoModel;
 use crate::workspace::{NavList, Workspace, nav_focus};
@@ -26,7 +27,7 @@ impl RenderOnce for StashList {
         let (scroll, viewing, selected) = (st.list_scroll.clone(), st.viewing, st.selected.clone());
         let nav_ws = self.ws.clone();
         let Self { repo, ws, visible, current_branch, all_branches } = self;
-        let list = uniform_list("stashes", n, move |range, _w, cx| {
+        let list = list("stashes", n, move |range, _w, cx| {
             let r = repo.read(cx);
             range
                 .filter_map(|i| {
@@ -45,10 +46,9 @@ impl RenderOnce for StashList {
                 .collect()
         })
         .track_scroll(&scroll)
-        .px(px(6.0))
         .size_full();
         nav_focus(div(), NavList::Stashes, nav_ws)
-            .h(px(n.min(MAX_ROWS) as f32 * STASH_ROW_HEIGHT + 4.0))
+            .h(px(n.min(MAX_ROWS) as f32 * STASH_ROW_HEIGHT + LIST_INSET_Y))
             .flex_none()
             .child(list)
     }

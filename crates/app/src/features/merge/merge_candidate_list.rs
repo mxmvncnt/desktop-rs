@@ -4,10 +4,10 @@ use gd_git::{Branch, BranchKind};
 use gd_ui::{Icon, empty_state};
 use gpui::{
     App, Entity, IntoElement, ParentElement, RenderOnce, Styled,
-    UniformListScrollHandle, Window, uniform_list,
+    UniformListScrollHandle, Window,
 };
 
-use crate::components::BranchRow;
+use crate::components::{BranchRow, list};
 use crate::workspace::Workspace;
 
 pub const ROW_HEIGHT: f32 = 30.0;
@@ -27,7 +27,7 @@ impl RenderOnce for MergeCandidateList {
             return empty_state("No matching branches", cx).h_full().into_any_element();
         }
         let (rows, ws, selected) = (self.branches, self.ws, self.selected);
-        uniform_list("merge-branches", n, move |range, _w, cx| {
+        list("merge-branches", n, move |range, _w, cx| {
             range
                 .filter_map(|i| Some(row(i, rows.get(i)?, i == selected, ws.clone(), cx)))
                 .collect()

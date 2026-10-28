@@ -2,11 +2,11 @@
 
 use gd_ui::empty_state;
 use gpui::{
-    App, Entity, IntoElement, RenderOnce, Styled, UniformListScrollHandle, Window, px,
-    uniform_list,
+    App, Entity, IntoElement, RenderOnce, Styled, UniformListScrollHandle, Window,
 };
 
 use super::change_row::change_row;
+use crate::components::list;
 use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
@@ -24,13 +24,12 @@ impl RenderOnce for ChangesList {
             return empty_state("No local changes", cx).flex_1().into_any_element();
         }
         let (repo, ws) = (self.repo, self.ws);
-        uniform_list("changes", self.count, move |range, _window, cx| {
+        list("changes", self.count, move |range, _window, cx| {
             let r = repo.read(cx);
             let rows: Vec<_> = range.filter_map(|ix| Some((ix, r.changes().get(ix)?.clone()))).collect();
             rows.into_iter().map(|(ix, change)| change_row(ix, change, &repo, &ws, cx)).collect()
         })
         .track_scroll(&self.scroll)
-        .px(px(6.0))
         .flex_1()
         .into_any_element()
     }

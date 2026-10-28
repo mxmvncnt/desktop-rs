@@ -1,10 +1,11 @@
 //! Virtualized, infinitely-paged list of commits (History tab sidebar).
 
 use gd_ui::empty_state;
-use gpui::{App, Entity, IntoElement, RenderOnce, UniformListScrollHandle, Window, div, prelude::*, px, uniform_list};
+use gpui::{App, Entity, IntoElement, RenderOnce, UniformListScrollHandle, Window, div, prelude::*};
 
 use gpui_elements::editable_text::EditableTextState;
 
+use crate::components::list;
 use super::commit_row::CommitRow;
 use super::search::matching_commits;
 use super::search_box::SearchBox;
@@ -59,7 +60,7 @@ impl CommitList {
                 .into_any_element();
         }
         let nav_ws = ws.clone();
-        let list = uniform_list("history", n, move |range, _w, cx| {
+        let list = list("history", n, move |range, _w, cx| {
             // Infinite scroll: page in more commits near the end.
             if range.end + PAGE_AHEAD >= n {
                 repo.update(cx, |r, cx| r.load_more_history(cx));
@@ -72,8 +73,7 @@ impl CommitList {
                 .collect()
         })
         .track_scroll(&self.scroll)
-        .px(px(6.0))
         .flex_1();
-        nav_focus(div(), NavList::Commits, nav_ws).flex().flex_col().flex_1().min_h_0().py(px(4.0)).child(list).into_any_element()
+        nav_focus(div(), NavList::Commits, nav_ws).flex().flex_col().flex_1().min_h_0().child(list).into_any_element()
     }
 }

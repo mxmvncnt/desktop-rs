@@ -14,7 +14,7 @@ use gpui_elements::editable_text::{
 };
 
 use crate::actions::{SelectNext, SelectPrevious};
-use crate::components::text_field;
+use crate::components::{LIST_INSET_Y, text_field};
 use super::store::PopoverStore;
 
 pub(super) const PICKER_ROW: f32 = 34.0;
@@ -62,8 +62,8 @@ impl PickerShell {
     }
 
     fn body(&self, cx: &App) -> gpui::Div {
-        let height = (self.rows.clamp(1, PICKER_MAX_ROWS) as f32) * PICKER_ROW + 8.0;
-        div().h(px(height)).py(px(4.0)).when(self.rows == 0, |d| {
+        let height = (self.rows.clamp(1, PICKER_MAX_ROWS) as f32) * PICKER_ROW + LIST_INSET_Y;
+        div().h(px(height)).when(self.rows == 0, |d| {
             d.child(empty_state("No matches", cx).size_full())
         })
     }

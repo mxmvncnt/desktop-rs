@@ -1,8 +1,8 @@
 //! Virtualized list of the files of a commit, a stash or a pull request.
 
-use gpui::{App, Entity, IntoElement, RenderOnce, Window, prelude::*, px, uniform_list};
+use gpui::{App, Entity, IntoElement, RenderOnce, Window, prelude::*};
 
-use super::FileRow;
+use super::{FileRow, list};
 use crate::features::diff::DiffPane;
 use crate::repo::RepoModel;
 
@@ -24,7 +24,7 @@ impl RenderOnce for FileList {
         };
         let detail = repo.read(cx).detail(pane);
         let (count, scroll) = (detail.files.len(), detail.files_scroll.clone());
-        uniform_list(id, count, move |range, _w, cx| {
+        list(id, count, move |range, _w, cx| {
             let detail = repo.read(cx).detail(pane);
             range
                 .filter_map(|ix| {
@@ -37,7 +37,6 @@ impl RenderOnce for FileList {
                 .collect()
         })
         .track_scroll(&scroll)
-        .px(px(6.0))
         .flex_1()
     }
 }

@@ -31,7 +31,6 @@ impl Workspace {
             .flex_col()
             .flex_none()
             .w(px(260.0))
-            .py(px(4.0))
             .child(FileList { repo: repo.clone(), pane });
         let stat = diff.as_ref().map(|d| DiffStat { added: d.added, deleted: d.deleted });
         let theme = Theme::of(cx).clone();

@@ -4,11 +4,11 @@ use gd_git::BranchKind;
 use gd_ui::{Icon, Theme, icon};
 use gpui::{
     App, Entity, IntoElement, ParentElement, RenderOnce, Styled,
-    Window, div, px, uniform_list,
+    Window, div, px,
 };
 
 use super::new_branch_base::NewBranchBase;
-use crate::components::BranchRow;
+use crate::components::{BranchRow, list};
 use super::store::PopoverStore;
 
 const ROW_H: f32 = 28.0;
@@ -45,13 +45,12 @@ impl RenderOnce for NewBranchBaseList {
             .border_1()
             .border_color(theme.border)
             .child(
-                uniform_list("new-branch-base-list", n, move |range, _w, cx| {
+                list("new-branch-base-list", n, move |range, _w, cx| {
                     range
                         .filter_map(|i| Some((i, branches.get(i)?.clone())))
                         .map(|(i, b)| base_row(i, b, &current, &selected, &pickers, cx))
                         .collect()
                 })
-                .p(px(4.0))
                 .size_full(),
             )
     }

@@ -95,7 +95,6 @@ impl MergeDialogView {
             .child(
                 div()
                     .h(px(ROW_HEIGHT * LIST_ROWS as f32 + 8.0))
-                    .py(px(4.0))
                     .px(px(2.0))
                     .rounded(px(8.0))
                     .border_1()

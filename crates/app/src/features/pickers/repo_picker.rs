@@ -3,10 +3,11 @@
 use gd_ui::{Button, Icon, Theme, icon, icon_button, pressable};
 use gpui::{
     AnyElement, App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement,
-    Styled, UniformListScrollHandle, Window, div, px, uniform_list,
+    Styled, UniformListScrollHandle, Window, div, px,
 };
 use gpui_elements::editable_text::EditableTextState;
 
+use crate::components::list;
 use super::picker_shell::{PICKER_ROW, PickerShell};
 use super::store::PopoverStore;
 use crate::workspace::{Popover, Workspace};
@@ -36,13 +37,12 @@ impl RepoPicker {
     fn list(entries: Vec<RepoEntry>, selected: usize, scroll: &UniformListScrollHandle, ws: &Entity<Workspace>) -> AnyElement {
         let n = entries.len();
         let ws = ws.clone();
-        uniform_list("repo-list", n, move |range, _w, cx| {
+        list("repo-list", n, move |range, _w, cx| {
             range
                 .filter_map(|i| Some(repo_row(entries.get(i)?, i == selected, &ws, cx)))
                 .collect()
         })
         .track_scroll(scroll)
-        .px(px(6.0))
         .size_full()
         .into_any_element()
     }

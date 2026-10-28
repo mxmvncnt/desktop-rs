@@ -3,7 +3,7 @@
 
 use gd_ui::divider;
 use gpui::{
-    App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+    App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
 };
 
 use super::changes_header::ChangesHeader;
@@ -57,7 +57,7 @@ impl RenderOnce for ChangesPanel {
             .min_h_0()
             .child(self.header)
             .child(divider(cx))
-            .child(nav_focus(div(), NavList::Changes, self.ws).flex().flex_col().flex_1().min_h_0().py(px(4.0)).child(self.list))
+            .child(nav_focus(div(), NavList::Changes, self.ws).flex().flex_col().flex_1().min_h_0().child(self.list))
             .children(self.stashes)
             .children(self.undo)
             .child(self.commit_box)

@@ -2,7 +2,8 @@
 
 use gd_git::Commit;
 use gd_ui::Theme;
-use gpui::{App, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px, uniform_list};
+use crate::components::list;
+use gpui::{App, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 use crate::repo::RepoModel;
 
@@ -24,7 +25,7 @@ impl RenderOnce for MultiSelectPane {
             .min_w_0()
             .child(header(n, pushed, cx))
             .child(
-                uniform_list("multi-commits", n, move |range, _w, cx| {
+                list("multi-commits", n, move |range, _w, cx| {
                     range.filter_map(|ix| Some(multi_commit_row(ix, commits.get(ix)?, cx))).collect()
                 })
                 .flex_1(),

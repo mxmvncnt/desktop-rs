@@ -4,7 +4,7 @@ use gd_git::BranchKind;
 use gd_ui::{Button, Icon};
 use gpui::{
     AnyElement, App, Entity, IntoElement, ParentElement, RenderOnce,
-    Styled, UniformListScrollHandle, Window, div, px, uniform_list,
+    Styled, UniformListScrollHandle, Window, div, px,
 };
 use gpui_elements::editable_text::EditableTextState;
 
@@ -12,7 +12,7 @@ use super::picker_shell::{PICKER_ROW, PickerShell};
 use super::store::PopoverStore;
 use crate::features::merge::MergeMode;
 use crate::repo::RepoModel;
-use crate::components::BranchRow;
+use crate::components::{BranchRow, list};
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -32,7 +32,7 @@ impl BranchPicker {
     fn list(&self) -> AnyElement {
         let (items, selected) = (self.items.clone(), self.selected);
         let (repo, ws) = (self.repo.clone(), self.ws.clone());
-        uniform_list("branch-list", self.items.len(), move |range, _w, cx| {
+        list("branch-list", self.items.len(), move |range, _w, cx| {
             let r = repo.read(cx);
             let rows: Vec<_> = range
                 .filter_map(|i| Some((i, r.branches.get(*items.get(i)?)?.clone())))
@@ -40,7 +40,6 @@ impl BranchPicker {
             rows.into_iter().map(|(i, b)| branch_row(i, b, i == selected, &ws, cx)).collect()
         })
         .track_scroll(&self.scroll)
-        .px(px(6.0))
         .size_full()
         .into_any_element()
     }
