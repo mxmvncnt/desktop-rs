@@ -2,6 +2,20 @@
 
 The goal is code a human can read in small pieces, organized like a Vue app.
 
+## Write less code
+
+- Minimal, easy-to-read code. A helper function, wrapper, struct or trait must earn its place:
+  it removes real duplication (2+ call sites) or clearly makes the code easier to read.
+  Otherwise inline it. No "just in case" generality, no pass-through layers, no comments that
+  repeat the code.
+- Before writing something, look for it: a crate (see Dependencies), an existing component in
+  `components/` or `gd-ui`, an existing helper in `utils/`. Extend the existing one with a builder
+  method instead of adding a near-copy.
+- When you replace something, delete the old version in the same commit. Never leave both.
+- One commit per issue, each one builds. Keep the 79 snapshots pixel-identical unless the change
+  is meant to alter the look (then look at the images).
+- Keep the `mod.rs` files; do not rename them to `foo.rs` + `foo/`.
+
 ## Feature folders
 
 UI code lives in `crates/app/src/features/<feature>/`, one folder per feature

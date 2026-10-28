@@ -19,6 +19,13 @@
 4. Performance is a primary goal. Follow the rules in ARCHITECTURE.md
    §Performance: no git on the UI thread, virtualize lists, no idle repeating animations.
 
+## Code style for every agent
+
+Follow `docs/CONVENTIONS.md`. In short: minimal, easy-to-read code; no helper function,
+wrapper or abstraction unless it removes duplication at 2+ call sites or clearly helps
+readability; delete the code you replace; prefer a crate over hand-rolled code; tests go in
+`tests/<file>.test.rs`. Put this rule in the prompt of every subagent you start.
+
 ## Workflow for parallel subagents
 
 - Integration branch: `main` (or the current cleanup branch the coordinator names).
