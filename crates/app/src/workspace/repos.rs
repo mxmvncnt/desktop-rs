@@ -23,7 +23,7 @@ impl Workspace {
                 };
                 self.open_repository(ix, cx);
             }
-            Err(e) => self.show_error(format!("{}: {e}", path.display()), cx),
+            Err(e) => self.show_error(e.to_string(), cx),
         }
     }
 
@@ -38,7 +38,7 @@ impl Workspace {
             Ok(repo) => self.attach_model(repo, cx),
             Err(e) => {
                 self.repo = None;
-                self.show_error(format!("{}: {e}", path.display()), cx);
+                self.show_error(e.to_string(), cx);
             }
         }
         cx.notify();
@@ -114,7 +114,7 @@ impl Workspace {
             let Some(parent) = paths.into_iter().next() else { return };
             let dest = parent.join(clone_dir_name(&url));
             this.update(cx, |this, cx| {
-                this.show_notice(format!("Cloning into {}…", dest.display()), cx)
+                this.show_notice(format!("Cloning {}…", clone_dir_name(&url)), cx)
             })
             .ok();
             let res = cx

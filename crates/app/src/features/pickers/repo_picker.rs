@@ -17,7 +17,6 @@ pub struct RepoEntry {
     /// Index into `settings.repositories`.
     pub ix: usize,
     pub name: String,
-    pub parent: String,
     /// The repository currently open.
     pub current: bool,
 }
@@ -103,15 +102,7 @@ fn repo_row(e: &RepoEntry, selected: bool, ws: &Entity<Workspace>, cx: &mut App)
                 .text_color(if e.current { theme.text } else { theme.text_faint }),
         )
         .child(div().flex_none().text_color(theme.text).child(e.name.clone()))
-        .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .truncate()
-                .text_size(px(11.5))
-                .text_color(theme.text_faint)
-                .child(e.parent.clone()),
-        )
+        .child(div().flex_1())
         .child(
             div().invisible().group_hover_style("repo-row", |s| s.visible()).child(
                 icon_button(("remove-repo", ix), Icon::Close).compact().on_click(move |_, _, cx| {

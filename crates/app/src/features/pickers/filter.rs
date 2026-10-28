@@ -19,7 +19,7 @@ impl Workspace {
             .repositories
             .iter()
             .enumerate()
-            .filter(|(_, p)| f.is_empty() || p.display().to_string().to_lowercase().contains(&f))
+            .filter(|(_, p)| f.is_empty() || p.file_name().is_some_and(|n| n.to_string_lossy().to_lowercase().contains(&f)))
             .map(|(i, _)| i)
             .collect()
     }

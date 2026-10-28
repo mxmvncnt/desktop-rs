@@ -22,7 +22,6 @@ impl Workspace {
                 Some(RepoEntry {
                     ix,
                     name: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
-                    parent: path.parent().map(|p| p.display().to_string()).unwrap_or_default(),
                     current: self.settings.selected == Some(ix),
                 })
             })

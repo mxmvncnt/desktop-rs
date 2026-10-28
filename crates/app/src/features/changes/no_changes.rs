@@ -68,7 +68,7 @@ impl NoChanges {
                 "open-folder",
                 Icon::Folder,
                 "View the files of your repository",
-                self.root.clone(),
+                "Open the repository folder in your file manager.",
                 "Open folder",
                 move |_, _, cx| cx.open_url(&file_url(Path::new(&root))),
             ))
