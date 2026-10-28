@@ -205,8 +205,21 @@ Don't measure with raw CPU ticks on a live desktop: pointer movement over the
 window legitimately re-renders (hover transitions), which made one session chase
 a phantom regression.
 
-Known perf TODO: split `Workspace` into child entities so typing in the commit
-box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
+### Commit box (`features/changes/commit_box.rs`)
+
+`Workspace::commit_box: Entity<CommitBox>` owns the message input, the amend state (`amend` root), the
+placeholder layout-cache workaround (`sync_placeholder`, the one place it is documented) and renders
+the amend notice + commit button. It observes the `RepoModel` itself (`attach` on repo switch) and reads
+`Workspace::sidebar_width()` through a `WeakEntity` for the input width. `Workspace` reaches it through
+`commit_box.read(cx).text(cx)` / `update(.., set_text | clear | start_amend | stop_amend)`.
+
+Typing now notifies only `CommitBox`, never `Workspace` (test: `typing_does_not_notify_workspace`,
+`cargo test --features snapshot`). **But `Workspace::render` still runs once per keystroke**, measured
+in that test: gpui-ce re-renders the (uncached) window root on every draw, and `cx.notify()` on a view
+also dirties all its ancestors, so even a cached `Workspace` root re-renders (tried; no change). The
+only lever left is to skip the layout/prepaint/paint of heavy siblings with `Entity::cached(style)`,
+which needs a definite size and the diff pane / file lists as entities of their own (the diff renderer
+needs `&mut Workspace` today). Not done.
 
 ## File watcher and refresh coalescing
 
@@ -240,7 +253,7 @@ box doesn't re-render the diff (it's virtualized, so it's cheap but not free).
 
 - State: `RepoModel.history` (unpushed set, tags by sha, GitHub web URL, in-progress op, busy label,
   multi-selection as shas) reloaded in the background by `reload_push_state` on every full refresh.
-  UI state: `Workspace.history_ui` (amend, dialog text inputs); the menu and dialogs are `Overlay`s.
+  UI state: `Workspace.history_ui` (dialog text inputs; amend mode lives in `CommitBox`); the menu and dialogs are `Overlay`s.
 - Every op goes through `RepoModel::run` with a labeled `Op` (one at a time, then `refresh`). Menu items are
   disabled while an op, remote op, commit, or stopped merge/rebase/cherry-pick/revert is active.
 - Unpushed: revwalk from HEAD hiding the upstream ref, or hiding `refs/remotes/*` without upstream; empty with no remotes.

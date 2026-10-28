@@ -155,3 +155,7 @@ impl CommitBox {
             .overflow_y_scroll()
     }
 }
+
+#[cfg(all(test, feature = "snapshot"))]
+#[path = "tests/commit_box.test.rs"]
+mod tests;
