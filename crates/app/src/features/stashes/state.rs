@@ -15,6 +15,8 @@ pub struct StashState {
     pub all_branches: bool,
     /// Panel collapsed (kept for the session, per repository).
     pub collapsed: bool,
+    /// The panel was toggled by the user: slide instead of snapping.
+    pub animate: bool,
     /// The main pane shows the selected stash instead of the working diff.
     pub viewing: bool,
     /// Sha of the selected stash (indices shift, shas don't).

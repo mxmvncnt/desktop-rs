@@ -45,6 +45,7 @@ impl RepoModel {
 
     pub fn toggle_stash_panel(&mut self, cx: &mut Context<Self>) {
         self.stashes.collapsed = !self.stashes.collapsed;
+        self.stashes.animate = true;
         cx.notify();
     }
 

@@ -8,7 +8,7 @@ use crate::repo::RepoModel;
 use crate::workspace::{NavList, Workspace, nav_focus};
 
 /// Rows visible before the panel's list scrolls.
-const MAX_ROWS: usize = 4;
+pub const MAX_ROWS: usize = 4;
 
 #[derive(IntoElement)]
 pub struct StashList {
