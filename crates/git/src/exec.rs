@@ -34,23 +34,6 @@ pub(crate) struct Git {
     env: Vec<(OsString, OsString)>,
 }
 
-/// Folders granted through the file-chooser portal live on the document
-/// portal's FUSE mount (`/run/flatpak/doc/<id>/<name>`) inside a Flatpak
-/// sandbox. `getcwd()` fails there, which makes git die ("unable to get
-/// current working directory") whenever it runs inside such a folder. Run it
-/// from `/` instead and point it at the repository explicitly.
-fn portal_layout(cwd: &Path, args: &[OsString]) -> Option<[OsString; 2]> {
-    if !cwd.starts_with("/run/flatpak/doc") || args.first().is_some_and(|a| a == "clone" || a == "init") {
-        return None;
-    }
-    let git_dir = git2::Repository::open(cwd).ok()?.path().to_path_buf();
-    let mut git_dir_arg = OsString::from("--git-dir=");
-    git_dir_arg.push(git_dir);
-    let mut work_tree_arg = OsString::from("--work-tree=");
-    work_tree_arg.push(cwd);
-    Some([git_dir_arg, work_tree_arg])
-}
-
 impl Git {
     pub fn new(cwd: &Path) -> Self {
         Self {
@@ -103,10 +86,8 @@ impl Git {
 
     fn command(&self) -> Command {
         let mut cmd = Command::new("git");
-        let portal = portal_layout(&self.cwd, &self.args);
-        cmd.current_dir(portal.as_ref().map_or(self.cwd.as_path(), |_| Path::new("/")))
+        cmd.current_dir(&self.cwd)
             .env("GIT_OPTIONAL_LOCKS", "0")
-            .args(portal.iter().flatten())
             .args(&self.args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());

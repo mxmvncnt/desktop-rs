@@ -12,10 +12,7 @@ finish-args:
   - --device=dri
   - --share=network
   - --socket=ssh-auth
-  # $HOME is a tmpfs wiped on every launch: read the host git config (identity, aliases)
-  # and keep the ssh known hosts (trusted on first use, as there is no askpass) in /var/data.
-  - --filesystem=~/.gitconfig:ro
-  - --filesystem=xdg-config/git:ro
+  - --filesystem=home
   - --env=GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/var/data/known_hosts
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin

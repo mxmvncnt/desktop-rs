@@ -30,7 +30,7 @@ guessing APIs. To recreate them:
   Hooks, credential helpers, LFS, config, and SSH all behave as they do on the CLI.
   It sets `GIT_OPTIONAL_LOCKS=0`. No CLI text is parsed, so there is no locale/quotepath pinning.
   Network ops set `GIT_TERMINAL_PROMPT=0`, so credentials must come from a helper or ssh-agent.
-  (An auth UI is still to do.) `portal_layout` keeps Flatpak document-portal folders working for CLI calls.
+  (An auth UI is still to do.)
 - **All functions block.** Call them only from a background executor.
 - Commit model (`Repository::commit`): reset the index to HEAD, `add -A` the
   checked paths, then `commit -F -`. This matches Desktop's checkbox semantics.
