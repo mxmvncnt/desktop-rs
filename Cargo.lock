@@ -1386,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "desktop-rs"
-version = "0.2.1"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "dirs 6.0.0",
@@ -2081,7 +2081,7 @@ dependencies = [
 
 [[package]]
 name = "gd-git"
-version = "0.2.1"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "log",
@@ -2093,7 +2093,7 @@ dependencies = [
 
 [[package]]
 name = "gd-syntax"
-version = "0.2.1"
+version = "0.2.3"
 dependencies = [
  "thiserror 2.0.21",
  "tree-sitter",
@@ -2116,7 +2116,7 @@ dependencies = [
 
 [[package]]
 name = "gd-ui"
-version = "0.2.1"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "gd-syntax",
