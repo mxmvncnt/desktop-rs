@@ -117,9 +117,8 @@ Prefer a pure unit test on the state type (`components/tests/menu_view.test.rs`)
 Prefer a well-maintained crate over hand-rolled platform/utility code
 (config dirs, debouncing, serialization, time formatting, opening URLs, trash...).
 Hand-roll only when a crate is too restrictive, and write down why.
-Exception: git writes and network ops keep shelling out to the `git` CLI
-(hooks, credential helpers, LFS, SSH behave exactly like the CLI). Git **reads** use `git2`
-(one `Repository::repo()` per call); never parse CLI text.
+Exception: all git access (reads, writes, network) shells out to the `git` CLI, never libgit2
+(hooks, credential helpers, LFS, SSH behave exactly like the CLI). Reads parse machine-readable output.
 
 ## Feature folder example: stashes
 

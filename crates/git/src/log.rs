@@ -1,6 +1,6 @@
 //! History: commit list and per-commit file lists.
 
-use crate::tree_diff::{LineStats, tree_changes, tree_stats};
+use crate::diff_summary::{LineStats, parse_name_status, parse_shortstat};
 use crate::{FileChange, Repository, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -24,11 +24,14 @@ pub struct CoAuthor {
     pub email: String,
 }
 
-/// `Co-authored-by: Name <email>` trailers of a commit message (case-insensitive key).
-fn parse_co_authors(message: &str) -> Vec<CoAuthor> {
-    let Ok(trailers) = git2::message_trailers_strs(message) else { return Vec::new() };
+/// Parse `Co-authored-by: Name <email>` trailers (case-insensitive key).
+pub fn parse_co_authors(body: &str) -> Vec<CoAuthor> {
     let mut out: Vec<CoAuthor> = Vec::new();
-    for (_, value) in trailers.iter().filter(|(k, _)| k.eq_ignore_ascii_case("co-authored-by")) {
+    for line in body.lines() {
+        let Some((key, value)) = line.split_once(':') else { continue };
+        if !key.trim().eq_ignore_ascii_case("co-authored-by") {
+            continue;
+        }
         let value = value.trim();
         let (name, email) = match (value.rfind('<'), value.ends_with('>')) {
             (Some(i), true) => (value[..i].trim(), value[i + 1..value.len() - 1].trim()),
@@ -43,50 +46,72 @@ fn parse_co_authors(message: &str) -> Vec<CoAuthor> {
     out
 }
 
-pub(crate) fn commit_info(commit: &git2::Commit) -> Result<Commit> {
-    let author = commit.author();
-    Ok(Commit {
-        sha: commit.id().to_string(),
-        short_sha: commit.as_object().short_id()?.as_str().unwrap_or_default().to_string(),
-        author_name: author.name().unwrap_or_default().to_string(),
-        author_email: author.email().unwrap_or_default().to_string(),
-        time: author.when().seconds(),
-        summary: commit.summary().ok().flatten().unwrap_or_default().to_string(),
-        body: commit.body().ok().flatten().unwrap_or_default().trim_end().to_string(),
-        parents: commit.parent_ids().map(|p| p.to_string()).collect(),
-        co_authors: parse_co_authors(commit.message().unwrap_or_default()),
-    })
-}
+const SEP: char = '\u{1f}';
 
 impl Repository {
+    /// `git log` with `args` (revisions, limits), parsed.
+    pub(crate) fn log_commits(&self, args: &[&str]) -> Result<Vec<Commit>> {
+        let out = self
+            .git()
+            .args(["log", "-z", "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%s%x1f%b"])
+            .args(args)
+            .run()?;
+        Ok(out
+            .split('\0')
+            .filter(|r| !r.is_empty())
+            .filter_map(|record| {
+                let [sha, short_sha, author_name, author_email, time, parents, summary, body] =
+                    <[&str; 8]>::try_from(record.splitn(8, SEP).collect::<Vec<_>>()).ok()?;
+                let body = body.trim_end();
+                Some(Commit {
+                    co_authors: parse_co_authors(body),
+                    sha: sha.into(),
+                    short_sha: short_sha.into(),
+                    author_name: author_name.into(),
+                    author_email: author_email.into(),
+                    time: time.parse().unwrap_or(0),
+                    parents: parents.split_whitespace().map(Into::into).collect(),
+                    summary: summary.into(),
+                    body: body.into(),
+                })
+            })
+            .collect())
+    }
+
     /// Commits reachable from HEAD, newest first. Paged with `skip`/`limit`
     /// so the history list can load lazily as the user scrolls.
     pub fn log(&self, skip: usize, limit: usize) -> Result<Vec<Commit>> {
         if !self.has_head() {
             return Ok(Vec::new());
         }
-        let repo = self.repo()?;
-        let mut walk = repo.revwalk()?;
-        walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)?;
-        walk.push_head()?;
-        walk.skip(skip).take(limit).map(|oid| commit_info(&repo.find_commit(oid?)?)).collect()
+        self.log_commits(&[&format!("--skip={skip}"), &format!("--max-count={limit}"), "HEAD"])
     }
 
     /// Files changed by `sha` (against its first parent; root commits against
     /// the empty tree).
     pub fn commit_files(&self, sha: &str) -> Result<Vec<FileChange>> {
-        let repo = self.repo()?;
-        let commit = repo.revparse_single(sha)?.peel_to_commit()?;
-        let parent = commit.parent(0).ok().map(|p| p.tree()).transpose()?;
-        tree_changes(&repo, parent.as_ref(), &commit.tree()?)
+        let out = self
+            .git()
+            .args([
+                "show",
+                "--format=",
+                "-z",
+                "--name-status",
+                "-M",
+                "--diff-merges=first-parent",
+                sha,
+            ])
+            .run()?;
+        Ok(parse_name_status(&out))
     }
 
     /// Total added / deleted lines of `sha` (same base as [`Self::commit_files`]).
     pub fn commit_stats(&self, sha: &str) -> Result<LineStats> {
-        let repo = self.repo()?;
-        let commit = repo.revparse_single(sha)?.peel_to_commit()?;
-        let parent = commit.parent(0).ok().map(|p| p.tree()).transpose()?;
-        tree_stats(&repo, parent.as_ref(), &commit.tree()?)
+        let out = self
+            .git()
+            .args(["show", "--format=", "--shortstat", "-M", "--diff-merges=first-parent", sha])
+            .run()?;
+        Ok(parse_shortstat(&out))
     }
 }
 

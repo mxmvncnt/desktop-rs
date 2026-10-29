@@ -41,7 +41,7 @@ fn merge() {
     write_commit(&dir, "main.txt", "main\n", "main 1");
     let p = repo.merge_preview("side").unwrap();
     assert_eq!((p.ahead, p.behind), (1, 1));
-    assert!(p.conflicts.is_empty());
+    assert_eq!(p.conflicts, Some(vec![]));
     assert_eq!(repo.merge("side").unwrap(), OpOutcome::Done);
     let head = repo.log(0, 1).unwrap();
     println!("true merge OK: {:?}", head[0].summary);
@@ -87,7 +87,7 @@ fn merge() {
     write_commit(&dir, "other.txt", "main other\n", "main edits other");
     let p = repo.merge_preview("c1").unwrap();
     println!("preview c1: conflicts={:?}", p.conflicts);
-    assert_eq!(p.conflicts.len(), 2);
+    assert_eq!(p.conflicts.as_ref().map(|c| c.len()), Some(2));
     assert_eq!(repo.merge("c1").unwrap(), OpOutcome::Conflicts);
     let ip = repo.in_progress().expect("merge in progress");
     println!("in progress: {ip:?}");

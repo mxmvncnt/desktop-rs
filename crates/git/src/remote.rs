@@ -34,7 +34,7 @@ pub(crate) fn split_remote(remote: &str) -> Option<(String, String)> {
     };
     let path = path.trim_matches('/');
     let path = path.strip_suffix(".git").unwrap_or(path);
-    if path.split('/').count() < 2 || path.is_empty() {
+    if path.split('/').count() < 2 {
         return None;
     }
     Some((host.to_ascii_lowercase(), path.to_string()))

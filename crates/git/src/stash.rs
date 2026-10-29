@@ -9,8 +9,10 @@
 //! - untracked files = the tree of `S^3` (a root commit: `git show S^3`)
 
 use crate::diff::{Diff, Side, blob_sides};
-use crate::tree_diff::tree_changes;
+use crate::diff_summary::parse_name_status;
 use crate::{FileChange, FileStatus, GitError, Repository, Result};
+
+const SEP: char = '\u{1f}';
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Stash {
@@ -68,31 +70,35 @@ pub fn parse_subject(subject: &str) -> (Option<String>, String) {
 impl Repository {
     /// All stashes, newest first.
     pub fn stash_list(&self) -> Result<Vec<Stash>> {
-        let mut repo = self.repo()?;
-        let mut entries = Vec::new();
-        repo.stash_foreach(|index, subject, oid| {
-            entries.push((index, subject.to_string(), *oid));
-            true
-        })?;
-        entries
-            .into_iter()
-            .map(|(index, subject, oid)| {
-                let commit = repo.find_commit(oid)?;
-                let when = commit.committer().when();
-                let date = chrono::DateTime::from_timestamp(when.seconds(), 0)
-                    .zip(chrono::FixedOffset::east_opt(when.offset_minutes() * 60))
-                    .map(|(utc, offset)| utc.with_timezone(&offset).format("%Y-%m-%d %H:%M").to_string())
-                    .unwrap_or_default();
-                let (branch, message) = parse_subject(&subject);
+        let out = self
+            .git()
+            .args([
+                "stash",
+                "list",
+                "-z",
+                "--date=format-local:%Y-%m-%d %H:%M",
+                "--format=%H%x1f%h%x1f%ct%x1f%cd%x1f%gs",
+            ])
+            .run()?;
+        out.split('\0')
+            .filter(|r| !r.trim().is_empty())
+            .enumerate()
+            .map(|(index, rec)| {
+                let bad = || GitError::Parse(rec.into());
+                let [sha, short_sha, time, date, subject] = rec.trim_start().splitn(5, SEP).collect::<Vec<_>>()[..]
+                else {
+                    return Err(bad());
+                };
+                let (branch, message) = parse_subject(subject);
                 Ok(Stash {
                     index,
-                    sha: oid.to_string(),
-                    short_sha: commit.as_object().short_id()?.as_str().unwrap_or_default().to_string(),
-                    time: when.seconds(),
-                    date,
+                    sha: sha.into(),
+                    short_sha: short_sha.into(),
+                    time: time.parse().map_err(|_| bad())?,
+                    date: date.into(),
                     branch,
                     message,
-                    subject,
+                    subject: subject.into(),
                 })
             })
             .collect()
@@ -130,7 +136,7 @@ impl Repository {
         if !paths.is_empty() {
             g = g.arg("--").args(paths.iter().map(String::as_str));
         }
-        g.run()?;
+        g.exec()?;
         match self.stash_top() {
             Some(top) if Some(&top) != before.as_ref() => Ok(top),
             _ => Err(GitError::Invalid("No local changes to stash.".into())),
@@ -138,13 +144,17 @@ impl Repository {
     }
 
     fn stash_top(&self) -> Option<String> {
-        self.repo().ok()?.refname_to_id("refs/stash").ok().map(|oid| oid.to_string())
+        self.git()
+            .args(["rev-parse", "--verify", "-q", "refs/stash"])
+            .run()
+            .ok()
+            .map(|s| s.trim().to_string())
     }
 
     /// Apply a stash, keeping it. Conflicts leave the working tree in the
     /// conflicted state and return an error mentioning them.
     pub fn stash_apply(&self, sha: &str) -> Result<()> {
-        self.git().args(["stash", "apply", sha]).exec().map_err(|e| self.tag_conflict(e))
+        self.git().args(["stash", "apply", sha]).exec().map_err(tag_conflict)
     }
 
     /// Apply and drop. On conflicts git keeps the stash (so nothing is lost).
@@ -154,7 +164,7 @@ impl Repository {
             .args(["stash", "pop"])
             .arg(format!("stash@{{{ix}}}"))
             .exec()
-            .map_err(|e| self.tag_conflict(e))
+            .map_err(tag_conflict)
     }
 
     pub fn stash_drop(&self, sha: &str) -> Result<()> {
@@ -168,11 +178,11 @@ impl Repository {
     /// Change a stash's message. Git has no rename: re-`store` the same commit
     /// with a new reflog message, then drop the old entry. The stash moves to
     /// the top of the list and its list date becomes now (the commit date is
-    /// unchanged). Returns the sha (unchanged).
+    /// unchanged).
     pub fn stash_rename(&self, sha: &str, branch: Option<&str>, message: &str) -> Result<()> {
         let subject = subject(branch, message.trim());
         let old = self.stash_index(sha)?;
-        self.git().args(["stash", "store", "-m", &subject, sha]).run()?;
+        self.git().args(["stash", "store", "-m", &subject, sha]).exec()?;
         // The old entry shifted down by one after the store.
         self.git()
             .args(["stash", "drop", "--quiet"])
@@ -183,22 +193,40 @@ impl Repository {
     /// Files in a stash: tracked changes first, then untracked files
     /// (status [`FileStatus::Untracked`], read from the third parent).
     pub fn stash_files(&self, sha: &str) -> Result<Vec<FileChange>> {
-        let repo = self.repo()?;
-        let stash = repo.revparse_single(sha)?.peel_to_commit()?;
-        let base = stash.parent(0)?.tree()?;
-        let mut files = tree_changes(&repo, Some(&base), &stash.tree()?)?;
-        if let Ok(untracked) = stash.parent(2) {
-            let mut paths = Vec::new();
-            untracked.tree()?.walk(git2::TreeWalkMode::PreOrder, |dir, entry| {
-                if entry.kind() == Some(git2::ObjectType::Blob) {
-                    paths.push(format!("{dir}{}", entry.name().unwrap_or_default()));
-                }
-                git2::TreeWalkResult::Ok
-            })?;
-            paths.sort();
-            files.extend(paths.into_iter().map(|path| FileChange { path, old_path: None, status: FileStatus::Untracked }));
+        let out = self
+            .git()
+            .args(["diff", "--name-status", "-z", "-M", "--no-ext-diff"])
+            .arg(format!("{sha}^1"))
+            .arg(sha)
+            .run()?;
+        let mut files = parse_name_status(&out);
+        if self.has_untracked_parent(sha) {
+            let out = self
+                .git()
+                .args(["ls-tree", "-r", "--name-only", "-z"])
+                .arg(format!("{sha}^3"))
+                .run()?;
+            let mut untracked: Vec<String> = out
+                .split('\0')
+                .filter(|p| !p.is_empty())
+                .map(String::from)
+                .collect();
+            untracked.sort();
+            files.extend(untracked.into_iter().map(|path| FileChange {
+                path,
+                old_path: None,
+                status: FileStatus::Untracked,
+            }));
         }
         Ok(files)
+    }
+
+    fn has_untracked_parent(&self, sha: &str) -> bool {
+        self.git()
+            .args(["rev-parse", "--verify", "-q"])
+            .arg(format!("{sha}^3"))
+            .exec()
+            .is_ok()
     }
 
     /// Diff of one file in a stash (tracked: base `^1` vs stash; untracked
@@ -213,16 +241,16 @@ impl Repository {
     }
 }
 
-impl Repository {
-    /// Make conflict failures recognisable and actionable in the UI.
-    fn tag_conflict(&self, e: GitError) -> GitError {
-        match e {
-            GitError::Failed { args, stderr } if self.has_unmerged() => GitError::Failed {
-                args,
-                stderr: format!("The stash was applied with conflicts. Resolve them in your working tree.\n{stderr}"),
-            },
-            e => e,
-        }
+/// Make conflict failures recognisable and actionable in the UI.
+fn tag_conflict(e: GitError) -> GitError {
+    match e {
+        GitError::Failed { args, stderr } if stderr.contains("CONFLICT") => GitError::Failed {
+            args,
+            stderr: format!(
+                "The stash was applied with conflicts. Resolve them in your working tree.\n{stderr}"
+            ),
+        },
+        e => e,
     }
 }
 

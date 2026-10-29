@@ -13,9 +13,6 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::log::commit_info;
-use crate::refs::upstream_ref;
-use crate::tree_diff::{tree_changes, tree_stats};
 use crate::{message, Commit, FileChange, GitError, LineStats, OpOutcome, Repository, Result};
 
 /// How `git reset` treats the index and working tree.
@@ -65,35 +62,41 @@ impl Repository {
         if !self.has_head() {
             return Ok(HashSet::new());
         }
-        let repo = self.repo()?;
-        let mut walk = repo.revwalk()?;
-        walk.push_head()?;
-        let upstream = repo
-            .head()?
-            .name()
-            .ok()
-            .and_then(|head| upstream_ref(&repo, head))
-            .filter(|upstream| repo.refname_to_id(upstream).is_ok());
-        match upstream {
-            Some(upstream) => walk.hide_ref(&upstream)?,
-            None if repo.remotes()?.is_empty() => return Ok(HashSet::new()),
-            None => walk.hide_glob("refs/remotes/*")?,
-        }
-        walk.map(|oid| Ok(oid?.to_string())).collect()
+        let has_upstream = self
+            .git()
+            .args(["rev-parse", "--verify", "-q", "@{upstream}"])
+            .run()
+            .is_ok();
+        let out = if has_upstream {
+            self.git().args(["rev-list", "@{upstream}..HEAD"]).run()?
+        } else {
+            if self.remotes()?.is_empty() {
+                return Ok(HashSet::new());
+            }
+            self.git().args(["rev-list", "HEAD", "--not", "--remotes"]).run()?
+        };
+        Ok(out.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect())
     }
 
     /// Tags by the commit they point at (annotated tags are peeled).
     pub fn tags_by_commit(&self) -> Result<HashMap<String, Vec<String>>> {
-        let repo = self.repo()?;
+        let out = self
+            .git()
+            .args([
+                "for-each-ref",
+                "--format=%(objectname)%00%(*objectname)%00%(refname:short)",
+                "refs/tags",
+            ])
+            .run()?;
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
-        repo.tag_foreach(|oid, name| {
-            let tag = String::from_utf8_lossy(name);
-            if let Ok(commit) = repo.find_object(oid, None).and_then(|o| o.peel_to_commit()) {
-                let tag = tag.strip_prefix("refs/tags/").unwrap_or(&tag).to_string();
-                map.entry(commit.id().to_string()).or_default().push(tag);
+        for line in out.lines() {
+            let f: Vec<&str> = line.split('\0').collect();
+            if f.len() < 3 {
+                continue;
             }
-            true
-        })?;
+            let sha = if f[1].is_empty() { f[0] } else { f[1] };
+            map.entry(sha.to_string()).or_default().push(f[2].to_string());
+        }
         Ok(map)
     }
 
@@ -107,11 +110,12 @@ impl Repository {
     /// Fetch URL of the current branch's remote (else `origin`, else the first remote).
     pub fn tracking_remote_url(&self) -> Option<String> {
         let remotes = self.remotes().ok()?;
-        let repo = self.repo().ok()?;
-        let upstream_remote = repo
-            .branch_upstream_remote(repo.head().ok()?.name().ok()?)
+        let upstream_remote = self
+            .git()
+            .args(["rev-parse", "--abbrev-ref", "@{upstream}"])
+            .run()
             .ok()
-            .and_then(|name| name.as_str().ok().map(String::from));
+            .and_then(|u| u.trim().split_once('/').map(|(r, _)| r.to_string()));
         upstream_remote
             .and_then(|n| remotes.iter().find(|(r, _)| *r == n))
             .or_else(|| remotes.iter().find(|(n, _)| n == "origin"))
@@ -157,7 +161,8 @@ impl Repository {
     }
 
     fn parent_count(&self, sha: &str) -> Result<usize> {
-        Ok(self.repo()?.revparse_single(sha)?.peel_to_commit()?.parent_count())
+        let out = self.git().args(["rev-list", "--parents", "-n", "1", sha]).run()?;
+        Ok(out.split_whitespace().count().saturating_sub(1))
     }
 
     /// New commit undoing `sha` (`-m 1` for merge commits). On conflicts the
@@ -210,58 +215,55 @@ impl Repository {
     /// The commits a force push would send and the ones it would drop, as of
     /// the last fetch (what `--force-with-lease` checks against).
     pub fn force_push_preview(&self) -> Result<ForcePushPreview> {
-        let repo = self.repo()?;
-        let head = repo.head()?;
-        let branch = head.name().unwrap_or_default();
-        let remote_ref = upstream_ref(&repo, branch)
-            .ok_or_else(|| GitError::Invalid("the branch has no upstream to push to".into()))?;
-        let (local, remote) = (head.peel_to_commit()?.id(), repo.refname_to_id(&remote_ref)?);
-        let only_in = |tip, hidden| -> Result<Vec<Commit>> {
-            let mut walk = repo.revwalk()?;
-            walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)?;
-            walk.push(tip)?;
-            walk.hide(hidden)?;
-            walk.map(|oid| commit_info(&repo.find_commit(oid?)?)).collect()
-        };
-        let remote_ref = remote_ref.strip_prefix("refs/remotes/").unwrap_or(&remote_ref).to_string();
-        let (remote_tree, local_tree) = (repo.find_commit(remote)?.tree()?, repo.find_commit(local)?.tree()?);
+        let upstream = self
+            .git()
+            .args(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"])
+            .run()
+            .map_err(|_| GitError::Invalid("the branch has no upstream to push to".into()))?;
+        let remote_ref = upstream.trim().to_string();
+        let remote_tip = self.git().args(["rev-parse", "--verify", "@{upstream}"]).run()?.trim().to_string();
+        let (files, stats) = self.range_changes(&remote_tip, "HEAD")?;
         Ok(ForcePushPreview {
+            files,
+            stats,
+            outgoing: self.log_commits(&["--topo-order", &format!("{remote_tip}..HEAD")])?,
+            replaced: self.log_commits(&["--topo-order", &format!("HEAD..{remote_tip}")])?,
             remote_ref,
-            remote_tip: remote.to_string(),
-            files: tree_changes(&repo, Some(&remote_tree), &local_tree)?,
-            stats: tree_stats(&repo, Some(&remote_tree), &local_tree)?,
-            outgoing: only_in(local, remote)?,
-            replaced: only_in(remote, local)?,
+            remote_tip,
         })
     }
 
     // ---- squash / reorder -------------------------------------------------
 
     fn first_parent_walk(&self) -> Result<Vec<Node>> {
-        let repo = self.repo()?;
-        let mut walk = repo.revwalk()?;
-        walk.simplify_first_parent()?;
-        walk.push_head()?;
-        walk.take(WALK_LIMIT)
-            .map(|oid| {
-                let oid = oid?;
-                let parents = repo.find_commit(oid)?.parent_ids().map(|p| p.to_string()).collect();
-                Ok(Node { sha: oid.to_string(), parents })
+        let out = self
+            .git()
+            .args(["rev-list", "--first-parent", "--parents"])
+            .arg(format!("--max-count={WALK_LIMIT}"))
+            .arg("HEAD")
+            .run()?;
+        Ok(out
+            .lines()
+            .filter_map(|l| {
+                let mut it = l.split_whitespace();
+                Some(Node {
+                    sha: it.next()?.to_string(),
+                    parents: it.map(String::from).collect(),
+                })
             })
-            .collect()
+            .collect())
     }
 
     /// Whether `shas` form one adjacent run of non-merge commits on the
     /// current branch (what [`squash_commits`](Self::squash_commits) needs).
     pub fn can_squash(&self, shas: &[String]) -> bool {
-        self.squash_plan(shas).is_ok()
+        shas.len() >= 2 && self.locate(shas).is_ok()
     }
 
-    /// (position of newest, position of oldest, walk)
-    fn squash_plan(&self, shas: &[String]) -> Result<(usize, usize, Vec<Node>)> {
-        if shas.len() < 2 {
-            return Err(GitError::Invalid("select at least two commits to squash".into()));
-        }
+    /// Positions of the newest and oldest of `shas` in the first-parent walk
+    /// from HEAD, which must form one adjacent run without merge commits
+    /// (merges can't be rewritten or replayed linearly).
+    fn locate(&self, shas: &[String]) -> Result<(usize, usize, Vec<Node>)> {
         let walk = self.first_parent_walk()?;
         let mut pos = Vec::with_capacity(shas.len());
         for s in shas {
@@ -276,103 +278,74 @@ impl Repository {
         if pos.len() != shas.len() {
             return Err(GitError::Invalid("duplicate commits selected".into()));
         }
-        let (newest, oldest) = (pos[0], *pos.last().unwrap());
+        let (newest, oldest) = (pos[0], pos[pos.len() - 1]);
         if oldest - newest + 1 != pos.len() {
             return Err(GitError::Invalid(
-                "Squashing needs adjacent commits: the selected commits are not next to each other.".into(),
+                "The selected commits are not next to each other.".into(),
             ));
         }
-        // Merge commits can't be squashed or replayed linearly.
         if walk[..=oldest].iter().any(|n| n.parents.len() > 1) {
             return Err(GitError::Invalid(
-                "Can't squash: there is a merge commit between HEAD and the selected commits.".into(),
+                "There is a merge commit between HEAD and the selected commits.".into(),
             ));
         }
         Ok((newest, oldest, walk))
     }
 
-    /// Squash adjacent commits into one with `message` (summary + body).
+    /// Replace the run `newest..=oldest` of `walk` by one commit with `message`:
+    /// the newest commit's tree, the oldest commit's parent, author and author date.
     ///
-    /// Approach (no interactive rebase needed): build the squashed commit
-    /// directly with `commit-tree` using the *newest* selected commit's tree
-    /// and the *oldest* selected commit's parent. If the selection ends at
-    /// HEAD the branch is moved with `update-ref`: the working tree and index
-    /// are never touched. Otherwise the commits after the selection are
-    /// replayed with `rebase --autostash --onto <squashed> <newest>`; since
-    /// the squashed tree equals the old tree they apply without conflicts,
-    /// but if the rebase does stop it stays in progress.
+    /// Built directly with `commit-tree` (no interactive rebase). If the run
+    /// ends at HEAD the branch is moved with `update-ref`, so the working tree
+    /// and index are never touched. Otherwise the later commits are replayed
+    /// with `rebase --autostash --onto <new> <newest>`; since the tree is
+    /// unchanged they apply without conflicts, but if the rebase does stop it
+    /// stays in progress.
+    fn replace_commits(&self, walk: &[Node], newest: usize, oldest: usize, message: &str, what: &str) -> Result<OpOutcome> {
+        let (old_tip, old_base) = (walk[newest].sha.as_str(), &walk[oldest]);
+        let author = self.git().args(["show", "-s", "--format=%an%x1f%ae%x1f%aI", old_base.sha.as_str()]).run()?;
+        let mut author = author.trim_end().split('\u{1f}');
+        let mut ct = self
+            .git()
+            .args(["commit-tree", &format!("{old_tip}^{{tree}}")])
+            .env("GIT_AUTHOR_NAME", author.next().unwrap_or_default())
+            .env("GIT_AUTHOR_EMAIL", author.next().unwrap_or_default())
+            .env("GIT_AUTHOR_DATE", author.next().unwrap_or_default());
+        if let Some(parent) = old_base.parents.first() {
+            ct = ct.args(["-p", parent.as_str()]);
+        }
+        let new = ct.args(["-F", "-"]).stdin(format!("{}\n", message.trim())).run()?.trim().to_string();
+        if newest == 0 {
+            self.git().args(["update-ref", "-m", what, "HEAD", new.as_str(), old_tip]).run()?;
+            return Ok(OpOutcome::Done);
+        }
+        let res = self.git().args(["-c", "core.editor=true", "rebase", "--autostash", "--onto", new.as_str(), old_tip]).exec();
+        self.outcome_of(res)
+    }
+
+    /// Squash adjacent commits into one with `message` (summary + body). The
+    /// result keeps the oldest commit's author, like Desktop's rebase squash.
+    /// See [`replace_commits`](Self::replace_commits) for how it is built.
     pub fn squash_commits(&self, shas: &[String], message: &str) -> Result<OpOutcome> {
+        if shas.len() < 2 {
+            return Err(GitError::Invalid("select at least two commits to squash".into()));
+        }
         if message.trim().is_empty() {
             return Err(GitError::Invalid("commit message is empty".into()));
         }
         self.ensure_idle("squash")?;
-        let (newest, oldest, walk) = self.squash_plan(shas)?;
-        let tree = format!("{}^{{tree}}", walk[newest].sha);
-        let mut ct = self.git().args(["commit-tree", &tree]);
-        if let Some(parent) = walk[oldest].parents.first() {
-            ct = ct.args(["-p", parent.as_str()]);
-        }
-        let new = ct
-            .args(["-F", "-"])
-            .stdin(format!("{}\n", message.trim()))
-            .run()?
-            .trim()
-            .to_string();
-        if newest == 0 {
-            self.git()
-                .args(["update-ref", "-m", "squash", "HEAD", new.as_str(), walk[0].sha.as_str()])
-                .run()?;
-        } else {
-            let res = self
-                .git()
-                .args(["-c", "core.editor=true", "rebase", "--autostash", "--onto", new.as_str(), walk[newest].sha.as_str()])
-                .exec();
-            return self.outcome_of(res);
-        }
-        Ok(OpOutcome::Done)
+        let (newest, oldest, walk) = self.locate(shas)?;
+        self.replace_commits(&walk, newest, oldest, message, "squash")
     }
 
     /// Change the message of `sha` (summary + body), keeping its tree and author.
-    ///
-    /// Same technique as [`squash_commits`](Self::squash_commits): `commit-tree` builds the
-    /// reworded commit, then `update-ref` (HEAD) or `rebase --onto` replays the later commits.
     pub fn reword_commit(&self, sha: &str, message: &str) -> Result<OpOutcome> {
         if message.trim().is_empty() {
             return Err(GitError::Invalid("commit message is empty".into()));
         }
         self.ensure_idle("reword")?;
-        let walk = self.first_parent_walk()?;
-        let p = walk
-            .iter()
-            .position(|n| n.sha == sha)
-            .ok_or_else(|| GitError::Invalid("commit is not on the current branch (or too far back)".into()))?;
-        if walk[..=p].iter().any(|n| n.parents.len() > 1) {
-            return Err(GitError::Invalid("Can't reword: there is a merge commit between HEAD and this commit.".into()));
-        }
-        let (name, email, date) = {
-            let repo = self.repo()?;
-            let commit = repo.find_commit(repo.revparse_single(sha)?.id())?;
-            let author = commit.author();
-            let offset = author.when().offset_minutes();
-            let date = format!("{} {}{:02}{:02}", author.when().seconds(), if offset < 0 { '-' } else { '+' }, offset.abs() / 60, offset.abs() % 60);
-            (author.name().unwrap_or_default().to_string(), author.email().unwrap_or_default().to_string(), date)
-        };
-        let mut ct = self
-            .git()
-            .args(["commit-tree", &format!("{sha}^{{tree}}")])
-            .env("GIT_AUTHOR_NAME", name)
-            .env("GIT_AUTHOR_EMAIL", email)
-            .env("GIT_AUTHOR_DATE", date);
-        if let Some(parent) = walk[p].parents.first() {
-            ct = ct.args(["-p", parent.as_str()]);
-        }
-        let new = ct.args(["-F", "-"]).stdin(format!("{}\n", message.trim())).run()?.trim().to_string();
-        if p == 0 {
-            self.git().args(["update-ref", "-m", "reword", "HEAD", new.as_str(), sha]).run()?;
-            return Ok(OpOutcome::Done);
-        }
-        let res = self.git().args(["-c", "core.editor=true", "rebase", "--autostash", "--onto", new.as_str(), sha]).exec();
-        self.outcome_of(res)
+        let (p, _, walk) = self.locate(&[sha.to_string()])?;
+        self.replace_commits(&walk, p, p, message, "reword")
     }
 
     /// Move `sha` one place towards the tip (`up`, newer) or towards the

@@ -17,7 +17,7 @@ How to write code here (details in `docs/CONVENTIONS.md`):
   real duplication (2+ call sites) or clearly help readability. Delete what you replace.
 - One store per feature, one template (`Render`/`RenderOnce`) per file, generic components
   with local overrides in `components/`, shared non-UI helpers in `utils/`.
-- Prefer a well-known crate over hand-rolled code. Git reads use `git2`; writes and network use the `git` CLI.
+- Prefer a well-known crate over hand-rolled code. Git goes through the `git` CLI only (no libgit2); reads parse machine-readable output.
 - Unit tests live in a `tests/` folder next to the source as `<file>.test.rs`, wired with `#[path]`.
 - Before finishing: `cargo build`, `cargo build --features snapshot` (no warnings),
   `cargo clippy --workspace --all-targets`, `cargo test --workspace`, and the snapshots.

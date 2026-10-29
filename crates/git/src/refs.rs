@@ -1,6 +1,6 @@
-//! Branches: listing via libgit2, checkout, create, rename, delete.
+//! Branches: listing via `git for-each-ref`, checkout, create, rename, delete.
 
-use crate::{Repository, Result};
+use crate::{GitError, Repository, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BranchKind {
@@ -22,27 +22,35 @@ pub struct Branch {
 impl Repository {
     /// Local branches first (most recently committed first), then remotes.
     pub fn branches(&self) -> Result<Vec<Branch>> {
-        let repo = self.repo()?;
+        let out = self
+            .git()
+            .args([
+                "for-each-ref",
+                "--sort=-committerdate",
+                "--format=%(refname)%00%(refname:short)%00%(HEAD)%00%(upstream:short)%00%(committerdate:unix)",
+                "refs/heads",
+                "refs/remotes",
+            ])
+            .run()?;
         let mut branches = Vec::new();
-        for branch in repo.branches(None)? {
-            let (branch, branch_type) = branch?;
-            let reference = branch.get();
+        for line in out.lines() {
+            let [refname, name, head, upstream, time] = line.split('\0').collect::<Vec<_>>()[..] else {
+                return Err(GitError::Parse(line.into()));
+            };
+            let kind = if refname.starts_with("refs/heads/") { BranchKind::Local } else { BranchKind::Remote };
             // Skip symbolic `origin/HEAD`.
-            if reference.symbolic_target()?.is_some() {
+            if kind == BranchKind::Remote && refname.ends_with("/HEAD") {
                 continue;
             }
-            let (Some(name), Ok(tip)) = (branch.name()?, reference.peel_to_commit()) else { continue };
-            let kind = if branch_type == git2::BranchType::Local { BranchKind::Local } else { BranchKind::Remote };
-            let upstream = reference.name().ok().filter(|_| kind == BranchKind::Local).and_then(|r| upstream_ref(&repo, r));
             branches.push(Branch {
-                name: name.to_string(),
+                name: name.into(),
                 kind,
-                is_head: branch.is_head(),
-                upstream: upstream.and_then(|u| u.strip_prefix("refs/remotes/").map(String::from)),
-                tip_time: tip.committer().when().seconds(),
+                is_head: head == "*",
+                upstream: (!upstream.is_empty()).then(|| upstream.into()),
+                tip_time: time.parse().unwrap_or(0),
             });
         }
-        branches.sort_by_key(|b| (b.kind == BranchKind::Remote, std::cmp::Reverse(b.tip_time)));
+        branches.sort_by_key(|b| b.kind == BranchKind::Remote);
         Ok(branches)
     }
 
@@ -68,29 +76,16 @@ impl Repository {
     /// remote one (`origin/foo` → `foo`).
     pub fn checkout(&self, branch: &Branch) -> Result<()> {
         match branch.kind {
-            BranchKind::Local => self.git().args(["checkout", "-q", &branch.name]).run()?,
+            BranchKind::Local => self.git().args(["checkout", "-q", &branch.name]).exec(),
             BranchKind::Remote => {
-                let local = branch
-                    .name
-                    .split_once('/')
-                    .map(|(_, rest)| rest)
-                    .unwrap_or(&branch.name);
-                self.git()
-                    .args(["checkout", "-q", "-b", local, "--track", &branch.name])
-                    .run()?
+                let local = branch.name.split_once('/').map_or(&*branch.name, |(_, rest)| rest);
+                self.git().args(["checkout", "-q", "-b", local, "--track", &branch.name]).exec()
             }
-        };
-        Ok(())
+        }
     }
 
     pub fn delete_branch(&self, name: &str, force: bool) -> Result<()> {
         let flag = if force { "-D" } else { "-d" };
         self.git().args(["branch", flag, name]).exec()
     }
-}
-
-/// Full ref name of the upstream configured for the local branch `refname`
-/// (`refs/remotes/origin/main`), even when that ref no longer exists.
-pub(crate) fn upstream_ref(repo: &git2::Repository, refname: &str) -> Option<String> {
-    repo.branch_upstream_name(refname).ok()?.as_str().ok().map(String::from)
 }

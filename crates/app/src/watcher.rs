@@ -74,9 +74,9 @@ impl RepoWatcher {
         let (out, rx) = smol::channel::unbounded::<bool>();
         let paths = Paths {
             root: repo.root().to_path_buf(),
-            git_dir: repo.git_dir(),
-            common_dir: repo.common_git_dir(),
-            ignore: gitignore(repo.root(), &repo.common_git_dir()),
+            git_dir: repo.git_dir().to_path_buf(),
+            common_dir: repo.common_git_dir().to_path_buf(),
+            ignore: gitignore(repo.root(), repo.common_git_dir()),
         };
         let slot = Arc::new(Mutex::new(None));
         let (handler_paths, handler_slot) = (paths.clone(), slot.clone());

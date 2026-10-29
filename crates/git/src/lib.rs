@@ -1,15 +1,17 @@
 //! `gd-git` — the git layer for desktop-rs.
 //!
 //! Design (see `docs/ARCHITECTURE.md` §Git layer):
-//! - Reads go through `git2` (libgit2) and return typed data. Writes and network
-//!   operations shell out to the user's `git` binary, the same strategy as the
-//!   Electron app's `dugite`, so hooks, credential helpers, config and LFS behave
-//!   exactly like the CLI. No CLI output is parsed.
+//! - Shells out to the user's `git` binary, the same strategy as the Electron
+//!   app's `dugite`. Hooks, credential helpers, config and LFS behave exactly
+//!   like the CLI.
 //! - Every function is **blocking**. The UI runs them on GPUI's background
 //!   executor (`cx.background_spawn`) and never on the main thread.
+//! - Machine-readable formats only (`status --porcelain=v2 -z`, NUL-separated
+//!   `log` formats) so parsing is cheap and locale-independent.
 
 mod credentials;
 mod diff;
+mod diff_summary;
 pub mod engine;
 mod exec;
 mod expand;
@@ -24,7 +26,6 @@ mod refs;
 mod remote;
 mod stash;
 mod status;
-mod tree_diff;
 
 pub use credentials::{HostCredential, set_credentials};
 pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity};
@@ -33,7 +34,7 @@ pub use diff::{Side, Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};
 pub use exec::GitError;
 pub use expand::{EXPANSION_STEP, Expansion, expand, expandable, gap_above, gap_below};
 pub use history_ops::{ForcePushPreview, ResetMode};
-pub use log::{CoAuthor, Commit};
+pub use log::{CoAuthor, Commit, parse_co_authors};
 pub use merge::{MergePreview, default_squash_summary};
 pub use partial::{PartialFile, selectable, staged_text};
 pub use pr_preview::{Comparison, compare_url};
@@ -41,7 +42,7 @@ pub use remote::{Host, github_web_url, host_of};
 pub use progress::{InProgress, OpOutcome};
 pub use refs::{Branch, BranchKind};
 pub use stash::Stash;
-pub use tree_diff::LineStats;
+pub use diff_summary::LineStats;
 pub use status::{AheadBehind, FileChange, FileStatus, WorkingStatus};
 
 use std::path::{Path, PathBuf};
@@ -54,15 +55,21 @@ pub type Result<T> = std::result::Result<T, GitError>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Repository {
     root: PathBuf,
+    git_dir: PathBuf,
+    common_git_dir: PathBuf,
 }
 
 impl Repository {
     /// Open the repository containing `path` (any subdirectory works).
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        let repo = git2::Repository::discover(path)?;
-        let workdir = repo.workdir().ok_or_else(|| GitError::Invalid("bare repositories are not supported".into()))?;
-        // `workdir()` ends with a slash.
-        Ok(Self { root: workdir.components().collect() })
+        let out = Git::new(path.as_ref())
+            .args(["rev-parse", "--path-format=absolute", "--show-toplevel", "--git-dir", "--git-common-dir"])
+            .run()?;
+        let mut lines = out.lines().map(PathBuf::from);
+        match (lines.next(), lines.next(), lines.next()) {
+            (Some(root), Some(git_dir), Some(common_git_dir)) => Ok(Self { root, git_dir, common_git_dir }),
+            _ => Err(GitError::Parse(out)),
+        }
     }
 
     /// Initialize a new repository at `path` (creating the directory).
@@ -98,18 +105,16 @@ impl Repository {
             .unwrap_or_else(|| self.root.display().to_string())
     }
 
-    /// Fresh libgit2 handle for reads. Open one per call: it caches the index.
-    pub(crate) fn repo(&self) -> Result<git2::Repository> {
-        Ok(git2::Repository::open(&self.root)?)
-    }
-
     pub(crate) fn git(&self) -> Git {
         Git::new(&self.root)
     }
 
     /// Whether `HEAD` resolves to a commit (false in a freshly-initialized repo).
     pub fn has_head(&self) -> bool {
-        self.repo().is_ok_and(|r| r.head().is_ok())
+        self.git()
+            .args(["rev-parse", "--verify", "-q", "HEAD"])
+            .exec()
+            .is_ok()
     }
 
     // ---- write operations -------------------------------------------------
@@ -166,7 +171,7 @@ impl Repository {
     }
 
     pub(crate) fn head_sha(&self) -> Result<String> {
-        Ok(self.repo()?.head()?.peel_to_commit()?.id().to_string())
+        Ok(self.git().args(["rev-parse", "HEAD"]).run()?.trim().to_string())
     }
 
     /// Discard working-tree changes for `paths`. Untracked files are deleted.
@@ -175,17 +180,11 @@ impl Repository {
             .iter()
             .partition(|c| c.status == FileStatus::Untracked);
         if !tracked.is_empty() {
-            let paths: Vec<&str> = tracked.iter().map(|c| c.path.as_str()).collect();
+            let paths = tracked.iter().map(|c| &c.path);
             if self.has_head() {
-                self.git()
-                    .args(["checkout", "-q", "HEAD", "--"])
-                    .args(paths.iter().copied())
-                    .run()?;
+                self.git().args(["checkout", "-q", "HEAD", "--"]).args(paths).exec()?;
             } else {
-                self.git()
-                    .args(["rm", "-q", "--cached", "--"])
-                    .args(paths.iter().copied())
-                    .run()?;
+                self.git().args(["rm", "-q", "--cached", "--"]).args(paths).exec()?;
             }
         }
         for c in untracked {
@@ -204,14 +203,11 @@ impl Repository {
         // Fetch the default remote strictly, then the others best-effort, so
         // a broken secondary remote (e.g. a mistyped `upstream` URL) doesn't
         // fail the whole fetch like `git fetch --all` would.
-        let default = self.default_remote()?;
-        let Some(default) = default else { return Ok(()) };
-        self.git()
-            .args(["fetch", "--prune", &default])
-            .network()
-            .run()?;
-        for (name, _) in self.remotes()?.into_iter().filter(|(n, _)| *n != default) {
-            if let Err(e) = self.git().args(["fetch", "--prune", &name]).network().run() {
+        let remotes = self.remotes()?;
+        let Some(default) = default_remote(&remotes) else { return Ok(()) };
+        self.git().args(["fetch", "--prune", default]).network().exec()?;
+        for (name, _) in remotes.iter().filter(|(n, _)| n != default) {
+            if let Err(e) = self.git().args(["fetch", "--prune", name]).network().exec() {
                 ::log::warn!("fetch of remote '{name}' failed: {e}");
             }
         }
@@ -238,22 +234,18 @@ impl Repository {
     /// "Publish branch".
     pub fn push(&self, branch: &str, has_upstream: bool) -> Result<()> {
         if has_upstream {
-            self.git().args(["push"]).network().run()?;
+            self.git().arg("push").network().exec()
         } else {
-            let remote = self.default_remote()?.unwrap_or_else(|| "origin".into());
-            self.git()
-                .args(["push", "--set-upstream", &remote, branch])
-                .network()
-                .run()?;
+            let remotes = self.remotes()?;
+            let remote = default_remote(&remotes).unwrap_or("origin");
+            self.git().args(["push", "--set-upstream", remote, branch]).network().exec()
         }
-        Ok(())
     }
 
     /// Force push the current branch to its upstream, refusing if the remote
     /// moved since the last fetch (`--force-with-lease`).
     pub fn push_force(&self) -> Result<()> {
-        self.git().args(["push", "--force-with-lease"]).network().run()?;
-        Ok(())
+        self.git().args(["push", "--force-with-lease"]).network().exec()
     }
 
     /// Append `patterns` to the repository's root `.gitignore` (created if
@@ -290,41 +282,36 @@ impl Repository {
     }
 
     pub fn remotes(&self) -> Result<Vec<(String, String)>> {
-        let repo = self.repo()?;
-        let names = repo.remotes()?;
-        names
-            .iter()
-            .map(|name| {
-                let name = name?.unwrap_or_default();
-                Ok((name.to_string(), repo.find_remote(name)?.url().unwrap_or_default().to_string()))
-            })
-            .collect()
-    }
-
-    fn default_remote(&self) -> Result<Option<String>> {
-        let remotes = self.remotes()?;
-        Ok(remotes
-            .iter()
-            .find(|(n, _)| n == "origin")
-            .or(remotes.first())
-            .map(|(n, _)| n.clone()))
+        // `<name>\t<url> (fetch)`; the matching `(push)` line is skipped.
+        let out = self.git().args(["remote", "-v"]).run()?;
+        Ok(out
+            .lines()
+            .filter_map(|l| l.strip_suffix(" (fetch)")?.split_once('\t'))
+            .map(|(name, url)| (name.to_string(), url.to_string()))
+            .collect())
     }
 }
 
-// ---- git directory ----------------------------------------------------------
+/// `origin` if present, else the first remote.
+fn default_remote(remotes: &[(String, String)]) -> Option<&str> {
+    let (name, _) = remotes.iter().find(|(n, _)| n == "origin").or(remotes.first())?;
+    Some(name)
+}
+
+// ---- git directories ---------------------------------------------------------
 
 impl Repository {
-    /// The repository's git directory (`<root>/.git`, or the target of a
-    /// `.git` *file* as used by linked worktrees and submodules).
-    pub fn git_dir(&self) -> PathBuf {
-        self.repo().map_or_else(|_| self.root.join(".git"), |r| r.path().to_path_buf())
+    /// The repository's git directory (`<root>/.git`, or `.git/worktrees/<name>`
+    /// for a linked worktree).
+    pub fn git_dir(&self) -> &Path {
+        &self.git_dir
     }
 
     /// The directory shared between linked worktrees (holds `refs`,
     /// `FETCH_HEAD`, `config`). Equal to [`git_dir`](Self::git_dir) for a
     /// normal repository.
-    pub fn common_git_dir(&self) -> PathBuf {
-        self.repo().map_or_else(|_| self.root.join(".git"), |r| r.commondir().to_path_buf())
+    pub fn common_git_dir(&self) -> &Path {
+        &self.common_git_dir
     }
 
     /// When the repository last fetched, from the mtime of `FETCH_HEAD`

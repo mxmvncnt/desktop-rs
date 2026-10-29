@@ -4,7 +4,7 @@
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 
 use crate::diff::{Diff, DiffOptions, blob_sides};
-use crate::tree_diff::{LineStats, tree_changes, tree_stats};
+use crate::diff_summary::LineStats;
 use crate::remote::{Host, host_of, split_remote};
 use crate::{FileChange, GitError, Repository, Result};
 
@@ -25,32 +25,32 @@ impl Repository {
     /// Branch a PR most likely targets: the remote's default (`origin/HEAD`),
     /// else the first of main / master / develop that exists.
     pub fn default_base_branch(&self) -> Option<String> {
-        let repo = self.repo().ok()?;
-        let origin_head = repo.find_reference("refs/remotes/origin/HEAD").ok();
-        if let Some(target) = origin_head.as_ref().and_then(|r| r.symbolic_target().ok().flatten()) {
-            return target.strip_prefix("refs/remotes/").map(String::from);
+        if let Ok(out) = self.git().args(["symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD"]).run() {
+            let name = out.trim();
+            if !name.is_empty() {
+                return Some(name.to_string());
+            }
         }
         ["origin/main", "origin/master", "main", "master", "origin/develop", "develop"]
             .into_iter()
-            .find(|n| {
-                repo.find_reference(&format!("refs/remotes/{n}")).is_ok() || repo.find_reference(&format!("refs/heads/{n}")).is_ok()
-            })
+            .find(|n| self.git().args(["rev-parse", "--verify", "-q"]).arg(format!("refs/remotes/{n}")).run().is_ok()
+                || self.git().args(["rev-parse", "--verify", "-q"]).arg(format!("refs/heads/{n}")).run().is_ok())
             .map(String::from)
     }
 
     /// Commits, behind count and file list of `base...head`.
     pub fn compare(&self, base: &str, head: &str) -> Result<Comparison> {
-        let repo = self.repo()?;
-        let base_commit = repo.revparse_single(base)?.peel_to_commit()?;
-        let head_commit = repo.revparse_single(head)?.peel_to_commit()?;
-        let merge_base = repo
-            .merge_base(base_commit.id(), head_commit.id())
-            .map_err(|_| GitError::Io(format!("{head} and {base} have no common history")))?;
-        let (ahead, behind) = repo.graph_ahead_behind(head_commit.id(), base_commit.id())?;
-        let (base_tree, head_tree) = (repo.find_commit(merge_base)?.tree()?, head_commit.tree()?);
-        let files = tree_changes(&repo, Some(&base_tree), &head_tree)?;
-        let stats = tree_stats(&repo, Some(&base_tree), &head_tree)?;
-        Ok(Comparison { merge_base: merge_base.to_string(), ahead: ahead as u32, behind: behind as u32, files, stats })
+        let merge_base = self
+            .git()
+            .args(["merge-base", base, head])
+            .run()
+            .map_err(|_| GitError::Io(format!("{head} and {base} have no common history")))?
+            .trim()
+            .to_string();
+        let ahead = self.count(&format!("{base}..{head}"))?;
+        let behind = self.count(&format!("{head}..{base}"))?;
+        let (files, stats) = self.range_changes(&merge_base, head)?;
+        Ok(Comparison { merge_base, ahead, behind, files, stats })
     }
 
     /// Diff of one file of a [`Comparison`] (`merge_base` -> `head`).

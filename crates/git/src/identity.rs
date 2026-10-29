@@ -1,7 +1,7 @@
 //! Git identity (`user.name` / `user.email`): global and per-repository.
 //!
-//! Reads go through libgit2, writes through `git config`; both honor
-//! `GIT_CONFIG_GLOBAL` (tests). Blocking, like everything in this crate.
+//! Global reads/writes use `git config --global`, so `GIT_CONFIG_GLOBAL`
+//! (tests) is honored. Blocking, like everything in this crate.
 
 use std::path::Path;
 
@@ -52,9 +52,22 @@ impl Scope {
     }
 }
 
-fn read(config: &git2::Config) -> Identity {
-    let get = |key: &str| config.get_string(key).unwrap_or_default().trim().to_string();
-    Identity { name: get("user.name"), email: get("user.email") }
+fn read(cwd: &Path, scope: Scope) -> Result<Identity> {
+    // One process for both keys; exit code 1 means neither is set.
+    let out = Git::new(cwd)
+        .args(["config", scope.flag(), "-z", "--get-regexp", r"^user\.(name|email)$"])
+        .allow_exit_one()
+        .run()?;
+    let mut id = Identity::default();
+    // `<key>\n<value>\0` records; a repeated key keeps its last value, like `--get`.
+    for (key, value) in out.split('\0').filter_map(|r| r.split_once('\n')) {
+        match key {
+            "user.name" => id.name = value.trim().into(),
+            "user.email" => id.email = value.trim().into(),
+            _ => {}
+        }
+    }
+    Ok(id)
 }
 
 /// Set both keys; an empty value unsets the key.
@@ -73,12 +86,7 @@ fn write(cwd: &Path, scope: Scope, id: &Identity) -> Result<()> {
 
 /// The global identity (`~/.gitconfig` or `$GIT_CONFIG_GLOBAL`).
 pub fn global_identity() -> Result<Identity> {
-    // libgit2 ignores `GIT_CONFIG_GLOBAL`, which `git config --global` (the write side) honors.
-    let config = match std::env::var_os("GIT_CONFIG_GLOBAL") {
-        Some(path) => git2::Config::open(Path::new(&path))?,
-        None => git2::Config::open_default()?,
-    };
-    Ok(read(&config))
+    read(&std::env::temp_dir(), Scope::Global)
 }
 
 pub fn set_global_identity(id: &Identity) -> Result<()> {
@@ -88,7 +96,7 @@ pub fn set_global_identity(id: &Identity) -> Result<()> {
 impl Repository {
     /// The repository-local override (empty fields = not overridden).
     pub fn local_identity(&self) -> Result<Identity> {
-        Ok(read(&self.repo()?.config()?.open_level(git2::ConfigLevel::Local)?))
+        read(self.root(), Scope::Local)
     }
 
     pub fn set_local_identity(&self, id: &Identity) -> Result<()> {

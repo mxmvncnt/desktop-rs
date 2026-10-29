@@ -16,14 +16,8 @@ pub enum GitError {
     Io(String),
     #[error("{0}")]
     Invalid(String),
-    #[error("{0}")]
-    Lib(String),
-}
-
-impl From<git2::Error> for GitError {
-    fn from(e: git2::Error) -> Self {
-        Self::Lib(e.message().to_string())
-    }
+    #[error("could not parse git output: {0}")]
+    Parse(String),
 }
 
 pub(crate) struct Git {
@@ -31,6 +25,7 @@ pub(crate) struct Git {
     args: Vec<OsString>,
     stdin: Option<String>,
     network: bool,
+    allow_exit_one: bool,
     env: Vec<(OsString, OsString)>,
 }
 
@@ -41,6 +36,7 @@ impl Git {
             args: Vec::new(),
             stdin: None,
             network: false,
+            allow_exit_one: false,
             env: Vec::new(),
         }
     }
@@ -84,10 +80,20 @@ impl Git {
         self.env("GIT_EDITOR", "true").env("GIT_SEQUENCE_EDITOR", "true")
     }
 
+    /// Treat exit code 1 as success (`git diff --no-index` exits 1 when the
+    /// inputs differ).
+    pub fn allow_exit_one(mut self) -> Self {
+        self.allow_exit_one = true;
+        self
+    }
+
     fn command(&self) -> Command {
         let mut cmd = Command::new("git");
+        // Stable, parseable output regardless of user locale/config.
         cmd.current_dir(&self.cwd)
+            .env("LC_ALL", "C")
             .env("GIT_OPTIONAL_LOCKS", "0")
+            .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
             .args(&self.args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -119,17 +125,17 @@ impl Git {
             .map(|b| String::from_utf8_lossy(&b).into_owned())
     }
 
-    fn run_bytes(self) -> Result<Vec<u8>, GitError> {
+    pub fn run_bytes(self) -> Result<Vec<u8>, GitError> {
         let start = std::time::Instant::now();
         let mut child = self
             .command()
             .spawn()
             .map_err(|e| GitError::Spawn(e.to_string()))?;
-        if let Some(input) = &self.stdin
-            && let Some(mut stdin) = child.stdin.take()
-        {
-            stdin.write_all(input.as_bytes()).map_err(|e| GitError::Io(e.to_string()))?;
-        }
+        // A closed pipe means git exited early; its exit status explains why.
+        let written = match (&self.stdin, child.stdin.take()) {
+            (Some(input), Some(mut stdin)) => stdin.write_all(input.as_bytes()),
+            _ => Ok(()),
+        };
         let out = child
             .wait_with_output()
             .map_err(|e| GitError::Spawn(e.to_string()))?;
@@ -140,8 +146,11 @@ impl Git {
             .collect::<Vec<_>>()
             .join(" ");
         log::debug!("git {args} ({:?})", start.elapsed());
-        if out.status.success() {
-            Ok(out.stdout)
+        if out.status.success() || (self.allow_exit_one && out.status.code() == Some(1)) {
+            match written {
+                Err(e) if e.kind() != std::io::ErrorKind::BrokenPipe => Err(GitError::Io(e.to_string())),
+                _ => Ok(out.stdout),
+            }
         } else {
             let mut stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
             if stderr.is_empty() {

@@ -1,9 +1,6 @@
-//! Working-directory status via libgit2.
+//! Working-directory status via `git status --porcelain=v2 -z --branch`.
 
-use git2::{Status, StatusOptions};
-
-use crate::refs::upstream_ref;
-use crate::{Repository, Result};
+use crate::{GitError, Repository, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FileStatus {
@@ -62,58 +59,104 @@ pub struct WorkingStatus {
 
 impl Repository {
     pub fn status(&self) -> Result<WorkingStatus> {
-        let repo = self.repo()?;
-        let mut st = WorkingStatus::default();
-        let head = repo.find_reference("HEAD")?;
-        st.branch = head.symbolic_target()?.and_then(|t| t.strip_prefix("refs/heads/")).map(String::from);
-        st.head_oid = head.resolve().ok().and_then(|h| h.target()).map(|oid| oid.to_string());
-        let upstream = st.branch.as_ref().and_then(|b| upstream_ref(&repo, &format!("refs/heads/{b}")));
-        if let Some(upstream) = upstream {
-            st.upstream = upstream.strip_prefix("refs/remotes/").map(String::from);
-            if let (Some(local), Ok(remote)) = (&st.head_oid, repo.refname_to_id(&upstream)) {
-                let (ahead, behind) = repo.graph_ahead_behind(local.parse()?, remote)?;
-                st.ahead_behind = AheadBehind { ahead: ahead as u32, behind: behind as u32 };
-                if ahead > 0 && behind > 0 {
-                    let log = repo.reflog(&format!("refs/heads/{}", st.branch.as_deref().unwrap_or_default()))?;
-                    st.rewritten = log.iter().any(|e| e.id_old() == remote || e.id_new() == remote);
-                }
-            }
+        let out = self
+            .git()
+            .args([
+                "status",
+                "--porcelain=v2",
+                "-z",
+                "--branch",
+                "--untracked-files=all",
+                "--ignore-submodules=dirty",
+            ])
+            .run_bytes()?;
+        let mut st = parse_status(&out)?;
+        // Diverged from the upstream, but the upstream tip is one of this
+        // branch's earlier tips: history was rewritten.
+        if let (Some(branch), Some(_)) = (&st.branch, &st.upstream)
+            && st.ahead_behind.ahead > 0
+            && st.ahead_behind.behind > 0
+        {
+            let tip = self.git().args(["rev-parse", "--verify", "@{upstream}"]).run()?;
+            let reflog = self.git().args(["reflog", "show", "--format=%H"]).arg(format!("refs/heads/{branch}")).run()?;
+            let tip = tip.trim();
+            st.rewritten = reflog.lines().any(|sha| sha == tip);
         }
-
-        let mut opts = StatusOptions::new();
-        opts.include_untracked(true)
-            .include_ignored(false)
-            .recurse_untracked_dirs(true)
-            .renames_head_to_index(true);
-        for entry in repo.statuses(Some(&mut opts))?.iter() {
-            let Ok(path) = entry.path() else { continue };
-            let flags = entry.status();
-            let status = if flags.is_conflicted() {
-                FileStatus::Conflicted
-            } else if flags.contains(Status::INDEX_NEW) {
-                FileStatus::New
-            } else if flags.contains(Status::WT_NEW) {
-                FileStatus::Untracked
-            } else if flags.intersects(Status::INDEX_DELETED | Status::WT_DELETED) {
-                FileStatus::Deleted
-            } else if flags.contains(Status::INDEX_RENAMED) {
-                FileStatus::Renamed
-            } else if flags.intersects(Status::INDEX_TYPECHANGE | Status::WT_TYPECHANGE) {
-                FileStatus::TypeChanged
-            } else {
-                FileStatus::Modified
-            };
-            let rename = entry.head_to_index().filter(|_| status == FileStatus::Renamed);
-            let path_of = |f: git2::DiffFile| f.path().map(|p| p.to_string_lossy().into_owned());
-            st.files.push(match rename {
-                Some(d) => FileChange { path: path_of(d.new_file()).unwrap_or_default(), old_path: path_of(d.old_file()), status },
-                None => FileChange { path: path.to_string(), old_path: None, status },
-            });
-        }
-        // Conflicted files first (Desktop lists them in their own section on top).
-        st.files.sort_by(|a, b| {
-            (a.status != FileStatus::Conflicted, &a.path).cmp(&(b.status != FileStatus::Conflicted, &b.path))
-        });
         Ok(st)
     }
 }
+
+fn status_from_xy(xy: &str) -> FileStatus {
+    // Desktop shows the combined (index + worktree) state relative to HEAD.
+    match xy.as_bytes() {
+        [b'A', _] => FileStatus::New,
+        [b'D', _] | [_, b'D'] => FileStatus::Deleted,
+        [b'R', _] => FileStatus::Renamed,
+        [b'C', _] => FileStatus::Copied,
+        [b'T', _] | [_, b'T'] => FileStatus::TypeChanged,
+        _ => FileStatus::Modified,
+    }
+}
+
+pub(crate) fn parse_status(out: &[u8]) -> Result<WorkingStatus> {
+    let mut st = WorkingStatus::default();
+    let mut fields = out.split(|&b| b == 0).filter(|f| !f.is_empty()).map(String::from_utf8_lossy);
+    while let Some(line) = fields.next() {
+        let bad = || GitError::Parse(line.to_string());
+        let Some((kind, rest)) = line.split_once(' ') else { return Err(bad()) };
+        match kind {
+            "#" => {
+                let (key, value) = rest.split_once(' ').unwrap_or((rest, ""));
+                match key {
+                    "branch.oid" if value != "(initial)" => st.head_oid = Some(value.into()),
+                    "branch.head" if value != "(detached)" => st.branch = Some(value.into()),
+                    "branch.upstream" => st.upstream = Some(value.into()),
+                    "branch.ab" => {
+                        // +<ahead> -<behind>
+                        let count = |s: &str, sign| s.strip_prefix(sign)?.parse().ok();
+                        let (ahead, behind) = value.split_once(' ').ok_or_else(bad)?;
+                        st.ahead_behind = AheadBehind {
+                            ahead: count(ahead, '+').ok_or_else(bad)?,
+                            behind: count(behind, '-').ok_or_else(bad)?,
+                        };
+                    }
+                    _ => {}
+                }
+            }
+            // 1 XY sub mH mI mW hH hI path
+            "1" => {
+                let [xy, _, _, _, _, _, _, path] = rest.splitn(8, ' ').collect::<Vec<_>>()[..] else { return Err(bad()) };
+                st.files.push(FileChange { path: path.into(), old_path: None, status: status_from_xy(xy) });
+            }
+            // 2 XY sub mH mI mW hH hI Xscore path \0 origPath
+            "2" => {
+                let [xy, _, _, _, _, _, _, score, path] = rest.splitn(9, ' ').collect::<Vec<_>>()[..] else {
+                    return Err(bad());
+                };
+                let status = match status_from_xy(xy) {
+                    _ if score.starts_with('C') => FileStatus::Copied,
+                    FileStatus::Modified => FileStatus::Renamed,
+                    s => s,
+                };
+                let old_path = fields.next().map(|p| p.into_owned());
+                st.files.push(FileChange { path: path.into(), old_path, status });
+            }
+            // u XY sub m1 m2 m3 mW h1 h2 h3 path
+            "u" => {
+                let Some(path) = rest.splitn(10, ' ').nth(9) else { return Err(bad()) };
+                st.files.push(FileChange { path: path.into(), old_path: None, status: FileStatus::Conflicted });
+            }
+            "?" => st.files.push(FileChange { path: rest.into(), old_path: None, status: FileStatus::Untracked }),
+            _ => {}
+        }
+    }
+    // Conflicted files first (Desktop lists them in their own section on top).
+    st.files.sort_by(|a, b| {
+        (a.status != FileStatus::Conflicted, &a.path).cmp(&(b.status != FileStatus::Conflicted, &b.path))
+    });
+    Ok(st)
+}
+
+#[cfg(test)]
+#[path = "tests/status.test.rs"]
+mod tests;

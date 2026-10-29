@@ -141,9 +141,8 @@ impl Repository {
         }
         if self.has_head() {
             let path = f.old_path.as_deref().unwrap_or(&f.path);
-            let repo = self.repo()?;
-            let head = repo.head()?.peel_to_tree()?;
-            if head.get_path(std::path::Path::new(path)).is_ok_and(|e| e.filemode() == 0o100755) {
+            let out = self.git().args(["ls-tree", "HEAD", "--"]).arg(path).run()?;
+            if out.starts_with("100755") {
                 return Ok("100755");
             }
         }
