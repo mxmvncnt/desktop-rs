@@ -3,7 +3,7 @@
 
 use gpui::{ClipboardItem, Context, Window};
 
-use super::model::{TextPos, TextSel, TextSide, word_at};
+use super::model::{TextPos, TextSel, TextSide};
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -21,20 +21,8 @@ impl Workspace {
         // Take focus away from text inputs so Ctrl/Cmd+C and +A reach the diff.
         self.focus(window, cx);
         let Some(text) = self.diff_view.line_text(pos.line) else { return };
-        let len = text.len();
-        let word = (clicks == 2).then(|| word_at(text, pos.col));
-        let prev = self.diff_view.text_sel.filter(|s| s.side == side);
-        let sel = match (clicks, prev) {
-            (1, Some(prev)) if shift => TextSel { head: pos, ..prev },
-            (2, _) => {
-                let w = word.unwrap_or(pos.col..pos.col);
-                TextSel { anchor: TextPos { col: w.start, ..pos }, head: TextPos { col: w.end, ..pos }, side }
-            }
-            (n, _) if n >= 3 => {
-                TextSel { anchor: TextPos { col: 0, ..pos }, head: TextPos { col: len, ..pos }, side }
-            }
-            _ => TextSel { anchor: pos, head: pos, side },
-        };
+        let sel = TextSel::press(self.diff_view.text_sel, pos, side, clicks, shift, text);
+        self.commit_sel.sel = None;
         self.diff_view.text_sel = Some(sel);
         self.diff_view.text_drag = clicks == 1;
         cx.notify();
@@ -64,6 +52,9 @@ impl Workspace {
 
     /// Copy the selected diff text (code only, no gutters) to the clipboard.
     pub fn copy_diff_text(&mut self, cx: &mut Context<Self>) {
+        if self.commit_sel.sel.is_some() {
+            return self.copy_commit_text(cx);
+        }
         let (Some(sel), Some(diff)) = (self.diff_view.text_sel, self.diff_view.shown_diff()) else { return };
         let split = self.diff_view.split_cache.as_deref().filter(|_| sel.side != TextSide::Unified);
         let text = sel.text(&diff, split);

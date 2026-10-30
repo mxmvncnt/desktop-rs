@@ -8,6 +8,7 @@ mod commit_header;
 mod commit_list;
 mod commit_menu_rows;
 mod commit_row;
+mod commit_text;
 mod confirm;
 mod handlers;
 mod history_dialog;
@@ -23,6 +24,7 @@ pub mod snapshot;
 mod state;
 
 pub use commit_list::CommitList;
+pub use commit_text::CommitSelection;
 pub use history_dialog::HistoryDialogView;
 pub use message_resize::MessageResize;
 pub use search::matching_commits;

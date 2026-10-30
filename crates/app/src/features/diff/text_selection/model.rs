@@ -30,6 +30,23 @@ pub struct TextSel {
 }
 
 impl TextSel {
+    /// The selection after a mouse press at `pos` in `text`: a click starts one (with shift extends
+    /// `prev`), a double-click selects the word, a triple-click the line.
+    pub fn press(prev: Option<Self>, pos: TextPos, side: TextSide, clicks: usize, shift: bool, text: &str) -> Self {
+        let prev = prev.filter(|s| s.side == side);
+        match (clicks, prev) {
+            (1, Some(prev)) if shift => Self { head: pos, ..prev },
+            (2, _) => {
+                let w = word_at(text, pos.col);
+                Self { anchor: TextPos { col: w.start, ..pos }, head: TextPos { col: w.end, ..pos }, side }
+            }
+            (n, _) if n >= 3 => {
+                Self { anchor: TextPos { col: 0, ..pos }, head: TextPos { col: text.len(), ..pos }, side }
+            }
+            _ => Self { anchor: pos, head: pos, side },
+        }
+    }
+
     /// `(start, end)` in document order.
     pub fn ordered(&self) -> (TextPos, TextPos) {
         (self.anchor.min(self.head), self.anchor.max(self.head))

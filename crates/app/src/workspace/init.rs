@@ -56,6 +56,7 @@ impl Workspace {
             diff_view: Default::default(),
             diff_select: Default::default(),
             commit_msg: Default::default(),
+            commit_sel: Default::default(),
             focus: cx.focus_handle(),
             notice_task: None,
             repo_sub: None,

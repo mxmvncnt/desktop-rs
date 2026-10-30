@@ -2,11 +2,12 @@
 
 use gd_git::{Commit, LineStats};
 use gd_ui::{Icon, ResizeHandle, Theme, icon};
-use gpui::{AnyElement, App, DragMoveEvent, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px};
+use gpui::{AnyElement, App, DragMoveEvent, Div, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
+use super::CommitSelection;
 use super::message_resize::MessageDrag;
 use super::message_resize::MSG_DEFAULT_MAX;
-use crate::components::DiffStat;
+use crate::components::{DiffStat, drag_selection, selectable_line};
 use crate::workspace::Workspace;
 use crate::utils::text::{authors_list, authors_text, body_without_trailers, full_date};
 use crate::utils::text::relative_time;
@@ -22,6 +23,7 @@ pub struct CommitHeader {
     trailing: AnyElement,
     /// User-set height of the message area (`None` = fit up to the default).
     msg_height: Option<f32>,
+    sel: CommitSelection,
     ws: Entity<Workspace>,
 }
 
@@ -32,18 +34,25 @@ impl CommitHeader {
         stats: LineStats,
         trailing: impl IntoElement,
         msg_height: Option<f32>,
+        sel: CommitSelection,
         ws: Entity<Workspace>,
     ) -> Self {
-        Self { commit, n_files, stats, trailing: trailing.into_any_element(), msg_height, ws }
+        Self { commit, n_files, stats, trailing: trailing.into_any_element(), msg_height, sel, ws }
     }
 }
 
 impl RenderOnce for CommitHeader {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let body = body_without_trailers(&self.commit.body);
+        let texts = [self.commit.summary.clone(), body_without_trailers(&self.commit.body)];
+        let sel = self.sel.on(&texts);
         let meta = self.meta_line(&theme);
-        let message = (!body.is_empty()).then(|| self.message_area(body, &theme));
+        let (summary, summary_layout) =
+            selectable_line(&self.ws, &texts, 0, sel, theme.text, FontWeight::SEMIBOLD, &theme);
+        let (body, body_layout) = selectable_line(&self.ws, &texts, 1, sel, theme.text_muted, FontWeight::NORMAL, &theme);
+        let has_body = !texts[1].is_empty();
+        let message = has_body.then(|| self.message_area(body, &theme));
+        let layouts = if has_body { vec![summary_layout, body_layout] } else { vec![summary_layout] };
         div()
             .flex()
             .flex_col()
@@ -53,7 +62,8 @@ impl RenderOnce for CommitHeader {
             .py(px(12.0))
             .border_b_1()
             .border_color(theme.border)
-            .child(self.title_line())
+            .on_mouse_move(drag_selection(self.ws.clone(), layouts))
+            .child(self.title_line(summary))
             .children(message)
             .child(meta)
     }
@@ -61,7 +71,7 @@ impl RenderOnce for CommitHeader {
 
 impl CommitHeader {
     /// Scrollable message with a resize handle below it.
-    fn message_area(&self, body: String, theme: &Theme) -> impl IntoElement + use<> {
+    fn message_area(&self, body: Div, theme: &Theme) -> impl IntoElement + use<> {
         let text = div()
             .id("commit-message")
             .overflow_y_scroll()
@@ -85,19 +95,12 @@ impl CommitHeader {
             }))
     }
 
-    fn title_line(self) -> impl IntoElement {
+    fn title_line(self, summary: Div) -> impl IntoElement {
         div()
             .flex()
             .items_start()
             .gap(px(8.0))
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .text_size(px(15.0))
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .child(self.commit.summary),
-            )
+            .child(div().flex_1().min_w_0().text_size(px(15.0)).child(summary))
             .child(self.trailing)
     }
 

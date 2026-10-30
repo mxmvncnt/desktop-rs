@@ -63,6 +63,8 @@ pub struct Workspace {
     pub diff_select: DiffSelectUi,
     /// Height of the selected commit's message area (history header).
     pub commit_msg: crate::features::history::MessageResize,
+    /// Text selection in the commit header (summary and description).
+    pub commit_sel: crate::features::history::CommitSelection,
 
     pub(super) focus: FocusHandle,
     /// Auto-dismiss timer of the current success notice (features/notices).

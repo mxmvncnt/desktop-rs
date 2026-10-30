@@ -1,9 +1,9 @@
 //! Main pane of a commit, a stash or a pull request: header, file list and diff.
 
 use gd_ui::{Theme, vdivider};
-use gpui::{AnyElement, Context, Entity, IntoElement, SharedString, div, prelude::*, px};
+use gpui::{AnyElement, Context, Entity, FontWeight, IntoElement, SharedString, div, prelude::*, px};
 
-use super::{DiffStat, FileList};
+use super::{DiffStat, FileList, drag_selection, selectable_line};
 use crate::features::diff::DiffPane;
 use crate::repo::RepoModel;
 use crate::workspace::{NavList, Workspace, nav_focus};
@@ -34,7 +34,10 @@ impl Workspace {
             .child(FileList { repo: repo.clone(), pane });
         let stat = diff.as_ref().map(|d| DiffStat { added: d.added, deleted: d.deleted });
         let theme = Theme::of(cx).clone();
-        let path = detail.path.clone().unwrap_or_default();
+        let texts = [detail.path.clone().unwrap_or_default(), String::new()];
+        let sel = self.commit_sel.on(&texts);
+        let (path, path_layout) =
+            selectable_line(&cx.entity(), &texts, 0, sel, theme.text_muted, FontWeight::NORMAL, &theme);
         let diff = self.render_diff(diff, hl, key, pane, repo, cx);
         let diff = div()
             .flex()
@@ -51,6 +54,7 @@ impl Workspace {
                     .px(px(16.0))
                     .border_b_1()
                     .border_color(theme.border)
+                    .on_mouse_move(drag_selection(cx.entity(), vec![path_layout]))
                     .child(div().flex_1().min_w_0().truncate().text_size(px(12.5)).text_color(theme.text_muted).child(path))
                     .children(stat),
             )

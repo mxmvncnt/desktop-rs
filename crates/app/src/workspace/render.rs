@@ -43,7 +43,7 @@ impl Render for Workspace {
             .on_drag_move(cx.listener(|this, e: &DragMoveEvent<SidebarResize>, _, cx| {
                 this.drag_sidebar_to(e.event.position.x.as_f32(), cx)
             }))
-            .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, _| { this.finish_sidebar_drag(); this.commit_msg.end_drag(); }))
+            .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, _| { this.finish_sidebar_drag(); this.commit_msg.end_drag(); this.commit_sel.drag = false; }))
             .key_context(match self.overlays.last() {
                 None | Some(Overlay::Popover(_)) => WORKSPACE,
                 Some(_) => WORKSPACE_MENU,

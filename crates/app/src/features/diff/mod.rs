@@ -16,7 +16,7 @@ mod options;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
 mod state;
-mod text_selection;
+pub(crate) mod text_selection;
 mod view;
 
 pub use gutter::LineSelection;

@@ -23,7 +23,7 @@ impl Workspace {
         };
         let header = CommitHeader::new(commit, detail.files.len(), detail.stats, DiffOptionsButton {
             ws: cx.entity(),
-        }, self.commit_msg.height, cx.entity());
+        }, self.commit_msg.height, self.commit_sel.clone(), cx.entity());
         self.render_file_diff_pane(header, repo, DiffPane::Commit, cx)
     }
 }

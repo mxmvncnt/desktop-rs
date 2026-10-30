@@ -9,6 +9,7 @@ mod file_row;
 mod list;
 mod menu_row;
 mod menu_view;
+mod selectable_text;
 mod suggestion_card;
 mod text_field;
 
@@ -20,5 +21,6 @@ pub use file_row::FileRow;
 pub use list::{LIST_INSET_Y, list};
 pub use menu_row::{MenuRow, RowItem};
 pub use menu_view::{Menu, MenuView};
+pub use selectable_text::{drag_selection, selectable_line};
 pub use suggestion_card::SuggestionCard;
 pub use text_field::{text_area, text_field};
