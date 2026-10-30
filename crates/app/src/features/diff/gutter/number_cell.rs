@@ -25,9 +25,10 @@ pub fn number_cell(
     theme: &Theme,
 ) -> AnyElement {
     let tint = match row.map(|ix| diff.lines[ix].kind) {
-        Some(DiffLineKind::Add) => theme.diff_add_bg,
-        Some(DiffLineKind::Delete) => theme.diff_del_bg,
-        _ => theme.ink(0.025),
+        Some(DiffLineKind::Add) => theme.diff_add_gutter_bg,
+        Some(DiffLineKind::Delete) => theme.diff_del_gutter_bg,
+        Some(DiffLineKind::Hunk) => theme.diff_hunk_gutter_bg,
+        _ => theme.diff_gutter_bg,
     };
     let selectable = row.filter(|&ix| gd_git::selectable(diff, ix));
     let included = select.zip(selectable).is_some_and(|((_, r), ix)| r.row_included(ix));

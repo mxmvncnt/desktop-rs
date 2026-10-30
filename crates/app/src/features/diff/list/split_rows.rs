@@ -98,7 +98,7 @@ impl SplitRows<'_> {
         let theme = self.theme;
         let cell = div().flex().flex_1().min_w_0().overflow_hidden();
         if ix == NONE {
-            return (cell.bg(theme.ink(0.025)), None);
+            return (cell.bg(theme.diff_empty_bg), None);
         }
         let line = &self.split.diff.lines[ix as usize];
         let LineLook { bg, fg, marker, marker_color } = line_look(line.kind, theme);

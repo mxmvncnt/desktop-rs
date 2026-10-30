@@ -63,7 +63,7 @@ impl RenderOnce for CommitRow {
                     .tooltip(gd_ui::tooltip(format!("{}\n{}", authors_list(&self.commit), full_date(self.commit.time))))
                     .truncate()
                     .text_size(px(11.5))
-                    .text_color(theme.text_faint)
+                    .text_color(theme.text_muted)
                     .child(format!("{} • {}", authors_text(&self.commit), relative_time(self.commit.time))),
             )
             .on_mouse_down(MouseButton::Right, move |e, w, cx| {
@@ -81,11 +81,7 @@ impl RenderOnce for CommitRow {
 impl CommitRow {
     fn title_line(&self, theme: &Theme) -> impl IntoElement + use<> {
         let is_merge = self.commit.parents.len() > 1;
-        let color = match (self.selected, is_merge) {
-            (true, _) => theme.text,
-            (false, true) => theme.text_faint,
-            (false, false) => theme.text_muted,
-        };
+        let color = if is_merge && !self.selected { theme.text_muted } else { theme.text };
         div()
             .flex()
             .items_center()

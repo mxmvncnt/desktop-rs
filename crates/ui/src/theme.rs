@@ -7,7 +7,7 @@
 //! palettes in `themes.rs`.
 
 use gd_syntax::HighlightKind;
-use gpui::{App, Global, Hsla, SharedString, hsla};
+use gpui::{App, Global, Hsla, SharedString, hsla, rgb, rgb_to_hsla};
 
 #[derive(Debug, Clone)]
 pub struct Theme {
@@ -64,6 +64,13 @@ pub struct Theme {
     pub diff_add_emph: Hsla,
     pub diff_del_emph: Hsla,
     pub diff_hunk_bg: Hsla,
+    /// Line-number cell backgrounds per line kind, and the hunk-header gutter (expand buttons, handle column).
+    pub diff_add_gutter_bg: Hsla,
+    pub diff_del_gutter_bg: Hsla,
+    pub diff_hunk_gutter_bg: Hsla,
+    pub diff_gutter_bg: Hsla,
+    /// Split view placeholder opposite an added/deleted line.
+    pub diff_empty_bg: Hsla,
     pub diff_gutter: Hsla,
 
     // ---- syntax ----
@@ -112,6 +119,20 @@ pub struct SyntaxPalette {
 }
 
 impl SyntaxPalette {
+    /// Fixed syntax colors (not themeable): one set for dark and one for light, only plain `text` follows the theme.
+    pub fn new(light: bool, text: Hsla) -> Self {
+        let c = |dark: u32, light_: u32| rgb_to_hsla(rgb(if light { light_ } else { dark }));
+        Self {
+            text,
+            comment: c(0x808080, 0x7a7a7a),
+            indigo: c(0x8f96ed, 0x6454dc),
+            pink: c(0xe679b4, 0xc62075),
+            emerald: c(0x1eb787, 0x11694e),
+            amber: c(0xdba924, 0xa0511a),
+            red: c(0xff6467, 0xe7000b),
+        }
+    }
+
     /// Color for a highlight kind. Called once per span while building runs (never per frame).
     pub fn color(&self, kind: HighlightKind) -> Hsla {
         use HighlightKind::*;

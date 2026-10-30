@@ -8,7 +8,6 @@ use gpui::{
     SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
-use crate::features::diff::gutter::handle_bg;
 use crate::features::diff::list::{TextFlow, row_box};
 use crate::features::diff::state::DiffPane;
 use crate::repo::RepoModel;
@@ -64,7 +63,7 @@ impl Expander {
             .flex()
             .flex_none()
             .w(width)
-            .bg(handle_bg(theme))
+            .bg(theme.diff_hunk_gutter_bg)
             .children(exp.map(|e| e.buttons(diff, h)).unwrap_or_default())
     }
 }

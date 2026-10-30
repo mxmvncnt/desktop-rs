@@ -126,18 +126,24 @@ pub fn line_text(
     let mut runs = runs_for(text, spans, fg, &gpui::font(theme.font_mono.clone()), &theme.syntax);
     if !emphasis.is_empty() {
         let emph_bg = if line.kind == DiffLineKind::Add { theme.diff_add_emph } else { theme.diff_del_emph };
-        runs = overlay_background(text, runs, emphasis, emph_bg);
+        runs = overlay_background(text, runs, emphasis, emph_bg, Some(theme.text));
     }
     if let Some((r, bg)) = selected {
-        runs = overlay_background(text, runs, &[(r.start, r.end)], bg);
+        runs = overlay_background(text, runs, &[(r.start, r.end)], bg, None);
     }
     let styled = gpui::StyledText::new(text.to_string()).with_runs(runs);
     let layout = styled.layout().clone();
     (gpui::div().flex().flex_col().child(styled).into_any_element(), layout)
 }
 
-/// Split `runs` at emphasis edges and set `background_color` inside them.
-fn overlay_background(text: &str, runs: Vec<TextRun>, ranges: &[(usize, usize)], bg: Hsla) -> Vec<TextRun> {
+/// Split `runs` at range edges and set `background_color` (and `fg`, when given) inside them.
+fn overlay_background(
+    text: &str,
+    runs: Vec<TextRun>,
+    ranges: &[(usize, usize)],
+    bg: Hsla,
+    fg: Option<Hsla>,
+) -> Vec<TextRun> {
     let ranges: Vec<(usize, usize)> = ranges
         .iter()
         .map(|&(s, e)| (s.min(text.len()), e.min(text.len())))
@@ -164,6 +170,7 @@ fn overlay_background(text: &str, runs: Vec<TextRun>, ranges: &[(usize, usize)],
             piece.len = b - a;
             if inside {
                 piece.background_color = Some(bg);
+                piece.color = fg.unwrap_or(piece.color);
             }
             out.push(piece);
         }

@@ -16,12 +16,7 @@
     "danger": "#d0707a",
     "warning": "#ebcb8b",
     "success": "#a3be8c",
-    "on_accent": "#2e3440",
-    "comment": "#616e88",
-    "keyword": "#81a1c1",
-    "string": "#a3be8c",
-    "number": "#b48ead",
-    "special": "#ebcb8b"
+    "on_accent": "#2e3440"
   },
   "light": {
     "bg": "#eceff4",
@@ -37,11 +32,6 @@
     "danger": "#bf616a",
     "warning": "#b5832a",
     "success": "#5f8a4a",
-    "on_accent": "#ffffff",
-    "comment": "#8a93a6",
-    "keyword": "#5e81ac",
-    "string": "#5f8a4a",
-    "number": "#9b6a95",
-    "special": "#b5832a"
+    "on_accent": "#ffffff"
   }
 }

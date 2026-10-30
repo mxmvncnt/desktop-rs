@@ -77,11 +77,11 @@ impl RenderOnce for FileRow {
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_size(px(12.5))
-                    .child(div().flex_shrink(1.0).min_w_0().truncate().text_color(theme.text_faint).child(dir.to_string()))
+                    .child(div().flex_shrink(1.0).min_w_0().truncate().text_color(theme.text_muted).child(dir.to_string()))
                     .child(
                         div()
                             .flex_none()
-                            .text_color(if self.selected { theme.text } else { theme.text_muted })
+                            .text_color(theme.text)
                             .child(name.to_string()),
                     ),
             )

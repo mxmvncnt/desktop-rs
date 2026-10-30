@@ -10,7 +10,7 @@ logged and skipped.
 Copy one of the built-in themes in
 [`crates/ui/assets/themes/`](../crates/ui/assets/themes) as a starting point
 (`default.json` is the default). Each file has an `id`, a `label` and a `dark` and
-a `light` palette of 19 `#rrggbb` colors. The System/Light/Dark mode picks the
+a `light` palette of 14 `#rrggbb` colors. Syntax highlighting colors are fixed (one dark and one light set) and not themeable; the old `comment`, `keyword`, `string`, `number` and `special` keys are ignored. The System/Light/Dark mode picks the
 variant, so both are required.
 
 ```json
@@ -18,10 +18,24 @@ variant, so both are required.
   "$schema": "https://raw.githubusercontent.com/mxmvncnt/desktop-rs/main/docs/theme.schema.json",
   "id": "mine",
   "label": "Mine",
-  "dark": { "bg": "#060606", "...": "19 colors in total" },
-  "light": { "bg": "#ffffff", "...": "19 colors in total" }
+  "dark": { "bg": "#060606", "...": "14 colors in total" },
+  "light": { "bg": "#ffffff", "...": "14 colors in total" }
 }
 ```
+
+## Diff colors
+
+By default diff colors are derived from `success`, `danger`, `accent` and `faint`.
+A palette can override them with these optional `#rrggbb` keys (see the schema for
+descriptions):
+
+- Line backgrounds: `diff_add_bg`, `diff_del_bg`, `diff_hunk_bg`
+- Word-level emphasis: `diff_add_emph`, `diff_del_emph`
+- Line-number cell backgrounds: `diff_add_gutter_bg`, `diff_del_gutter_bg` (default to the
+  matching line background), `diff_hunk_gutter_bg` (hunk header gutter and expand buttons),
+  `diff_gutter_bg` (unchanged lines)
+- `diff_empty_bg`: split view placeholder opposite an added or deleted line
+- `diff_gutter`: line number text (default `faint`)
 
 ## Editor support
 

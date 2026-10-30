@@ -64,13 +64,40 @@ pub struct Palette {
     pub success: Hex,
     /// Text on accent fills.
     pub on_accent: Hex,
-    /// Code comments.
-    pub comment: Hex,
-    /// Syntax base colors: keywords/functions, strings, numbers/types, specials.
-    pub keyword: Hex,
-    pub string: Hex,
-    pub number: Hex,
-    pub special: Hex,
+    /// Optional diff colors; each defaults to a value derived from the colors above.
+    /// Added line background.
+    #[serde(default)]
+    pub diff_add_bg: Option<Hex>,
+    /// Deleted line background.
+    #[serde(default)]
+    pub diff_del_bg: Option<Hex>,
+    /// Hunk header background.
+    #[serde(default)]
+    pub diff_hunk_bg: Option<Hex>,
+    /// Word-level emphasis inside added lines.
+    #[serde(default)]
+    pub diff_add_emph: Option<Hex>,
+    /// Word-level emphasis inside deleted lines.
+    #[serde(default)]
+    pub diff_del_emph: Option<Hex>,
+    /// Line-number cell of added lines. Defaults to `diff_add_bg`.
+    #[serde(default)]
+    pub diff_add_gutter_bg: Option<Hex>,
+    /// Line-number cell of deleted lines. Defaults to `diff_del_bg`.
+    #[serde(default)]
+    pub diff_del_gutter_bg: Option<Hex>,
+    /// Gutter of hunk headers (expand buttons) and the hunk handle column.
+    #[serde(default)]
+    pub diff_hunk_gutter_bg: Option<Hex>,
+    /// Line-number cell of unchanged lines.
+    #[serde(default)]
+    pub diff_gutter_bg: Option<Hex>,
+    /// Split view placeholder opposite an added or deleted line.
+    #[serde(default)]
+    pub diff_empty_bg: Option<Hex>,
+    /// Line number text. Defaults to `faint`.
+    #[serde(default)]
+    pub diff_gutter: Option<Hex>,
 }
 
 /// A color theme family: one palette per appearance.
@@ -162,6 +189,10 @@ impl Theme {
             (1.0, 0.07, 0.11, 0.08, 0.14)
         };
         let (add_wash, emph) = if light { (0.12, 0.28) } else { (0.10, 0.30) };
+        let o = |v: Option<Hex>, derived: Hsla| v.map_or(derived, c);
+        let plate = hsla(0.0, 0.0, wash, if light { 0.02 } else { 0.025 });
+        let add_bg = o(p.diff_add_bg, success.opacity(add_wash));
+        let del_bg = o(p.diff_del_bg, danger.opacity(add_wash));
         Self {
             light,
             bg: c(p.bg),
@@ -193,21 +224,18 @@ impl Theme {
             caret: accent,
             diff_add: success,
             diff_del: danger,
-            diff_add_bg: success.opacity(add_wash),
-            diff_del_bg: danger.opacity(add_wash),
-            diff_add_emph: success.opacity(emph),
-            diff_del_emph: danger.opacity(emph),
-            diff_hunk_bg: accent.opacity(0.08),
-            diff_gutter: c(p.faint),
-            syntax: SyntaxPalette {
-                text: c(p.text),
-                comment: c(p.comment),
-                indigo: c(p.keyword),
-                pink: c(p.special),
-                emerald: c(p.string),
-                amber: c(p.number),
-                red: danger,
-            },
+            diff_add_bg: add_bg,
+            diff_del_bg: del_bg,
+            diff_add_emph: o(p.diff_add_emph, success.opacity(emph)),
+            diff_del_emph: o(p.diff_del_emph, danger.opacity(emph)),
+            diff_hunk_bg: o(p.diff_hunk_bg, accent.opacity(0.08)),
+            diff_add_gutter_bg: p.diff_add_gutter_bg.map_or(add_bg, c),
+            diff_del_gutter_bg: p.diff_del_gutter_bg.map_or(del_bg, c),
+            diff_hunk_gutter_bg: o(p.diff_hunk_gutter_bg, if light { hsla(0.0, 0.0, 0.0, 0.16) } else { hsla(0.0, 0.0, 0.0, 0.6) }),
+            diff_gutter_bg: o(p.diff_gutter_bg, plate),
+            diff_empty_bg: o(p.diff_empty_bg, plate),
+            diff_gutter: o(p.diff_gutter, c(p.faint)),
+            syntax: SyntaxPalette::new(light, c(p.text)),
             font_sans: "Geist".into(),
             font_mono: "Geist Mono".into(),
         }

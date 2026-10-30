@@ -96,22 +96,126 @@
           "description": "Text on accent fills.",
           "$ref": "#/$defs/Hex"
         },
-        "comment": {
-          "description": "Code comments.",
-          "$ref": "#/$defs/Hex"
+        "diff_add_bg": {
+          "description": "Optional diff colors; each defaults to a value derived from the colors above.\nAdded line background.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "keyword": {
-          "description": "Syntax base colors: keywords/functions, strings, numbers/types, specials.",
-          "$ref": "#/$defs/Hex"
+        "diff_del_bg": {
+          "description": "Deleted line background.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "string": {
-          "$ref": "#/$defs/Hex"
+        "diff_hunk_bg": {
+          "description": "Hunk header background.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "number": {
-          "$ref": "#/$defs/Hex"
+        "diff_add_emph": {
+          "description": "Word-level emphasis inside added lines.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "special": {
-          "$ref": "#/$defs/Hex"
+        "diff_del_emph": {
+          "description": "Word-level emphasis inside deleted lines.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diff_add_gutter_bg": {
+          "description": "Line-number cell of added lines. Defaults to `diff_add_bg`.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diff_del_gutter_bg": {
+          "description": "Line-number cell of deleted lines. Defaults to `diff_del_bg`.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diff_hunk_gutter_bg": {
+          "description": "Gutter of hunk headers (expand buttons) and the hunk handle column.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diff_gutter_bg": {
+          "description": "Line-number cell of unchanged lines.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diff_empty_bg": {
+          "description": "Split view placeholder opposite an added or deleted line.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diff_gutter": {
+          "description": "Line number text. Defaults to `faint`.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -128,12 +232,7 @@
         "danger",
         "warning",
         "success",
-        "on_accent",
-        "comment",
-        "keyword",
-        "string",
-        "number",
-        "special"
+        "on_accent"
       ]
     },
     "Hex": {

@@ -305,7 +305,7 @@ needs `&mut Workspace` today). Not done.
 - Why tree-sitter over syntect: parse is incremental-grade fast (18k rows in ~125 ms), queries
   are shared with zeron, and the palette maps 1:1 to `HighlightKind`. Cost: ~16 grammar crates
   of C code (longer cold build, a few MB of binary).
-- `gd-ui::theme::SyntaxPalette` (7 base colors mapped in `color()`: indigo keywords/functions, emerald strings,
+- `gd-ui::theme::SyntaxPalette` (7 base colors, fixed per dark/light and independent of the color theme, mapped in `color()`: indigo keywords/functions, emerald strings,
   amber numbers/types, pink macros). Variable/parameter/operator/punctuation are drawn in the
   row's own color (no run) to cut noise and run count.
 - App flow: after a diff loads, `RepoModel::show_diff` runs `highlight_diff` via
@@ -364,8 +364,8 @@ needs `&mut Workspace` today). Not done.
   `theme.ink()`, and check new UI with both `changes` and `changes-light` snapshots.
 - Color themes (`themes.rs`): JSON files (default, Nord, Tokyo Night, VS Code, Catppuccin, Solarized embedded from
   `crates/ui/assets/themes/<id>.json`). Each family is `{"id", "label", "dark": {..}, "light": {..}}` with a `Palette` of
-  19 `"#rrggbb"` colors per variant (see `default.json` for the field names, incl. the 4 syntax base colors);
-  `Theme::from_palette` (the only constructor, default included) derives washes/diff colors. The System/Light/Dark mode
+  14 `"#rrggbb"` colors per variant (see `default.json` for the field names); syntax colors are not part of a palette: `SyntaxPalette::new(light, text)` gives one fixed dark and one fixed light set, only the plain code `text` follows the theme;
+  `Theme::from_palette` (the only constructor, default included) derives washes/diff colors (a palette may override them with optional `diff_*` keys, see `docs/THEMES.md`). The System/Light/Dark mode
   picks the variant, so every family needs both. Add a built-in theme = copy `default.json` (the template) to `assets/themes/<id>.json`
   (the `embedded_themes_parse` test covers it). `docs/theme.schema.json` is the JSON Schema for editors, generated from the
   Rust types with `schemars`; regenerate it after changing `ColorTheme`/`Palette` with

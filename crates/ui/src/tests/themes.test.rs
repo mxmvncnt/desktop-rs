@@ -57,3 +57,65 @@ fn checked_in_schema_is_current() {
     }
     assert!(std::fs::read_to_string(path).unwrap() == generated, "docs/theme.schema.json is stale: run `UPDATE_SCHEMA=1 cargo test -p gd-ui checked_in_schema`");
 }
+
+fn default_palette() -> Palette {
+    ColorThemes::builtin().get(DEFAULT_THEME).dark
+}
+
+#[test]
+fn syntax_colors_ignore_the_theme() {
+    let themes = ColorThemes::builtin();
+    for light in [false, true] {
+        let syntax = |t: &ColorTheme| Theme::from_palette(if light { &t.light } else { &t.dark }, light).syntax;
+        let reference = syntax(themes.get(DEFAULT_THEME));
+        for other in themes.iter() {
+            let s = syntax(other);
+            assert_eq!(SyntaxPalette { text: reference.text, ..s }, reference, "{}", other.id);
+        }
+    }
+}
+
+#[test]
+fn removed_syntax_keys_are_still_accepted() {
+    let old = default_json("Old").replace("\"on_accent\": \"#fafafa\"", "\"on_accent\": \"#fafafa\", \"comment\": \"#808080\", \"keyword\": \"#8f96ed\"");
+    assert!(old.contains("\"keyword\""));
+    assert!(serde_json::from_str::<ColorTheme>(&old).is_ok());
+}
+
+#[test]
+fn diff_overrides_are_applied() {
+    let p = Palette {
+        diff_add_bg: Some(Hex(0xe6ffed)),
+        diff_add_gutter_bg: Some(Hex(0xcdffd8)),
+        diff_hunk_gutter_bg: Some(Hex(0xdbedff)),
+        diff_empty_bg: Some(Hex(0xfafbfc)),
+        diff_gutter: Some(Hex(0x959da5)),
+        ..default_palette()
+    };
+    let t = Theme::from_palette(&p, true);
+    assert_eq!(t.diff_add_bg, rgb_to_hsla(rgb(0xe6ffed)));
+    assert_eq!(t.diff_add_gutter_bg, rgb_to_hsla(rgb(0xcdffd8)));
+    assert_eq!(t.diff_hunk_gutter_bg, rgb_to_hsla(rgb(0xdbedff)));
+    assert_eq!(t.diff_empty_bg, rgb_to_hsla(rgb(0xfafbfc)));
+    assert_eq!(t.diff_gutter, rgb_to_hsla(rgb(0x959da5)));
+}
+
+#[test]
+fn absent_diff_overrides_keep_derived_colors() {
+    for light in [false, true] {
+        let p = default_palette();
+        let t = Theme::from_palette(&p, light);
+        assert_eq!(t.diff_add_gutter_bg, t.diff_add_bg);
+        assert_eq!(t.diff_del_gutter_bg, t.diff_del_bg);
+        assert_eq!(t.diff_gutter_bg, t.diff_empty_bg);
+        assert!((t.diff_gutter_bg.alpha - t.ink(0.025).alpha).abs() < 1e-6);
+        assert_eq!(t.diff_gutter, rgb_to_hsla(rgb(p.faint.0)));
+    }
+}
+
+#[test]
+fn partial_diff_override_keeps_other_gutters_following_line_bg() {
+    let p = Palette { diff_del_bg: Some(Hex(0xffeef0)), ..default_palette() };
+    let t = Theme::from_palette(&p, true);
+    assert_eq!(t.diff_del_gutter_bg, rgb_to_hsla(rgb(0xffeef0)));
+}

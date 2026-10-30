@@ -7,7 +7,7 @@ use std::ops::Range;
 use gd_ui::{CheckState, Theme, mixed_mark, theme::DIFF_ROW_HEIGHT};
 use gpui::{AnyElement, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, StatefulInteractiveElement, Styled, div, prelude::*, px};
 
-use super::style::{HANDLE_W, check_mark, handle_bg};
+use super::style::{HANDLE_W, check_mark};
 use crate::features::diff::state::HoveredHandle;
 use crate::repo::RepoModel;
 use crate::workspace::Workspace;
@@ -45,7 +45,7 @@ impl RowSelect {
     ) -> AnyElement {
         let base = div().flex().flex_none().w(px(HANDLE_W));
         let Some(rows) = block else {
-            return base.bg(handle_bg(theme)).into_any_element();
+            return base.bg(theme.diff_hunk_gutter_bg).into_any_element();
         };
         let start = rows.start;
         let hovered = self.hovered_block == Some(start);
