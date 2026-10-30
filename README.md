@@ -36,6 +36,10 @@ The app stores its repository list and settings in `~/.config/desktop-rs/`.
 | Esc             | Close popover                             |
 | Ctrl+Q          | Quit                                      |
 
+### Custom themes
+
+Themes are JSON files you can add or override. See [docs/THEMES.md](docs/THEMES.md).
+
 ### Headless screenshots
 
 ```sh

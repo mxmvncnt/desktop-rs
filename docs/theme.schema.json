@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ColorTheme",
+  "description": "A color theme family: one palette per appearance.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Editor hint: URL or path of the JSON Schema. Ignored by the app.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "id": {
+      "description": "Unique id, persisted in settings. The same id as a built-in replaces it.",
+      "type": "string"
+    },
+    "label": {
+      "description": "Name shown in Settings > Appearance.",
+      "type": "string"
+    },
+    "dark": {
+      "description": "Palette used in dark mode.",
+      "$ref": "#/$defs/Palette"
+    },
+    "light": {
+      "description": "Palette used in light mode.",
+      "$ref": "#/$defs/Palette"
+    }
+  },
+  "required": [
+    "id",
+    "label",
+    "dark",
+    "light"
+  ],
+  "$defs": {
+    "Palette": {
+      "description": "Source colors of one theme variant.",
+      "type": "object",
+      "properties": {
+        "bg": {
+          "description": "Diff plane (the deepest surface in dark variants).",
+          "$ref": "#/$defs/Hex"
+        },
+        "surface": {
+          "description": "Toolbar / sidebar.",
+          "$ref": "#/$defs/Hex"
+        },
+        "card": {
+          "description": "Cards and panels.",
+          "$ref": "#/$defs/Hex"
+        },
+        "overlay": {
+          "description": "Popovers and menus.",
+          "$ref": "#/$defs/Hex"
+        },
+        "raised": {
+          "description": "Opaque chips and pills.",
+          "$ref": "#/$defs/Hex"
+        },
+        "text": {
+          "description": "Primary text.",
+          "$ref": "#/$defs/Hex"
+        },
+        "muted": {
+          "description": "Secondary text.",
+          "$ref": "#/$defs/Hex"
+        },
+        "faint": {
+          "description": "Tertiary text, gutters, disabled.",
+          "$ref": "#/$defs/Hex"
+        },
+        "accent": {
+          "description": "Accent color: links, selection, focus.",
+          "$ref": "#/$defs/Hex"
+        },
+        "accent_strong": {
+          "description": "Stronger accent for pressed or emphasized states.",
+          "$ref": "#/$defs/Hex"
+        },
+        "danger": {
+          "description": "Errors and deleted lines.",
+          "$ref": "#/$defs/Hex"
+        },
+        "warning": {
+          "description": "Warnings and modified files.",
+          "$ref": "#/$defs/Hex"
+        },
+        "success": {
+          "description": "Success and added lines.",
+          "$ref": "#/$defs/Hex"
+        },
+        "on_accent": {
+          "description": "Text on accent fills.",
+          "$ref": "#/$defs/Hex"
+        },
+        "comment": {
+          "description": "Code comments.",
+          "$ref": "#/$defs/Hex"
+        },
+        "keyword": {
+          "description": "Syntax base colors: keywords/functions, strings, numbers/types, specials.",
+          "$ref": "#/$defs/Hex"
+        },
+        "string": {
+          "$ref": "#/$defs/Hex"
+        },
+        "number": {
+          "$ref": "#/$defs/Hex"
+        },
+        "special": {
+          "$ref": "#/$defs/Hex"
+        }
+      },
+      "required": [
+        "bg",
+        "surface",
+        "card",
+        "overlay",
+        "raised",
+        "text",
+        "muted",
+        "faint",
+        "accent",
+        "accent_strong",
+        "danger",
+        "warning",
+        "success",
+        "on_accent",
+        "comment",
+        "keyword",
+        "string",
+        "number",
+        "special"
+      ]
+    },
+    "Hex": {
+      "description": "A `#rrggbb` color from JSON.",
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    }
+  }
+}

@@ -2,6 +2,7 @@
 //! apply the theme.
 
 use gd_ui::Theme;
+use gd_ui::themes::ColorThemes;
 use gpui::{Context, Window};
 
 use super::{SettingsPage, ThemeMode};
@@ -37,7 +38,8 @@ impl Workspace {
         use gpui::WindowAppearance as A;
         let system_light = matches!(window.appearance(), A::Light | A::VibrantLight);
         let light = self.settings.theme.is_light(system_light);
-        cx.set_global(Theme::for_family(self.settings.color_theme_id(), light));
+        let theme = Theme::for_family(self.settings.color_theme_id(ColorThemes::of(cx)), light, cx);
+        cx.set_global(theme);
         cx.notify();
     }
 

@@ -3,6 +3,7 @@
 
 use std::rc::Rc;
 
+use gd_ui::themes::ColorThemes;
 use gd_ui::{Callback, Icon, divider, icon_button, modal, motion, overlay_card};
 use gpui::{
     AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
@@ -32,7 +33,7 @@ impl SettingsModal {
         Self {
             page: ws.settings_page,
             theme: s.theme,
-            color_theme: s.color_theme_id().to_string(),
+            color_theme: s.color_theme_id(ColorThemes::of(cx)).to_string(),
             accounts: (ws.settings_page == SettingsPage::Accounts).then(|| AccountsPage {
                 store: ws.accounts.clone(),
                 repo: ws.repo.as_ref().map(|r| r.read(cx).repo.clone()),

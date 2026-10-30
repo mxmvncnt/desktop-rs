@@ -4,6 +4,7 @@
 
 use std::path::PathBuf;
 
+use gd_ui::themes::ColorThemes;
 use serde::{Deserialize, Serialize};
 
 pub fn config_dir() -> Option<PathBuf> {
@@ -11,6 +12,11 @@ pub fn config_dir() -> Option<PathBuf> {
         return Some(PathBuf::from(dir));
     }
     Some(dirs::config_dir()?.join("desktop-rs"))
+}
+
+/// Where user color themes (`*.json`) live.
+pub fn themes_dir() -> Option<PathBuf> {
+    Some(config_dir()?.join("themes"))
 }
 
 /// Which theme to use; `System` follows the OS appearance.
@@ -58,7 +64,7 @@ pub struct Settings {
     pub theme: ThemeMode,
     /// Sidebar width in px; `None` = default (`gd_ui::theme::SIDEBAR_WIDTH`).
     pub sidebar_width: Option<f32>,
-    /// Color theme family id (`gd_ui::themes::COLOR_THEMES`).
+    /// Color theme family id (`gd_ui::themes::ColorThemes`).
     pub color_theme: String,
 }
 
@@ -72,9 +78,9 @@ impl Settings {
         })
     }
 
-    /// Id of the active color theme (`zeron` when unset or unknown).
-    pub fn color_theme_id(&self) -> &str {
-        gd_ui::themes::find(&self.color_theme).map_or(gd_ui::themes::DEFAULT_THEME, |t| t.id)
+    /// Id of the active color theme (`default` when unset or unknown).
+    pub fn color_theme_id<'a>(&self, themes: &'a ColorThemes) -> &'a str {
+        &themes.get(&self.color_theme).id
     }
 
     pub fn save(&self) {

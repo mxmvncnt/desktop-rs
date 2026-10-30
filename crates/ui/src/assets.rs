@@ -1,5 +1,5 @@
-//! Embedded assets: Geist fonts (OFL) and Solar icons (CC BY 4.0,
-//! "Solar Icons by 480 Design"), copied from zeron's `crates/ui/assets`.
+//! Embedded assets: Geist fonts (OFL), Solar icons (CC BY 4.0,
+//! "Solar Icons by 480 Design") and the built-in color theme JSON files, copied from zeron's `crates/ui/assets`.
 //!
 //! `rust-embed` bakes `assets/` into the binary (also in debug builds), so
 //! icon loads never touch the filesystem. Adding an icon = drop the SVG in
@@ -75,6 +75,7 @@ icons! {
 #[folder = "assets"]
 #[include = "icons/*.svg"]
 #[include = "fonts/*.ttf"]
+#[include = "themes/*.json"]
 pub struct Assets;
 
 impl AssetSource for Assets {

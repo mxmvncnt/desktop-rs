@@ -362,11 +362,18 @@ needs `&mut Workspace` today). Not done.
 - `theme.rs`: the token struct. Use `Theme::of(cx)` and `theme.ink(a)` for translucent washes (white on
   dark, black on light, decided by `theme.light`). Never hardcode `white()`/`black()`; use theme tokens or
   `theme.ink()`, and check new UI with both `changes` and `changes-light` snapshots.
-- Color themes (`themes.rs`): data-driven `COLOR_THEMES` (zeron default, Nord, Tokyo Night, VS Code, Catppuccin,
-  Solarized). Each family has a dark and a light `Palette` (hex values incl. the 7 syntax base colors); `Theme::from_palette`
-  (the only constructor, zeron included) derives washes/diff colors. The System/Light/Dark mode picks the variant, so every family needs both. Add a theme =
-  add two consts + one table entry. Persisted as `color_theme=<id>` in `display`; `Workspace::apply_theme` calls
-  `Theme::for_family`. Snapshot view `theme:<id>:<dark|light>[:settings]`.
+- Color themes (`themes.rs`): JSON files (default, Nord, Tokyo Night, VS Code, Catppuccin, Solarized embedded from
+  `crates/ui/assets/themes/<id>.json`). Each family is `{"id", "label", "dark": {..}, "light": {..}}` with a `Palette` of
+  19 `"#rrggbb"` colors per variant (see `default.json` for the field names, incl. the 4 syntax base colors);
+  `Theme::from_palette` (the only constructor, default included) derives washes/diff colors. The System/Light/Dark mode
+  picks the variant, so every family needs both. Add a built-in theme = copy `default.json` (the template) to `assets/themes/<id>.json`
+  (the `embedded_themes_parse` test covers it). `docs/theme.schema.json` is the JSON Schema for editors, generated from the
+  Rust types with `schemars`; regenerate it after changing `ColorTheme`/`Palette` with
+  `UPDATE_SCHEMA=1 cargo test -p gd-ui checked_in_schema` (the test fails when it is stale). A top-level `"$schema"` key is accepted and ignored.
+  User-facing format and folder: `docs/THEMES.md`. User themes in `<config dir>/themes/*.json` replace a built-in with
+  the same `id`; a file that fails to parse is logged and skipped. `ColorThemes` (a GPUI global, built-ins in `gd_ui::init`, user themes added in `main.rs`)
+  is the registry: `get(id)` falls back to default. Persisted as `color_theme=<id>`; `Workspace::apply_theme` calls
+  `Theme::for_family(id, light, cx)`. Snapshot view `theme:<id>:<dark|light>[:settings]` (built-ins only).
 - `motion.rs`: the zeron motion catalog (`fade_in` 500ms ease-out-quint with 4px rise,
   `fade_quick`, `menu_in`, `dialog_in`).
   Overlay hand-off: overlays call `motion::handoff(id, cx)` (and `Workspace::render` calls

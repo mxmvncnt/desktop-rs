@@ -16,6 +16,7 @@ mod watcher;
 mod watcher_tests;
 mod workspace;
 
+use gd_ui::themes::ColorThemes;
 use gpui::{App, AppContext, Bounds, TitlebarOptions, WindowBounds, WindowOptions, px, size};
 use gpui_elements::editable_text::actions::{DEFAULT_INPUT_CONTEXT, default_bindings};
 
@@ -48,6 +49,9 @@ fn main() {
         .with_assets(gd_ui::Assets)
         .run(move |cx: &mut App| {
             gd_ui::init(cx);
+            if let Some(dir) = features::settings::themes_dir() {
+                cx.global_mut::<ColorThemes>().load_user(&dir);
+            }
             cx.bind_keys(default_bindings().as_keybindings(Some(DEFAULT_INPUT_CONTEXT)));
             actions::bind(cx);
 

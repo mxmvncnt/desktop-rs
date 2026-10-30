@@ -1,12 +1,13 @@
 use gd_ui::theme::CONTROL_RADIUS;
-use gd_ui::themes::COLOR_THEMES;
-use gd_ui::{Tabs, Theme};
+use gd_ui::themes::ColorThemes;
+use gd_ui::{Button, Icon, Tabs, Theme};
 use gpui::{
     App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
     Window, div, px,
 };
 
-use super::ThemeMode;
+use super::{ThemeMode, themes_dir};
+use crate::utils::paths::file_url;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -33,10 +34,10 @@ impl AppearancePage {
     fn theme_grid(&self, cx: &App) -> impl IntoElement {
         let current = Theme::of(cx).clone();
         let light = current.light;
-        let cards = COLOR_THEMES.iter().map(|t| {
-            let preview = Theme::for_family(t.id, light);
+        let cards = ColorThemes::of(cx).iter().map(|t| {
+            let preview = Theme::for_family(&t.id, light, cx);
             let ws = self.ws.clone();
-            let id = t.id;
+            let id = t.id.clone();
             let selected = t.id == self.color_theme;
             let border = if selected { current.accent } else { current.ink(0.14) };
             let dots = [preview.accent, preview.syntax.indigo, preview.syntax.emerald, preview.syntax.amber, preview.danger];
@@ -52,8 +53,8 @@ impl AppearancePage {
                 .border_color(border)
                 .bg(preview.bg)
                 .cursor_pointer()
-                .on_click(move |_, window, cx| ws.update(cx, |this, cx| this.set_color_theme(id, window, cx)))
-                .child(div().text_size(px(12.0)).text_color(preview.text).child(t.label))
+                .on_click(move |_, window, cx| ws.update(cx, |this, cx| this.set_color_theme(&id, window, cx)))
+                .child(div().text_size(px(12.0)).text_color(preview.text).child(t.label.clone()))
                 .child(
                     div()
                         .flex()
@@ -80,6 +81,14 @@ impl RenderOnce for AppearancePage {
             .child(div().h(px(8.0)))
             .child(title("Color theme"))
             .child(self.theme_grid(cx))
-            .child(caption("Each theme has a dark and a light variant; the mode above picks which one."))
+            .child(div().flex().child(
+                Button::new("open-themes-folder").icon(Icon::Folder).label("Open themes folder").on_click(|_, _, cx| {
+                    let Some(dir) = themes_dir() else { return };
+                    match std::fs::create_dir_all(&dir) {
+                        Ok(()) => cx.open_url(&file_url(&dir)),
+                        Err(e) => log::error!("cannot create {}: {e}", dir.display()),
+                    }
+                }),
+            ))
     }
 }

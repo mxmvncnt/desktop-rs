@@ -28,7 +28,7 @@ smol.workspace = true
 log.workspace = true
 env_logger.workspace = true
 gd-syntax.workspace = true
-serde = { version = "1.0.229", features = ["derive"] }
+serde.workspace = true
 toml = "1.1.8"
 keyring = { version = "3", features = ["async-secret-service", "async-io", "crypto-rust", "apple-native", "windows-native"] }
 uuid = { version = "1.29.0", features = ["v4"] }

@@ -12,6 +12,6 @@ mod state;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
 
-pub use model::{Settings, ThemeMode, config_dir};
+pub use model::{Settings, ThemeMode, config_dir, themes_dir};
 pub use settings_modal::SettingsModal;
 pub use state::SettingsPage;

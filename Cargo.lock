@@ -2125,6 +2125,10 @@ dependencies = [
  "gpui_ce_elements",
  "log",
  "rust-embed",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

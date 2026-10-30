@@ -18,8 +18,10 @@ pub use theme::Theme;
 
 use gpui::App;
 
-/// Install fonts and the theme global. Call once at startup.
+/// Install fonts, the built-in color themes and the theme global. Call once at startup;
+/// the app then adds the user themes (`cx.global_mut::<ColorThemes>().load_user(..)`).
 pub fn init(cx: &mut App) {
     assets::load_fonts(cx);
-    cx.set_global(Theme::for_family(themes::DEFAULT_THEME, false));
+    cx.set_global(themes::ColorThemes::builtin());
+    cx.set_global(Theme::for_family(themes::DEFAULT_THEME, false, cx));
 }

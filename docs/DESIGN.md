@@ -29,5 +29,8 @@ screenshots in `.ref/zeron/docs/screenshots/`):
   All honor `reduce_motion`.
 - Status colors: emerald add, red delete, amber modified, blue renamed, at 10% washes in diffs.
 
+Color themes are JSON files (`crates/ui/assets/themes/<id>.json`); see THEMES.md for the format and
+ARCHITECTURE.md, "Color themes", for the implementation.
+
 To add a component, put it in `crates/ui/src/components.rs`, read colors only
 from `Theme`, give hover states a `.transitions(..)`, and check it with a `--snapshot`.
