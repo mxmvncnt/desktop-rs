@@ -47,7 +47,15 @@ impl StashHeader {
             .flex_1()
             .min_w_0()
             .gap(px(6.0))
-            .child(div().truncate().text_size(px(15.0)).font_weight(gpui::FontWeight::SEMIBOLD).child(s.title()))
+            .child(
+                div()
+                    .id("stash-title")
+                    .tooltip(gd_ui::tooltip(s.title()))
+                    .truncate()
+                    .text_size(px(15.0))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child(s.title()),
+            )
             .child(
                 div()
                     .flex()

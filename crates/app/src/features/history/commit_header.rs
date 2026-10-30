@@ -8,7 +8,7 @@ use super::message_resize::MessageDrag;
 use super::message_resize::MSG_DEFAULT_MAX;
 use crate::components::DiffStat;
 use crate::workspace::Workspace;
-use crate::utils::text::{authors_text, body_without_trailers};
+use crate::utils::text::{authors_list, authors_text, body_without_trailers, full_date};
 use crate::utils::text::relative_time;
 use crate::utils::text::plural;
 
@@ -109,7 +109,14 @@ impl CommitHeader {
             .gap(px(14.0))
             .text_size(px(12.0))
             .text_color(theme.text_faint)
-            .child(div().min_w_0().truncate().child(authors_text(c)))
+            .child(
+                div()
+                    .id("commit-authors")
+                    .tooltip(gd_ui::tooltip(authors_list(c)))
+                    .min_w_0()
+                    .truncate()
+                    .child(authors_text(c)),
+            )
             .child(
                 div()
                     .flex()
@@ -119,7 +126,7 @@ impl CommitHeader {
                     .font_family(theme.font_mono.clone())
                     .child(c.short_sha.clone()),
             )
-            .child(relative_time(c.time))
+            .child(div().id("commit-time").tooltip(gd_ui::tooltip(full_date(c.time))).child(relative_time(c.time)))
             .child(format!("{} changed file{}", self.n_files, plural(self.n_files as u32)))
             .child(DiffStat { added: self.stats.added, deleted: self.stats.deleted })
     }

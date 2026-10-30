@@ -6,7 +6,7 @@ use gpui::{App, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelu
 
 use super::state::ClickKind;
 use crate::repo::RepoModel;
-use crate::utils::text::authors_text;
+use crate::utils::text::{authors_list, authors_text, full_date};
 use crate::utils::text::relative_time;
 use crate::workspace::Workspace;
 
@@ -59,6 +59,8 @@ impl RenderOnce for CommitRow {
             .child(self.title_line(&theme))
             .child(
                 div()
+                    .id(("commit-meta", ix))
+                    .tooltip(gd_ui::tooltip(format!("{}\n{}", authors_list(&self.commit), full_date(self.commit.time))))
                     .truncate()
                     .text_size(px(11.5))
                     .text_color(theme.text_faint)
@@ -90,6 +92,8 @@ impl CommitRow {
             .gap(px(6.0))
             .child(
                 div()
+                    .id(("commit-title", self.ix))
+                    .tooltip(gd_ui::tooltip(self.commit.summary.clone()))
                     .flex_1()
                     .min_w_0()
                     .truncate()

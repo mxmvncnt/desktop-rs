@@ -39,6 +39,8 @@ impl RenderOnce for StashRow {
             .rounded(px(6.0))
             .child(
                 div()
+                    .id(("stash-title", stash.index))
+                    .tooltip(gd_ui::tooltip(stash.title()))
                     .truncate()
                     .text_size(px(13.0))
                     .text_color(if here || selected { theme.text } else { theme.text_muted })

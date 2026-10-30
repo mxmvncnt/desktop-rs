@@ -11,17 +11,24 @@ pub struct Tooltip {
 impl Render for Tooltip {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::of(cx);
-        div()
-            .px(px(8.0))
-            .py(px(5.0))
-            .rounded(px(6.0))
-            .bg(theme.surface_overlay)
-            .border_1()
-            .border_color(theme.border_strong)
-            .shadow_md()
-            .text_size(px(12.0))
-            .text_color(theme.text)
-            .child(self.text.clone())
+        // GPUI anchors tooltips just below-right of the cursor and exposes no offset. A zero-height
+        // anchor with the real box pinned to its bottom edge makes the tooltip sit above the cursor.
+        div().relative().h(px(0.0)).child(
+            div()
+                .absolute()
+                .bottom(px(6.0))
+                .whitespace_nowrap()
+                .px(px(8.0))
+                .py(px(5.0))
+                .rounded(px(6.0))
+                .bg(theme.surface_overlay)
+                .border_1()
+                .border_color(theme.border_strong)
+                .shadow_md()
+                .text_size(px(12.0))
+                .text_color(theme.text)
+                .child(self.text.clone()),
+        )
     }
 }
 

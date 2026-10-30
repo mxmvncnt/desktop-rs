@@ -47,6 +47,20 @@ pub fn authors_text(c: &Commit) -> String {
     }
 }
 
+/// Every author and co-author, one per line, for tooltips.
+pub fn authors_list(c: &Commit) -> String {
+    let mut lines = vec![format!("{} <{}>", c.author_name, c.author_email)];
+    lines.extend(c.co_authors.iter().map(|a| format!("{} <{}>", a.name, a.email)));
+    lines.join("\n")
+}
+
+/// Full local date and time from unix seconds, e.g. "Thursday, October 29, 2026 at 14:03".
+pub fn full_date(unix: i64) -> String {
+    chrono::DateTime::from_timestamp(unix, 0)
+        .map(|d| d.with_timezone(&chrono::Local).format("%A, %B %-d, %Y at %H:%M").to_string())
+        .unwrap_or_default()
+}
+
 /// The commit body without `Co-authored-by:` trailer lines (shown as authors instead).
 pub fn body_without_trailers(body: &str) -> String {
     let kept: Vec<&str> = body

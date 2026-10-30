@@ -69,6 +69,8 @@ impl RenderOnce for FileRow {
             .children(self.leading)
             .child(
                 div()
+                    .id(("file-path", self.ix))
+                    .tooltip(gd_ui::tooltip(self.change.path.clone()))
                     .flex()
                     .flex_1()
                     .min_w_0()
