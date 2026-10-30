@@ -107,15 +107,13 @@ impl Workspace {
         if url.is_empty() {
             return;
         }
-        let paths = cx.prompt_for_paths(directory_prompt("Clone into…"));
+        let home = dirs::home_dir().unwrap_or_default();
+        let dest = cx.prompt_for_new_path(&home, Some(&clone_dir_name(&url)));
         self.overlays.clear();
         cx.spawn(async move |this, cx| {
-            let Ok(Ok(Some(paths))) = paths.await else { return };
-            let Some(parent) = paths.into_iter().next() else { return };
-            let dest = parent.join(clone_dir_name(&url));
-            this.update(cx, |this, cx| {
-                this.show_notice(format!("Cloning {}…", clone_dir_name(&url)), cx)
-            })
+            let Ok(Ok(Some(dest))) = dest.await else { return };
+            let name = dest.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            this.update(cx, |this, cx| this.show_notice(format!("Cloning {name}…"), cx))
             .ok();
             let res = cx
                 .background_spawn({

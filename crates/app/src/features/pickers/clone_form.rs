@@ -39,7 +39,7 @@ impl RenderOnce for CloneForm {
                 div()
                     .text_size(px(12.0))
                     .text_color(theme.text_faint)
-                    .child("You'll pick the parent folder next."),
+                    .child("You'll pick the destination folder next."),
             )
             .child(
                 Button::new("do-clone")
