@@ -38,6 +38,7 @@
 
 - [x] Account per repository ("Account for this repository": Automatic by remote host, or a pick saved in `repo_accounts.toml`), `account_for_repo` for the CI page.
 - [x] Sign in with the browser (GitHub/GHE device flow, GitLab/Gitea/Forgejo PKCE), token refresh, Gitea and Forgejo providers (see ARCHITECTURE §OAuth). Not verified against live servers.
+- [x] Seamless sign-in: built-in client ids in source, Gitea/Forgejo preregistered app, "Create token" fallback for GHE / self-managed GitLab, custom client id under "Advanced". **Maintainer TODO:** register the github.com and gitlab.com apps and paste the ids in `BUILTIN_CLIENT_IDS` (`accounts/model.rs`); until then those two use the token fallback.
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
       (the per-repo override and account pick moved to repository settings), provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
       add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the secret store (`accounts/secrets.rs`: `oo7` Secret Service on Linux, `keyring` native backends on macOS/Windows; if the store is unavailable they go to `<config>/secrets.toml`, 0600, and the page warns). Token input is not masked (gpui-ce
@@ -45,7 +46,7 @@
 - [x] Credentials wired: `gd_git::set_credentials` registers tokens; every `.network()` git command gets per-host
       `credential.https://<host>.helper` via `GIT_CONFIG_COUNT/KEY/VALUE` env (secret only in the child env). HTTPS only; SSH untouched.
 - Verify: `cargo test -p gd-git --test identity` (scratch `GIT_CONFIG_GLOBAL`);
-  snapshot views `settings-accounts[-light|-form|-edit|-norepo]`.
+  snapshot views `settings-accounts[-light|-form|-edit|-norepo|-oauth-waiting|-oauth-selfhosted|-oauth-token|-oauth-advanced]`.
 
 ## Settings modal + light/dark/system theme (2026-10-21)
 

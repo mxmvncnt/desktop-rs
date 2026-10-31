@@ -6,6 +6,7 @@
 use gd_git::HostCredential;
 use serde::{Deserialize, Serialize};
 
+use super::oauth::{GITEA_REDIRECT_URI, REDIRECT_URI};
 use super::secrets;
 use super::token::TokenSecret;
 use crate::features::settings::config_dir;
@@ -71,17 +72,45 @@ impl Provider {
     pub fn uses_device_flow(self) -> bool {
         matches!(self, Self::GitHub | Self::GitHubEnterprise)
     }
-
-    /// OAuth client id compiled in for github.com / gitlab.com (`GD_GITHUB_CLIENT_ID`, `GD_GITLAB_CLIENT_ID`).
-    pub fn builtin_client_id(self) -> Option<&'static str> {
-        match self {
-            Self::GitHub => option_env!("GD_GITHUB_CLIENT_ID"),
-            Self::GitLab => option_env!("GD_GITLAB_CLIENT_ID"),
-            _ => None,
+    /// The OAuth app to sign in with on `host`: the user's own (`custom` client id) wins over the built-in
+    /// one of the host, then the app Gitea and Forgejo preregister on every instance. `None` = no app
+    /// is available, the user pastes a token instead.
+    pub fn oauth_app(self, host: &str, custom: &str) -> Option<OAuthApp> {
+        let custom = custom.trim();
+        if !custom.is_empty() {
+            return Some(OAuthApp { client_id: custom.into(), redirect_uri: REDIRECT_URI });
         }
-        .filter(|id| !id.is_empty())
+        let gitea = matches!(self, Self::Gitea | Self::Forgejo);
+        let builtin = BUILTIN_CLIENT_IDS.iter().find(|(h, id)| *h == host && !id.is_empty()).map(|(_, id)| *id);
+        let client_id = builtin.or(gitea.then_some(GITEA_CLIENT_ID))?;
+        Some(OAuthApp { client_id: client_id.into(), redirect_uri: if gitea { GITEA_REDIRECT_URI } else { REDIRECT_URI } })
     }
 }
+
+/// An OAuth app to sign in with and the redirect URI of the loopback listener it accepts.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OAuthApp {
+    pub client_id: String,
+    pub redirect_uri: &'static str,
+}
+
+/// Client ids are public (device flow and PKCE need no secret). An empty id = not registered yet.
+const BUILTIN_CLIENT_IDS: [(&str, &str); 4] = [
+    // TODO(maintainer): register a GitHub OAuth App (Settings > Developer settings > OAuth Apps), tick
+    // "Enable Device Flow", any callback URL, and paste its client id here.
+    ("github.com", ""),
+    // TODO(maintainer): register a GitLab application on gitlab.com (User settings > Applications):
+    // confidential unchecked, scope `api`, redirect URI `http://127.0.0.1:47123/callback`.
+    ("gitlab.com", ""),
+    // Optional (until then the Gitea/Forgejo default app below is used): register an OAuth2 app on the
+    // host, confidential unchecked, redirect URI `http://127.0.0.1:47123` (no path).
+    ("codeberg.org", ""),
+    ("gitea.com", ""),
+];
+
+/// "git-credential-oauth", preregistered public app of Gitea and Forgejo (`DEFAULT_APPLICATIONS`);
+/// its redirect URI is `http://127.0.0.1`, which accepts any loopback port but no path.
+const GITEA_CLIENT_ID: &str = "a4792ccc-144e-407e-86c9-5e7d8d9c3269";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Account {

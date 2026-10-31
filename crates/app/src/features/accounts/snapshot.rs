@@ -37,7 +37,9 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
     let editing = view.ends_with("edit");
     let waiting = view.ends_with("oauth-waiting");
     let selfhosted = view.ends_with("oauth-selfhosted");
-    let show_form = view.ends_with("form") || editing || waiting || selfhosted;
+    let advanced = view.ends_with("oauth-advanced");
+    let token_fallback = view.ends_with("oauth-token") || advanced;
+    let show_form = view.ends_with("form") || editing || waiting || selfhosted || token_fallback;
     ws.accounts.update(cx, |ui, cx| {
         ui.accounts = vec![
             acct("1", Provider::GitHub, "Personal", "github.com", "octocat", "ghp_x"),
@@ -59,7 +61,7 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
         ui.identity.remote_host = Some("github.com".into());
         if show_form {
             set(&inp.display_name, if editing { "Work" } else { "" }, cx);
-            let host = if editing {
+            let host = if editing || token_fallback {
                 "github.corp.example.com"
             } else if selfhosted {
                 "gitea.example.com"
@@ -68,7 +70,7 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
             };
             set(&inp.host, host, cx);
             set(&inp.copyable, if waiting { "WDJB-MJHT" } else { super::oauth::REDIRECT_URI }, cx);
-            let provider = match (editing, selfhosted) {
+            let provider = match (editing || token_fallback, selfhosted) {
                 (true, _) => Provider::GitHubEnterprise,
                 (_, true) => Provider::Gitea,
                 _ => Provider::GitHub,
@@ -79,6 +81,7 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
                 provider,
                 has_token: editing,
                 error: None,
+                advanced,
                 waiting: waiting.then(|| Waiting { cancel: Default::default(), url: Some("https://github.com/login/device".into()) }),
                 signed_in: None,
             });

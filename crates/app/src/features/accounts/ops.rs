@@ -163,6 +163,7 @@ impl AccountsStore {
             provider,
             has_token: acct.is_some_and(|a| !a.token.is_empty()),
             error: None,
+            advanced: false,
             waiting: None,
             signed_in: None,
         });
@@ -188,6 +189,13 @@ impl AccountsStore {
         cx.notify();
     }
 
+    pub(super) fn toggle_advanced(&mut self, cx: &mut Context<Self>) {
+        if let Some(form) = &mut self.form {
+            form.advanced = !form.advanced;
+        }
+        cx.notify();
+    }
+
     pub(super) fn close_account_form(&mut self, cx: &mut Context<Self>) {
         self.stop_signin();
         self.form = None;
@@ -206,6 +214,23 @@ impl AccountsStore {
         }
         if name.is_empty() {
             name = if username.is_empty() { host.clone() } else { format!("{username}@{host}") };
+        }
+        let looks_up_username = form.provider.has_oauth() && form.signed_in.is_none() && !typed_token.is_empty() && username.is_empty();
+        if looks_up_username {
+            let (provider, token) = (form.provider, typed_token);
+            cx.spawn(async move |this, cx| {
+                let res = cx.background_spawn(async move { oauth::username(provider, &host, &token) }).await;
+                this.update(cx, |this, cx| match res {
+                    Ok(name) => {
+                        set_input(&this.inputs.username, &name, cx);
+                        this.save_account(cx);
+                    }
+                    Err(e) => this.account_form_error(&e, cx),
+                })
+                .ok();
+            })
+            .detach();
+            return;
         }
         self.stop_signin();
         let secret = form
@@ -253,16 +278,15 @@ impl AccountsStore {
         let Some(form) = &self.form else { return };
         let provider = form.provider;
         let host = normalize_host(&input_text(&self.inputs.host, cx));
-        let client_id = provider.builtin_client_id().map_or_else(|| input_text(&self.inputs.client_id, cx), str::to_string);
         if host.is_empty() {
             return self.account_form_error("Enter a host, e.g. github.com", cx);
         }
-        if client_id.is_empty() {
+        let Some(app) = provider.oauth_app(&host, &input_text(&self.inputs.client_id, cx)) else {
             return self.account_form_error("Enter the OAuth client ID of your app", cx);
-        }
+        };
         let cancel = Arc::new(AtomicBool::new(false));
         let (tx, rx) = smol::channel::unbounded();
-        oauth::sign_in(provider, host.clone(), client_id, cancel.clone(), tx);
+        oauth::sign_in(provider, host.clone(), app, cancel.clone(), tx);
         if let Some(form) = &mut self.form {
             (form.error, form.signed_in) = (None, None);
             form.waiting = Some(Waiting { cancel: cancel.clone(), url: None });

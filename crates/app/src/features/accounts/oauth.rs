@@ -13,11 +13,14 @@ use oauth2::{
 };
 use smol::channel::Sender;
 
-use super::model::Provider;
+use super::model::{OAuthApp, Provider};
 use super::token::{TokenSecret, http};
 
 /// Fixed so the user can register it once in their OAuth app.
 pub const REDIRECT_URI: &str = "http://127.0.0.1:47123/callback";
+
+/// Redirect of the apps Gitea and Forgejo preregister: no path.
+pub const GITEA_REDIRECT_URI: &str = "http://127.0.0.1:47123";
 
 /// How long the loopback listener waits for the browser.
 const CALLBACK_WAIT_SECS: u32 = 300;
@@ -38,7 +41,7 @@ fn scopes(provider: Provider) -> &'static [&'static str] {
 
 /// Run the sign-in of `provider` on `host` off-thread. `cancel` stops the loopback listener
 /// (the device flow just keeps polling until its code expires; its result is ignored).
-pub fn sign_in(provider: Provider, host: String, client_id: String, cancel: Arc<AtomicBool>, tx: Sender<Progress>) {
+pub fn sign_in(provider: Provider, host: String, app: OAuthApp, cancel: Arc<AtomicBool>, tx: Sender<Progress>) {
     std::thread::spawn(move || {
         let base = format!("https://{host}");
         let (auth, token) = match provider {
@@ -47,9 +50,9 @@ pub fn sign_in(provider: Provider, host: String, client_id: String, cancel: Arc<
         };
         let (auth_url, token_url) = (format!("{base}/{auth}"), format!("{base}/{token}"));
         let res = if provider.uses_device_flow() {
-            device_flow(provider, &client_id, &auth_url, &token_url, &format!("{base}/login/device/code"), &tx)
+            device_flow(provider, &app.client_id, &auth_url, &token_url, &format!("{base}/login/device/code"), &tx)
         } else {
-            code_flow(provider, &client_id, &auth_url, &token_url, &cancel, &tx)
+            code_flow(provider, &app, &auth_url, &token_url, &cancel, &tx)
         };
         let res = res.and_then(|secret| {
             let name = username(provider, &host, &secret.access_token)?;
@@ -92,23 +95,24 @@ fn device_flow(
 
 fn code_flow(
     provider: Provider,
-    client_id: &str,
+    app: &OAuthApp,
     auth_url: &str,
     token_url: &str,
     cancel: &AtomicBool,
     tx: &Sender<Progress>,
 ) -> Result<TokenSecret, String> {
     let err = |e: &dyn std::fmt::Display| e.to_string();
-    let client = BasicClient::new(ClientId::new(client_id.into()))
+    let client = BasicClient::new(ClientId::new(app.client_id.clone()))
         .set_auth_uri(AuthUrl::new(auth_url.into()).map_err(|e| err(&e))?)
         .set_token_uri(TokenUrl::new(token_url.into()).map_err(|e| err(&e))?)
-        .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.into()).map_err(|e| err(&e))?);
+        .set_redirect_uri(RedirectUrl::new(app.redirect_uri.into()).map_err(|e| err(&e))?);
     let (challenge, verifier) = PkceCodeChallenge::new_random_sha256();
     let (url, state) = client
         .authorize_url(CsrfToken::new_random)
         .set_pkce_challenge(challenge)
         .add_scopes(scopes(provider).iter().map(|s| Scope::new(s.to_string())))
         .url();
+    let redirect = url::Url::parse(app.redirect_uri).map_err(|e| err(&e))?;
     let server = tiny_http::Server::http("127.0.0.1:47123").map_err(|e| format!("cannot listen on 127.0.0.1:47123: {e}"))?;
     tx.send_blocking(Progress::Open { url: url.to_string(), user_code: None }).ok();
 
@@ -119,8 +123,8 @@ fn code_flow(
             return Err("cancelled".into());
         }
         let Some(request) = server.recv_timeout(Duration::from_secs(1)).map_err(|e| err(&e))? else { continue };
-        let callback = url::Url::parse(REDIRECT_URI).and_then(|base| base.join(request.url())).map_err(|e| err(&e))?;
-        let ours = callback.path() == "/callback";
+        let callback = redirect.join(request.url()).map_err(|e| err(&e))?;
+        let ours = callback.path() == redirect.path();
         let query = |key: &str| callback.query_pairs().find(|(k, _)| k == key).map(|(_, v)| v.into_owned());
         let body = if ours { "You can close this tab and return to desktop-rs." } else { "Not found" };
         request.respond(tiny_http::Response::from_string(body).with_header(page.clone())).ok();
@@ -142,11 +146,11 @@ fn code_flow(
         .set_pkce_verifier(verifier)
         .request(&http())
         .map_err(|e| err(&e))?;
-    Ok(TokenSecret::from_response(&res, "", client_id, token_url))
+    Ok(TokenSecret::from_response(&res, "", &app.client_id, token_url))
 }
 
 /// The login of the token's owner (`/user` of the provider's API).
-fn username(provider: Provider, host: &str, token: &str) -> Result<String, String> {
+pub(super) fn username(provider: Provider, host: &str, token: &str) -> Result<String, String> {
     let (url, field) = match provider {
         Provider::GitHub => ("https://api.github.com/user".to_string(), "login"),
         Provider::GitHubEnterprise => (format!("https://{host}/api/v3/user"), "login"),

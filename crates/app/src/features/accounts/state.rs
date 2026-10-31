@@ -23,6 +23,8 @@ pub struct AccountForm {
     /// The stored account already has a token (empty token input keeps it).
     pub has_token: bool,
     pub error: Option<String>,
+    /// The "use your own OAuth app" disclosure is open.
+    pub advanced: bool,
     /// A browser sign-in is in progress.
     pub waiting: Option<Waiting>,
     /// The token of a finished sign-in, saved with the account.

@@ -29,3 +29,24 @@ fn credential_needs_token_and_defaults_username() {
     a.provider = Provider::GitLab;
     assert_eq!(a.credential().unwrap().username, "oauth2");
 }
+
+#[test]
+fn oauth_app_resolution_order() {
+    let id = |p: Provider, host, custom| p.oauth_app(host, custom).map(|a| a.client_id);
+    // custom > built-in > Gitea default > none (paste a token)
+    assert_eq!(id(Provider::Forgejo, "codeberg.org", " mine "), Some("mine".into()));
+    assert_eq!(id(Provider::Forgejo, "codeberg.org", ""), Some(GITEA_CLIENT_ID.into()));
+    assert_eq!(id(Provider::Gitea, "git.example.com", ""), Some(GITEA_CLIENT_ID.into()));
+    assert_eq!(id(Provider::GitHubEnterprise, "ghe.example.com", ""), None);
+    assert_eq!(id(Provider::GitLab, "gitlab.example.com", "x"), Some("x".into()));
+    // an empty built-in id (not registered yet) counts as none
+    assert_eq!(id(Provider::GitHub, "github.com", ""), None);
+}
+
+#[test]
+fn redirect_uri_depends_on_the_app() {
+    let uri = |p: Provider, custom| p.oauth_app("git.example.com", custom).unwrap().redirect_uri;
+    assert_eq!(uri(Provider::Gitea, ""), GITEA_REDIRECT_URI);
+    assert_eq!(uri(Provider::Gitea, "mine"), REDIRECT_URI);
+    assert_eq!(uri(Provider::GitLab, "mine"), REDIRECT_URI);
+}

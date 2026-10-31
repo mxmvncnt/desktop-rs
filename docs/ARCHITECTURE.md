@@ -544,7 +544,7 @@ warning in the Accounts list. Never add other fallbacks.
 ## OAuth sign-in and token refresh (accounts)
 
 GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the browser (`accounts/oauth.rs`,
-`oauth2` crate with the `ureq` client; no reqwest/tokio). The user never types a token. Bitbucket and Generic keep the token field.
+`oauth2` crate with the `ureq` client; no reqwest/tokio). The user never types a token, except where no shared app exists (token fallback below). Bitbucket and Generic keep the token field.
 
 - GitHub / GHE: device flow, client id only. The form shows the code (a read-only input, selectable) and opens
   the verification URL. Scopes `repo workflow read:user`.
@@ -556,11 +556,22 @@ GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the b
   listener and makes later results stale (ignored). The device flow keeps polling until its code expires.
 - The only API call is `/user` (GitHub: `api.github.com` or `https://<host>/api/v3`; GitLab `/api/v4`;
   Gitea/Forgejo `/api/v1`) to fill the username. Hosts are assumed to be `https`.
-- Client ids: github.com and gitlab.com use ids compiled in from the env vars `GD_GITHUB_CLIENT_ID` /
-  `GD_GITLAB_CLIENT_ID` (`option_env!`, set at build time). Without one, and for every self-hosted host, the form
-  asks for the "OAuth client ID" and (PKCE providers) shows the redirect URI to register. The user registers an OAuth app
-  on the instance: GitHub Enterprise (OAuth app, enable the device flow), GitLab (non-confidential app, scope `api`,
-  redirect URI above), Gitea/Forgejo (OAuth2 application, non-confidential, redirect URI above).
+- Client ids are public (no secret), so they are source constants in `accounts/model.rs`. `Provider::oauth_app(host, custom)`
+  resolves: custom client id typed in "Advanced: use your own OAuth app" > `BUILTIN_CLIENT_IDS` entry of the host (empty = not
+  registered) > Gitea/Forgejo default app > `None`. `None` (GHE, self-managed GitLab, or github.com/gitlab.com while unregistered)
+  means the form shows "Create token" (opens `https://<host>/settings/tokens/new?scopes=repo,workflow,read:user&description=desktop-rs`
+  or GitLab `/-/user_settings/personal_access_tokens?name=desktop-rs&scopes=api`) and the token field; saving a pasted token
+  with an empty username looks `/user` up first. Pasted tokens have no refresh token (`Account.oauth = false`).
+- Gitea and Forgejo preregister public apps (`DEFAULT_APPLICATIONS`, `models/auth/oauth2.go` `BuiltinApplications`); we use
+  git-credential-oauth `a4792ccc-144e-407e-86c9-5e7d8d9c3269`, redirect `http://127.0.0.1` (no path, any loopback port for
+  public clients, http only, IP literal only). So that app uses `GITEA_REDIRECT_URI` `http://127.0.0.1:47123` and the
+  listener accepts the path `/`; every other app uses `REDIRECT_URI` (`/callback`). Unverified: that the stored apps are
+  really public (`ConfidentialClient` column default is TRUE, `Init` does not set it; git-credential-oauth works with them in
+  practice) and that an instance has not disabled them (`DEFAULT_APPLICATIONS=`). codeberg.org and gitea.com use that default app
+  until own apps are registered there (another project's registered app ids are deliberately not reused).
+- Maintainer TODO: register the GitHub OAuth App (device flow enabled) and the gitlab.com application (non-confidential,
+  scope `api`, redirect `http://127.0.0.1:47123/callback`) and paste the ids in `BUILTIN_CLIENT_IDS`. Own apps on codeberg.org /
+  gitea.com (public client, redirect `http://127.0.0.1:47123`) are optional.
 - The secret per account is a JSON `TokenSecret` (`accounts/token.rs`: access/refresh token, `expires_at`, client id,
   token URL; bare strings from older versions still parse). `Account.oauth` marks signed-in accounts.
 - `accounts::fresh_token(account_id) -> Option<String>` is blocking (secret store + network): it refreshes
