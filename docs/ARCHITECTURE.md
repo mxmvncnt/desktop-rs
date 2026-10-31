@@ -78,6 +78,12 @@ Enterprise -> `https://<host>/api/v3`, GitLab `/api/v4`, Gitea and Forgejo `/api
 | cancel job | no | yes | no | no |
 | play manual job | no | yes | no | no |
 
+Logs (`log.rs`): `parse_log(raw) -> Log { lines, sections }`. A `Line` is a `String` plus `Span`s (byte ranges covering the whole text, with
+`Style { fg, bg: Option<Color::{Indexed, Rgb}>, bold, italic, underline }`) and the GitHub/Gitea timestamp if there was one. SGR is parsed with `vte`; other control
+sequences are dropped; `\r` keeps the last segment; SGR state carries across lines. Sections come from GitLab `section_start`/`section_end` (nested,
+`collapsed=true`, duration from the timestamps) and GitHub `##[group]`/`##[endgroup]` (collapsed by default); `Section { header, end, depth, .. }`
+index into `lines` (body = `header + 1 .. end`), so a virtualized list can hide collapsed ranges without copying. Unclosed sections end at the last line.
+
 Assumed minimum versions (swagger checked against gitea.com 29.0-dev and codeberg.org Forgejo 16-dev; older servers may lack
 endpoints and answer `NotFound`): GitHub REST 2022-11-28 (Enterprise Server 3.x), GitLab 15+, Gitea 1.25 (runs, jobs, logs, rerun;
 `status`, `limit`), Forgejo 12+ (actions runs and jobs API).

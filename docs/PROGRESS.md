@@ -225,4 +225,4 @@ echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new 
 - ✅ Force push after rewriting pushed history: toolbar button switches to "Force push" (`push_force`, `WorkingStatus::rewritten`) and opens a preview modal (`features/force_push/`): commits pushed / removed from the remote, added/modified/deleted/renamed file counts, per-file diff, Cancel / Force push. Snapshot view `force-push`.
 
 ## CI pipelines
-- API crate done (`crates/forge`, `gd-forge`): client, normalized model and stage derivation for GitHub, GitLab, Gitea and Forgejo (see ARCHITECTURE, "Forge crate"). UI pending (GitLab-style pipelines page, needs accounts/OAuth tokens).
+- API crate done (`crates/forge`, `gd-forge`): client, normalized model and stage derivation for GitHub, GitLab, Gitea and Forgejo (see ARCHITECTURE, "Forge crate"). Job log parser done too (`parse_log`). UI pending (GitLab-style pipelines page, needs accounts/OAuth tokens).

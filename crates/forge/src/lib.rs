@@ -9,11 +9,13 @@ mod client;
 mod error;
 mod forgejo;
 mod gitlab;
+mod log;
 mod model;
 mod repo_ref;
 mod workflow;
 
 pub use client::{Client, Forge};
+pub use log::{Color, Line, Log, Section, Span, Style, parse_log};
 pub use error::{Error, Result};
 pub use model::*;
 pub use repo_ref::RepoRef;
