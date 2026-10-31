@@ -15,19 +15,30 @@ pub enum Provider {
     GitHub,
     GitHubEnterprise,
     GitLab,
+    Gitea,
+    Forgejo,
     Bitbucket,
     Generic,
 }
 
 impl Provider {
-    pub const ALL: [Provider; 5] =
-        [Self::GitHub, Self::GitHubEnterprise, Self::GitLab, Self::Bitbucket, Self::Generic];
+    pub const ALL: [Provider; 7] = [
+        Self::GitHub,
+        Self::GitHubEnterprise,
+        Self::GitLab,
+        Self::Gitea,
+        Self::Forgejo,
+        Self::Bitbucket,
+        Self::Generic,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
             Self::GitHub => "GitHub",
             Self::GitHubEnterprise => "Enterprise",
             Self::GitLab => "GitLab",
+            Self::Gitea => "Gitea",
+            Self::Forgejo => "Forgejo",
             Self::Bitbucket => "Bitbucket",
             Self::Generic => "Generic",
         }
@@ -46,7 +57,7 @@ impl Provider {
             Self::GitHub => Some("github.com"),
             Self::GitLab => Some("gitlab.com"),
             Self::Bitbucket => Some("bitbucket.org"),
-            Self::GitHubEnterprise | Self::Generic => None,
+            Self::GitHubEnterprise | Self::Gitea | Self::Forgejo | Self::Generic => None,
         }
     }
 }

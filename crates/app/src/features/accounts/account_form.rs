@@ -24,12 +24,14 @@ impl AccountForm {
             .iter()
             .fold(Tabs::new("account-provider", selected), |t, p| t.tab(p.label(), None))
             .on_select(move |ix, _, cx| store.update(cx, |this, cx| this.set_account_provider(Provider::ALL[ix], cx)));
-        div().w(px(420.0)).child(tabs)
+        div().w_full().child(tabs)
     }
 
     fn host_field(&self) -> FieldRow {
         let hint = match self.form.provider {
             Provider::GitHubEnterprise => "github.example.com",
+            Provider::Gitea => "gitea.example.com",
+            Provider::Forgejo => "codeberg.org",
             Provider::Generic => "git.example.com",
             _ => "",
         };
