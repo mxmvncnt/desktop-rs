@@ -39,7 +39,7 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
     let selfhosted = view.ends_with("oauth-selfhosted");
     let advanced = view.ends_with("oauth-advanced");
     let token_fallback = view.ends_with("oauth-token") || advanced;
-    let show_form = view.ends_with("form") || editing || waiting || selfhosted || token_fallback;
+    let show_form = view.ends_with("form") || editing || waiting || selfhosted || token_fallback || view.ends_with("provider-menu");
     ws.accounts.update(cx, |ui, cx| {
         ui.accounts = vec![
             acct("1", Provider::GitHub, "Personal", "github.com", "octocat", "ghp_x"),
@@ -82,6 +82,7 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
                 has_token: editing,
                 error: None,
                 advanced,
+                provider_menu: view.ends_with("provider-menu"),
                 waiting: waiting.then(|| Waiting { cancel: Default::default(), url: Some("https://github.com/login/device".into()) }),
                 signed_in: None,
             });

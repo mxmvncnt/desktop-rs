@@ -1,9 +1,9 @@
 //! Add / edit an account.
 
-use gd_ui::{Button, Tabs, Theme};
-use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
+use gd_ui::{Button, Icon, Theme, overlay_card};
+use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, deferred, div, px};
 
-use crate::components::FieldRow;
+use crate::components::{BranchRow, FieldRow};
 use super::model::{OAuthApp, Provider, normalize_host};
 use super::state::{AccountForm as FormState, AccountInputs, AccountsStore};
 use super::status_text::StatusText;
@@ -17,14 +17,47 @@ pub struct AccountForm {
 
 impl AccountForm {
 
-    fn provider_tabs(&self) -> impl IntoElement + use<> {
-        let store = self.store.clone();
-        let selected = Provider::ALL.iter().position(|p| *p == self.form.provider).unwrap_or(0);
-        let tabs = Provider::ALL
-            .iter()
-            .fold(Tabs::new("account-provider", selected), |t, p| t.tab(p.label(), None))
-            .on_select(move |ix, _, cx| store.update(cx, |this, cx| this.set_account_provider(Provider::ALL[ix], cx)));
-        div().w_full().child(tabs)
+    /// Dropdown of the providers: a button and, while open, a card under it (like the PR base menu).
+    fn provider_select(&self, theme: &Theme, cx: &App) -> impl IntoElement + use<> {
+        let provider = self.form.provider;
+        let toggle = self.store.clone();
+        let rows = self.form.provider_menu.then(|| {
+            let rows = Provider::ALL.iter().enumerate().map(|(ix, p)| {
+                let (store, p) = (self.store.clone(), *p);
+                BranchRow::new("account-provider", ix, p.full_label(), move |_, cx| store.update(cx, |this, cx| this.set_account_provider(p, cx)))
+                    .icon(Icon::Globe)
+                    .height(28.0)
+                    .selected(p == provider)
+            });
+            deferred(div().absolute().top(px(36.0)).left_0().w_full().child(overlay_card(cx).p(px(4.0)).children(rows))).priority(2)
+        });
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(4.0))
+            .child(div().text_size(px(12.0)).text_color(theme.text_muted).child("Account type"))
+            .child(
+                div().relative().child(
+                    // Styled like the text fields: the value on the left, the chevron on the right.
+                    div()
+                        .id("account-provider")
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .h(px(32.0))
+                        .px(px(10.0))
+                        .rounded(px(gd_ui::theme::CONTROL_RADIUS + 1.0))
+                        .bg(theme.input_bg)
+                        .border_1()
+                        .border_color(theme.border)
+                        .cursor_pointer()
+                        .hover_style(|s| s.border_color(theme.text_faint))
+                        .child(provider.full_label())
+                        .child(gd_ui::icon(Icon::ChevronDown).size(px(14.0)).text_color(theme.text_muted))
+                        .on_click(move |_, _, cx| toggle.update(cx, |this, cx| this.toggle_provider_menu(cx))),
+                )
+                .children(rows),
+            )
     }
 
     fn host_field(&self) -> FieldRow {
@@ -173,7 +206,7 @@ impl RenderOnce for AccountForm {
             .flex_col()
             .gap(px(10.0))
             .child(div().font_weight(gpui::FontWeight::MEDIUM).child(if editing { "Edit account" } else { "Add account" }))
-            .child(self.provider_tabs())
+            .child(self.provider_select(&theme, cx))
             .child(FieldRow::new("Display name", "account-name", &inp.display_name, "Work"))
             .child(self.host_field())
             .children(oauth.then(|| self.oauth_section(app.as_ref(), &theme, cx)))

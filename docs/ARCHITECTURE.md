@@ -556,6 +556,7 @@ GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the b
   listener and makes later results stale (ignored). The device flow keeps polling until its code expires.
 - The only API call is `/user` (GitHub: `api.github.com` or `https://<host>/api/v3`; GitLab `/api/v4`;
   Gitea/Forgejo `/api/v1`) to fill the username. Hosts are assumed to be `https`.
+- The account type is a dropdown (`provider_select` in `account_form.rs`: a `Button` plus a deferred `overlay_card` of `BranchRow`s, state `AccountForm.provider_menu`, same pattern as the PR base menu).
 - Client ids are public (no secret), so they are source constants in `accounts/model.rs`. `Provider::oauth_app(host, custom)`
   resolves: custom client id typed in "Advanced: use your own OAuth app" > `BUILTIN_CLIENT_IDS` entry of the host (empty = not
   registered) > Gitea/Forgejo default app > `None`. `None` (GHE, self-managed GitLab, or github.com/gitlab.com while unregistered)

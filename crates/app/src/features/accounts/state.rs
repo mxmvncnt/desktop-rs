@@ -25,6 +25,8 @@ pub struct AccountForm {
     pub error: Option<String>,
     /// The "use your own OAuth app" disclosure is open.
     pub advanced: bool,
+    /// The account type dropdown is open.
+    pub provider_menu: bool,
     /// A browser sign-in is in progress.
     pub waiting: Option<Waiting>,
     /// The token of a finished sign-in, saved with the account.

@@ -46,7 +46,7 @@
 - [x] Credentials wired: `gd_git::set_credentials` registers tokens; every `.network()` git command gets per-host
       `credential.https://<host>.helper` via `GIT_CONFIG_COUNT/KEY/VALUE` env (secret only in the child env). HTTPS only; SSH untouched.
 - Verify: `cargo test -p gd-git --test identity` (scratch `GIT_CONFIG_GLOBAL`);
-  snapshot views `settings-accounts[-light|-form|-edit|-norepo|-oauth-waiting|-oauth-selfhosted|-oauth-token|-oauth-advanced]`.
+  snapshot views `settings-accounts[-light|-form|-edit|-norepo|-oauth-waiting|-oauth-selfhosted|-oauth-token|-oauth-advanced|-provider-menu]`.
 
 ## Settings modal + light/dark/system theme (2026-10-21)
 

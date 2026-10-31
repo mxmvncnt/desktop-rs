@@ -164,6 +164,7 @@ impl AccountsStore {
             has_token: acct.is_some_and(|a| !a.token.is_empty()),
             error: None,
             advanced: false,
+            provider_menu: false,
             waiting: None,
             signed_in: None,
         });
@@ -176,6 +177,7 @@ impl AccountsStore {
         set_input(&self.inputs.copyable, oauth::REDIRECT_URI, cx);
         let Some(form) = &mut self.form else { return };
         form.provider = provider;
+        form.provider_menu = false;
         form.signed_in = None;
         // Hosted providers have a fixed host; custom ones keep what was typed
         // unless it was a fixed host of the previous choice.
@@ -185,6 +187,13 @@ impl AccountsStore {
             Some(h) => set_input(&host_input, h, cx),
             None if was_fixed => set_input(&host_input, "", cx),
             None => {}
+        }
+        cx.notify();
+    }
+
+    pub(super) fn toggle_provider_menu(&mut self, cx: &mut Context<Self>) {
+        if let Some(form) = &mut self.form {
+            form.provider_menu = !form.provider_menu;
         }
         cx.notify();
     }
