@@ -9,10 +9,12 @@
 //! the child's environment, never on a command line.
 
 use std::ffi::OsString;
-use std::sync::RwLock;
+use std::sync::{OnceLock, RwLock};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct HostCredential {
+    /// Key for the token source (see [`set_token_source`]); empty = use `token` as is.
+    pub id: String,
     /// Bare host, optionally with a port (`github.com`, `git.corp:8443`).
     pub host: String,
     pub username: String,
@@ -33,13 +35,21 @@ pub fn set_credentials(list: Vec<HostCredential>) {
     *CREDENTIALS.write().unwrap_or_else(|e| e.into_inner()) = list;
 }
 
+/// Gives the current token for a credential id (the app refreshes expiring OAuth tokens there).
+/// Called while building the environment of a network command, so it may block.
+static TOKEN_SOURCE: OnceLock<fn(&str) -> Option<String>> = OnceLock::new();
+
+pub fn set_token_source(source: fn(&str) -> Option<String>) {
+    TOKEN_SOURCE.set(source).ok();
+}
+
 /// Shell snippet git runs as `<snippet> get`; `U`/`T` are replaced by the env var names.
 const HELPER: &str = r#"!f() { test "$1" = get && printf 'username=%s\npassword=%s\n' "$U" "$T"; }; f"#;
 
 /// Environment for a network command. Each credential gets its own helper
 /// reading `GD_CRED_USER_<i>`/`GD_CRED_TOKEN_<i>`.
 pub(crate) fn env() -> Vec<(OsString, OsString)> {
-    let creds = CREDENTIALS.read().unwrap_or_else(|e| e.into_inner());
+    let creds = CREDENTIALS.read().unwrap_or_else(|e| e.into_inner()).clone();
     if creds.is_empty() {
         return Vec::new();
     }
@@ -56,7 +66,8 @@ pub(crate) fn env() -> Vec<(OsString, OsString)> {
             n += 1;
         }
         out.push((format!("GD_CRED_USER_{i}").into(), c.username.clone().into()));
-        out.push((format!("GD_CRED_TOKEN_{i}").into(), c.token.clone().into()));
+        let token = TOKEN_SOURCE.get().filter(|_| !c.id.is_empty()).and_then(|source| source(&c.id));
+        out.push((format!("GD_CRED_TOKEN_{i}").into(), token.unwrap_or_else(|| c.token.clone()).into()));
     }
     out.push(("GIT_CONFIG_COUNT".into(), n.to_string().into()));
     out

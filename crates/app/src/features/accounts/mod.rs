@@ -11,12 +11,16 @@ mod field_row;
 mod identity_block;
 mod identity_section;
 mod model;
+mod oauth;
 mod ops;
 mod secrets;
 mod state;
 mod status_text;
+mod token;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
 
 pub use accounts_page::AccountsPage;
 pub use state::AccountsStore;
+#[allow(unused_imports)] // for the CI page
+pub use token::fresh_token;

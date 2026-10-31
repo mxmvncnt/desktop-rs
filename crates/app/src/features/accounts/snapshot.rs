@@ -4,7 +4,7 @@ use gpui::{App, Context, Entity, Window};
 use gpui_elements::editable_text::EditableTextState;
 
 use super::model::{Account, Provider};
-use super::state::AccountForm;
+use super::state::{AccountForm, Waiting};
 use super::status_text::StatusText;
 use crate::features::settings::{SettingsPage, ThemeMode};
 use crate::snapshot::View;
@@ -28,13 +28,16 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
         name: name.into(),
         host: host.into(),
         username: user.into(),
+        oauth: false,
         token: token.into(),
     };
     if view.ends_with("plaintext") {
         super::secrets::PLAINTEXT.store(true, std::sync::atomic::Ordering::Relaxed);
     }
     let editing = view.ends_with("edit");
-    let show_form = view.ends_with("form") || editing;
+    let waiting = view.ends_with("oauth-waiting");
+    let selfhosted = view.ends_with("oauth-selfhosted");
+    let show_form = view.ends_with("form") || editing || waiting || selfhosted;
     ws.accounts.update(cx, |ui, cx| {
         ui.accounts = vec![
             acct("1", Provider::GitHub, "Personal", "github.com", "octocat", "ghp_x"),
@@ -55,13 +58,28 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
         ui.identity.message = Some(StatusText::ok("Saved to your global git config"));
         if show_form {
             set(&inp.display_name, if editing { "Work" } else { "" }, cx);
-            set(&inp.host, if editing { "github.corp.example.com" } else { "github.com" }, cx);
+            let host = if editing {
+                "github.corp.example.com"
+            } else if selfhosted {
+                "gitea.example.com"
+            } else {
+                "github.com"
+            };
+            set(&inp.host, host, cx);
+            set(&inp.copyable, if waiting { "WDJB-MJHT" } else { super::oauth::REDIRECT_URI }, cx);
+            let provider = match (editing, selfhosted) {
+                (true, _) => Provider::GitHubEnterprise,
+                (_, true) => Provider::Gitea,
+                _ => Provider::GitHub,
+            };
             set(&inp.username, if editing { "mvincent" } else { "" }, cx);
             ui.form = Some(AccountForm {
                 editing: editing.then(|| "2".to_string()),
-                provider: if editing { Provider::GitHubEnterprise } else { Provider::GitHub },
+                provider,
                 has_token: editing,
                 error: None,
+                waiting: waiting.then(|| Waiting { cancel: Default::default(), url: Some("https://github.com/login/device".into()) }),
+                signed_in: None,
             });
         }
         cx.notify();

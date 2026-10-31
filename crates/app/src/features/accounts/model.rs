@@ -1,12 +1,13 @@
 //! Provider accounts and their persistence.
 //!
 //! Metadata (everything but the token) is in `<config dir>/accounts.toml`;
-//! tokens are in the secret store (`secrets.rs`), keyed by account id.
+//! tokens are in the secret store (`secrets.rs`) as a `TokenSecret`, keyed by account id.
 
 use gd_git::HostCredential;
 use serde::{Deserialize, Serialize};
 
 use super::secrets;
+use super::token::TokenSecret;
 use crate::features::settings::config_dir;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -60,6 +61,26 @@ impl Provider {
             Self::GitHubEnterprise | Self::Gitea | Self::Forgejo | Self::Generic => None,
         }
     }
+
+    /// Signs in with the browser (OAuth) instead of a typed token.
+    pub fn has_oauth(self) -> bool {
+        !matches!(self, Self::Bitbucket | Self::Generic)
+    }
+
+    /// GitHub uses the device flow; the others the authorization code flow with PKCE.
+    pub fn uses_device_flow(self) -> bool {
+        matches!(self, Self::GitHub | Self::GitHubEnterprise)
+    }
+
+    /// OAuth client id compiled in for github.com / gitlab.com (`GD_GITHUB_CLIENT_ID`, `GD_GITLAB_CLIENT_ID`).
+    pub fn builtin_client_id(self) -> Option<&'static str> {
+        match self {
+            Self::GitHub => option_env!("GD_GITHUB_CLIENT_ID"),
+            Self::GitLab => option_env!("GD_GITLAB_CLIENT_ID"),
+            _ => None,
+        }
+        .filter(|id| !id.is_empty())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,7 +90,11 @@ pub struct Account {
     pub name: String,
     pub host: String,
     pub username: String,
-    /// Kept in memory for the credential helper; lives in the secret store, never in the file.
+    /// Signed in with OAuth: the token expires and is refreshed (`token::fresh_token`).
+    #[serde(default)]
+    pub oauth: bool,
+    /// The access token as of loading, for the "token saved" note and as the credential's
+    /// fallback; lives in the secret store, never in the file.
     #[serde(skip)]
     pub token: String,
 }
@@ -78,8 +103,14 @@ impl Account {
     /// Credential for git network ops (`None` without a token or host).
     pub fn credential(&self) -> Option<HostCredential> {
         (!self.token.is_empty() && !self.host.is_empty()).then(|| HostCredential {
+            id: if self.oauth { self.id.clone() } else { String::new() },
             host: self.host.clone(),
-            username: if self.username.is_empty() { "git".into() } else { self.username.clone() },
+            // GitLab wants `oauth2` as the user of OAuth tokens (any user works for its personal tokens).
+            username: match (self.provider, self.username.as_str()) {
+                (Provider::GitLab, _) => "oauth2".into(),
+                (_, "") => "git".into(),
+                (_, user) => user.into(),
+            },
             token: self.token.clone(),
         })
     }
@@ -111,28 +142,17 @@ pub fn load() -> Vec<Account> {
         AccountsFile::default()
     });
     for a in &mut file.accounts {
-        a.token = secrets::get(&a.id).unwrap_or_default();
+        a.token = secrets::get(&a.id).map(|raw| TokenSecret::parse(&raw).access_token).unwrap_or_default();
     }
     file.accounts
 }
 
+/// Write the metadata; secrets are stored when an account is saved or signed in.
 pub fn save(list: &[Account]) {
     let Some(dir) = config_dir() else { return };
     let text = toml::to_string(&AccountsFile { accounts: list.to_vec() }).unwrap_or_default();
     if let Err(e) = std::fs::create_dir_all(&dir).and_then(|()| std::fs::write(dir.join("accounts.toml"), text)) {
         log::error!("cannot save accounts: {e}");
-    }
-    for a in list {
-        store_token(&a.id, &a.token);
-    }
-}
-
-/// Store the token in the secret store; an empty token removes it.
-pub fn store_token(id: &str, token: &str) {
-    if token.is_empty() {
-        secrets::delete(id);
-    } else {
-        secrets::set(id, token);
     }
 }
 

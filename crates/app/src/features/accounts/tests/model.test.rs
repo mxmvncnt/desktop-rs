@@ -1,7 +1,7 @@
 use super::*;
 
 fn acct(id: &str, provider: Provider, token: &str) -> Account {
-    Account { id: id.into(), provider, name: "Work".into(), host: "github.com".into(), username: "me".into(), token: token.into() }
+    Account { id: id.into(), provider, name: "Work".into(), host: "github.com".into(), username: "me".into(), oauth: false, token: token.into() }
 }
 
 #[test]
@@ -26,4 +26,6 @@ fn credential_needs_token_and_defaults_username() {
     a.token = "t".into();
     a.username.clear();
     assert_eq!(a.credential().unwrap().username, "git");
+    a.provider = Provider::GitLab;
+    assert_eq!(a.credential().unwrap().username, "oauth2");
 }

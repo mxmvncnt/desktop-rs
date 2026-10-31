@@ -5,9 +5,15 @@ use gd_git::{Identity, Repository};
 use gpui::{AppContext as _, Context, Entity};
 use gpui_elements::editable_text::EditableTextState;
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use super::model::{self, Account, Provider, normalize_host};
-use super::state::{AccountForm, AccountsStore, register_credentials};
+use super::oauth::{self, Progress};
+use super::secrets;
+use super::state::{AccountForm, AccountsStore, Waiting, register_credentials};
 use super::status_text::StatusText;
+use super::token::TokenSecret;
 use crate::repo::spawn_load;
 
 fn input_text(input: &Entity<EditableTextState>, cx: &Context<AccountsStore>) -> String {
@@ -126,21 +132,32 @@ impl AccountsStore {
             name: String::new(),
             host: provider.fixed_host().unwrap_or_default().into(),
             username: String::new(),
+            oauth: false,
             token: String::new(),
         });
         let inp = &self.inputs;
-        for (input, text) in [(&inp.display_name, &a.name), (&inp.host, &a.host), (&inp.username, &a.username), (&inp.token, &String::new())] {
+        for (input, text) in [(&inp.display_name, &a.name), (&inp.host, &a.host), (&inp.username, &a.username), (&inp.token, &String::new()), (&inp.client_id, &String::new()), (&inp.copyable, &oauth::REDIRECT_URI.into())] {
             set_input(input, text, cx);
         }
-        self.form =
-            Some(AccountForm { editing, provider, has_token: acct.is_some_and(|a| !a.token.is_empty()), error: None });
+        self.stop_signin();
+        self.form = Some(AccountForm {
+            editing,
+            provider,
+            has_token: acct.is_some_and(|a| !a.token.is_empty()),
+            error: None,
+            waiting: None,
+            signed_in: None,
+        });
         cx.notify();
     }
 
     pub(super) fn set_account_provider(&mut self, provider: Provider, cx: &mut Context<Self>) {
+        self.stop_signin();
         let host_input = self.inputs.host.clone();
+        set_input(&self.inputs.copyable, oauth::REDIRECT_URI, cx);
         let Some(form) = &mut self.form else { return };
         form.provider = provider;
+        form.signed_in = None;
         // Hosted providers have a fixed host; custom ones keep what was typed
         // unless it was a fixed host of the previous choice.
         let typed = input_text(&host_input, cx);
@@ -154,6 +171,7 @@ impl AccountsStore {
     }
 
     pub(super) fn close_account_form(&mut self, cx: &mut Context<Self>) {
+        self.stop_signin();
         self.form = None;
         cx.notify();
     }
@@ -171,17 +189,30 @@ impl AccountsStore {
         if name.is_empty() {
             name = if username.is_empty() { host.clone() } else { format!("{username}@{host}") };
         }
+        self.stop_signin();
+        let secret = form
+            .signed_in
+            .or_else(|| (!typed_token.is_empty()).then(|| TokenSecret { access_token: typed_token, ..TokenSecret::default() }));
         let list = &mut self.accounts;
         let existing = form.editing.as_ref().and_then(|id| list.iter_mut().find(|a| &a.id == id));
-        match existing {
+        let id = match existing {
             Some(a) => {
                 a.provider = form.provider;
                 (a.name, a.host, a.username) = (name, host, username);
-                if !typed_token.is_empty() {
-                    a.token = typed_token;
+                if let Some(s) = &secret {
+                    (a.token, a.oauth) = (s.access_token.clone(), !s.client_id.is_empty());
                 }
+                a.id.clone()
             }
-            None => list.push(Account { id: model::new_id(), provider: form.provider, name, host, username, token: typed_token }),
+            None => {
+                let id = model::new_id();
+                let (token, oauth) = secret.as_ref().map_or_else(Default::default, |s| (s.access_token.clone(), !s.client_id.is_empty()));
+                list.push(Account { id: id.clone(), provider: form.provider, name, host, username, oauth, token });
+                id
+            }
+        };
+        if let Some(s) = secret {
+            s.store(&id);
         }
         self.persist_accounts();
         self.form = None;
@@ -191,10 +222,83 @@ impl AccountsStore {
     pub(super) fn remove_account(&mut self, cx: &mut Context<Self>) {
         let Some(id) = self.form.as_ref().and_then(|f| f.editing.clone()) else { return };
         self.accounts.retain(|a| a.id != id);
-        model::store_token(&id, "");
+        secrets::delete(&id);
+        self.stop_signin();
         self.persist_accounts();
         self.form = None;
         cx.notify();
+    }
+
+    /// Open the browser sign-in for the form's provider; the result lands in the form.
+    pub(super) fn start_signin(&mut self, cx: &mut Context<Self>) {
+        self.stop_signin();
+        let Some(form) = &self.form else { return };
+        let provider = form.provider;
+        let host = normalize_host(&input_text(&self.inputs.host, cx));
+        let client_id = provider.builtin_client_id().map_or_else(|| input_text(&self.inputs.client_id, cx), str::to_string);
+        if host.is_empty() {
+            return self.account_form_error("Enter a host, e.g. github.com", cx);
+        }
+        if client_id.is_empty() {
+            return self.account_form_error("Enter the OAuth client ID of your app", cx);
+        }
+        let cancel = Arc::new(AtomicBool::new(false));
+        let (tx, rx) = smol::channel::unbounded();
+        oauth::sign_in(provider, host.clone(), client_id, cancel.clone(), tx);
+        if let Some(form) = &mut self.form {
+            (form.error, form.signed_in) = (None, None);
+            form.waiting = Some(Waiting { cancel: cancel.clone(), url: None });
+        }
+        cx.spawn(async move |this, cx| {
+            while let Ok(progress) = rx.recv().await {
+                let more = this.update(cx, |this, cx| this.apply_progress(&cancel, &host, progress, cx));
+                if !more.unwrap_or(false) {
+                    break;
+                }
+            }
+        })
+        .detach();
+        cx.notify();
+    }
+
+    /// Apply a sign-in update to the form; `false` when it is stale or finished.
+    fn apply_progress(&mut self, cancel: &Arc<AtomicBool>, host: &str, progress: Progress, cx: &mut Context<Self>) -> bool {
+        let inp = self.inputs.clone();
+        let Some(form) = self.form.as_mut() else { return false };
+        let Some(waiting) = form.waiting.as_mut().filter(|w| Arc::ptr_eq(&w.cancel, cancel)) else { return false };
+        let more = match progress {
+            Progress::Open { url, user_code } => {
+                if let Some(code) = user_code {
+                    set_input(&inp.copyable, &code, cx);
+                }
+                cx.open_url(&url);
+                waiting.url = Some(url);
+                true
+            }
+            Progress::Done(res) => {
+                form.waiting = None;
+                match res {
+                    Ok((secret, username)) => {
+                        form.signed_in = Some(secret);
+                        set_input(&inp.username, &username, cx);
+                        if input_text(&inp.display_name, cx).is_empty() {
+                            set_input(&inp.display_name, &format!("{username}@{host}"), cx);
+                        }
+                    }
+                    Err(e) => form.error = Some(e),
+                }
+                false
+            }
+        };
+        cx.notify();
+        more
+    }
+
+    /// Stop waiting for the browser (the loopback listener ends; late results are ignored).
+    fn stop_signin(&mut self) {
+        if let Some(w) = self.form.as_mut().and_then(|f| f.waiting.take()) {
+            w.cancel.store(true, Ordering::Relaxed);
+        }
     }
 
     fn account_form_error(&mut self, msg: &str, cx: &mut Context<Self>) {

@@ -1,12 +1,16 @@
 //! Accounts settings state: the account list, the open add/edit form, the
 //! git identity as last read, and the text inputs of both.
 
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+
 use gd_git::{EffectiveIdentity, Identity};
 use gpui::{App, AppContext, Entity};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::model::{self, Account, Provider};
 use super::status_text::StatusText;
+use super::token::{self, TokenSecret};
 use crate::repo::LoadSlot;
 
 /// The add/edit account form (its text lives in [`AccountInputs`]).
@@ -18,6 +22,19 @@ pub struct AccountForm {
     /// The stored account already has a token (empty token input keeps it).
     pub has_token: bool,
     pub error: Option<String>,
+    /// A browser sign-in is in progress.
+    pub waiting: Option<Waiting>,
+    /// The token of a finished sign-in, saved with the account.
+    pub signed_in: Option<TokenSecret>,
+}
+
+/// A running browser sign-in.
+#[derive(Clone, Debug)]
+pub struct Waiting {
+    /// Set to stop the loopback listener.
+    pub cancel: Arc<AtomicBool>,
+    /// Where the browser was sent, once known.
+    pub url: Option<String>,
 }
 
 #[derive(Default, Clone)]
@@ -38,6 +55,9 @@ pub struct AccountInputs {
     pub host: Entity<EditableTextState>,
     pub username: Entity<EditableTextState>,
     pub token: Entity<EditableTextState>,
+    pub client_id: Entity<EditableTextState>,
+    /// Read-only text the user copies: the device code, or the redirect URI to register.
+    pub copyable: Entity<EditableTextState>,
 }
 
 pub struct AccountsStore {
@@ -54,6 +74,7 @@ impl AccountsStore {
         let mk = |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
         let accounts = model::load();
         register_credentials(&accounts);
+        gd_git::set_token_source(token::fresh_token);
         Self {
             accounts,
             form: None,
@@ -67,6 +88,8 @@ impl AccountsStore {
                 host: mk(cx),
                 username: mk(cx),
                 token: mk(cx),
+                client_id: mk(cx),
+                copyable: mk(cx),
             },
             identity_load: LoadSlot::default(),
         }

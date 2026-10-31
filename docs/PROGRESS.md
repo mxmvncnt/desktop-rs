@@ -17,6 +17,7 @@
 
 ## Accounts settings page (feat/identities)
 
+- [x] Sign in with the browser (GitHub/GHE device flow, GitLab/Gitea/Forgejo PKCE), token refresh, Gitea and Forgejo providers (see ARCHITECTURE §OAuth). Not verified against live servers.
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
       per-repo override for the open repo with "in effect" line, provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
       add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the secret store (`accounts/secrets.rs`: `oo7` Secret Service on Linux, `keyring` native backends on macOS/Windows; if the store is unavailable they go to `<config>/secrets.toml`, 0600, and the page warns). Token input is not masked (gpui-ce

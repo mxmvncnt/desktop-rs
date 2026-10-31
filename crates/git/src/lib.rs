@@ -27,7 +27,7 @@ mod remote;
 mod stash;
 mod status;
 
-pub use credentials::{HostCredential, set_credentials};
+pub use credentials::{HostCredential, set_credentials, set_token_source};
 pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity};
 
 pub use diff::{Side, Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};

@@ -6,7 +6,7 @@ use super::*;
 /// Ask `git credential fill` for a credential with the env a network op gets.
 #[test]
 fn helper_answers_with_token() {
-    let cred = HostCredential { host: "git.example.com".into(), username: "me".into(), token: "s3cret".into() };
+    let cred = HostCredential { id: String::new(), host: "git.example.com".into(), username: "me".into(), token: "s3cret".into() };
     set_credentials(vec![cred]);
     let mut child = Command::new("git")
         .args(["credential", "fill"])

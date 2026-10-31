@@ -540,3 +540,30 @@ gotchas above.
 on Linux, `keyring` with native backends only on macOS/Windows). If the store errors (no Secret Service agent),
 it flips `PLAINTEXT` and uses `<config dir>/secrets.toml` (0600 on unix); `plaintext_path()` drives the
 warning in the Accounts list. Never add other fallbacks.
+
+## OAuth sign-in and token refresh (accounts)
+
+GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the browser (`accounts/oauth.rs`,
+`oauth2` crate with the `ureq` client; no reqwest/tokio). The user never types a token. Bitbucket and Generic keep the token field.
+
+- GitHub / GHE: device flow, client id only. The form shows the code (a read-only input, selectable) and opens
+  the verification URL. Scopes `repo workflow read:user`.
+- GitLab / Gitea / Forgejo: authorization code + PKCE (public client), redirect `http://127.0.0.1:47123/callback`
+  (fixed port, `tiny_http` listener, one request, `state` checked). GitLab scope `api`; Gitea/Forgejo
+  `read:user write:repository` (unverified against a live server).
+- The flow runs on a `std::thread` and reports `Progress` over a `smol` channel; `AccountsStore::start_signin`
+  applies it to the form. Cancelling the form (or switching provider) sets the stop flag of the loopback
+  listener and makes later results stale (ignored). The device flow keeps polling until its code expires.
+- The only API call is `/user` (GitHub: `api.github.com` or `https://<host>/api/v3`; GitLab `/api/v4`;
+  Gitea/Forgejo `/api/v1`) to fill the username. Hosts are assumed to be `https`.
+- Client ids: github.com and gitlab.com use ids compiled in from the env vars `GD_GITHUB_CLIENT_ID` /
+  `GD_GITLAB_CLIENT_ID` (`option_env!`, set at build time). Without one, and for every self-hosted host, the form
+  asks for the "OAuth client ID" and (PKCE providers) shows the redirect URI to register. The user registers an OAuth app
+  on the instance: GitHub Enterprise (OAuth app, enable the device flow), GitLab (non-confidential app, scope `api`,
+  redirect URI above), Gitea/Forgejo (OAuth2 application, non-confidential, redirect URI above).
+- The secret per account is a JSON `TokenSecret` (`accounts/token.rs`: access/refresh token, `expires_at`, client id,
+  token URL; bare strings from older versions still parse). `Account.oauth` marks signed-in accounts.
+- `accounts::fresh_token(account_id) -> Option<String>` is blocking (secret store + network): it refreshes
+  and saves when the token expires within 60 s. Refreshes are serialized (refresh tokens rotate). Git network ops use it
+  too: `HostCredential.id` + `gd_git::set_token_source(fresh_token)`, called while building the env of a network command.
+  Git user of GitLab tokens is `oauth2`; GitHub/Gitea/Forgejo use the account username.

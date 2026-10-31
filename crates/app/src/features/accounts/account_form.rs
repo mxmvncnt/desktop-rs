@@ -38,6 +38,68 @@ impl AccountForm {
         FieldRow::new("Host", "account-host", &self.inputs.host, hint)
     }
 
+    /// OAuth providers: client id (when not built in), what to register, the sign-in button and its state.
+    fn oauth_section(&self, theme: &Theme) -> impl IntoElement + use<> {
+        let provider = self.form.provider;
+        let caption = |t: String| div().text_size(px(12.0)).text_color(theme.text_faint).child(t);
+        let store = self.store.clone();
+        let waiting = self.form.waiting.as_ref();
+        let needs_client_id = provider.builtin_client_id().is_none();
+        let status = match (&self.form.signed_in, waiting) {
+            (Some(_), _) => Some(StatusText::ok("Signed in. Add the account to save the token.")),
+            (None, Some(_)) => Some(StatusText::ok("Waiting for you to authorize in the browser...")),
+            _ if self.form.has_token => Some(StatusText::ok("Signed in. Sign in again to replace the token.")),
+            _ => None,
+        };
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(10.0))
+            .children(needs_client_id.then(|| FieldRow::new("OAuth client ID", "account-client-id", &self.inputs.client_id, "Client ID of your OAuth app")))
+            .children((needs_client_id && !provider.uses_device_flow()).then(|| {
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(4.0))
+                    .child(caption(format!("Register an OAuth app on {} (public client) with this redirect URI:", self.host_label())))
+                    .child(FieldRow::new("Redirect URI", "account-redirect-uri", &self.inputs.copyable, ""))
+            }))
+            .children((needs_client_id && provider.uses_device_flow()).then(|| {
+                caption(format!("Register an OAuth app on {} and enable the device flow.", self.host_label()))
+            }))
+            .children(waiting.zip(provider.uses_device_flow().then_some(())).and_then(|(w, ())| {
+                w.url.as_ref().map(|url| {
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.0))
+                        .child(FieldRow::new("Your code", "account-device-code", &self.inputs.copyable, ""))
+                        .child(caption(format!("Enter it at {url} (opened in your browser).")))
+                })
+            }))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(10.0))
+                    .child(
+                        Button::new("account-sign-in")
+                            .compact()
+                            .label("Sign in with browser")
+                            .disabled(waiting.is_some())
+                            .on_click(move |_, _, cx| store.update(cx, |this, cx| this.start_signin(cx))),
+                    )
+                    .children(status),
+            )
+    }
+
+    fn host_label(&self) -> String {
+        match self.form.provider.fixed_host() {
+            Some(host) => host.into(),
+            None => "your host".into(),
+        }
+    }
+
     fn buttons(&self) -> impl IntoElement + use<> {
         let (save, cancel, remove) = (self.store.clone(), self.store.clone(), self.store.clone());
         div()
@@ -74,6 +136,7 @@ impl RenderOnce for AccountForm {
         let editing = self.form.editing.is_some();
         let inp = &self.inputs;
         let token_hint = if self.form.has_token { "Leave empty to keep the saved token" } else { "Personal access token" };
+        let oauth = self.form.provider.has_oauth();
         div()
             .flex()
             .flex_col()
@@ -82,9 +145,12 @@ impl RenderOnce for AccountForm {
             .child(self.provider_tabs())
             .child(FieldRow::new("Display name", "account-name", &inp.display_name, "Work"))
             .child(self.host_field())
+            .children(oauth.then(|| self.oauth_section(&theme)))
             .child(FieldRow::new("Username", "account-username", &inp.username, "octocat"))
-            .child(FieldRow::new("Personal access token", "account-token", &inp.token, token_hint))
-            .child(div().text_size(px(12.0)).text_color(theme.text_faint).child("The token is shown while typing and is not validated online."))
+            .children((!oauth).then(|| FieldRow::new("Personal access token", "account-token", &inp.token, token_hint)))
+            .children((!oauth).then(|| {
+                div().text_size(px(12.0)).text_color(theme.text_faint).child("The token is shown while typing and is not validated online.")
+            }))
             .children(self.form.error.as_deref().map(StatusText::err))
             .child(self.buttons())
     }
