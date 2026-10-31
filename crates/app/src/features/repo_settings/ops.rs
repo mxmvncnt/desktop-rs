@@ -1,6 +1,6 @@
 //! `impl RepoSettingsStore`: background reads and writes of the open repository.
 
-use gd_git::Repository;
+use gd_git::{ConfigEntry, Repository};
 use gpui::{AppContext as _, Context, Entity};
 use gpui_elements::editable_text::EditableTextState;
 
@@ -34,10 +34,10 @@ impl RepoSettingsStore {
         spawn_load(
             self,
             |this| &mut this.load,
-            move || Ok::<_, gd_git::GitError>((repo.info()?, repo.remote_list()?)),
+            move || Ok::<_, gd_git::GitError>((repo.info()?, repo.remote_list()?, repo.local_config()?)),
             |this, res, cx| {
                 match res {
-                    Ok((info, remotes)) => (this.info, this.remotes) = (Some(info), remotes),
+                    Ok((info, remotes, config)) => (this.info, this.remotes, this.config) = (Some(info), remotes, config),
                     Err(e) => this.error = Some(e.to_string()),
                 }
                 cx.notify();
@@ -172,5 +172,38 @@ impl RepoSettingsStore {
             },
             cx,
         );
+    }
+
+    // ---- git config --------------------------------------------------------
+
+    /// Open the form to add an entry, or to edit the value of `editing`.
+    pub fn open_config_form(&mut self, editing: Option<ConfigEntry>, cx: &mut Context<Self>) {
+        let inp = self.inputs.clone();
+        set_text(&inp.config_key, editing.as_ref().map_or("", |e| &e.key), cx);
+        set_text(&inp.config_value, editing.as_ref().map_or("", |e| &e.value), cx);
+        self.edit = Some(editing.map_or(Edit::AddConfig, Edit::Config));
+        (self.error, self.notice) = (None, None);
+        cx.notify();
+    }
+
+    pub fn save_config(&mut self, cx: &mut Context<Self>) {
+        let inp = self.inputs.clone();
+        let (key, value) = (text(&inp.config_key, cx), inp.config_value.read(cx).as_str().to_string());
+        let old = match &self.edit {
+            Some(Edit::Config(old)) => Some(old.value.clone()),
+            _ => None,
+        };
+        self.write(
+            "Saved",
+            move |repo| match old {
+                Some(old) => repo.replace_config(&key, &old, &value),
+                None => repo.add_config(&key, &value),
+            },
+            cx,
+        );
+    }
+
+    pub fn remove_config(&mut self, entry: ConfigEntry, cx: &mut Context<Self>) {
+        self.write("Removed", move |repo| repo.remove_config(&entry.key, &entry.value), cx);
     }
 }

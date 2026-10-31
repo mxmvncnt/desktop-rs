@@ -11,6 +11,7 @@ pub fn views() -> &'static [View] {
     &[
         View { name: "repo-settings-remotes-edit", steps: &[open, edit_remote] },
         View { name: "repo-settings-remotes-remove", steps: &[open, remove_remote] },
+        View { name: "repo-settings-config-edit", steps: &[open, edit_config] },
         View { name: "repo-settings*", steps: &[open] },
         View { name: "repo-menu-context", steps: &[menu] },
     ]
@@ -23,6 +24,7 @@ fn open(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Wo
     let page = match view.strip_prefix("repo-settings-") {
         Some("remotes" | "remotes-edit" | "remotes-remove") => RepoSettingsPage::Remotes,
         Some("ignore") => RepoSettingsPage::Ignore,
+        Some("config" | "config-edit") => RepoSettingsPage::Config,
         Some("identity") => RepoSettingsPage::Identity,
         Some("account") => RepoSettingsPage::Account,
         _ => RepoSettingsPage::Info,
@@ -37,6 +39,11 @@ fn edit_remote(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Wor
 
 fn remove_remote(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
     ws.repo_settings.update(cx, |s, cx| s.confirm_remove_remote("upstream".into(), cx));
+}
+
+fn edit_config(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
+    let entry = ws.repo_settings.read(cx).config.iter().find(|e| e.key == "remote.origin.fetch").cloned();
+    ws.repo_settings.update(cx, |s, cx| s.open_config_form(entry, cx));
 }
 
 fn menu(ws: &mut Workspace, _: &str, window: &mut Window, cx: &mut Context<Workspace>) {

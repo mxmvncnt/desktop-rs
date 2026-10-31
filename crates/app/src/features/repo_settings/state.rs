@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use gd_git::{Remote, RepoInfo, Repository};
+use gd_git::{ConfigEntry, Remote, RepoInfo, Repository};
 use gd_ui::Icon;
 use gpui::{App, AppContext as _, Entity};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
@@ -15,10 +15,11 @@ pub enum RepoSettingsPage {
     Identity,
     Account,
     Ignore,
+    Config,
 }
 
 impl RepoSettingsPage {
-    pub const ALL: [RepoSettingsPage; 5] = [Self::Info, Self::Remotes, Self::Identity, Self::Account, Self::Ignore];
+    pub const ALL: [RepoSettingsPage; 6] = [Self::Info, Self::Remotes, Self::Identity, Self::Account, Self::Ignore, Self::Config];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -27,6 +28,7 @@ impl RepoSettingsPage {
             Self::Identity => "Identity",
             Self::Account => "Account",
             Self::Ignore => "Ignored files",
+            Self::Config => "Git config",
         }
     }
 
@@ -37,6 +39,7 @@ impl RepoSettingsPage {
             Self::Identity => Icon::Pen,
             Self::Account => Icon::Globe,
             Self::Ignore => Icon::EyeClosed,
+            Self::Config => Icon::Tuning,
         }
     }
 }
@@ -48,6 +51,9 @@ pub enum Edit {
     /// Editing the remote of this name.
     Remote(String),
     RemoveRemote(String),
+    AddConfig,
+    /// Editing the value of this entry.
+    Config(ConfigEntry),
 }
 
 /// The two files of ignore patterns of a repository.
@@ -72,6 +78,8 @@ impl IgnoreFile {
 pub struct RepoSettingsInputs {
     pub gitignore: Entity<EditableTextState>,
     pub exclude: Entity<EditableTextState>,
+    pub config_key: Entity<EditableTextState>,
+    pub config_value: Entity<EditableTextState>,
     pub remote_name: Entity<EditableTextState>,
     pub remote_url: Entity<EditableTextState>,
     pub remote_push_url: Entity<EditableTextState>,
@@ -83,6 +91,7 @@ pub struct RepoSettingsStore {
     pub model: Option<Entity<RepoModel>>,
     pub info: Option<RepoInfo>,
     pub remotes: Vec<Remote>,
+    pub config: Vec<ConfigEntry>,
     pub edit: Option<Edit>,
     /// The last read or write error of the open page.
     pub error: Option<String>,
@@ -101,10 +110,11 @@ impl RepoSettingsStore {
             model: None,
             info: None,
             remotes: Vec::new(),
+            config: Vec::new(),
             edit: None,
             error: None,
             notice: None,
-            inputs: RepoSettingsInputs { gitignore: mk(cx), exclude: mk(cx), remote_name: mk(cx), remote_url: mk(cx), remote_push_url: mk(cx) },
+            inputs: RepoSettingsInputs { config_key: mk(cx), config_value: mk(cx), gitignore: mk(cx), exclude: mk(cx), remote_name: mk(cx), remote_url: mk(cx), remote_push_url: mk(cx) },
             load: LoadSlot::default(),
             ignore_load: LoadSlot::default(),
         }

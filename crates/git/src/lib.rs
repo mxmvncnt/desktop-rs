@@ -9,6 +9,7 @@
 //! - Machine-readable formats only (`status --porcelain=v2 -z`, NUL-separated
 //!   `log` formats) so parsing is cheap and locale-independent.
 
+mod config;
 mod credentials;
 mod diff;
 mod diff_summary;
@@ -29,6 +30,7 @@ mod remotes;
 mod stash;
 mod status;
 
+pub use config::{ConfigEntry, validate_key as validate_config_key};
 pub use info::RepoInfo;
 pub use remotes::Remote;
 pub use credentials::{HostCredential, set_credentials, set_token_source};

@@ -2,6 +2,8 @@
 //! opened from the right-click menu of the repository button, the "No local changes" pane and
 //! the Repository menu. Pages: info, identity override, account, ... Git side: `gd-git`.
 
+mod config_form;
+mod config_page;
 mod handlers;
 mod ignore_page;
 mod info_page;
