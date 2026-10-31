@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/git", "crates/ui", "crates/syntax", "crates/app"]
+members = ["crates/git", "crates/forge", "crates/ui", "crates/syntax", "crates/app"]
 
 [workspace.package]
 version = "0.3.0"
@@ -10,6 +10,7 @@ publish = false
 
 [workspace.dependencies]
 gd-git = { path = "crates/git" }
+gd-forge = { path = "crates/forge" }
 gd-ui = { path = "crates/ui" }
 gd-syntax = { path = "crates/syntax" }
 

@@ -1,0 +1,10 @@
+{
+  "total_count": 1,
+  "workflow_runs": [
+    {"id": 501, "index_in_repo": 9, "title": "chore: bump", "prettyref": "main", "commit_sha": "89abcdef0123456789abcdef0123456789abcdef",
+     "event": "push", "workflow_id": "ci.yaml", "status": "failure",
+     "trigger_user": {"login": "carol", "full_name": "Carol C", "avatar_url": "https://codeberg.org/avatars/9"},
+     "created": "2025-03-01T10:00:00Z", "started": "2025-03-01T10:00:03Z", "stopped": "2025-03-01T10:02:03Z", "duration": 120000000000,
+     "html_url": "https://codeberg.org/o/r/actions/runs/9"}
+  ]
+}

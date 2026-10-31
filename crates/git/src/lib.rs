@@ -38,7 +38,7 @@ pub use log::{CoAuthor, Commit, parse_co_authors};
 pub use merge::{MergePreview, default_squash_summary};
 pub use partial::{PartialFile, selectable, staged_text};
 pub use pr_preview::{Comparison, compare_url};
-pub use remote::{Host, github_web_url, host_of};
+pub use remote::{Host, github_web_url, host_of, split_remote};
 pub use progress::{InProgress, OpOutcome};
 pub use refs::{Branch, BranchKind};
 pub use stash::Stash;

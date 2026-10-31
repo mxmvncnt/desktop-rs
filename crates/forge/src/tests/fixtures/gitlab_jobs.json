@@ -1,0 +1,10 @@
+[
+  {"id": 303, "name": "deploy", "stage": "deploy", "status": "manual", "allow_failure": false, "started_at": null, "finished_at": null, "duration": null,
+   "web_url": "https://gitlab.example.com/group/sub/repo/-/jobs/303", "runner": null},
+  {"id": 302, "name": "rspec", "stage": "test", "status": "failed", "allow_failure": true, "started_at": "2025-03-01T10:01:00.000Z", "finished_at": "2025-03-01T10:02:00.500Z", "duration": 60.5,
+   "web_url": "https://gitlab.example.com/group/sub/repo/-/jobs/302", "runner": {"id": 5, "description": "shared-runner-1"}},
+  {"id": 306, "name": "build", "stage": "build", "status": "success", "allow_failure": false, "started_at": "2025-03-01T10:05:00.000Z", "finished_at": "2025-03-01T10:06:00.000Z", "duration": 60.0,
+   "web_url": "https://gitlab.example.com/group/sub/repo/-/jobs/306", "runner": {"id": 5, "description": ""}},
+  {"id": 301, "name": "build", "stage": "build", "status": "failed", "allow_failure": false, "started_at": "2025-03-01T10:00:05.000Z", "finished_at": "2025-03-01T10:00:50.000Z", "duration": 45.0,
+   "web_url": "https://gitlab.example.com/group/sub/repo/-/jobs/301", "runner": {"id": 5, "description": "shared-runner-1"}}
+]

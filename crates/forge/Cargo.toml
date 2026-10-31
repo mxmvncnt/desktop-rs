@@ -1,0 +1,20 @@
+[package]
+name = "gd-forge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Blocking client for the CI APIs of GitHub, GitLab, Gitea and Forgejo, normalized to
+# GitLab's pipeline vocabulary, plus a parser for job logs. No GPUI, no async runtime:
+# callers run it on a background executor.
+[dependencies]
+gd-git.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+# Same major as the `oauth2` crate's `ureq` feature, so the app links one copy.
+ureq = { version = "2", features = ["json"] }
+chrono = { version = "0.4", default-features = false, features = ["serde"] }
+percent-encoding = "2"
+serde_yaml_ng = "0.10"

@@ -21,7 +21,7 @@ impl Host {
 /// Split a git remote URL (ssh scp-style, `ssh://`, `https://`, `git://`)
 /// into a lowercase host and the repository path (no `.git`, no slashes
 /// around). `None` when the path is not `owner/repo`-shaped.
-pub(crate) fn split_remote(remote: &str) -> Option<(String, String)> {
+pub fn split_remote(remote: &str) -> Option<(String, String)> {
     let remote = remote.trim();
     let (host, path) = if let Some((_, rest)) = remote.split_once("://") {
         let (authority, path) = rest.split_once('/')?;

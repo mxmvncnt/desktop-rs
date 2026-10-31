@@ -1,0 +1,5 @@
+[
+  {"id": 1, "run_id": 501, "name": "lint", "needs": [], "status": "success", "attempt": 1, "runs_on": ["docker"]},
+  {"id": 2, "run_id": 501, "name": "build", "needs": ["lint"], "status": "failure", "attempt": 1, "runs_on": ["docker"]},
+  {"id": 3, "run_id": 501, "name": "deploy", "needs": ["build"], "status": "blocked", "attempt": 1, "runs_on": ["docker"]}
+]

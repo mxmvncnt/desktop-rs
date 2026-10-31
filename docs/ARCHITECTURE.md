@@ -7,6 +7,7 @@
 ├── Cargo.toml          workspace; GPUI-CE pinned by git rev
 ├── crates/
 │   ├── git/   (gd-git)  UI-agnostic git layer, shells out to `git`
+│   ├── forge/ (gd-forge) blocking CI API client for GitHub/GitLab/Gitea/Forgejo + job log parser, no GPUI
 │   ├── syntax/ (gd-syntax) UI-agnostic tree-sitter highlighting
 │   ├── ui/    (gd-ui)   zeron-style design system: theme, motion, components, assets
 │   └── app/   (desktop-rs)  the binary: models + views
@@ -42,6 +43,44 @@ guessing APIs. To recreate them:
 - `crates/git/tests/*.rs` exercise the write paths against scratch repos (`tests/common` has the
   tempdir + `sh` helpers): `cargo test -p gd-git`. Index staging goes through
   `git add --pathspec-from-file=- --pathspec-file-nul` (no ARG_MAX chunking). Remote URL parsing lives in `remote.rs`.
+
+## Forge crate (`crates/forge`, `gd-forge`)
+
+Pure blocking Rust (`ureq` 2, the major `oauth2` 5's `ureq` feature uses, so one copy is linked), no GPUI, no async.
+Call it from background threads. It never does auth: the caller passes platform, host and token
+(`Client::new(Forge, host, token)`, sent as `Authorization: Bearer`). The platform comes from the account settings and fixes
+the capabilities (`Client::capabilities`); there is no probing. API base: github.com -> `https://api.github.com`, GitHub
+Enterprise -> `https://<host>/api/v3`, GitLab `/api/v4`, Gitea and Forgejo `/api/v1`.
+
+- Files: `client.rs` (`Forge`, `Client`, HTTP, error mapping, dispatch), `model.rs` (GitLab vocabulary: `Status`, `Pipeline`,
+  `Stage`, `Job`, `Step`, ...), `actions.rs` (GitHub and Gitea share the Actions REST shape), `forgejo.rs`, `gitlab.rs`,
+  `workflow.rs` (stages from a workflow file), `repo_ref.rs` (`RepoRef::from_remote` reuses `gd_git::split_remote`; GitLab id = encoded full path),
+  `error.rs` (`Unauthorized`, `Forbidden`, `NotFound`, `RateLimited`, `Unsupported`, `Http`, `Network`, `Parse`; a GitHub 403 with
+  `x-ratelimit-remaining: 0` or `retry-after` is `RateLimited`). Fixtures of trimmed API responses: `src/tests/fixtures/`.
+- Pages are 1-based, 20 per page, newest first. List entries have no commit title (GitLab: pipeline name) and no GitLab user;
+  `pipeline()` fills both (one extra commit request on GitLab).
+- Stages: GitLab has real ones (jobs sorted by id, stages by first appearance, retried jobs dropped, bridges included). GitHub and Gitea
+  jobs have none: `pipeline()` returns one stage named after the workflow, and the UI calls `stages_from_workflow(yaml, jobs)` with the file
+  from the working tree (`Pipeline::workflow_path`) to get "Stage N" columns by `needs` depth (matrix names `job (a, b)` and
+  reusable `job / inner` match by prefix; `continue-on-error: true` sets `allow_failure`). Forgejo's job list carries `needs`, so its stages
+  come from the API (`workflow_path` is only the file name there).
+- `retry_pipeline` means "retry failed jobs" everywhere (GitLab retry, GitHub/Gitea `rerun-failed-jobs`).
+- `PipelineDetail::passed_with_warnings()`: pipeline succeeded but an `allow_failure` job failed.
+
+| | GitHub | GitLab | Gitea | Forgejo |
+|---|---|---|---|---|
+| pipelines / pipeline / job_log | yes | yes | yes | yes |
+| real stages | no (workflow file) | yes | no (workflow file) | yes (`needs`) |
+| steps | yes | no | yes | no |
+| retry pipeline (failed jobs) | yes | yes | yes | no |
+| retry job | yes | yes | yes (run id in URL) | no |
+| cancel pipeline | yes | yes | yes | yes |
+| cancel job | no | yes | no | no |
+| play manual job | no | yes | no | no |
+
+Assumed minimum versions (swagger checked against gitea.com 29.0-dev and codeberg.org Forgejo 16-dev; older servers may lack
+endpoints and answer `NotFound`): GitHub REST 2022-11-28 (Enterprise Server 3.x), GitLab 15+, Gitea 1.25 (runs, jobs, logs, rerun;
+`status`, `limit`), Forgejo 12+ (actions runs and jobs API).
 
 ## Stashes (`gd-git/src/stash.rs`, `app/src/features/stashes/`)
 

@@ -1,0 +1,19 @@
+{
+  "total_count": 3,
+  "jobs": [
+    {"id": 111, "run_id": 9876543210, "name": "lint", "status": "completed", "conclusion": "success",
+     "started_at": "2025-03-01T10:00:10Z", "completed_at": "2025-03-01T10:00:50Z",
+     "html_url": "https://github.com/octo/repo/actions/runs/9876543210/job/111", "runner_name": "GitHub Actions 7",
+     "steps": [
+       {"name": "Set up job", "status": "completed", "conclusion": "success", "number": 1, "started_at": "2025-03-01T10:00:10Z", "completed_at": "2025-03-01T10:00:12Z"},
+       {"name": "Run clippy", "status": "completed", "conclusion": "success", "number": 2, "started_at": "2025-03-01T10:00:12Z", "completed_at": "2025-03-01T10:00:48Z"}
+     ]},
+    {"id": 112, "run_id": 9876543210, "name": "test (ubuntu, 1.80)", "status": "completed", "conclusion": "failure",
+     "started_at": "2025-03-01T10:01:00Z", "completed_at": "2025-03-01T10:05:00Z",
+     "html_url": "https://github.com/octo/repo/actions/runs/9876543210/job/112", "runner_name": "GitHub Actions 3",
+     "steps": [{"name": "Run tests", "status": "completed", "conclusion": "failure", "number": 3, "started_at": "2025-03-01T10:01:10Z", "completed_at": "2025-03-01T10:05:00Z"}]},
+    {"id": 113, "run_id": 9876543210, "name": "deploy", "status": "completed", "conclusion": "skipped",
+     "started_at": "2025-03-01T10:05:00Z", "completed_at": "2025-03-01T10:05:00Z",
+     "html_url": "https://github.com/octo/repo/actions/runs/9876543210/job/113", "runner_name": null, "steps": []}
+  ]
+}
