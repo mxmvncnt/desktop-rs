@@ -38,6 +38,7 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
     let waiting = view.ends_with("oauth-waiting");
     let selfhosted = view.ends_with("oauth-selfhosted");
     let show_form = view.ends_with("form") || editing || waiting || selfhosted;
+    let repo_path = ws.repo.as_ref().map(|r| r.read(cx).repo.root().to_string_lossy().into_owned()).unwrap_or_default();
     ws.accounts.update(cx, |ui, cx| {
         ui.accounts = vec![
             acct("1", Provider::GitHub, "Personal", "github.com", "octocat", "ghp_x"),
@@ -56,6 +57,10 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
         ui.identity.effective = Some(gd_git::EffectiveIdentity { identity: local.clone(), source: gd_git::IdentitySource::Repository });
         ui.identity.local = local;
         ui.identity.message = Some(StatusText::ok("Saved to your global git config"));
+        ui.identity.remote_host = Some("github.com".into());
+        if view.ends_with("repo-account") {
+            ui.repo_accounts.insert(repo_path, "2".into());
+        }
         if show_form {
             set(&inp.display_name, if editing { "Work" } else { "" }, cx);
             let host = if editing {

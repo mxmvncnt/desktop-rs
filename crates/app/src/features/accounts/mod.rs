@@ -13,6 +13,8 @@ mod identity_section;
 mod model;
 mod oauth;
 mod ops;
+mod repo_account;
+mod repo_account_block;
 mod secrets;
 mod state;
 mod status_text;
@@ -21,6 +23,8 @@ mod token;
 pub mod snapshot;
 
 pub use accounts_page::AccountsPage;
+#[allow(unused_imports)] // for the CI page
+pub use repo_account::account_for_repo;
 pub use state::AccountsStore;
 #[allow(unused_imports)] // for the CI page
 pub use token::fresh_token;

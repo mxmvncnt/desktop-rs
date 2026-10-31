@@ -17,6 +17,7 @@
 
 ## Accounts settings page (feat/identities)
 
+- [x] Account per repository ("Account for this repository": Automatic by remote host, or a pick saved in `repo_accounts.toml`), `account_for_repo` for the CI page.
 - [x] Sign in with the browser (GitHub/GHE device flow, GitLab/Gitea/Forgejo PKCE), token refresh, Gitea and Forgejo providers (see ARCHITECTURE §OAuth). Not verified against live servers.
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
       per-repo override for the open repo with "in effect" line, provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)

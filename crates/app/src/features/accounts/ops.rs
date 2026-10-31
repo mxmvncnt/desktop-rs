@@ -5,16 +5,21 @@ use gd_git::{Identity, Repository};
 use gpui::{AppContext as _, Context, Entity};
 use gpui_elements::editable_text::EditableTextState;
 
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::model::{self, Account, Provider, normalize_host};
 use super::oauth::{self, Progress};
+use super::repo_account;
 use super::secrets;
 use super::state::{AccountForm, AccountsStore, Waiting, register_credentials};
 use super::status_text::StatusText;
 use super::token::TokenSecret;
 use crate::repo::spawn_load;
+
+/// Global identity, the open repository's (local, effective) identity, and its remote host.
+type IdentityLoad = (Identity, Option<(Identity, gd_git::EffectiveIdentity)>, Option<String>);
 
 fn input_text(input: &Entity<EditableTextState>, cx: &Context<AccountsStore>) -> String {
     input.read(cx).as_str().trim().to_string()
@@ -33,10 +38,11 @@ impl AccountsStore {
             move || {
                 let global = gd_git::global_identity()?;
                 let repo_part = match repo {
-                    Some(r) => Some((r.local_identity()?, r.effective_identity()?)),
+                    Some(ref r) => Some((r.local_identity()?, r.effective_identity()?)),
                     None => None,
                 };
-                Ok::<_, gd_git::GitError>((global, repo_part))
+                let remote_host = repo.as_ref().and_then(Repository::remote_host);
+                Ok::<_, gd_git::GitError>((global, repo_part, remote_host))
             },
             |this, res, cx| this.apply_identity(res, cx),
             cx,
@@ -45,12 +51,13 @@ impl AccountsStore {
 
     fn apply_identity(
         &mut self,
-        res: Result<(Identity, Option<(Identity, gd_git::EffectiveIdentity)>), gd_git::GitError>,
+        res: Result<IdentityLoad, gd_git::GitError>,
         cx: &mut Context<Self>,
     ) {
         match res {
-            Ok((global, repo_part)) => {
+            Ok((global, repo_part, remote_host)) => {
                 let id = &mut self.identity;
+                id.remote_host = remote_host;
                 id.global = global;
                 (id.local, id.effective) = match repo_part {
                     Some((l, e)) => (l, Some(e)),
@@ -118,6 +125,17 @@ impl AccountsStore {
             .ok();
         })
         .detach();
+        cx.notify();
+    }
+
+    /// Pick the account of a repository (`None` = automatic) and save the pick.
+    pub(super) fn set_repo_account(&mut self, repo_path: &Path, id: Option<String>, cx: &mut Context<Self>) {
+        let key = repo_path.to_string_lossy().into_owned();
+        match id {
+            Some(id) => self.repo_accounts.insert(key, id),
+            None => self.repo_accounts.remove(&key),
+        };
+        repo_account::save(&self.repo_accounts);
         cx.notify();
     }
 

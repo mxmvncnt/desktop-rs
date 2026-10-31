@@ -5,6 +5,7 @@ use gd_ui::{Button, Theme};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use super::identity_block::IdentityBlock;
+use super::repo_account_block::RepoAccountBlock;
 use super::state::{AccountInputs, AccountsStore, IdentityState};
 
 #[derive(IntoElement)]
@@ -67,6 +68,14 @@ impl RenderOnce for IdentitySection {
             if let Some(e) = &self.identity.effective {
                 col = col.child(div().text_size(px(12.0)).text_color(theme.text_muted).child(effective_line(e)));
             }
+            let (accounts, picks) = (self.store.read(cx).accounts.clone(), self.store.read(cx).repo_accounts.clone());
+            col = col.child(RepoAccountBlock {
+                repo_path: repo.root().to_path_buf(),
+                remote_host: self.identity.remote_host.clone(),
+                accounts,
+                picks,
+                store: self.store.clone(),
+            });
         } else {
             col = col.child(
                 div().text_size(px(12.0)).text_color(theme.text_faint).child("Open a repository to set a per-repository override."),

@@ -107,6 +107,11 @@ impl Repository {
         crate::remote::github_web_url(&self.tracking_remote_url()?)
     }
 
+    /// Host of the default remote (`github.com`), to match it with an account.
+    pub fn remote_host(&self) -> Option<String> {
+        Some(crate::remote::split_remote(&self.tracking_remote_url()?)?.0)
+    }
+
     /// Fetch URL of the current branch's remote (else `origin`, else the first remote).
     pub fn tracking_remote_url(&self) -> Option<String> {
         let remotes = self.remotes().ok()?;

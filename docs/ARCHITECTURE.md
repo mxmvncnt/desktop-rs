@@ -567,3 +567,12 @@ GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the b
   and saves when the token expires within 60 s. Refreshes are serialized (refresh tokens rotate). Git network ops use it
   too: `HostCredential.id` + `gd_git::set_token_source(fresh_token)`, called while building the env of a network command.
   Git user of GitLab tokens is `oauth2`; GitHub/Gitea/Forgejo use the account username.
+
+## Account per repository (accounts)
+
+`accounts/repo_account.rs`: `account_for_repo(accounts, picks, repo_path, remote_host) -> Option<&Account>` (re-exported from
+`features/accounts`). A pick (`AccountsStore::repo_accounts`, repository path -> account id, saved in
+`<config>/repo_accounts.toml`, never in `.git/config`) wins; otherwise the first account whose host (port ignored)
+is the remote host. `Repository::remote_host()` (gd-git) gives the host of the default remote. The picker is
+`repo_account_block.rs`, in the repository part of the identity section. The CI page calls `account_for_repo` and then
+`accounts::fresh_token(&account.id)` from a background thread.

@@ -9,6 +9,7 @@ use gpui::{App, AppContext, Entity};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::model::{self, Account, Provider};
+use super::repo_account::{self, RepoAccounts};
 use super::status_text::StatusText;
 use super::token::{self, TokenSecret};
 use crate::repo::LoadSlot;
@@ -42,6 +43,8 @@ pub struct IdentityState {
     pub global: Identity,
     pub local: Identity,
     pub effective: Option<EffectiveIdentity>,
+    /// Host of the open repository's remote.
+    pub remote_host: Option<String>,
     pub message: Option<StatusText>,
 }
 
@@ -62,6 +65,8 @@ pub struct AccountInputs {
 
 pub struct AccountsStore {
     pub accounts: Vec<Account>,
+    /// Per repository path, the id of the account picked for it (see `account_for_repo`).
+    pub repo_accounts: RepoAccounts,
     pub form: Option<AccountForm>,
     pub identity: IdentityState,
     pub inputs: AccountInputs,
@@ -77,6 +82,7 @@ impl AccountsStore {
         gd_git::set_token_source(token::fresh_token);
         Self {
             accounts,
+            repo_accounts: repo_account::load(),
             form: None,
             identity: IdentityState::default(),
             inputs: AccountInputs {
