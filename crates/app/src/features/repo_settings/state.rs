@@ -1,4 +1,6 @@
-use gd_git::{Remote, RepoInfo};
+use std::path::PathBuf;
+
+use gd_git::{Remote, RepoInfo, Repository};
 use gd_ui::Icon;
 use gpui::{App, AppContext as _, Entity};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
@@ -12,10 +14,11 @@ pub enum RepoSettingsPage {
     Remotes,
     Identity,
     Account,
+    Ignore,
 }
 
 impl RepoSettingsPage {
-    pub const ALL: [RepoSettingsPage; 4] = [Self::Info, Self::Remotes, Self::Identity, Self::Account];
+    pub const ALL: [RepoSettingsPage; 5] = [Self::Info, Self::Remotes, Self::Identity, Self::Account, Self::Ignore];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -23,6 +26,7 @@ impl RepoSettingsPage {
             Self::Remotes => "Remotes",
             Self::Identity => "Identity",
             Self::Account => "Account",
+            Self::Ignore => "Ignored files",
         }
     }
 
@@ -32,6 +36,7 @@ impl RepoSettingsPage {
             Self::Remotes => Icon::Cloud,
             Self::Identity => Icon::Pen,
             Self::Account => Icon::Globe,
+            Self::Ignore => Icon::EyeClosed,
         }
     }
 }
@@ -45,8 +50,28 @@ pub enum Edit {
     RemoveRemote(String),
 }
 
+/// The two files of ignore patterns of a repository.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum IgnoreFile {
+    /// `.gitignore` at the root, shared through git.
+    Gitignore,
+    /// `.git/info/exclude`, only for this clone.
+    Exclude,
+}
+
+impl IgnoreFile {
+    pub fn path(self, repo: &Repository) -> PathBuf {
+        match self {
+            Self::Gitignore => repo.root().join(".gitignore"),
+            Self::Exclude => repo.common_git_dir().join("info/exclude"),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct RepoSettingsInputs {
+    pub gitignore: Entity<EditableTextState>,
+    pub exclude: Entity<EditableTextState>,
     pub remote_name: Entity<EditableTextState>,
     pub remote_url: Entity<EditableTextState>,
     pub remote_push_url: Entity<EditableTextState>,
@@ -61,8 +86,11 @@ pub struct RepoSettingsStore {
     pub edit: Option<Edit>,
     /// The last read or write error of the open page.
     pub error: Option<String>,
+    /// What the last successful write did ("Saved").
+    pub notice: Option<&'static str>,
     pub inputs: RepoSettingsInputs,
     pub(super) load: LoadSlot,
+    pub(super) ignore_load: LoadSlot,
 }
 
 impl RepoSettingsStore {
@@ -75,8 +103,10 @@ impl RepoSettingsStore {
             remotes: Vec::new(),
             edit: None,
             error: None,
-            inputs: RepoSettingsInputs { remote_name: mk(cx), remote_url: mk(cx), remote_push_url: mk(cx) },
+            notice: None,
+            inputs: RepoSettingsInputs { gitignore: mk(cx), exclude: mk(cx), remote_name: mk(cx), remote_url: mk(cx), remote_push_url: mk(cx) },
             load: LoadSlot::default(),
+            ignore_load: LoadSlot::default(),
         }
     }
 }

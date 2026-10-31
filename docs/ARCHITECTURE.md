@@ -588,3 +588,4 @@ is the remote host. `Repository::remote_host()` (gd-git) gives the host of the d
 - Writes go through `RepoSettingsStore::write(work)`: background `gd-git` call (`remotes.rs`: `remote_list`, `add/rename/remove_remote`, `set_remote_url`,
   `set_remote_push_url`), then on success the open form (`Edit`) closes, the page reloads and `RepoModel::refresh` runs; on failure `error` shows inline.
   A new page adds an `Edit` variant for its form/confirmation instead of a new field. `FieldRow` lives in `components/`.
+- Ignored files: `IgnoreFile::{Gitignore, Exclude}` (`state.rs`) gives the path (`common_git_dir()/info/exclude`); the texts are read once on open (`load_ignore`, never on reload so unsaved edits survive a write) and `save_ignore` writes through `write()`. `notice` holds the success text of the last write.

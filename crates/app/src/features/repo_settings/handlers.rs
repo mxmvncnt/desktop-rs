@@ -15,7 +15,7 @@ impl Workspace {
     }
 
     pub(crate) fn set_repo_settings_page(&mut self, page: RepoSettingsPage, cx: &mut Context<Self>) {
-        self.repo_settings.update(cx, |s, _| (s.page, s.edit, s.error) = (page, None, None));
+        self.repo_settings.update(cx, |s, _| (s.page, s.edit, s.error, s.notice) = (page, None, None, None));
         self.load_repo_identity(cx);
         cx.notify();
     }

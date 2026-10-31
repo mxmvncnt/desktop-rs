@@ -22,6 +22,7 @@ fn open(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Wo
     ws.open_repo_settings(cx);
     let page = match view.strip_prefix("repo-settings-") {
         Some("remotes" | "remotes-edit" | "remotes-remove") => RepoSettingsPage::Remotes,
+        Some("ignore") => RepoSettingsPage::Ignore,
         Some("identity") => RepoSettingsPage::Identity,
         Some("account") => RepoSettingsPage::Account,
         _ => RepoSettingsPage::Info,

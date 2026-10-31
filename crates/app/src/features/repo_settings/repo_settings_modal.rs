@@ -8,6 +8,7 @@ use gpui::{
     Window, div, px,
 };
 
+use super::ignore_page::IgnorePage;
 use super::info_page::InfoPage;
 use super::remotes_page::RemotesPage;
 use super::state::{RepoSettingsPage, RepoSettingsStore};
@@ -63,6 +64,9 @@ impl RenderOnce for RepoSettingsModal {
             RepoSettingsPage::Identity => {
                 RepoIdentity { identity: a.identity.clone(), inputs: a.inputs.clone(), repo: self.repo, store: self.accounts }
                     .into_any_element()
+            }
+            RepoSettingsPage::Ignore => {
+                IgnorePage { inputs: s.inputs.clone(), error: s.error.clone(), notice: s.notice, store: self.store }.into_any_element()
             }
             RepoSettingsPage::Account => RepoAccountBlock {
                 repo_path: self.repo.root().to_path_buf(),

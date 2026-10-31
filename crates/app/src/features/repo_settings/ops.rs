@@ -4,7 +4,7 @@ use gd_git::Repository;
 use gpui::{AppContext as _, Context, Entity};
 use gpui_elements::editable_text::EditableTextState;
 
-use super::state::{Edit, RepoSettingsStore};
+use super::state::{Edit, IgnoreFile, RepoSettingsStore};
 use crate::repo::{RepoModel, spawn_load};
 
 fn text(input: &Entity<EditableTextState>, cx: &Context<RepoSettingsStore>) -> String {
@@ -19,9 +19,10 @@ impl RepoSettingsStore {
     /// Reset to the first page and read the repository off the UI thread.
     pub fn open(&mut self, model: Entity<RepoModel>, cx: &mut Context<Self>) {
         self.page = Default::default();
-        (self.edit, self.error) = (None, None);
+        (self.edit, self.error, self.notice) = (None, None, None);
         self.model = Some(model);
         self.reload(cx);
+        self.load_ignore(cx);
     }
 
     fn repo(&self, cx: &Context<Self>) -> Option<Repository> {
@@ -47,15 +48,15 @@ impl RepoSettingsStore {
 
     /// Run a git write off the UI thread. On success the form closes, the page reloads and the
     /// toolbar refreshes (remotes change the push/pull button); on failure the error stays on the page.
-    fn write(&mut self, work: impl FnOnce(&Repository) -> gd_git::Result<()> + Send + 'static, cx: &mut Context<Self>) {
+    fn write(&mut self, done: &'static str, work: impl FnOnce(&Repository) -> gd_git::Result<()> + Send + 'static, cx: &mut Context<Self>) {
         let Some(repo) = self.repo(cx) else { return };
-        self.error = None;
+        (self.error, self.notice) = (None, None);
         cx.spawn(async move |this, cx| {
             let res = cx.background_spawn(async move { work(&repo) }).await;
             this.update(cx, |this, cx| {
                 match res {
                     Ok(()) => {
-                        this.edit = None;
+                        (this.edit, this.notice) = (None, Some(done));
                         this.reload(cx);
                         if let Some(model) = this.model.clone() {
                             model.update(cx, |m, cx| m.refresh(cx));
@@ -103,6 +104,7 @@ impl RepoSettingsStore {
             _ => None,
         };
         self.write(
+            "Saved",
             move |repo| {
                 match &old {
                     None => repo.add_remote(&name, &url)?,
@@ -128,6 +130,47 @@ impl RepoSettingsStore {
     }
 
     pub fn remove_remote(&mut self, name: String, cx: &mut Context<Self>) {
-        self.write(move |repo| repo.remove_remote(&name), cx);
+        self.write("Removed", move |repo| repo.remove_remote(&name), cx);
+    }
+
+    // ---- ignored files -----------------------------------------------------
+
+    fn load_ignore(&mut self, cx: &mut Context<Self>) {
+        let Some(repo) = self.repo(cx) else { return };
+        spawn_load(
+            self,
+            |this| &mut this.ignore_load,
+            move || [IgnoreFile::Gitignore, IgnoreFile::Exclude].map(|f| std::fs::read_to_string(f.path(&repo)).unwrap_or_default()),
+            |this, [gitignore, exclude], cx| {
+                set_text(&this.inputs.gitignore, &gitignore, cx);
+                set_text(&this.inputs.exclude, &exclude, cx);
+            },
+            cx,
+        );
+    }
+
+    /// Write the text of the file's editor; the changes list updates since ignored files disappear from it.
+    pub fn save_ignore(&mut self, file: IgnoreFile, cx: &mut Context<Self>) {
+        let input = match file {
+            IgnoreFile::Gitignore => &self.inputs.gitignore,
+            IgnoreFile::Exclude => &self.inputs.exclude,
+        };
+        let mut text = input.read(cx).as_str().to_string();
+        if !text.is_empty() && !text.ends_with('\n') {
+            text.push('\n');
+        }
+        self.write(
+            "Saved",
+            move |repo| {
+                let path = file.path(repo);
+                if text.is_empty() && !path.exists() {
+                    return Ok(());
+                }
+                let io = |e: std::io::Error| gd_git::GitError::Io(format!("{}: {e}", path.display()));
+                std::fs::create_dir_all(path.parent().unwrap_or(repo.root())).map_err(io)?;
+                std::fs::write(&path, text).map_err(io)
+            },
+            cx,
+        );
     }
 }

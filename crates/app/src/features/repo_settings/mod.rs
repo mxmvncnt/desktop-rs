@@ -3,6 +3,7 @@
 //! the Repository menu. Pages: info, identity override, account, ... Git side: `gd-git`.
 
 mod handlers;
+mod ignore_page;
 mod info_page;
 mod ops;
 mod remote_form;
