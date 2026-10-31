@@ -4,6 +4,7 @@ use super::overlay::Overlay;
 use crate::features::accounts::AccountsStore;
 use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::branches::BranchUi;
+use crate::features::ci::CiStore;
 use crate::features::changes::CommitBox;
 use crate::features::diff::{DiffSelectUi, DiffView};
 use crate::features::history::HistoryUi;
@@ -30,6 +31,8 @@ pub struct Workspace {
     pub accounts: Entity<AccountsStore>,
     /// The repository settings modal (features/repo_settings).
     pub repo_settings: Entity<RepoSettingsStore>,
+    /// The CI pipelines page (features/ci); replaces the body while `open`.
+    pub ci: Entity<CiStore>,
     pub repo: Option<Entity<RepoModel>>,
     /// Open menus, dialogs, popovers and the settings modal (`overlay.rs`).
     pub overlays: Vec<Overlay>,

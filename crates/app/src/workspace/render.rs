@@ -12,6 +12,7 @@ use crate::actions::{WORKSPACE, WORKSPACE_MENU};
 use crate::components::MenuView;
 use crate::features::branches::BranchDialogView;
 use crate::features::changes::{Sidebar, SidebarResize};
+use crate::features::ci::CiPage;
 use crate::features::diff::DiffOptionsMenu;
 use crate::features::history::HistoryDialogView;
 use crate::features::menus::DiscardDialogView;
@@ -74,6 +75,9 @@ impl Workspace {
         let Some(repo) = self.repo.clone() else {
             return WelcomeScreen { ws: cx.entity() }.into_any_element();
         };
+        if self.ci.read(cx).open {
+            return CiPage { store: self.ci.clone(), ws: cx.entity() }.into_any_element();
+        }
         let (tab, pr_open) = {
             let r = repo.read(cx);
             (r.tab, r.pr.open)

@@ -11,6 +11,7 @@ use crate::features::accounts::AccountsStore;
 use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::branches::BranchUi;
 use crate::features::changes::CommitBox;
+use crate::features::ci::CiStore;
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
 use crate::features::pickers::PopoverStore;
@@ -33,6 +34,8 @@ impl Workspace {
         subs.push(cx.observe(&accounts, |_, _, cx| cx.notify()));
         let repo_settings = cx.new(|cx| RepoSettingsStore::new(cx));
         subs.push(cx.observe(&repo_settings, |_, _, cx| cx.notify()));
+        let ci = cx.new(|_| CiStore::default());
+        subs.push(cx.observe(&ci, |_, _, cx| cx.notify()));
         subs.extend(window_subscriptions(window, cx));
 
         let mut this = Self {
@@ -41,6 +44,7 @@ impl Workspace {
             settings_page: Default::default(),
             accounts,
             repo_settings,
+            ci,
             repo: None,
             overlays: Vec::new(),
             overlay_gen: 0,
@@ -107,6 +111,7 @@ fn window_subscriptions(window: &mut Window, cx: &mut Context<Workspace>) -> [Su
     [
         // Desktop refreshes status when the window regains focus.
         cx.observe_window_activation(window, |this, window, cx| {
+            this.ci.update(cx, |ci, cx| ci.set_focused(window.is_window_active(), cx));
             if window.is_window_active() {
                 // The watcher already keeps us fresh; skip if it just refreshed.
                 let recent = this.repo.as_ref().is_some_and(|r| {

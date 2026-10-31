@@ -16,6 +16,7 @@ snapshot = ["gpui/test-support", "gpui_platform/test-support", "dep:gpui_wgpu"]
 
 [dependencies]
 gpui_wgpu = { workspace = true, optional = true, features = ["test-support"] }
+gd-forge.workspace = true
 gd-git.workspace = true
 gd-ui.workspace = true
 gpui.workspace = true

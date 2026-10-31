@@ -20,6 +20,13 @@ impl Workspace {
         }
     }
 
+    /// Settings on the Accounts page (the CI page's "Change" and "Add an account").
+    pub fn open_accounts_settings(&mut self, cx: &mut Context<Self>) {
+        self.settings_page = SettingsPage::Accounts;
+        self.open_overlay(Overlay::Settings, cx);
+        self.load_identity(cx);
+    }
+
     fn load_identity(&mut self, cx: &mut Context<Self>) {
         self.accounts.update(cx, |a, cx| a.load_identity(None, cx));
     }

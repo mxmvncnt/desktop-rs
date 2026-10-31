@@ -22,6 +22,7 @@ pub struct Toolbar {
     branch: SharedString,
     remote: RemoteButton,
     popover: Option<Popover>,
+    ci_open: bool,
 }
 
 impl Toolbar {
@@ -34,6 +35,7 @@ impl Toolbar {
             branch: repo.map(|r| r.branch_name().into()).unwrap_or_else(|| "—".into()),
             remote: RemoteButton::for_repo(repo),
             popover: ws.popover(),
+            ci_open: ws.ci.read(cx).open,
         }
     }
 }
@@ -69,6 +71,7 @@ impl RenderOnce for Toolbar {
                 div().id("titlebar-drag").flex_1().h_full(),
                 chrome,
             ))
+            .child(self.ci_button())
             .child(self.settings_button())
             .children(captions.and_then(|c| crate::platform::caption_buttons(&c.right, maximized, cx)))
     }
@@ -105,6 +108,18 @@ impl Toolbar {
                     ws.update(cx, |this, cx| this.remote_action(op, cx))
                 }
             })
+    }
+
+    fn ci_button(&self) -> impl IntoElement + use<> {
+        let ws = self.ws.clone();
+        div()
+            .id("toolbar-ci-wrap")
+            .tooltip(gd_ui::tooltip(format!("CI pipelines ({}+Shift+I)", crate::platform::SECONDARY_LABEL)))
+            .child(
+                icon_button("toolbar-ci", Icon::Pipeline)
+                    .selected(self.ci_open)
+                    .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.toggle_ci(cx))),
+            )
     }
 
     fn settings_button(&self) -> impl IntoElement + use<> {

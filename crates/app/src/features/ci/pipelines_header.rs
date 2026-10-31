@@ -1,0 +1,98 @@
+//! Top of the pipelines list: title, the account in use, the status tabs, the branch toggle and Refresh.
+
+use gd_forge::Status;
+use gd_ui::{Button, Icon, Tabs, Theme};
+use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
+
+use super::state::CiStore;
+use crate::workspace::Workspace;
+
+/// The status tabs, in order.
+const STATUS_TABS: [(&str, Option<Status>); 4] =
+    [("All", None), ("Running", Some(Status::Running)), ("Failed", Some(Status::Failed)), ("Success", Some(Status::Success))];
+
+#[derive(IntoElement)]
+pub struct PipelinesHeader {
+    pub store: Entity<CiStore>,
+    pub ws: Entity<Workspace>,
+}
+
+impl RenderOnce for PipelinesHeader {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let theme = Theme::of(cx);
+        let ci = self.store.read(cx);
+        let target = ci.ready();
+        let selected = STATUS_TABS.iter().position(|(_, s)| *s == ci.status).unwrap_or(0);
+        let current_branch = ci.current_branch;
+        let account = target.map(|t| format!("via {} · {}", t.account_name, t.host));
+        let (ws, store, branch_store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.store.clone(), self.ws.clone());
+
+        div()
+            .flex()
+            .flex_col()
+            .flex_none()
+            .gap(px(14.0))
+            .px(px(24.0))
+            .pt(px(18.0))
+            .pb(px(12.0))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(2.0))
+                            .child(div().text_size(px(18.0)).font_weight(gpui::FontWeight::MEDIUM).child("Pipelines"))
+                            .children(account.map(|account| {
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(8.0))
+                                    .text_size(px(12.0))
+                                    .text_color(theme.text_muted)
+                                    .child(account)
+                                    .child(
+                                        div()
+                                            .id("ci-change-account")
+                                            .cursor_pointer()
+                                            .text_color(theme.accent)
+                                            .hover_style(|s| s.underline())
+                                            .child("Change")
+                                            .on_click(move |_, _, cx| ws.update(cx, |ws, cx| ws.open_repo_account_settings(cx))),
+                                    )
+                            })),
+                    )
+                    .child(
+                        Button::new("ci-refresh").icon(Icon::Refresh).label("Refresh").on_click(move |_, _, cx| {
+                            refresh_ws.update(cx, |ws, cx| ws.sync_ci(cx))
+                        }),
+                    ),
+            )
+            .when(target.is_some(), |d| {
+                d.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(12.0))
+                        .child(
+                            div().w(px(340.0)).child(
+                                STATUS_TABS
+                                    .iter()
+                                    .fold(Tabs::new("ci-status-tabs", selected), |tabs, (label, _)| tabs.tab(*label, None))
+                                    .on_select(move |ix, _, cx| store.update(cx, |s, cx| s.set_status(STATUS_TABS[ix].1, cx))),
+                            ),
+                        )
+                        .child(
+                            Button::new("ci-current-branch")
+                                .icon(Icon::GitBranch)
+                                .label("Current branch")
+                                .selected(current_branch)
+                                .on_click(move |_, _, cx| branch_store.update(cx, |s, cx| s.toggle_current_branch(cx))),
+                        ),
+                )
+            })
+    }
+}

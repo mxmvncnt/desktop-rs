@@ -69,6 +69,9 @@ icons! {
     WindowMaximize => "window-maximize",
     WindowRestore => "window-restore",
     Tuning => "tuning",
+    Play => "play",
+    Stop => "stop",
+    Pipeline => "pipeline",
 }
 
 #[derive(RustEmbed)]

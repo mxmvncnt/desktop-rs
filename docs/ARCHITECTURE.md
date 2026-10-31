@@ -590,3 +590,22 @@ is the remote host. `Repository::remote_host()` (gd-git) gives the host of the d
   A new page adds an `Edit` variant for its form/confirmation instead of a new field. `FieldRow` lives in `components/`.
 - Ignored files: `IgnoreFile::{Gitignore, Exclude}` (`state.rs`) gives the path (`common_git_dir()/info/exclude`); the texts are read once on open (`load_ignore`, never on reload so unsaved edits survive a write) and `save_ignore` writes through `write()`. `notice` holds the success text of the last write.
 - Git config: `gd-git/config.rs` (`local_config` parses `--list -z` records `key\nvalue\0`; `add/replace/remove_config` match one value with `--fixed-value`, so regex characters are literal and other values of the key stay; `validate_key`). Rows are identified by key + value (`Edit::Config(entry)`). Not done: showing the global/system origin of a key.
+## CI page (`features/ci/`)
+
+A full page, not an overlay: `Workspace::body` returns `CiPage` instead of sidebar + main pane while `CiStore::open` (the toolbar button
+left of the settings cog, Ctrl/Cmd+Shift+I; Esc closes it after the overlays). Only the toolbar stays. `Workspace::ci: Entity<CiStore>`
+is observed like the other stores; `attach_model` calls `sync_ci` when a repository is opened while the page is open, so it shows the new repo.
+
+- `state.rs` (`CiStore`), `target.rs` (`Target` = forge + `RepoRef` + account; `Problem` = every empty state, `Problem::describe`; `forge_of(Provider)`),
+  `ops.rs` (resolve, list, details), `polling.rs`, `handlers.rs` (`impl Workspace`: `toggle_ci`, `sync_ci`, `back_ci`).
+  Components: `ci_page`, `pipelines_header`, `problem_view`, `pipeline_row` (plain fn), `stage_dots`, `status_badge` (status -> label/icon/tone, tested), `duration`.
+- Resolution (`CiStore::show`, background): `tracking_remote_url` -> `RepoRef::from_remote` -> `account_for_repo` -> `forge_of(provider)`.
+  Bitbucket and Generic accounts are "not supported". Every request builds its `Client` with `accounts::fresh_token` on the background thread,
+  so an expiring OAuth token is refreshed. Another repository resets the store (`epoch` bump drops late detail results); the same one keeps its cache.
+- The list has no stages. Rows ask for their `pipeline()` detail only for the visible range (`request_details`, from the `uniform_list` closure
+  through `window.defer`), at most 4 at a time, cached by pipeline id in `details`. A failed detail is remembered in `failed` (else the render
+  would re-request it forever) and retried by the next poll. Without real stages (GitHub, Gitea) `load_detail` reads the workflow file from the
+  working tree (`workflow_candidates`) and calls `stages_from_workflow`.
+- Polling (`polling.rs`): one task while the page is open, every 10 s when something in the list is unfinished, else every 60 s; skipped while the
+  window is inactive, and coming back to the window polls at once. A poll reloads page 1 and merges it (older pages stay, rows the new page covers
+  are replaced), and refetches the details that are not finished. Finished details are never refetched. Running status icons are static.

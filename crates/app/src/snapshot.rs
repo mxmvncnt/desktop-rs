@@ -27,7 +27,7 @@ use std::time::Duration;
 use gpui::{AppContext as _, Context, HeadlessAppContext, Window, px, size};
 
 use crate::actions::SelectNext;
-use crate::features::{accounts, branches, changes, diff, history, menus, merge, force_push, pickers, pr_preview, repo_settings, settings, stashes};
+use crate::features::{accounts, branches, changes, ci, diff, history, menus, merge, force_push, pickers, pr_preview, repo_settings, settings, stashes};
 use crate::workspace::{NavList, Workspace};
 
 pub type Step = fn(&mut Workspace, &str, &mut Window, &mut Context<Workspace>);
@@ -37,10 +37,11 @@ pub struct View {
     pub steps: &'static [Step],
 }
 
-const FEATURES: [fn() -> &'static [View]; 13] = [
+const FEATURES: [fn() -> &'static [View]; 14] = [
     accounts::snapshot::views,
     branches::snapshot::views,
     changes::snapshot::views,
+    ci::snapshot::views,
     diff::snapshot::views,
     history::snapshot::views,
     menus::snapshot::views,

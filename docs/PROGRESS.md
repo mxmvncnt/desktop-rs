@@ -1,5 +1,11 @@
 # Progress
 
+## CI pipelines page (branch `rust/ci-page`)
+
+- [x] Toolbar button + full page (`features/ci/`), account resolution with empty states, pipelines list (status tabs, current-branch toggle,
+      refresh, load more, stage dots loaded lazily for visible rows), polling. Snapshot views `ci-pipelines[-light]`, `ci-empty-account`, `ci-error`.
+- Unverified: no live server was used; everything is checked with fixtures and the `gd-forge` fixtures only.
+
 ## 2026-10-29
 
 - Git layer is CLI-only again (branch `rust/cli-git`): the libgit2 reads are gone, `gd-git` no longer depends on `git2`.

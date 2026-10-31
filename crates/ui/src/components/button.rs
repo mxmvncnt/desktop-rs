@@ -29,6 +29,7 @@ pub struct Button {
     disabled: bool,
     full_width: bool,
     compact: bool,
+    selected: bool,
     on_click: Option<ClickHandler>,
 }
 
@@ -42,6 +43,7 @@ impl Button {
             disabled: false,
             full_width: false,
             compact: false,
+            selected: false,
             on_click: None,
         }
     }
@@ -75,6 +77,11 @@ impl Button {
         self.compact = true;
         self
     }
+    /// Shown pressed (a toggle that is on, a page that is open).
+    pub fn selected(mut self, s: bool) -> Self {
+        self.selected = s;
+        self
+    }
     pub fn on_click(mut self, f: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
         self.on_click = Some(Box::new(f));
         self
@@ -90,6 +97,7 @@ impl RenderOnce for Button {
             ButtonStyle::Ghost => (theme.ink(0.0), theme.element_hover, theme.text_muted),
             ButtonStyle::Danger => (theme.danger_strong, theme.danger, theme.on_accent),
         };
+        let (bg, fg) = if self.selected { (theme.element_active, theme.text) } else { (bg, fg) };
         let hover_fg = if self.style == ButtonStyle::Ghost {
             theme.text
         } else {

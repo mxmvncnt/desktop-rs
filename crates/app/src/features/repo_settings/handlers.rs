@@ -14,6 +14,12 @@ impl Workspace {
         self.load_repo_identity(cx);
     }
 
+    /// The repository's account pick (from the CI page).
+    pub fn open_repo_account_settings(&mut self, cx: &mut Context<Self>) {
+        self.open_repo_settings(cx);
+        self.set_repo_settings_page(RepoSettingsPage::Account, cx);
+    }
+
     pub(crate) fn set_repo_settings_page(&mut self, page: RepoSettingsPage, cx: &mut Context<Self>) {
         self.repo_settings.update(cx, |s, _| (s.page, s.edit, s.error, s.notice) = (page, None, None, None));
         self.load_repo_identity(cx);

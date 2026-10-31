@@ -26,8 +26,7 @@ pub mod snapshot;
 pub use accounts_page::AccountsPage;
 pub use repo_account_block::RepoAccountBlock;
 pub use repo_identity::RepoIdentity;
-#[allow(unused_imports)] // for the CI page
-pub use repo_account::account_for_repo;
+pub use model::{Account, Provider};
+pub use repo_account::{RepoAccounts, account_for_repo};
 pub use state::AccountsStore;
-#[allow(unused_imports)] // for the CI page
 pub use token::fresh_token;

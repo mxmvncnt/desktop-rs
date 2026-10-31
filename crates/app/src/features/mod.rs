@@ -14,3 +14,4 @@ pub mod diff;
 pub mod toolbar;
 pub mod notices;
 pub mod accounts;
+pub mod ci;
