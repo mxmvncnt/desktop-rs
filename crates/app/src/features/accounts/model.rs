@@ -87,6 +87,21 @@ impl Provider {
     }
 }
 
+/// How the add/edit form gets the token.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SignInMethod {
+    Browser,
+    Token,
+    OwnApp,
+}
+
+impl SignInMethod {
+    /// The browser when the host has an OAuth app, else a pasted token.
+    pub fn default_for(provider: Provider, host: &str) -> Self {
+        if provider.oauth_app(host, "").is_some() { Self::Browser } else { Self::Token }
+    }
+}
+
 /// An OAuth app to sign in with and the redirect URI of the loopback listener it accepts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OAuthApp {

@@ -9,7 +9,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use super::model::{self, Account, Provider, normalize_host};
+use super::model::{self, Account, Provider, SignInMethod, normalize_host};
 use super::oauth::{self, Progress};
 use super::repo_account;
 use super::secrets;
@@ -157,13 +157,25 @@ impl AccountsStore {
         for (input, text) in [(&inp.display_name, &a.name), (&inp.host, &a.host), (&inp.username, &a.username), (&inp.token, &String::new()), (&inp.client_id, &String::new()), (&inp.copyable, &oauth::REDIRECT_URI.into())] {
             set_input(input, text, cx);
         }
+        // The method the account used: a pasted token, or the OAuth app it signed in with.
+        let client_id = acct.as_ref().filter(|a| a.oauth).and_then(|a| secrets::get(&a.id)).map(|raw| TokenSecret::parse(&raw).client_id).unwrap_or_default();
+        let builtin = provider.oauth_app(&a.host, "").map(|app| app.client_id);
+        let method = match &acct {
+            Some(a) if !a.oauth && !a.token.is_empty() => SignInMethod::Token,
+            Some(_) if !client_id.is_empty() && builtin.as_ref() != Some(&client_id) => SignInMethod::OwnApp,
+            _ => SignInMethod::default_for(provider, &a.host),
+        };
+        if method == SignInMethod::OwnApp {
+            set_input(&inp.client_id, &client_id, cx);
+        }
         self.stop_signin();
         self.form = Some(AccountForm {
             editing,
             provider,
             has_token: acct.is_some_and(|a| !a.token.is_empty()),
             error: None,
-            advanced: false,
+            method,
+            checking: false,
             provider_menu: false,
             waiting: None,
             signed_in: None,
@@ -188,6 +200,7 @@ impl AccountsStore {
             None if was_fixed => set_input(&host_input, "", cx),
             None => {}
         }
+        form.method = SignInMethod::default_for(provider, &input_text(&host_input, cx));
         cx.notify();
     }
 
@@ -198,10 +211,18 @@ impl AccountsStore {
         cx.notify();
     }
 
-    pub(super) fn toggle_advanced(&mut self, cx: &mut Context<Self>) {
+    /// Pick how to sign in; the other methods' leftovers (waiting browser, pasted token) are dropped.
+    pub(super) fn set_sign_in_method(&mut self, method: SignInMethod, cx: &mut Context<Self>) {
+        self.stop_signin();
+        set_input(&self.inputs.token, "", cx);
         if let Some(form) = &mut self.form {
-            form.advanced = !form.advanced;
+            (form.method, form.signed_in, form.error) = (method, None, None);
         }
+        cx.notify();
+    }
+
+    pub(super) fn cancel_signin(&mut self, cx: &mut Context<Self>) {
+        self.stop_signin();
         cx.notify();
     }
 
@@ -215,31 +236,47 @@ impl AccountsStore {
         let Some(form) = self.form.clone() else { return };
         let inp = &self.inputs;
         let host = normalize_host(&input_text(&inp.host, cx));
-        let username = input_text(&inp.username, cx);
         let typed_token = input_text(&inp.token, cx);
-        let mut name = input_text(&inp.display_name, cx);
         if host.is_empty() {
             return self.account_form_error("Enter a host, e.g. github.com", cx);
         }
-        if name.is_empty() {
-            name = if username.is_empty() { host.clone() } else { format!("{username}@{host}") };
+        let has_token = form.signed_in.is_some() || !typed_token.is_empty();
+        if form.provider.has_oauth() && !has_token && form.editing.is_none() {
+            return self.account_form_error("Paste a token or sign in with the browser", cx);
         }
-        let looks_up_username = form.provider.has_oauth() && form.signed_in.is_none() && !typed_token.is_empty() && username.is_empty();
-        if looks_up_username {
+        // A pasted token is checked online; its owner becomes the username.
+        if form.provider.has_oauth() && form.signed_in.is_none() && !typed_token.is_empty() {
             let (provider, token) = (form.provider, typed_token);
+            if let Some(form) = &mut self.form {
+                (form.checking, form.error) = (true, None);
+            }
             cx.spawn(async move |this, cx| {
-                let res = cx.background_spawn(async move { oauth::username(provider, &host, &token) }).await;
-                this.update(cx, |this, cx| match res {
-                    Ok(name) => {
-                        set_input(&this.inputs.username, &name, cx);
-                        this.save_account(cx);
+                let res = cx.background_spawn(async move { oauth::username(provider, &host, &token).map(|name| (token, name)) }).await;
+                this.update(cx, |this, cx| {
+                    if let Some(form) = &mut this.form {
+                        form.checking = false;
                     }
-                    Err(e) => this.account_form_error(&e, cx),
+                    match res {
+                        Ok((token, name)) => {
+                            if let Some(form) = &mut this.form {
+                                form.signed_in = Some(TokenSecret { access_token: token, ..TokenSecret::default() });
+                            }
+                            set_input(&this.inputs.username, &name, cx);
+                            this.save_account(cx);
+                        }
+                        Err(e) => this.account_form_error(&e, cx),
+                    }
                 })
                 .ok();
             })
             .detach();
+            cx.notify();
             return;
+        }
+        let username = input_text(&inp.username, cx);
+        let mut name = input_text(&inp.display_name, cx);
+        if name.is_empty() {
+            name = if username.is_empty() { host.clone() } else { username.clone() };
         }
         self.stop_signin();
         let secret = form
@@ -290,7 +327,8 @@ impl AccountsStore {
         if host.is_empty() {
             return self.account_form_error("Enter a host, e.g. github.com", cx);
         }
-        let Some(app) = provider.oauth_app(&host, &input_text(&self.inputs.client_id, cx)) else {
+        let custom = if form.method == SignInMethod::OwnApp { input_text(&self.inputs.client_id, cx) } else { String::new() };
+        let Some(app) = provider.oauth_app(&host, &custom) else {
             return self.account_form_error("Enter the OAuth client ID of your app", cx);
         };
         let cancel = Arc::new(AtomicBool::new(false));
@@ -302,7 +340,7 @@ impl AccountsStore {
         }
         cx.spawn(async move |this, cx| {
             while let Ok(progress) = rx.recv().await {
-                let more = this.update(cx, |this, cx| this.apply_progress(&cancel, &host, progress, cx));
+                let more = this.update(cx, |this, cx| this.apply_progress(&cancel, progress, cx));
                 if !more.unwrap_or(false) {
                     break;
                 }
@@ -313,7 +351,7 @@ impl AccountsStore {
     }
 
     /// Apply a sign-in update to the form; `false` when it is stale or finished.
-    fn apply_progress(&mut self, cancel: &Arc<AtomicBool>, host: &str, progress: Progress, cx: &mut Context<Self>) -> bool {
+    fn apply_progress(&mut self, cancel: &Arc<AtomicBool>, progress: Progress, cx: &mut Context<Self>) -> bool {
         let inp = self.inputs.clone();
         let Some(form) = self.form.as_mut() else { return false };
         let Some(waiting) = form.waiting.as_mut().filter(|w| Arc::ptr_eq(&w.cancel, cancel)) else { return false };
@@ -332,9 +370,6 @@ impl AccountsStore {
                     Ok((secret, username)) => {
                         form.signed_in = Some(secret);
                         set_input(&inp.username, &username, cx);
-                        if input_text(&inp.display_name, cx).is_empty() {
-                            set_input(&inp.display_name, &format!("{username}@{host}"), cx);
-                        }
                     }
                     Err(e) => form.error = Some(e),
                 }

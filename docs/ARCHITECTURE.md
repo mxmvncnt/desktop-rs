@@ -556,9 +556,11 @@ GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the b
   listener and makes later results stale (ignored). The device flow keeps polling until its code expires.
 - The only API call is `/user` (GitHub: `api.github.com` or `https://<host>/api/v3`; GitLab `/api/v4`;
   Gitea/Forgejo `/api/v1`) to fill the username. Hosts are assumed to be `https`.
-- The account type is a dropdown (`provider_select` in `account_form.rs`: a `Button` plus a deferred `overlay_card` of `BranchRow`s, state `AccountForm.provider_menu`, same pattern as the PR base menu).
+- The add form has no username or display name field (OAuth providers; Bitbucket/Generic keep Username). The username always comes from `/user`, the display name defaults to it (editable when editing). The Host field shows only for providers without a fixed host.
+- The account type is a compact 220px select (`provider_select` in `account_form.rs`): the open menu is a deferred card whose selected row sits over the control (like a native select), with a huge transparent backdrop in the same deferred element that closes it on any click (`on_mouse_down_out` would reopen it when the control is clicked).
+- "Sign in with" is a radio group of `OptionRow`s (`SignInMethod` in `model.rs`: Browser only when `oauth_app(host, "")` exists, Personal access token, Your own OAuth app); only the chosen method's body shows. Default = `SignInMethod::default_for`; editing preselects the method the account used (secret's client id). A pasted token is checked with `/user` on "Add account" ("Checking...", "This token was rejected").
 - Client ids are public (no secret), so they are source constants in `accounts/model.rs`. `Provider::oauth_app(host, custom)`
-  resolves: custom client id typed in "Advanced: use your own OAuth app" > `BUILTIN_CLIENT_IDS` entry of the host (empty = not
+  resolves: custom client id typed in the "Your own OAuth app" method > `BUILTIN_CLIENT_IDS` entry of the host (empty = not
   registered) > Gitea/Forgejo default app > `None`. `None` (GHE, self-managed GitLab, or github.com/gitlab.com while unregistered)
   means the form shows "Create token" (opens `https://<host>/settings/tokens/new?scopes=repo,workflow,read:user&description=desktop-rs`
   or GitLab `/-/user_settings/personal_access_tokens?name=desktop-rs&scopes=api`) and the token field; saving a pasted token

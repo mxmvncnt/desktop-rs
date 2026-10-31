@@ -162,7 +162,10 @@ pub(super) fn username(provider: Provider, host: &str, token: &str) -> Result<St
         .set("Authorization", &format!("Bearer {token}"))
         .set("User-Agent", "desktop-rs")
         .call()
-        .map_err(|e| format!("cannot read the user from {url}: {e}"))?
+        .map_err(|e| match e {
+            ureq::Error::Status(401 | 403, _) => "This token was rejected".to_string(),
+            e => format!("cannot read the user from {url}: {e}"),
+        })?
         .into_json()
         .map_err(|e| e.to_string())?;
     user[field].as_str().map(str::to_string).ok_or_else(|| format!("no `{field}` in the response of {url}"))

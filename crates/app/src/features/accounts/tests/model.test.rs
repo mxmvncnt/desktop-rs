@@ -50,3 +50,12 @@ fn redirect_uri_depends_on_the_app() {
     assert_eq!(uri(Provider::Gitea, "mine"), REDIRECT_URI);
     assert_eq!(uri(Provider::GitLab, "mine"), REDIRECT_URI);
 }
+
+#[test]
+fn sign_in_method_defaults_to_the_browser_when_an_app_exists() {
+    assert_eq!(SignInMethod::default_for(Provider::Gitea, "git.example.com"), SignInMethod::Browser);
+    assert_eq!(SignInMethod::default_for(Provider::GitHubEnterprise, "ghe.example.com"), SignInMethod::Token);
+    assert_eq!(SignInMethod::default_for(Provider::Bitbucket, "bitbucket.org"), SignInMethod::Token);
+    // github.com has no registered app yet
+    assert_eq!(SignInMethod::default_for(Provider::GitHub, "github.com"), SignInMethod::Token);
+}

@@ -3,7 +3,7 @@
 use gpui::{App, Context, Entity, Window};
 use gpui_elements::editable_text::EditableTextState;
 
-use super::model::{Account, Provider};
+use super::model::{Account, Provider, SignInMethod};
 use super::state::{AccountForm, Waiting};
 use super::status_text::StatusText;
 use crate::features::settings::{SettingsPage, ThemeMode};
@@ -34,12 +34,19 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
     if view.ends_with("plaintext") {
         super::secrets::PLAINTEXT.store(true, std::sync::atomic::Ordering::Relaxed);
     }
+    // Suffix of the view -> (provider, host, method) of the open form; `None` = the list.
     let editing = view.ends_with("edit");
-    let waiting = view.ends_with("oauth-waiting");
-    let selfhosted = view.ends_with("oauth-selfhosted");
-    let advanced = view.ends_with("oauth-advanced");
-    let token_fallback = view.ends_with("oauth-token") || advanced;
-    let show_form = view.ends_with("form") || editing || waiting || selfhosted || token_fallback || view.ends_with("provider-menu");
+    let form = match view.trim_end_matches("-light").trim_start_matches("settings-accounts") {
+        "-form" | "-provider-menu" => Some((Provider::GitHub, "github.com", SignInMethod::Token)),
+        "-edit" => Some((Provider::GitHubEnterprise, "github.corp.example.com", SignInMethod::Token)),
+        "-browser" => Some((Provider::Gitea, "gitea.example.com", SignInMethod::Browser)),
+        "-browser-waiting" => Some((Provider::Gitea, "gitea.example.com", SignInMethod::Browser)),
+        "-token" | "-token-checking" | "-token-error" => Some((Provider::GitHubEnterprise, "github.corp.example.com", SignInMethod::Token)),
+        "-own-app" | "-own-app-waiting" => Some((Provider::GitHubEnterprise, "github.corp.example.com", SignInMethod::OwnApp)),
+        "-bitbucket" => Some((Provider::Bitbucket, "bitbucket.org", SignInMethod::Token)),
+        _ => None,
+    };
+    let waiting = view.contains("-waiting");
     ws.accounts.update(cx, |ui, cx| {
         ui.accounts = vec![
             acct("1", Provider::GitHub, "Personal", "github.com", "octocat", "ghp_x"),
@@ -59,31 +66,23 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
         ui.identity.local = local;
         ui.identity.message = Some(StatusText::ok("Saved to your global git config"));
         ui.identity.remote_host = Some("github.com".into());
-        if show_form {
+        if let Some((provider, host, method)) = form {
             set(&inp.display_name, if editing { "Work" } else { "" }, cx);
-            let host = if editing || token_fallback {
-                "github.corp.example.com"
-            } else if selfhosted {
-                "gitea.example.com"
-            } else {
-                "github.com"
-            };
             set(&inp.host, host, cx);
-            set(&inp.copyable, if waiting { "WDJB-MJHT" } else { super::oauth::REDIRECT_URI }, cx);
-            let provider = match (editing || token_fallback, selfhosted) {
-                (true, _) => Provider::GitHubEnterprise,
-                (_, true) => Provider::Gitea,
-                _ => Provider::GitHub,
-            };
+            set(&inp.copyable, if waiting && provider.uses_device_flow() { "WDJB-MJHT" } else { super::oauth::REDIRECT_URI }, cx);
             set(&inp.username, if editing { "mvincent" } else { "" }, cx);
+            set(&inp.token, if view.contains("-token-") { "ghp_notavalidtoken" } else { "" }, cx);
+            set(&inp.client_id, if view.contains("-own-app-waiting") { "Iv1.0123456789abcdef" } else { "" }, cx);
+            let url = if provider.uses_device_flow() { "https://github.corp.example.com/login/device" } else { "https://gitea.example.com/login/oauth/authorize" };
             ui.form = Some(AccountForm {
                 editing: editing.then(|| "2".to_string()),
                 provider,
                 has_token: editing,
-                error: None,
-                advanced,
-                provider_menu: view.ends_with("provider-menu"),
-                waiting: waiting.then(|| Waiting { cancel: Default::default(), url: Some("https://github.com/login/device".into()) }),
+                error: view.contains("-token-error").then(|| "This token was rejected".to_string()),
+                method,
+                checking: view.contains("-token-checking"),
+                provider_menu: view.contains("-provider-menu"),
+                waiting: waiting.then(|| Waiting { cancel: Default::default(), url: Some(url.into()) }),
                 signed_in: None,
             });
         }

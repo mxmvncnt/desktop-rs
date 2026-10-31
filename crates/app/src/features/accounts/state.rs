@@ -8,7 +8,7 @@ use gd_git::{EffectiveIdentity, Identity};
 use gpui::{App, AppContext, Entity};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
-use super::model::{self, Account, Provider};
+use super::model::{self, Account, Provider, SignInMethod};
 use super::repo_account::{self, RepoAccounts};
 use super::status_text::StatusText;
 use super::token::{self, TokenSecret};
@@ -23,8 +23,9 @@ pub struct AccountForm {
     /// The stored account already has a token (empty token input keeps it).
     pub has_token: bool,
     pub error: Option<String>,
-    /// The "use your own OAuth app" disclosure is open.
-    pub advanced: bool,
+    pub method: SignInMethod,
+    /// The pasted token is being checked against `/user`.
+    pub checking: bool,
     /// The account type dropdown is open.
     pub provider_menu: bool,
     /// A browser sign-in is in progress.
