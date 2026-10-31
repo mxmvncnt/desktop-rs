@@ -533,3 +533,10 @@ gotchas above.
   workspace so inputs (which bind their own copy/select-all deeper) do not intercept.
 - Shared `CARGO_TARGET_DIR` across worktrees can mix `gd-ui` artifacts of different branches (spurious E0061); use a
   per-worktree target if you see impossible errors.
+
+## Secret storage (accounts)
+
+`features/accounts/secrets.rs` has `get/set/delete` by account id (blocking; `smol::block_on` around `oo7`
+on Linux, `keyring` with native backends only on macOS/Windows). If the store errors (no Secret Service agent),
+it flips `PLAINTEXT` and uses `<config dir>/secrets.toml` (0600 on unix); `plaintext_path()` drives the
+warning in the Accounts list. Never add other fallbacks.

@@ -191,9 +191,7 @@ impl AccountsStore {
     pub(super) fn remove_account(&mut self, cx: &mut Context<Self>) {
         let Some(id) = self.form.as_ref().and_then(|f| f.editing.clone()) else { return };
         self.accounts.retain(|a| a.id != id);
-        if let Err(e) = model::store_token(&id, "") {
-            log::error!("cannot remove token from keyring: {e}");
-        }
+        model::store_token(&id, "");
         self.persist_accounts();
         self.form = None;
         cx.notify();
@@ -206,7 +204,7 @@ impl AccountsStore {
         cx.notify();
     }
 
-    /// Save to disk and the keyring, and refresh the git credential registry.
+    /// Save to disk and the secret store, and refresh the git credential registry.
     fn persist_accounts(&mut self) {
         model::save(&self.accounts);
         register_credentials(&self.accounts);

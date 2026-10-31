@@ -1,11 +1,12 @@
 //! Provider accounts and their persistence.
 //!
 //! Metadata (everything but the token) is in `<config dir>/accounts.toml`;
-//! tokens are in the OS keyring (service `desktop-rs`, user = account id).
+//! tokens are in the secret store (`secrets.rs`), keyed by account id.
 
 use gd_git::HostCredential;
 use serde::{Deserialize, Serialize};
 
+use super::secrets;
 use crate::features::settings::config_dir;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -57,7 +58,7 @@ pub struct Account {
     pub name: String,
     pub host: String,
     pub username: String,
-    /// Kept in memory for the credential helper; lives in the keyring, never in the file.
+    /// Kept in memory for the credential helper; lives in the secret store, never in the file.
     #[serde(skip)]
     pub token: String,
 }
@@ -91,8 +92,6 @@ struct AccountsFile {
     accounts: Vec<Account>,
 }
 
-const KEYRING_SERVICE: &str = "desktop-rs";
-
 pub fn load() -> Vec<Account> {
     let Some(path) = config_dir().map(|d| d.join("accounts.toml")) else { return Vec::new() };
     let Ok(text) = std::fs::read_to_string(&path) else { return Vec::new() };
@@ -101,7 +100,7 @@ pub fn load() -> Vec<Account> {
         AccountsFile::default()
     });
     for a in &mut file.accounts {
-        a.token = keyring::Entry::new(KEYRING_SERVICE, &a.id).and_then(|e| e.get_password()).unwrap_or_default();
+        a.token = secrets::get(&a.id).unwrap_or_default();
     }
     file.accounts
 }
@@ -113,21 +112,16 @@ pub fn save(list: &[Account]) {
         log::error!("cannot save accounts: {e}");
     }
     for a in list {
-        if let Err(e) = store_token(&a.id, &a.token) {
-            log::error!("cannot store token in keyring: {e}");
-        }
+        store_token(&a.id, &a.token);
     }
 }
 
-/// Store the token in the keyring; an empty token removes the entry.
-pub fn store_token(id: &str, token: &str) -> keyring::Result<()> {
-    let entry = keyring::Entry::new(KEYRING_SERVICE, id)?;
-    if !token.is_empty() {
-        return entry.set_password(token);
-    }
-    match entry.delete_credential() {
-        Err(keyring::Error::NoEntry) => Ok(()),
-        r => r,
+/// Store the token in the secret store; an empty token removes it.
+pub fn store_token(id: &str, token: &str) {
+    if token.is_empty() {
+        secrets::delete(id);
+    } else {
+        secrets::set(id, token);
     }
 }
 

@@ -30,7 +30,6 @@ env_logger.workspace = true
 gd-syntax.workspace = true
 serde.workspace = true
 toml = "1.1.8"
-keyring = { version = "3", features = ["async-secret-service", "async-io", "crypto-rust", "apple-native", "windows-native"] }
 uuid = { version = "1.29.0", features = ["v4"] }
 notify-debouncer-full = "0.7.0"
 ignore = "0.4.33"
@@ -44,3 +43,12 @@ tempfile = "3"
 # Wayland/X11 backends are only meaningful (and only build) on Linux.
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
 gpui_platform = { workspace = true, features = ["wayland", "x11"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+oo7 = { version = "0.6", default-features = false, features = ["async-std", "native_crypto"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"] }

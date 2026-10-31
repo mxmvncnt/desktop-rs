@@ -5,7 +5,9 @@ use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, 
 
 use super::account_row::AccountRow;
 use super::model::Account;
+use super::secrets;
 use super::state::AccountsStore;
+use super::status_text::StatusText;
 
 #[derive(IntoElement)]
 pub struct AccountList {
@@ -42,7 +44,10 @@ impl RenderOnce for AccountList {
             .flex_col()
             .gap(px(8.0))
             .child(self.header())
-            .child(caption("Tokens are used for HTTPS fetch, pull and push to the account's host. They are stored in a private (0600) file in the config folder."))
+            .child(caption("Tokens are used for HTTPS fetch, pull and push to the account's host. They are stored in your system's secret store."))
+            .children(secrets::plaintext_path().map(|path| {
+                StatusText::err(format!("No secret service is running, so your tokens are stored in plain text at {}.", path.display()))
+            }))
             .children(self.accounts.iter().cloned().map(|a| AccountRow { account: a, store: store.clone() }))
             .children(self.accounts.is_empty().then(|| caption("No accounts yet.")))
     }

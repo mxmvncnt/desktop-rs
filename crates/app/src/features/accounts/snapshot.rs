@@ -17,7 +17,7 @@ pub fn views() -> &'static [View] {
 fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Workspace>) {
     ws.settings.theme = if view.ends_with("light") { ThemeMode::Light } else { ThemeMode::Dark };
     ws.apply_theme(window, cx);
-    if view.ends_with("-norepo") {
+    if view.contains("-norepo") {
         ws.repo = None;
     }
     ws.overlays.push(Overlay::Settings);
@@ -30,6 +30,9 @@ fn accounts_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut
         username: user.into(),
         token: token.into(),
     };
+    if view.ends_with("plaintext") {
+        super::secrets::PLAINTEXT.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
     let editing = view.ends_with("edit");
     let show_form = view.ends_with("form") || editing;
     ws.accounts.update(cx, |ui, cx| {

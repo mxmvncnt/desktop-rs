@@ -12,6 +12,7 @@ mod identity_block;
 mod identity_section;
 mod model;
 mod ops;
+mod secrets;
 mod state;
 mod status_text;
 #[cfg(feature = "snapshot")]
