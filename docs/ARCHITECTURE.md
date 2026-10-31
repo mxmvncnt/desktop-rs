@@ -620,3 +620,8 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
   terminal palette). No bold (no bold face in the mono font), no wrapping (lines are clipped; "Copy log" copies everything), no in-log text selection.
   Following: while the job runs (`LogState::follow`) every load scrolls to the end; "Top"/"Bottom" switch it. While a job is open and unfinished the
   poll interval is 5 s and each poll reloads the whole log (the APIs have no range requests) and the pipeline detail.
+- Actions (`actions.rs`): `CiAction` (retry / cancel pipeline, retry / cancel / play job). `job_actions(job, caps)` picks the buttons of a job from
+  its status and `Forge::capabilities` (hover icon buttons on graph cards, labelled buttons in the job sidebar); the pipeline buttons are
+  "Retry failed" (failed or canceled) and "Cancel" (unfinished). `CiStore::run_action` runs on a background thread (one at a time, `acting` disables
+  the buttons), then emits `CiEvent::Notice` / `CiEvent::Error`, which `Workspace::on_ci_event` turns into the usual banner, and refetches the pipeline
+  and page 1 of the list. The server may still report the old status for a moment: the next poll corrects it (a pipeline or job screen polls even when finished).

@@ -6,7 +6,11 @@
       refresh, load more, stage dots loaded lazily for visible rows), polling. Snapshot views `ci-pipelines[-light]`, `ci-empty-account`, `ci-error`.
 - [x] Pipeline screen: stage-column graph, jobs table, breadcrumb, open in browser. Snapshot views `ci-pipeline`, `ci-jobs`.
 - [x] Job log viewer (virtualized, ANSI colors, collapsible sections, follow while running, copy log) and job sidebar (steps on GitHub/Gitea). Snapshot view `ci-job`.
-- Unverified: no live server was used; everything is checked with fixtures and the `gd-forge` fixtures only.
+- [x] Retry failed / cancel pipelines, retry / cancel / play jobs per platform capabilities, with error and success notices.
+- Unverified: no live server was used; everything is checked with snapshot fixtures and the `gd-forge` response fixtures only. Untested by hand:
+  clicks, Esc navigation, polling, the retry / cancel / play requests, workflow-file stage regrouping on a real repository, scrolling of the graph.
+- Known gaps: log lines are clipped (no wrap, no in-log text selection: use Copy log), no bold in logs, no avatars, and the page re-reads the
+  accounts only on Refresh (after "Change").
 
 ## 2026-10-29
 

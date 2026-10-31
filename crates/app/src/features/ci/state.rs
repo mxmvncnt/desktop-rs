@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
-use gpui::{Task, UniformListScrollHandle};
+use gpui::{EventEmitter, Task, UniformListScrollHandle};
 
 use super::target::{Problem, Target};
 use crate::repo::LoadSlot;
@@ -38,6 +38,12 @@ pub struct LogState {
     pub scroll: UniformListScrollHandle,
 }
 
+/// Raised to the `Workspace`, which owns the notice banner.
+pub enum CiEvent {
+    Notice(String),
+    Error(String),
+}
+
 pub struct CiStore {
     pub open: bool,
     /// Repository the state below belongs to.
@@ -62,6 +68,8 @@ pub struct CiStore {
     /// Why the open pipeline could not be loaded.
     pub detail_error: Option<Problem>,
     pub log: LogState,
+    /// A retry / cancel / play request is running.
+    pub acting: bool,
     pub list_scroll: UniformListScrollHandle,
     /// Bumped when the repository changes: results of older requests are dropped.
     pub(super) epoch: u64,
@@ -74,6 +82,8 @@ pub struct CiStore {
     pub(super) log_load: LoadSlot,
     pub(super) poll: Option<Task<()>>,
 }
+
+impl EventEmitter<CiEvent> for CiStore {}
 
 impl Default for CiStore {
     fn default() -> Self {
@@ -93,6 +103,7 @@ impl Default for CiStore {
             list_error: None,
             detail_error: None,
             log: LogState::default(),
+            acting: false,
             details: HashMap::new(),
             list_scroll: UniformListScrollHandle::new(),
             epoch: 0,

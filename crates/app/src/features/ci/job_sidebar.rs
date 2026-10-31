@@ -1,10 +1,12 @@
 //! Right column of the job screen: status, timing, runner, stage and steps.
 
 use gd_forge::Job;
-use gd_ui::{Button, Theme};
-use gpui::{App, Div, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px};
+use gd_ui::{Button, Icon, Theme};
+use gpui::{App, Div, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px};
 
+use super::actions::CiAction;
 use super::duration::{duration_text, format_duration};
+use super::state::CiStore;
 use super::status_badge::{look, status_badge, status_icon};
 use crate::utils::text::relative_time;
 
@@ -12,7 +14,10 @@ pub const SIDEBAR_WIDTH: f32 = 280.0;
 
 #[derive(IntoElement)]
 pub struct JobSidebar {
+    pub store: Entity<CiStore>,
     pub job: Job,
+    pub actions: Vec<(CiAction, Icon, &'static str)>,
+    pub acting: bool,
     pub stage: String,
 }
 
@@ -35,6 +40,14 @@ impl RenderOnce for JobSidebar {
             .border_l_1()
             .border_color(theme.border)
             .overflow_hidden()
+            .when(!self.actions.is_empty(), |d| {
+                d.child(div().flex().gap(px(8.0)).pb(px(10.0)).children(self.actions.iter().map(|&(action, icon, label)| {
+                    let store = self.store.clone();
+                    Button::new(label).icon(icon).label(label).disabled(self.acting).on_click(move |_, _, cx| {
+                        store.update(cx, |s, cx| s.run_action(action, cx))
+                    })
+                })))
+            })
             .child(field("Status", status_badge(job.status, false, theme)))
             .child(field("Duration", div().child(duration_text(job.duration, job.started_at))))
             .child(field("Started", when(job.started_at)))

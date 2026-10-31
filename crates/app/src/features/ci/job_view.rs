@@ -4,6 +4,7 @@ use gd_forge::JobId;
 use gd_ui::{Icon, Theme, empty_state, icon, icon_button};
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px};
 
+use super::actions::job_actions;
 use super::job_sidebar::JobSidebar;
 use super::log_view::LogView;
 use super::state::{CiStore, CiView};
@@ -21,6 +22,7 @@ impl RenderOnce for JobView {
         let Some(job) = ci.job(self.id).cloned() else {
             return empty_state("Loading job…", cx).flex_1().into_any_element();
         };
+        let actions = ci.ready().map(|t| job_actions(&job, t.forge.capabilities())).unwrap_or_default();
         let number = ci.details[&self.id.pipeline].pipeline.number;
         let stage = ci.job(self.id).and_then(|_| ci.details[&self.id.pipeline].stages.iter().find(|s| s.jobs.iter().any(|j| j.id == self.id))).map(|s| s.name.clone());
         let (to_list, to_pipeline, back) = (self.store.clone(), self.store.clone(), self.store.clone());
@@ -58,7 +60,7 @@ impl RenderOnce for JobView {
                     .border_t_1()
                     .border_color(theme.border)
                     .child(LogView { store: self.store.clone(), job: self.id })
-                    .child(JobSidebar { job, stage: stage.unwrap_or_default() }),
+                    .child(JobSidebar { store: self.store.clone(), actions, acting: ci.acting, job, stage: stage.unwrap_or_default() }),
             )
             .into_any_element()
     }

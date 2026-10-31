@@ -1,8 +1,10 @@
 //! A pipeline: breadcrumb, summary, and the graph / jobs tabs.
 
+use gd_forge::{Forge, Status};
 use gd_ui::{Button, Icon, Tabs, Theme, divider, empty_state, icon, icon_button};
-use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px};
+use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
 
+use super::actions::CiAction;
 use super::duration::duration_text;
 use super::jobs_table::JobsTable;
 use super::problem_view::ProblemView;
@@ -29,13 +31,15 @@ impl RenderOnce for PipelineView {
                 None => empty_state("Loading pipeline…", cx).flex_1().into_any_element(),
             };
         };
-        let (tab, store) = (ci.tab, self.store.clone());
+        let (tab, store, acting) = (ci.tab, self.store.clone(), ci.acting);
+        let caps = ci.ready().map(|t| t.forge.capabilities()).unwrap_or_else(|| Forge::GitLab.capabilities());
         let p = &detail.pipeline;
         let jobs = detail.stages.iter().map(|s| s.jobs.len()).sum::<usize>();
         let meta = |text: String| div().text_color(theme.text_muted).child(text);
         let created = p.created_at.map(|t| relative_time(t.timestamp())).unwrap_or_default();
         let user = p.user.as_ref().map(|u| u.name.clone().unwrap_or_else(|| u.username.clone()));
         let url = p.web_url.clone();
+        let id = p.id;
         let sha: String = p.sha.chars().take(8).collect();
 
         let breadcrumb = div()
@@ -64,6 +68,18 @@ impl RenderOnce for PipelineView {
             .child(div().flex_1().truncate().text_size(px(16.0)).font_weight(gpui::FontWeight::MEDIUM).child(
                 p.title.clone().or_else(|| p.workflow.clone()).unwrap_or_else(|| format!("Pipeline #{}", p.number)),
             ))
+            .when(caps.retry_pipeline && matches!(p.status, Status::Failed | Status::Canceled), |d| {
+                let store = store.clone();
+                d.child(Button::new("ci-retry-pipeline").icon(Icon::Restart).label("Retry failed").disabled(acting).on_click(move |_, _, cx| {
+                    store.update(cx, |s, cx| s.run_action(CiAction::RetryPipeline(id), cx))
+                }))
+            })
+            .when(caps.cancel_pipeline && !p.status.is_finished(), |d| {
+                let store = store.clone();
+                d.child(Button::new("ci-cancel-pipeline").icon(Icon::Stop).label("Cancel").disabled(acting).on_click(move |_, _, cx| {
+                    store.update(cx, |s, cx| s.run_action(CiAction::CancelPipeline(id), cx))
+                }))
+            })
             .child(Button::new("ci-open-browser").label("Open in browser").on_click(move |_, _, cx| cx.open_url(&url)));
 
         let facts = div()
@@ -94,7 +110,7 @@ impl RenderOnce for PipelineView {
                 .child(div().flex().items_start().p(px(24.0)).children(detail.stages.iter().enumerate().flat_map(|(ix, stage)| {
                     // A line between two columns, level with the stage headers.
                     let link = (ix > 0).then(|| div().flex_none().w(px(32.0)).h(px(36.0)).flex().items_center().child(div().h(px(1.0)).w_full().bg(theme.border_strong)));
-                    [link.map(IntoElement::into_any_element), Some(stage_column(stage, &store, cx).into_any_element())]
+                    [link.map(IntoElement::into_any_element), Some(stage_column(stage, caps, &store, cx).into_any_element())]
                 }).flatten()))
                 .into_any_element(),
             PipelineTab::Jobs => div()

@@ -5,6 +5,7 @@ mod ci_page;
 mod duration;
 mod handlers;
 mod ops;
+mod actions;
 mod ansi;
 mod job_card;
 mod job_sidebar;
@@ -25,4 +26,4 @@ mod target;
 pub mod snapshot;
 
 pub use ci_page::CiPage;
-pub use state::CiStore;
+pub use state::{CiEvent, CiStore};

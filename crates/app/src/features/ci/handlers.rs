@@ -2,6 +2,7 @@
 
 use gpui::Context;
 
+use super::CiEvent;
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -37,5 +38,12 @@ impl Workspace {
             self.ci.update(cx, |ci, cx| ci.back(cx));
         }
         open
+    }
+
+    pub(crate) fn on_ci_event(&mut self, ev: &CiEvent, cx: &mut Context<Self>) {
+        match ev {
+            CiEvent::Notice(message) => self.show_notice(message.clone(), cx),
+            CiEvent::Error(message) => self.show_error(message.clone(), cx),
+        }
     }
 }
