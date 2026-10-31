@@ -31,7 +31,7 @@ impl Workspace {
         subs.push(cx.observe(&pickers, |_, _, cx| cx.notify()));
         let accounts = cx.new(|cx| AccountsStore::new(cx));
         subs.push(cx.observe(&accounts, |_, _, cx| cx.notify()));
-        let repo_settings = cx.new(|_| RepoSettingsStore::default());
+        let repo_settings = cx.new(|cx| RepoSettingsStore::new(cx));
         subs.push(cx.observe(&repo_settings, |_, _, cx| cx.notify()));
         subs.extend(window_subscriptions(window, cx));
 

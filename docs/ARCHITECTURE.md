@@ -585,3 +585,6 @@ is the remote host. `Repository::remote_host()` (gd-git) gives the host of the d
 - Identity and account pages reuse `accounts::RepoIdentity` / `RepoAccountBlock` and `AccountsStore` (`load_identity(Some(repo))` runs on open and on
   every page switch). The app Settings → Accounts page only has the global identity (`load_identity(None)`).
 - Entry points: `Workspace::open_repo_settings`, `open_repo_menu` (right-click on `ToolbarButton::on_right_click`), the `OpenRepositorySettings` action.
+- Writes go through `RepoSettingsStore::write(work)`: background `gd-git` call (`remotes.rs`: `remote_list`, `add/rename/remove_remote`, `set_remote_url`,
+  `set_remote_push_url`), then on success the open form (`Edit`) closes, the page reloads and `RepoModel::refresh` runs; on failure `error` shows inline.
+  A new page adds an `Edit` variant for its form/confirmation instead of a new field. `FieldRow` lives in `components/`.

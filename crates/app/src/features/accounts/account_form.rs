@@ -3,7 +3,7 @@
 use gd_ui::{Button, Tabs, Theme};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
-use super::field_row::FieldRow;
+use crate::components::FieldRow;
 use super::model::Provider;
 use super::state::{AccountForm as FormState, AccountInputs, AccountsStore};
 use super::status_text::StatusText;

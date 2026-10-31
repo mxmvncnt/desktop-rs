@@ -25,10 +25,12 @@ mod pr_preview;
 mod progress;
 mod refs;
 mod remote;
+mod remotes;
 mod stash;
 mod status;
 
 pub use info::RepoInfo;
+pub use remotes::Remote;
 pub use credentials::{HostCredential, set_credentials, set_token_source};
 pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity};
 

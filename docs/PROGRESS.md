@@ -20,7 +20,7 @@
 - [x] Repository settings modal (`features/repo_settings/`, `Overlay::RepoSettings`) on the shared `components/SettingsShell` layout (also used by the
       app Settings modal). Opened by right-click on the repository toolbar button (menu "Repository settings…"), the "Repository settings" card of the
       no-changes pane, and Repository → Repository Settings… (`OpenRepositorySettings`, no shortcut). Pages: Info, Identity (local override + "in effect",
-      moved from Accounts), Account (per-repository account pick, moved from Accounts). Snapshot views `repo-settings[-identity|-account]`, `repo-menu-context`.
+      moved from Accounts), Account (per-repository account pick, moved from Accounts), Remotes (list fetch/push URLs; add, rename, edit URL and separate push URL, remove with confirm: `git remote add/rename/set-url/remove`, then the toolbar refreshes). Snapshot views `repo-settings-remotes[-edit|-remove]`, `repo-settings[-identity|-account]`, `repo-menu-context`.
 
 ## Accounts settings page (feat/identities)
 

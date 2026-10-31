@@ -8,7 +8,6 @@ mod account_form;
 mod account_list;
 mod account_row;
 mod accounts_page;
-mod field_row;
 mod identity_block;
 mod identity_section;
 mod model;

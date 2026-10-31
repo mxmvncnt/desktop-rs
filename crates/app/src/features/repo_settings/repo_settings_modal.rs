@@ -9,6 +9,7 @@ use gpui::{
 };
 
 use super::info_page::InfoPage;
+use super::remotes_page::RemotesPage;
 use super::state::{RepoSettingsPage, RepoSettingsStore};
 use crate::components::{NavItem, SettingsShell};
 use crate::features::accounts::{AccountsStore, RepoAccountBlock, RepoIdentity};
@@ -54,6 +55,10 @@ impl RenderOnce for RepoSettingsModal {
         let body = match page {
             RepoSettingsPage::Info => {
                 InfoPage { repo: self.repo, branch: self.branch, info: s.info.clone(), error: s.error.clone() }.into_any_element()
+            }
+            RepoSettingsPage::Remotes => {
+                RemotesPage { remotes: s.remotes.clone(), edit: s.edit.clone(), error: s.error.clone(), inputs: s.inputs.clone(), store: self.store }
+                    .into_any_element()
             }
             RepoSettingsPage::Identity => {
                 RepoIdentity { identity: a.identity.clone(), inputs: a.inputs.clone(), repo: self.repo, store: self.accounts }

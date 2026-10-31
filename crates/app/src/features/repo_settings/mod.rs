@@ -5,6 +5,8 @@
 mod handlers;
 mod info_page;
 mod ops;
+mod remote_form;
+mod remotes_page;
 mod repo_settings_modal;
 mod state;
 #[cfg(feature = "snapshot")]

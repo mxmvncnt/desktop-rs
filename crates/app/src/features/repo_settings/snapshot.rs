@@ -9,6 +9,8 @@ use crate::workspace::Workspace;
 
 pub fn views() -> &'static [View] {
     &[
+        View { name: "repo-settings-remotes-edit", steps: &[open, edit_remote] },
+        View { name: "repo-settings-remotes-remove", steps: &[open, remove_remote] },
         View { name: "repo-settings*", steps: &[open] },
         View { name: "repo-menu-context", steps: &[menu] },
     ]
@@ -19,11 +21,21 @@ fn open(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Wo
     ws.apply_theme(window, cx);
     ws.open_repo_settings(cx);
     let page = match view.strip_prefix("repo-settings-") {
+        Some("remotes" | "remotes-edit" | "remotes-remove") => RepoSettingsPage::Remotes,
         Some("identity") => RepoSettingsPage::Identity,
         Some("account") => RepoSettingsPage::Account,
         _ => RepoSettingsPage::Info,
     };
     ws.set_repo_settings_page(page, cx);
+}
+
+/// Second step (the remotes are loaded by now): the edit form / remove confirmation of `upstream`.
+fn edit_remote(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
+    ws.repo_settings.update(cx, |s, cx| s.open_remote_form(Some("upstream".into()), cx));
+}
+
+fn remove_remote(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
+    ws.repo_settings.update(cx, |s, cx| s.confirm_remove_remote("upstream".into(), cx));
 }
 
 fn menu(ws: &mut Workspace, _: &str, window: &mut Window, cx: &mut Context<Workspace>) {

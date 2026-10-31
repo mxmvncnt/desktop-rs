@@ -8,14 +8,14 @@ use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     pub fn open_repo_settings(&mut self, cx: &mut Context<Self>) {
-        let Some(repo) = self.repo.as_ref().map(|r| r.read(cx).repo.clone()) else { return };
+        let Some(model) = self.repo.clone() else { return };
         self.open_overlay(Overlay::RepoSettings, cx);
-        self.repo_settings.update(cx, |s, cx| s.open(repo, cx));
+        self.repo_settings.update(cx, |s, cx| s.open(model, cx));
         self.load_repo_identity(cx);
     }
 
     pub(crate) fn set_repo_settings_page(&mut self, page: RepoSettingsPage, cx: &mut Context<Self>) {
-        self.repo_settings.update(cx, |s, _| s.page = page);
+        self.repo_settings.update(cx, |s, _| (s.page, s.edit, s.error) = (page, None, None));
         self.load_repo_identity(cx);
         cx.notify();
     }

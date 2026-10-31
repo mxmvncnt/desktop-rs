@@ -5,7 +5,7 @@ use gd_ui::{Button, Theme};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px};
 use gpui_elements::editable_text::EditableTextState;
 
-use super::field_row::FieldRow;
+use crate::components::FieldRow;
 use super::status_text::StatusText;
 
 #[derive(IntoElement)]
