@@ -1,6 +1,7 @@
 pub mod stashes;
 pub mod force_push;
 pub mod pr_preview;
+pub mod repo_settings;
 pub mod history;
 pub mod merge;
 pub mod branches;

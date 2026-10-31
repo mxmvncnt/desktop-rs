@@ -72,6 +72,14 @@ impl NoChanges {
                 "Open folder",
                 move |_, _, cx| cx.open_url(&file_url(Path::new(&root))),
             ))
+            .child(SuggestionCard::new(
+                "repo-settings",
+                Icon::Settings,
+                "Repository settings",
+                "Edit the remotes, identity and ignored files.",
+                "Open settings",
+                |_, w, cx| w.dispatch_action(Box::new(crate::actions::OpenRepositorySettings), cx),
+            ))
     }
 }
 

@@ -8,6 +8,7 @@ use gpui_elements::editable_text::{EditableTextState, TextChanged};
 
 use super::state::Workspace;
 use crate::features::accounts::AccountsStore;
+use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::branches::BranchUi;
 use crate::features::changes::CommitBox;
 use crate::features::history::HistoryUi;
@@ -30,6 +31,8 @@ impl Workspace {
         subs.push(cx.observe(&pickers, |_, _, cx| cx.notify()));
         let accounts = cx.new(|cx| AccountsStore::new(cx));
         subs.push(cx.observe(&accounts, |_, _, cx| cx.notify()));
+        let repo_settings = cx.new(|_| RepoSettingsStore::default());
+        subs.push(cx.observe(&repo_settings, |_, _, cx| cx.notify()));
         subs.extend(window_subscriptions(window, cx));
 
         let mut this = Self {
@@ -37,6 +40,7 @@ impl Workspace {
             sidebar_width_dirty: false,
             settings_page: Default::default(),
             accounts,
+            repo_settings,
             repo: None,
             overlays: Vec::new(),
             overlay_gen: 0,

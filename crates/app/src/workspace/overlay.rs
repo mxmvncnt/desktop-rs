@@ -22,6 +22,8 @@ pub enum Overlay {
     /// Diff options popover at the gear button.
     DiffOptions(Point<Pixels>),
     Settings,
+    /// Repository settings modal; its state is `Workspace::repo_settings`.
+    RepoSettings,
     Discard(ConfirmDialog),
     History(HistoryDialog),
     Stash(StashDialog),
@@ -82,7 +84,7 @@ impl Workspace {
             Some(Overlay::Stash(_)) => self.stash_confirm(cx),
             Some(Overlay::Merge(_)) => self.merge_confirm(window, cx),
             Some(Overlay::Branch(_)) => self.branch_dialog_confirm(window, cx),
-            Some(Overlay::Popover(_) | Overlay::DiffOptions(_) | Overlay::Settings | Overlay::ForcePush) | None => {}
+            Some(Overlay::Popover(_) | Overlay::DiffOptions(_) | Overlay::Settings | Overlay::RepoSettings | Overlay::ForcePush) | None => {}
         }
     }
 }

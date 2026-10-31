@@ -32,6 +32,7 @@ fn bind_commands(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<D
         .on_action(cx.listener(|this, _: &Pull, _, cx| this.remote_action(RemoteOp::Pull, cx)))
         .on_action(cx.listener(|this, _: &Push, _, cx| this.remote_action(RemoteOp::Push, cx)))
         .on_action(cx.listener(|this, _: &OpenSettings, _, cx| this.toggle_settings(cx)))
+        .on_action(cx.listener(|this, _: &OpenRepositorySettings, _, cx| this.open_repo_settings(cx)))
         .on_action(cx.listener(|this, _: &Refresh, _, cx| this.refresh(cx)))
         .on_action(cx.listener(|this, _: &Commit, w, cx| this.commit(w, cx)))
         .on_action(cx.listener(|this, _: &CopyDiffText, _, cx| this.copy_diff_text(cx)))

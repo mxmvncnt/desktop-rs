@@ -17,6 +17,7 @@ mod exec;
 mod expand;
 mod history_ops;
 mod identity;
+mod info;
 mod log;
 mod merge;
 mod partial;
@@ -27,6 +28,7 @@ mod remote;
 mod stash;
 mod status;
 
+pub use info::RepoInfo;
 pub use credentials::{HostCredential, set_credentials, set_token_source};
 pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity};
 

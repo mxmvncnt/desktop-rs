@@ -18,6 +18,7 @@ actions!(
         Push,
         Refresh,
         OpenSettings,
+        OpenRepositorySettings,
         Commit,
         StashChanges,
         PreviewPullRequest,
@@ -143,6 +144,8 @@ fn set_menus(cx: &mut App) {
             MenuItem::action("Push", Push),
             MenuItem::separator(),
             MenuItem::action("Stash Changes…", StashChanges),
+            MenuItem::separator(),
+            MenuItem::action("Repository Settings…", OpenRepositorySettings),
         ]),
         Menu::new("Branch").items([
             MenuItem::action("New Branch…", NewBranch),

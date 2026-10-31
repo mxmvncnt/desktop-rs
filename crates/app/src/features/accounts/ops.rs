@@ -79,10 +79,10 @@ impl AccountsStore {
         cx.notify();
     }
 
-    pub(super) fn save_global_identity(&mut self, open: Option<Repository>, cx: &mut Context<Self>) {
+    pub(super) fn save_global_identity(&mut self, cx: &mut Context<Self>) {
         let inp = &self.inputs;
         let id = Identity { name: input_text(&inp.global_name, cx), email: input_text(&inp.global_email, cx) };
-        self.write_identity(None, open, id, "Saved to your global git config", cx);
+        self.write_identity(None, None, id, "Saved to your global git config", cx);
     }
 
     pub(super) fn save_local_identity(&mut self, repo: Repository, cx: &mut Context<Self>) {

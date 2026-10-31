@@ -1,11 +1,13 @@
 //! Toolbar dropdown button (caption over title, optional chevron and busy pulse).
 
-use gpui::{AnyElement, App, ClickEvent, ElementId, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, prelude::*, px};
+use gpui::{AnyElement, App, ClickEvent, ElementId, IntoElement, MouseButton, ParentElement, Pixels, Point, RenderOnce, SharedString, Styled, Window, div, prelude::*, px};
 use gpui::AnimationExt as _;
 
 use super::{ClickHandler, icon, pressable};
 use crate::assets::Icon;
 use crate::theme::{CONTROL_RADIUS, Theme};
+
+type RightClick = Box<dyn Fn(Point<Pixels>, &mut Window, &mut App)>;
 
 /// Toolbar dropdown in Desktop's layout ("Current repository ▾"), drawn
 /// zeron-style: small muted caption over a medium title, ghost hover wash.
@@ -20,6 +22,7 @@ pub struct ToolbarButton {
     busy: bool,
     width: Option<f32>,
     on_click: Option<ClickHandler>,
+    on_right_click: Option<RightClick>,
 }
 
 impl ToolbarButton {
@@ -39,6 +42,7 @@ impl ToolbarButton {
             busy: false,
             width: None,
             on_click: None,
+            on_right_click: None,
         }
     }
     pub fn chevron(mut self) -> Self {
@@ -59,6 +63,11 @@ impl ToolbarButton {
     }
     pub fn on_click(mut self, f: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
         self.on_click = Some(Box::new(f));
+        self
+    }
+    /// Called with the pointer position on a right click.
+    pub fn on_right_click(mut self, f: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static) -> Self {
+        self.on_right_click = Some(Box::new(f));
         self
     }
 }
@@ -126,6 +135,9 @@ impl RenderOnce for ToolbarButton {
             });
         if let Some(f) = self.on_click {
             el = el.on_click(f);
+        }
+        if let Some(f) = self.on_right_click {
+            el = el.on_mouse_down(MouseButton::Right, move |e, w, cx| f(e.position, w, cx));
         }
         el
     }

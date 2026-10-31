@@ -7,7 +7,6 @@ mod diff_page;
 mod handlers;
 mod model;
 mod settings_modal;
-mod settings_nav;
 mod state;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;

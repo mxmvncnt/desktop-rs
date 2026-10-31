@@ -4,18 +4,14 @@
 use std::rc::Rc;
 
 use gd_ui::themes::ColorThemes;
-use gd_ui::{Callback, Icon, divider, icon_button, modal, motion, overlay_card};
-use gpui::{
-    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
-    px,
-};
+use gpui::{Context, Entity, IntoElement, RenderOnce};
 
-use crate::features::accounts::AccountsPage;
 use super::about_page::AboutPage;
 use super::appearance_page::AppearancePage;
 use super::diff_page::DiffPage;
-use super::settings_nav::SettingsNav;
 use super::{SettingsPage, ThemeMode};
+use crate::components::{NavItem, SettingsShell};
+use crate::features::accounts::{AccountsPage, AccountsStore};
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -23,8 +19,8 @@ pub struct SettingsModal {
     page: SettingsPage,
     theme: ThemeMode,
     color_theme: String,
-    accounts: Option<AccountsPage>,
     ws: Entity<Workspace>,
+    accounts: Entity<AccountsStore>,
 }
 
 impl SettingsModal {
@@ -34,77 +30,40 @@ impl SettingsModal {
             page: ws.settings_page,
             theme: s.theme,
             color_theme: s.color_theme_id(ColorThemes::of(cx)).to_string(),
-            accounts: (ws.settings_page == SettingsPage::Accounts).then(|| AccountsPage {
-                store: ws.accounts.clone(),
-                repo: ws.repo.as_ref().map(|r| r.read(cx).repo.clone()),
-            }),
             ws: cx.entity(),
+            accounts: ws.accounts.clone(),
         }
-    }
-
-    fn body(self) -> AnyElement {
-        match self.page {
-            SettingsPage::Appearance => AppearancePage {
-                mode: self.theme,
-                color_theme: self.color_theme.clone(),
-                ws: self.ws.clone(),
-            }.into_any_element(),
-            SettingsPage::Diff => DiffPage { ws: self.ws }.into_any_element(),
-            SettingsPage::About => AboutPage.into_any_element(),
-            SettingsPage::Accounts => self.accounts.map_or_else(|| div().into_any_element(), IntoElement::into_any_element),
-        }
-    }
-
-    fn title_bar(&self) -> impl IntoElement + use<> {
-        let ws = self.ws.clone();
-        div()
-            .flex()
-            .flex_none()
-            .items_center()
-            .justify_between()
-            .h(px(52.0))
-            .pl(px(24.0))
-            .pr(px(12.0))
-            .child(div().text_size(px(15.0)).font_weight(gpui::FontWeight::SEMIBOLD).child(self.page.label()))
-            .child(
-                icon_button("settings-close", Icon::Close)
-                    .compact()
-                    .on_click(move |_, _, cx| close(&ws, cx)),
-            )
-    }
-
-    fn card(self, cx: &mut App) -> gpui::Stateful<gpui::Div> {
-        let (nav, title) = (SettingsNav { page: self.page, ws: self.ws.clone() }, self.title_bar());
-        let body = self.body();
-        overlay_card(cx)
-            .id("settings-card")
-            .occlude()
-            .w(px(740.0))
-            .h(px(560.0))
-            .flex()
-            .child(nav)
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .flex()
-                    .flex_col()
-                    .child(title)
-                    .child(divider(cx))
-                    .child(div().flex_1().min_h_0().p(px(24.0)).child(body)),
-            )
     }
 }
 
 impl RenderOnce for SettingsModal {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let instant = motion::handoff(&"settings-in".into(), cx);
+    fn render(self, _window: &mut gpui::Window, _cx: &mut gpui::App) -> impl IntoElement {
+        let item = |p: SettingsPage| {
+            let ws = self.ws.clone();
+            NavItem {
+                label: p.label(),
+                icon: p.icon(),
+                active: p == self.page,
+                on_click: Rc::new(move |_, cx| ws.update(cx, |this, cx| this.set_settings_page(p, cx))),
+            }
+        };
+        let [top @ .., about] = SettingsPage::ALL;
+        let body = match self.page {
+            SettingsPage::Appearance => {
+                AppearancePage { mode: self.theme, color_theme: self.color_theme.clone(), ws: self.ws.clone() }.into_any_element()
+            }
+            SettingsPage::Diff => DiffPage { ws: self.ws.clone() }.into_any_element(),
+            SettingsPage::About => AboutPage.into_any_element(),
+            SettingsPage::Accounts => AccountsPage { store: self.accounts.clone() }.into_any_element(),
+        };
         let ws = self.ws.clone();
-        let on_cancel: Callback = Rc::new(move |_, cx| close(&ws, cx));
-        modal(self.card(cx), Some(on_cancel), instant)
+        SettingsShell {
+            id: "settings",
+            title: self.page.label().into(),
+            nav: top.into_iter().map(item).collect(),
+            nav_bottom: vec![item(about)],
+            body,
+            on_close: Rc::new(move |_, cx| ws.update(cx, |this, cx| this.toggle_settings(cx))),
+        }
     }
-}
-
-fn close(ws: &Entity<Workspace>, cx: &mut App) {
-    ws.update(cx, |this, cx| this.toggle_settings(cx))
 }

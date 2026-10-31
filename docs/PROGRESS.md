@@ -15,12 +15,19 @@
 - Idle is still zero renders (`GD_DEBUG_FRAMES=1`). RSS is ~67 MB (release, small repo).
 - Still untested by hand: everything interactive in the new menus and dialogs.
 
+## Repository settings (rust/repo-settings)
+
+- [x] Repository settings modal (`features/repo_settings/`, `Overlay::RepoSettings`) on the shared `components/SettingsShell` layout (also used by the
+      app Settings modal). Opened by right-click on the repository toolbar button (menu "Repository settings…"), the "Repository settings" card of the
+      no-changes pane, and Repository → Repository Settings… (`OpenRepositorySettings`, no shortcut). Pages: Info, Identity (local override + "in effect",
+      moved from Accounts), Account (per-repository account pick, moved from Accounts). Snapshot views `repo-settings[-identity|-account]`, `repo-menu-context`.
+
 ## Accounts settings page (feat/identities)
 
 - [x] Account per repository ("Account for this repository": Automatic by remote host, or a pick saved in `repo_accounts.toml`), `account_for_repo` for the CI page.
 - [x] Sign in with the browser (GitHub/GHE device flow, GitLab/Gitea/Forgejo PKCE), token refresh, Gitea and Forgejo providers (see ARCHITECTURE §OAuth). Not verified against live servers.
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
-      per-repo override for the open repo with "in effect" line, provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
+      (the per-repo override and account pick moved to repository settings), provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
       add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the secret store (`accounts/secrets.rs`: `oo7` Secret Service on Linux, `keyring` native backends on macOS/Windows; if the store is unavailable they go to `<config>/secrets.toml`, 0600, and the page warns). Token input is not masked (gpui-ce
       `text_input` has no masking) and tokens are not validated online (no HTTP client dependency).
 - [x] Credentials wired: `gd_git::set_credentials` registers tokens; every `.network()` git command gets per-host

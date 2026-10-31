@@ -18,6 +18,7 @@ use crate::features::menus::DiscardDialogView;
 use crate::features::merge::{InProgressBanner, MergeDialogView};
 use crate::features::notices::NoticeBanner;
 use crate::features::pickers::PopoverLayer;
+use crate::features::repo_settings::RepoSettingsModal;
 use crate::features::settings::SettingsModal;
 use crate::features::stashes::StashDialogView;
 use crate::features::toolbar::Toolbar;
@@ -102,6 +103,7 @@ impl Workspace {
                 }
                 Overlay::DiffOptions(pos) => Some(DiffOptionsMenu::new(self, pos, ws.clone()).into_any_element()),
                 Overlay::Settings => Some(SettingsModal::open(self, cx).into_any_element()),
+                Overlay::RepoSettings => RepoSettingsModal::open(self, cx).map(IntoElement::into_any_element),
                 Overlay::Discard(d) => Some(DiscardDialogView::new(d, ws.clone()).into_any_element()),
                 Overlay::History(d) => Some(HistoryDialogView::new(self, d, cx).into_any_element()),
                 Overlay::Stash(d) => StashDialogView::open(self, d, cx).map(IntoElement::into_any_element),

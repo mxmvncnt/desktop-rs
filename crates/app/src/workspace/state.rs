@@ -2,6 +2,7 @@ use gpui::{Entity, FocusHandle, SharedString, Subscription, Task, UniformListScr
 
 use super::overlay::Overlay;
 use crate::features::accounts::AccountsStore;
+use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::branches::BranchUi;
 use crate::features::changes::CommitBox;
 use crate::features::diff::{DiffSelectUi, DiffView};
@@ -27,6 +28,8 @@ pub struct Workspace {
     pub settings_page: SettingsPage,
     /// Git identity + provider accounts (features/accounts).
     pub accounts: Entity<AccountsStore>,
+    /// The repository settings modal (features/repo_settings).
+    pub repo_settings: Entity<RepoSettingsStore>,
     pub repo: Option<Entity<RepoModel>>,
     /// Open menus, dialogs, popovers and the settings modal (`overlay.rs`).
     pub overlays: Vec<Overlay>,

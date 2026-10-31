@@ -81,7 +81,8 @@ impl Toolbar {
             .chevron()
             .width(280.0)
             .open(self.popover == Some(Popover::Repositories))
-            .on_click(trigger_click(ws, Popover::Repositories))
+            .on_click(trigger_click(ws.clone(), Popover::Repositories))
+            .on_right_click(move |pos, w, cx| ws.update(cx, |this, cx| this.open_repo_menu(pos, w, cx)))
     }
 
     fn branch_button(&self) -> impl IntoElement + use<> {
