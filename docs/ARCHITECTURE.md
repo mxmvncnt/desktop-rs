@@ -613,3 +613,10 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
   the graph is `stage_column` + `job_card` in a scrolling row with a hairline between columns, the table is `jobs_table`. It reads the same `details`
   cache as the list; opening a pipeline refetches it (a cached running one is stale), and polling refetches it while it is not finished.
   An `allow_failure` job that failed is drawn with the warning look (`status_badge::look(Success, true)`).
+- Job screen (`CiView::Job(id)`): `job_view` (breadcrumb) = `log_view` (toolbar + `uniform_list`) + `job_sidebar`. The raw log is fetched and parsed
+  (`gd_forge::parse_log`) on a background thread and kept as `Arc<Log>`; `LogState::visible` lists the line indices outside collapsed sections
+  (`ops::visible_lines`; a section is collapsed when `Section::collapsed != toggled.contains(section index)`, so user toggles survive log refreshes).
+  Lines are `StyledText` with highlights (`ansi.rs`: two 16-color sets chosen by `theme.light`, xterm cube, gray ramp, RGB; the theme has no
+  terminal palette). No bold (no bold face in the mono font), no wrapping (lines are clipped; "Copy log" copies everything), no in-log text selection.
+  Following: while the job runs (`LogState::follow`) every load scrolls to the end; "Top"/"Bottom" switch it. While a job is open and unfinished the
+  poll interval is 5 s and each poll reloads the whole log (the APIs have no range requests) and the pipeline detail.

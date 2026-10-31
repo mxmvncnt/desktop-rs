@@ -1,9 +1,12 @@
 //! Snapshot views: the CI page filled with fixture data (nothing is fetched).
 
 use chrono::{Duration, Utc};
-use gd_forge::{Forge, Job, JobId, Pipeline, PipelineDetail, PipelineId, RepoRef, Stage, Status, User};
+use std::sync::Arc;
+
+use gd_forge::{parse_log, Forge, Job, JobId, Pipeline, PipelineDetail, PipelineId, RepoRef, Stage, Status, User};
 use gpui::{Context, Window};
 
+use super::ops::visible_lines;
 use super::state::{CiStore, CiView, PipelineTab};
 use super::target::{Problem, Target};
 use crate::features::settings::ThemeMode;
@@ -14,6 +17,7 @@ pub fn views() -> &'static [View] {
     &[
         View { name: "ci-pipelines*", steps: &[ci_sample] },
         View { name: "ci-pipeline*", steps: &[ci_sample] },
+        View { name: "ci-job*", steps: &[ci_sample] },
         View { name: "ci-jobs*", steps: &[ci_sample] },
         View { name: "ci-empty-account*", steps: &[ci_sample] },
         View { name: "ci-error*", steps: &[ci_sample] },
@@ -51,7 +55,15 @@ fn fill(ci: &mut CiStore, view: &str) {
     // The last rows have no stages yet, as when they were just scrolled into view.
     ci.details = details.into_iter().take(7).map(|d| (d.pipeline.id, d)).collect();
     ci.more = true;
-    if (view.starts_with("ci-pipeline") && !view.starts_with("ci-pipelines")) || view.starts_with("ci-jobs") {
+    if view.starts_with("ci-job") && !view.starts_with("ci-jobs") {
+        let release = release_pipeline();
+        let job = JobId { pipeline: release.pipeline.id, id: 1095 };
+        ci.details.insert(release.pipeline.id, release);
+        ci.view = CiView::Job(job);
+        let log = parse_log(SAMPLE_LOG);
+        ci.log.visible = visible_lines(&log, &ci.log.toggled);
+        ci.log.log = Some(Arc::new(log));
+    } else if (view.starts_with("ci-pipeline") && !view.starts_with("ci-pipelines")) || view.starts_with("ci-jobs") {
         let release = release_pipeline();
         ci.view = CiView::Pipeline(release.pipeline.id);
         ci.tab = if view.starts_with("ci-jobs") { PipelineTab::Jobs } else { PipelineTab::Graph };
@@ -139,3 +151,26 @@ fn sample_pipelines() -> Vec<PipelineDetail> {
         detail(100, Success, "Prepare the release", "main", 20000, vec![build(100, Success)]),
     ]
 }
+
+/// A GitLab-style log: a collapsed section, an expanded one, colors, a warning and a failure.
+const SAMPLE_LOG: &str = "Running with gitlab-runner 17.4.0 on runner-eu-1\n\
+Using Docker executor with image rust:1.82 ...\n\
+section_start:1700000000:prepare[collapsed=true]\r\x1b[0K\x1b[36;1mPreparing the environment\x1b[0;m\n\
+Pulling docker image rust:1.82 ...\n\
+Using docker image sha256:5a1f2c for rust:1.82 with digest rust@sha256:9be3 ...\n\
+Running on runner-eu-1 via builder-04...\n\
+section_end:1700000004:prepare\r\x1b[0Ksection_start:1700000004:get_sources\r\x1b[0K\x1b[36;1mGetting source from Git repository\x1b[0;m\n\
+\x1b[32;1mFetching changes...\x1b[0;m\n\
+Initialized empty Git repository in /builds/team/app/.git/\n\
+\x1b[32;1mChecking out 6da3f9c2 as detached HEAD (ref is release/1.5)...\x1b[0;m\n\
+section_end:1700000009:get_sources\r\x1b[0Ksection_start:1700000009:step_script\r\x1b[0K\x1b[36;1mExecuting \"step_script\" stage of the job script\x1b[0;m\n\
+\x1b[32;1m$ cargo test --workspace\x1b[0;m\n\
+   \x1b[1m\x1b[32mCompiling\x1b[0m gd-forge v0.3.0 (/builds/team/app/crates/forge)\n\
+\x1b[1m\x1b[33mwarning\x1b[0m\x1b[1m:\x1b[0m unused variable: `page`\n\
+  \x1b[1m\x1b[38;5;12m--> \x1b[0mcrates/forge/src/client.rs:88:30\n\
+   \x1b[1m\x1b[32mCompiling\x1b[0m desktop-rs v0.3.0 (/builds/team/app/crates/app)\n\
+\x1b[1m\x1b[32m    Finished\x1b[0m `test` profile [unoptimized + debuginfo] target(s) in 38.12s\n\
+running 128 tests\n\
+test result: \x1b[32mok\x1b[0m. 128 passed; \x1b[31m0\x1b[0m failed; 0 ignored\n\
+\x1b[38;2;255;140;0mUploading coverage report ...\x1b[0m\n\
+section_end:1700000260:step_script\r\x1b[0K\x1b[32;1mJob succeeded\x1b[0;m\n";

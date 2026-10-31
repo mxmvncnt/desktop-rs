@@ -2,9 +2,10 @@
 
 use gd_forge::PipelineDetail;
 use gd_ui::{Theme, pressable};
-use gpui::{App, Div, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
+use gpui::{App, Div, Entity, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px};
 
 use super::duration::duration_text;
+use super::state::CiStore;
 use super::status_badge::status_badge;
 use crate::utils::text::relative_time;
 
@@ -16,6 +17,7 @@ const FINISHED_W: f32 = 130.0;
 
 #[derive(IntoElement)]
 pub struct JobsTable {
+    pub store: Entity<CiStore>,
     pub detail: PipelineDetail,
 }
 
@@ -46,8 +48,10 @@ impl RenderOnce for JobsTable {
         let jobs = self.detail.stages.iter().flat_map(|stage| stage.jobs.iter().map(move |job| (stage, job)));
         div().flex().flex_col().child(header).children(jobs.map(|(stage, job)| {
             let finished = job.finished_at.map_or("—".into(), |t| relative_time(t.timestamp()));
+            let (store, id) = (self.store.clone(), job.id);
             pressable(("jobs-row", job.id.id as usize), false, cx)
                 .rounded(px(6.0))
+                .on_click(move |_, _, cx| store.update(cx, |s, cx| s.open_job(id, cx)))
                 .child(
                     row()
                         .h(px(40.0))

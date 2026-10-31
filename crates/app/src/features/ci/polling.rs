@@ -6,12 +6,17 @@ use gpui::Context;
 
 use super::state::{CiStore, CiView};
 
+const LOG: Duration = Duration::from_secs(5);
 const RUNNING: Duration = Duration::from_secs(10);
 const IDLE: Duration = Duration::from_secs(60);
 
-/// How long to wait before the next refresh.
-pub fn poll_interval(running: bool) -> Duration {
-    if running { RUNNING } else { IDLE }
+/// How long to wait before the next refresh: faster while a log is being followed.
+pub fn poll_interval(running: bool, log: bool) -> Duration {
+    match (running, log) {
+        (true, true) => LOG,
+        (true, false) => RUNNING,
+        _ => IDLE,
+    }
 }
 
 impl CiStore {
@@ -21,7 +26,7 @@ impl CiStore {
         }
         self.poll = Some(cx.spawn(async move |this, cx| {
             loop {
-                let Ok(wait) = this.update(cx, |s, _| poll_interval(s.shows_running())) else { break };
+                let Ok(wait) = this.update(cx, |s, _| poll_interval(s.shows_running(), matches!(s.view, CiView::Job(_)))) else { break };
                 cx.background_executor().timer(wait).await;
                 if this.update(cx, |s, cx| s.poll(cx)).is_err() {
                     break;
@@ -43,6 +48,7 @@ impl CiStore {
         match self.view {
             CiView::List => self.pipelines.iter().any(|p| !p.status.is_finished()),
             CiView::Pipeline(id) => self.details.get(&id).is_none_or(|d| !d.pipeline.status.is_finished()),
+            CiView::Job(job) => self.job(job).is_none_or(|j| !j.status.is_finished()),
         }
     }
 
@@ -60,6 +66,12 @@ impl CiStore {
                 }
             }
             CiView::Pipeline(id) => self.fetch_detail(id, cx),
+            CiView::Job(job) => {
+                self.fetch_detail(job.pipeline, cx);
+                if self.job(job).is_none_or(|j| !j.status.is_finished()) {
+                    self.load_log(job, cx);
+                }
+            }
         }
     }
 }

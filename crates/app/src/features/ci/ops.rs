@@ -2,11 +2,13 @@
 
 use std::collections::HashSet;
 
-use gd_forge::{PipelineDetail, PipelineFilter, PipelineId, stages_from_workflow};
-use gd_git::Repository;
-use gpui::{AppContext, Context};
+use std::sync::Arc;
 
-use super::state::{CiStore, CiView, PipelineTab};
+use gd_forge::{JobId, Log, PipelineDetail, PipelineFilter, PipelineId, parse_log, stages_from_workflow};
+use gd_git::Repository;
+use gpui::{AppContext, Context, ScrollStrategy};
+
+use super::state::{CiStore, CiView, LogState, PipelineTab};
 use super::target::Target;
 use crate::features::accounts::{Account, RepoAccounts};
 use crate::repo::spawn_load;
@@ -30,6 +32,10 @@ impl CiStore {
         match self.view {
             CiView::List => self.close(cx),
             CiView::Pipeline(_) => self.view = CiView::List,
+            CiView::Job(job) => {
+                self.log_load.cancel();
+                self.view = CiView::Pipeline(job.pipeline);
+            }
         }
         cx.notify();
     }
@@ -39,6 +45,55 @@ impl CiStore {
         self.tab = PipelineTab::Graph;
         self.detail_error = None;
         self.fetch_detail(id, cx);
+        cx.notify();
+    }
+
+    pub fn open_job(&mut self, id: JobId, cx: &mut Context<Self>) {
+        self.view = CiView::Job(id);
+        self.log = LogState { follow: self.job(id).is_some_and(|j| !j.status.is_finished()), ..LogState::default() };
+        self.load_log(id, cx);
+        cx.notify();
+    }
+
+    /// Fetch and parse the log of `id` (again, while the job runs).
+    pub(super) fn load_log(&mut self, id: JobId, cx: &mut Context<Self>) {
+        let Some(target) = self.ready().cloned() else { return };
+        self.log.loading = self.log.log.is_none();
+        spawn_load(
+            self,
+            |s| &mut s.log_load,
+            move || {
+                let raw = target.client()?.job_log(&target.repo, &id)?;
+                Ok::<_, gd_forge::Error>(Arc::new(parse_log(&raw)))
+            },
+            |this, res, cx| {
+                this.log.loading = false;
+                match res {
+                    Ok(log) => {
+                        this.log.error = None;
+                        this.log.visible = visible_lines(&log, &this.log.toggled);
+                        this.log.log = Some(log);
+                        if this.log.follow {
+                            this.log.scroll.scroll_to_item(this.log.visible.len().saturating_sub(1), ScrollStrategy::Bottom);
+                        }
+                    }
+                    Err(e) => this.log.error = Some(e.into()),
+                }
+                cx.notify();
+            },
+            cx,
+        );
+        cx.notify();
+    }
+
+    /// Collapse or expand the section whose header is line `section`'s header.
+    pub fn toggle_section(&mut self, section: usize, cx: &mut Context<Self>) {
+        if !self.log.toggled.remove(&section) {
+            self.log.toggled.insert(section);
+        }
+        if let Some(log) = &self.log.log {
+            self.log.visible = visible_lines(log, &self.log.toggled);
+        }
         cx.notify();
     }
 
@@ -197,6 +252,19 @@ fn load_detail(target: &Target, id: PipelineId) -> gd_forge::Result<PipelineDeta
         }
     }
     Ok(detail)
+}
+
+/// Indices of the lines to show: everything outside collapsed sections, plus their header lines.
+/// A section is collapsed when its `collapsed` flag differs from `toggled` (the sections the user flipped, by index).
+pub fn visible_lines(log: &Log, toggled: &HashSet<usize>) -> Vec<usize> {
+    let mut visible = Vec::with_capacity(log.lines.len());
+    let mut line = 0;
+    while line < log.lines.len() {
+        visible.push(line);
+        let collapsed = log.sections.iter().enumerate().find(|(ix, s)| s.header == line && s.collapsed != toggled.contains(ix));
+        line = collapsed.map_or(line + 1, |(_, s)| s.end.max(line + 1));
+    }
+    visible
 }
 
 /// Paths (relative to the working tree) where the workflow file may be.

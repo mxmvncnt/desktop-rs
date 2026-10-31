@@ -94,7 +94,7 @@ impl RenderOnce for PipelineView {
                 .child(div().flex().items_start().p(px(24.0)).children(detail.stages.iter().enumerate().flat_map(|(ix, stage)| {
                     // A line between two columns, level with the stage headers.
                     let link = (ix > 0).then(|| div().flex_none().w(px(32.0)).h(px(36.0)).flex().items_center().child(div().h(px(1.0)).w_full().bg(theme.border_strong)));
-                    [link.map(IntoElement::into_any_element), Some(stage_column(stage, cx).into_any_element())]
+                    [link.map(IntoElement::into_any_element), Some(stage_column(stage, &store, cx).into_any_element())]
                 }).flatten()))
                 .into_any_element(),
             PipelineTab::Jobs => div()
@@ -104,7 +104,7 @@ impl RenderOnce for PipelineView {
                 .overflow_y_scroll()
                 .px(px(14.0))
                 .py(px(12.0))
-                .child(JobsTable { detail: detail.clone() })
+                .child(JobsTable { store: store.clone(), detail: detail.clone() })
                 .into_any_element(),
         };
 

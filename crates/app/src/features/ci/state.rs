@@ -2,8 +2,9 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use gd_forge::{Pipeline, PipelineDetail, PipelineId, Status};
+use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
 use gpui::{Task, UniformListScrollHandle};
 
 use super::target::{Problem, Target};
@@ -14,12 +15,27 @@ use crate::repo::LoadSlot;
 pub enum CiView {
     List,
     Pipeline(PipelineId),
+    Job(JobId),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PipelineTab {
     Graph,
     Jobs,
+}
+
+/// The log of the open job. `visible` are the indices of `log.lines` not hidden by a collapsed section.
+#[derive(Default)]
+pub struct LogState {
+    pub log: Option<Arc<Log>>,
+    pub visible: Vec<usize>,
+    /// Sections the user flipped: one is collapsed when `Section::collapsed` differs from this.
+    pub toggled: HashSet<usize>,
+    /// Keep the view at the end while the job runs.
+    pub follow: bool,
+    pub loading: bool,
+    pub error: Option<Problem>,
+    pub scroll: UniformListScrollHandle,
 }
 
 pub struct CiStore {
@@ -45,6 +61,7 @@ pub struct CiStore {
     pub details: HashMap<PipelineId, PipelineDetail>,
     /// Why the open pipeline could not be loaded.
     pub detail_error: Option<Problem>,
+    pub log: LogState,
     pub list_scroll: UniformListScrollHandle,
     /// Bumped when the repository changes: results of older requests are dropped.
     pub(super) epoch: u64,
@@ -54,6 +71,7 @@ pub struct CiStore {
     pub(super) queue: Vec<PipelineId>,
     pub(super) resolve_load: LoadSlot,
     pub(super) list_load: LoadSlot,
+    pub(super) log_load: LoadSlot,
     pub(super) poll: Option<Task<()>>,
 }
 
@@ -74,6 +92,7 @@ impl Default for CiStore {
             loading: false,
             list_error: None,
             detail_error: None,
+            log: LogState::default(),
             details: HashMap::new(),
             list_scroll: UniformListScrollHandle::new(),
             epoch: 0,
@@ -82,6 +101,7 @@ impl Default for CiStore {
             queue: Vec::new(),
             resolve_load: LoadSlot::default(),
             list_load: LoadSlot::default(),
+            log_load: LoadSlot::default(),
             poll: None,
         }
     }
@@ -91,6 +111,10 @@ impl CiStore {
     /// The resolved account and repository, if any.
     pub fn ready(&self) -> Option<&Target> {
         self.target.as_ref()?.as_ref().ok()
+    }
+
+    pub fn job(&self, id: JobId) -> Option<&Job> {
+        self.details.get(&id.pipeline)?.stages.iter().flat_map(|s| &s.jobs).find(|j| j.id == id)
     }
 
     /// A list row wants its stages and they are not loaded, loading or known to fail.
