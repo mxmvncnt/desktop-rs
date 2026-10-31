@@ -609,3 +609,7 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
 - Polling (`polling.rs`): one task while the page is open, every 10 s when something in the list is unfinished, else every 60 s; skipped while the
   window is inactive, and coming back to the window polls at once. A poll reloads page 1 and merges it (older pages stay, rows the new page covers
   are replaced), and refetches the details that are not finished. Finished details are never refetched. Running status icons are static.
+- Pipeline screen (`CiView::Pipeline(id)`, Esc goes back to the list): `pipeline_view` (breadcrumb, summary, "Open in browser", Pipeline | Jobs tabs),
+  the graph is `stage_column` + `job_card` in a scrolling row with a hairline between columns, the table is `jobs_table`. It reads the same `details`
+  cache as the list; opening a pipeline refetches it (a cached running one is stale), and polling refetches it while it is not finished.
+  An `allow_failure` job that failed is drawn with the warning look (`status_badge::look(Success, true)`).

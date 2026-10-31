@@ -4,6 +4,7 @@
 
 - [x] Toolbar button + full page (`features/ci/`), account resolution with empty states, pipelines list (status tabs, current-branch toggle,
       refresh, load more, stage dots loaded lazily for visible rows), polling. Snapshot views `ci-pipelines[-light]`, `ci-empty-account`, `ci-error`.
+- [x] Pipeline screen: stage-column graph, jobs table, breadcrumb, open in browser. Snapshot views `ci-pipeline`, `ci-jobs`.
 - Unverified: no live server was used; everything is checked with fixtures and the `gd-forge` fixtures only.
 
 ## 2026-10-29

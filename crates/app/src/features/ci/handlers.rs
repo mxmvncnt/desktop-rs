@@ -30,11 +30,11 @@ impl Workspace {
         self.ci.update(cx, |ci, cx| ci.show(repo, branch, accounts, picks, cx));
     }
 
-    /// Esc: close the page. `false` when it is not open.
+    /// Esc: one screen back, then close the page. `false` when it is not open.
     pub fn back_ci(&mut self, cx: &mut Context<Self>) -> bool {
         let open = self.ci.read(cx).open;
         if open {
-            self.ci.update(cx, |ci, cx| ci.close(cx));
+            self.ci.update(cx, |ci, cx| ci.back(cx));
         }
         open
     }

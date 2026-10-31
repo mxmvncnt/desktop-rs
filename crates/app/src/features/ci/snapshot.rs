@@ -4,7 +4,7 @@ use chrono::{Duration, Utc};
 use gd_forge::{Forge, Job, JobId, Pipeline, PipelineDetail, PipelineId, RepoRef, Stage, Status, User};
 use gpui::{Context, Window};
 
-use super::state::CiStore;
+use super::state::{CiStore, CiView, PipelineTab};
 use super::target::{Problem, Target};
 use crate::features::settings::ThemeMode;
 use crate::snapshot::View;
@@ -13,6 +13,8 @@ use crate::workspace::Workspace;
 pub fn views() -> &'static [View] {
     &[
         View { name: "ci-pipelines*", steps: &[ci_sample] },
+        View { name: "ci-pipeline*", steps: &[ci_sample] },
+        View { name: "ci-jobs*", steps: &[ci_sample] },
         View { name: "ci-empty-account*", steps: &[ci_sample] },
         View { name: "ci-error*", steps: &[ci_sample] },
     ]
@@ -49,7 +51,26 @@ fn fill(ci: &mut CiStore, view: &str) {
     // The last rows have no stages yet, as when they were just scrolled into view.
     ci.details = details.into_iter().take(7).map(|d| (d.pipeline.id, d)).collect();
     ci.more = true;
-    let _ = view;
+    if (view.starts_with("ci-pipeline") && !view.starts_with("ci-pipelines")) || view.starts_with("ci-jobs") {
+        let release = release_pipeline();
+        ci.view = CiView::Pipeline(release.pipeline.id);
+        ci.tab = if view.starts_with("ci-jobs") { PipelineTab::Jobs } else { PipelineTab::Graph };
+        ci.details.insert(release.pipeline.id, release);
+    }
+}
+
+/// Four stages: a failed job that may fail, and a manual deploy.
+fn release_pipeline() -> PipelineDetail {
+    use Status::*;
+    let mut coverage = job(109, 1092, "coverage", Failed, Some(40));
+    coverage.allow_failure = true;
+    let stages = vec![
+        stage("build", vec![job(109, 1090, "compile", Success, Some(61)), job(109, 1091, "compile-docs", Success, Some(48))]),
+        stage("test", vec![job(109, 1093, "unit", Success, Some(120)), coverage, job(109, 1094, "lint", Success, Some(24)), job(109, 1095, "integration", Success, Some(260))]),
+        stage("package", vec![job(109, 1096, "docker-image", Success, Some(150))]),
+        stage("deploy", vec![job(109, 1097, "staging", Success, Some(33)), job(109, 1098, "production", Manual, None)]),
+    ];
+    detail(109, Success, "Release 1.5.0", "release/1.5", 12, stages)
 }
 
 fn job(pipeline: u64, id: u64, name: &str, status: Status, secs: Option<u64>) -> Job {
@@ -70,7 +91,7 @@ fn job(pipeline: u64, id: u64, name: &str, status: Status, secs: Option<u64>) ->
 }
 
 fn stage(name: &str, jobs: Vec<Job>) -> Stage {
-    let status = jobs.iter().map(|j| j.status).find(|s| *s != Status::Success).unwrap_or(Status::Success);
+    let status = jobs.iter().filter(|j| !j.allow_failure).map(|j| j.status).find(|s| *s != Status::Success).unwrap_or(Status::Success);
     Stage { name: name.into(), status, jobs }
 }
 

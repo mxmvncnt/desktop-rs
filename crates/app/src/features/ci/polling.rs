@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use gpui::Context;
 
-use super::state::CiStore;
+use super::state::{CiStore, CiView};
 
 const RUNNING: Duration = Duration::from_secs(10);
 const IDLE: Duration = Duration::from_secs(60);
@@ -40,7 +40,10 @@ impl CiStore {
 
     /// Something on screen is still changing.
     fn shows_running(&self) -> bool {
-        self.pipelines.iter().any(|p| !p.status.is_finished())
+        match self.view {
+            CiView::List => self.pipelines.iter().any(|p| !p.status.is_finished()),
+            CiView::Pipeline(id) => self.details.get(&id).is_none_or(|d| !d.pipeline.status.is_finished()),
+        }
     }
 
     fn poll(&mut self, cx: &mut Context<Self>) {
@@ -49,9 +52,14 @@ impl CiStore {
         }
         self.failed.clear();
         let running: Vec<_> = self.details.values().filter(|d| !d.pipeline.status.is_finished()).map(|d| d.pipeline.id).collect();
-        self.load_list(false, cx);
-        for id in running {
-            self.fetch_detail(id, cx);
+        match self.view {
+            CiView::List => {
+                self.load_list(false, cx);
+                for id in running {
+                    self.fetch_detail(id, cx);
+                }
+            }
+            CiView::Pipeline(id) => self.fetch_detail(id, cx),
         }
     }
 }

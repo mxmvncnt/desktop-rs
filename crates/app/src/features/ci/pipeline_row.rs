@@ -2,10 +2,11 @@
 
 use gd_forge::{Pipeline, PipelineDetail};
 use gd_ui::{Icon, Theme, badge, icon, pressable};
-use gpui::{App, Div, IntoElement, ParentElement, SharedString, Styled, div, px};
+use gpui::{App, Div, Entity, IntoElement, ParentElement, SharedString, StatefulInteractiveElement, Styled, div, px};
 
 use super::duration::duration_text;
 use super::stage_dots::stage_dots;
+use super::state::CiStore;
 use super::status_badge::status_badge;
 use crate::utils::text::relative_time;
 
@@ -49,7 +50,7 @@ pub fn columns_header(cx: &App) -> Div {
         .child(label("Duration", Some(TIME_W)))
 }
 
-pub fn pipeline_row(ix: usize, p: &Pipeline, detail: Option<&PipelineDetail>, cx: &App) -> impl IntoElement + use<> {
+pub fn pipeline_row(ix: usize, p: &Pipeline, detail: Option<&PipelineDetail>, store: Entity<CiStore>, cx: &App) -> impl IntoElement + use<> {
     let theme = Theme::of(cx);
     // The list has no commit title on GitLab, nor the user: the loaded detail has both.
     let shown = detail.map_or(p, |d| &d.pipeline);
@@ -58,6 +59,7 @@ pub fn pipeline_row(ix: usize, p: &Pipeline, detail: Option<&PipelineDetail>, cx
     let user = shown.user.as_ref().map(|u| u.name.clone().unwrap_or_else(|| u.username.clone()));
     let created = shown.created_at.map_or(String::new(), |t| relative_time(t.timestamp()));
     let sha: String = p.sha.chars().take(7).collect();
+    let id = p.id;
 
     pressable(("ci-pipeline", ix), false, cx)
         .flex()
@@ -67,6 +69,7 @@ pub fn pipeline_row(ix: usize, p: &Pipeline, detail: Option<&PipelineDetail>, cx
         .w_full()
         .px(px(10.0))
         .rounded(px(6.0))
+        .on_click(move |_, _, cx| store.update(cx, |s, cx| s.open_pipeline(id, cx)))
         .child(cell(Some(STATUS_W)).child(status_badge(p.status, warnings, theme)))
         .child(
             cell(None)

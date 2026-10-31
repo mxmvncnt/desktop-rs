@@ -6,7 +6,7 @@ use gd_forge::{PipelineDetail, PipelineFilter, PipelineId, stages_from_workflow}
 use gd_git::Repository;
 use gpui::{AppContext, Context};
 
-use super::state::CiStore;
+use super::state::{CiStore, CiView, PipelineTab};
 use super::target::Target;
 use crate::features::accounts::{Account, RepoAccounts};
 use crate::repo::spawn_load;
@@ -22,6 +22,23 @@ impl CiStore {
     pub fn close(&mut self, cx: &mut Context<Self>) {
         self.open = false;
         self.poll = None;
+        cx.notify();
+    }
+
+    /// Esc: one screen back; from the list, close the page.
+    pub fn back(&mut self, cx: &mut Context<Self>) {
+        match self.view {
+            CiView::List => self.close(cx),
+            CiView::Pipeline(_) => self.view = CiView::List,
+        }
+        cx.notify();
+    }
+
+    pub fn open_pipeline(&mut self, id: PipelineId, cx: &mut Context<Self>) {
+        self.view = CiView::Pipeline(id);
+        self.tab = PipelineTab::Graph;
+        self.detail_error = None;
+        self.fetch_detail(id, cx);
         cx.notify();
     }
 
@@ -152,8 +169,9 @@ impl CiStore {
                         this.failed.remove(&id);
                         this.details.insert(id, detail);
                     }
-                    Err(_) => {
+                    Err(e) => {
                         this.failed.insert(id);
+                        this.detail_error = Some(e.into());
                     }
                 }
                 this.pump_details(cx);

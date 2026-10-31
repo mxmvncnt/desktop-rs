@@ -6,7 +6,8 @@ use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOn
 use super::pipeline_row::{columns_header, pipeline_row};
 use super::pipelines_header::PipelinesHeader;
 use super::problem_view::ProblemView;
-use super::state::CiStore;
+use super::pipeline_view::PipelineView;
+use super::state::{CiStore, CiView};
 use crate::components::list;
 use crate::workspace::Workspace;
 
@@ -22,7 +23,10 @@ impl RenderOnce for CiPage {
         let content = match &ci.target {
             None => empty_state("Looking for the account…", cx).flex_1().into_any_element(),
             Some(Err(problem)) => ProblemView { problem: problem.clone(), ws: self.ws.clone() }.into_any_element(),
-            Some(Ok(_)) => self.pipelines(cx).into_any_element(),
+            Some(Ok(_)) => match ci.view {
+                CiView::List => self.pipelines(cx).into_any_element(),
+                CiView::Pipeline(id) => PipelineView { store: self.store.clone(), ws: self.ws.clone(), id }.into_any_element(),
+            },
         };
         div()
             .id("ci-page")
@@ -30,7 +34,9 @@ impl RenderOnce for CiPage {
             .min_h_0()
             .flex()
             .flex_col()
-            .child(PipelinesHeader { store: self.store.clone(), ws: self.ws.clone() })
+            .when(ci.view == CiView::List || !matches!(ci.target, Some(Ok(_))), |d| {
+                d.child(PipelinesHeader { store: self.store.clone(), ws: self.ws.clone() })
+            })
             .child(content)
     }
 }
@@ -56,7 +62,7 @@ impl CiPage {
                 window.defer(cx, move |_, cx| store.update(cx, |s, cx| s.request_details(ids, cx)));
             }
             let ci = store.read(cx);
-            range.filter_map(|ix| ci.pipelines.get(ix).map(|p| pipeline_row(ix, p, ci.details.get(&p.id), cx))).collect()
+            range.filter_map(|ix| ci.pipelines.get(ix).map(|p| pipeline_row(ix, p, ci.details.get(&p.id), store.clone(), cx))).collect()
         })
         .track_scroll(&ci.list_scroll)
         .flex_1();

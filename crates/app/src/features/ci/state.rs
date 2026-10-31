@@ -9,6 +9,19 @@ use gpui::{Task, UniformListScrollHandle};
 use super::target::{Problem, Target};
 use crate::repo::LoadSlot;
 
+/// Which screen of the page is shown.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CiView {
+    List,
+    Pipeline(PipelineId),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum PipelineTab {
+    Graph,
+    Jobs,
+}
+
 pub struct CiStore {
     pub open: bool,
     /// Repository the state below belongs to.
@@ -17,6 +30,8 @@ pub struct CiStore {
     pub focused: bool,
     /// `None` while the account is being resolved.
     pub target: Option<Result<Target, Problem>>,
+    pub view: CiView,
+    pub tab: PipelineTab,
     /// Status tab of the list (`None` = All).
     pub status: Option<Status>,
     pub current_branch: bool,
@@ -28,6 +43,8 @@ pub struct CiStore {
     pub list_error: Option<Problem>,
     /// Details by pipeline: stages for the list dots, the graph and the jobs table. Finished ones never change.
     pub details: HashMap<PipelineId, PipelineDetail>,
+    /// Why the open pipeline could not be loaded.
+    pub detail_error: Option<Problem>,
     pub list_scroll: UniformListScrollHandle,
     /// Bumped when the repository changes: results of older requests are dropped.
     pub(super) epoch: u64,
@@ -47,6 +64,8 @@ impl Default for CiStore {
             root: None,
             focused: true,
             target: None,
+            view: CiView::List,
+            tab: PipelineTab::Graph,
             status: None,
             current_branch: false,
             pipelines: Vec::new(),
@@ -54,6 +73,7 @@ impl Default for CiStore {
             more: false,
             loading: false,
             list_error: None,
+            detail_error: None,
             details: HashMap::new(),
             list_scroll: UniformListScrollHandle::new(),
             epoch: 0,
