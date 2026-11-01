@@ -28,6 +28,7 @@ impl CiStore {
     pub fn close(&mut self, cx: &mut Context<Self>) {
         self.open = false;
         self.branch_menu = false;
+        self.user_menu = false;
         self.poll = None;
         cx.notify();
     }
@@ -262,7 +263,23 @@ impl CiStore {
         self.reload_list(cx);
     }
 
-    /// A filter input changed: reload the list once typing pauses.
+    /// The filter inputs changed. The branch is filtered on as typed; the user only once picked (or Enter), as a part of a login would match
+    /// nothing, so typing one just opens the suggestions. Emptying the field clears the filter.
+    pub fn filters_edited(&mut self, branch: String, user_text: String, cx: &mut Context<Self>) {
+        self.user_menu = !user_text.is_empty() && user_text != self.user;
+        let user = if user_text.is_empty() { String::new() } else { self.user.clone() };
+        self.set_filters(branch, user, cx);
+        cx.notify();
+    }
+
+    /// A suggestion was picked, or Enter was pressed in the user field.
+    pub fn apply_user(&mut self, login: String, cx: &mut Context<Self>) {
+        self.user_menu = false;
+        self.set_filters(self.branch.clone(), login, cx);
+        cx.notify();
+    }
+
+    /// The filters changed: reload the list once typing pauses.
     pub fn set_filters(&mut self, branch: String, user: String, cx: &mut Context<Self>) {
         if (&branch, &user) == (&self.branch, &self.user) {
             return;

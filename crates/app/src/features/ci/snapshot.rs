@@ -42,6 +42,8 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
             if view.contains("filters") {
                 (ci.branch, ci.user) = ("release/1.5".into(), "ada".into());
             }
+            // `ci-pipelines-users`: "ad" typed in the user field, with its suggestions.
+            ci.user_menu = view.contains("users");
             // `ci-pipelines-branches`: the branch dropdown open.
             ci.branch_menu = view.contains("branches");
             if let (true, Some(Ok(target))) = (view.contains("forgejo"), &mut ci.target) {
@@ -60,6 +62,9 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
     if view.contains("filters") {
         ws.ci_inputs.branch.update(cx, |s, cx| s.emplace("release/1.5", cx));
         ws.ci_inputs.user.update(cx, |s, cx| s.emplace("ada", cx));
+    }
+    if view.contains("users") {
+        ws.ci_inputs.user.update(cx, |s, cx| s.emplace("ad", cx));
     }
 }
 
@@ -153,7 +158,7 @@ fn detail(id: u64, status: Status, title: &str, branch: &str, ago_min: i64, stag
             sha: format!("{id:x}a3f9c2d41b7e08"),
             source: Some(if id % 3 == 0 { "merge_request_event" } else { "push" }.into()),
             status,
-            user: Some(User { name: Some(["Maxime Vincent", "Ada Lovelace", "Linus T."][id as usize % 3].into()), username: "user".into(), avatar_url: None }),
+            user: Some(User { name: Some(["Maxime Vincent", "Ada Lovelace", "Linus T."][id as usize % 3].into()), username: ["mvincent", "ada", "linus"][id as usize % 3].into(), avatar_url: None }),
             created_at: Some(created),
             started_at: Some(created),
             finished_at: None,

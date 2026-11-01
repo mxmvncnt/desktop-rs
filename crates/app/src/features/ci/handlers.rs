@@ -44,8 +44,8 @@ impl Workspace {
     /// A filter input of the pipelines list changed.
     pub(crate) fn ci_filters_edited(&mut self, cx: &mut Context<Self>) {
         let text = |input: &Entity<EditableTextState>| input.read(cx).as_str().trim().to_string();
-        let (branch, user) = (text(&self.ci_inputs.branch), text(&self.ci_inputs.user));
-        self.ci.update(cx, |ci, cx| ci.set_filters(branch, user, cx));
+        let (branch, user_text) = (text(&self.ci_inputs.branch), text(&self.ci_inputs.user));
+        self.ci.update(cx, |ci, cx| ci.filters_edited(branch, user_text, cx));
     }
 
     /// Another repository: its branches and authors are not the ones typed.

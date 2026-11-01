@@ -2,9 +2,11 @@
 
 use gd_forge::Status;
 use gd_ui::{Button, Icon, Tabs, Theme, icon_button};
+use gpui_elements::editable_text::actions::Enter;
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
 
 use super::branch_menu::{BranchMenu, branch_names};
+use super::user_menu::{UserMenu, on_enter, suggest};
 use super::state::CiStore;
 use crate::components::text_field;
 use crate::workspace::Workspace;
@@ -31,6 +33,13 @@ impl RenderOnce for PipelinesHeader {
         let can_filter_user = target.is_some_and(|t| t.forge.capabilities().filter_user);
         let inputs = self.ws.read(cx).ci_inputs.clone();
         let (ws, store, menu_store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.store.clone(), self.ws.clone());
+        let user_menu = ci.user_menu.then(|| suggest(ci.known_users(), inputs.user.read(cx).as_str())).filter(|s| !s.is_empty()).map(|suggestions| UserMenu {
+            store: self.store.clone(),
+            input: inputs.user.clone(),
+            suggestions,
+        });
+        let enter_store = self.store.clone();
+        let enter_input = inputs.user.clone();
         let branch_menu = ci.branch_menu.then(|| BranchMenu {
             store: self.store.clone(),
             input: inputs.branch.clone(),
@@ -116,7 +125,23 @@ impl RenderOnce for PipelinesHeader {
                             ),
                         )
                         .when(can_filter_user, |d| {
-                            d.child(labeled("User").child(div().w(px(150.0)).child(text_field("ci-user-filter", &inputs.user, "Anyone", cx))))
+                            d.child(
+                                labeled("User").child(
+                                    div()
+                                        .relative()
+                                        .w(px(150.0))
+                                        .capture_action(move |_: &Enter, _, cx| {
+                                            // Enter applies what the suggestions say (see `on_enter`).
+                                            cx.stop_propagation();
+                                            let typed = enter_input.read(cx).as_str().trim().to_string();
+                                            let login = on_enter(&suggest(enter_store.read(cx).known_users(), &typed), &typed);
+                                            enter_input.update(cx, |s, cx| s.emplace(&login, cx));
+                                            enter_store.update(cx, |s, cx| s.apply_user(login, cx));
+                                        })
+                                        .child(text_field("ci-user-filter", &inputs.user, "Anyone", cx))
+                                        .children(user_menu),
+                                ),
+                            )
                         }),
                 )
             })

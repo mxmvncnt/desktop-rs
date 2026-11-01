@@ -25,6 +25,7 @@ mod stage_dots;
 mod state;
 mod status_badge;
 mod target;
+mod user_menu;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
 

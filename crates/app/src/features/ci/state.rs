@@ -114,6 +114,8 @@ pub struct CiStore {
     pub user: String,
     /// The branch dropdown is open.
     pub branch_menu: bool,
+    /// The suggestions under the user field are open: text was typed that is not (yet) the filter.
+    pub user_menu: bool,
     pub pipelines: Vec<Pipeline>,
     /// Last page loaded; a full page means there may be another.
     pub page: u32,
@@ -160,6 +162,7 @@ impl Default for CiStore {
             branch: String::new(),
             user: String::new(),
             branch_menu: false,
+            user_menu: false,
             filter_task: None,
             pipelines: Vec::new(),
             page: 1,
@@ -192,6 +195,11 @@ impl CiStore {
 
     pub fn job(&self, id: JobId) -> Option<&Job> {
         self.details.get(&id.pipeline)?.stages.iter().flat_map(|s| &s.jobs).find(|j| j.id == id)
+    }
+
+    /// The users seen so far, for the suggestions of the user filter.
+    pub fn known_users(&self) -> impl Iterator<Item = &gd_forge::User> {
+        self.pipelines.iter().filter_map(|p| p.user.as_ref()).chain(self.details.values().filter_map(|d| d.pipeline.user.as_ref()))
     }
 
     /// A list row wants its stages and they are not loaded, loading or known to fail.
