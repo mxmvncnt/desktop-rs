@@ -86,7 +86,6 @@ impl RenderOnce for RepoSettingsModal {
         };
         let ws = self.ws;
         SettingsShell {
-            id: "repo-settings",
             title: title.into(),
             nav: nav.into(),
             nav_bottom: Vec::new(),

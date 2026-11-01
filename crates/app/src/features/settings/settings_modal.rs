@@ -58,7 +58,6 @@ impl RenderOnce for SettingsModal {
         };
         let ws = self.ws.clone();
         SettingsShell {
-            id: "settings",
             title: self.page.label().into(),
             nav: top.into_iter().map(item).collect(),
             nav_bottom: vec![item(about)],

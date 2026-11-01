@@ -1,7 +1,7 @@
 //! Layout of the form modals (app settings, repository settings): a sidebar of pages, a title bar
 //! with a close button, and the page body. Esc, the close button or a backdrop click calls `on_close`.
 
-use gd_ui::{Callback, Icon, Theme, divider, icon, icon_button, modal, motion, overlay_card, pressable};
+use gd_ui::{Callback, Icon, Theme, divider, icon, icon_button, modal, overlay_card, pressable};
 use gpui::{
     AnyElement, App, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString,
     StatefulInteractiveElement, Styled, Window, div, px,
@@ -17,8 +17,6 @@ pub struct NavItem {
 
 #[derive(IntoElement)]
 pub struct SettingsShell {
-    /// Names the entrance hand-off between overlays (see `motion::handoff`).
-    pub id: &'static str,
     pub title: SharedString,
     pub nav: Vec<NavItem>,
     /// Items pinned to the bottom of the sidebar.
@@ -30,7 +28,6 @@ pub struct SettingsShell {
 impl RenderOnce for SettingsShell {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let instant = motion::handoff(&format!("{}-in", self.id).into(), cx);
         let nav = div()
             .flex()
             .flex_col()
@@ -80,7 +77,7 @@ impl RenderOnce for SettingsShell {
                         div().id("settings-scroll").flex_1().min_h_0().overflow_y_scroll().child(div().p(px(24.0)).child(self.body)),
                     ),
             );
-        modal(card, Some(backdrop), instant)
+        modal(card, Some(backdrop), false)
     }
 }
 
