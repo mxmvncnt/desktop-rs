@@ -39,8 +39,9 @@ fn oauth_app_resolution_order() {
     assert_eq!(id(Provider::Gitea, "git.example.com", ""), Some(GITEA_CLIENT_ID.into()));
     assert_eq!(id(Provider::GitHubEnterprise, "ghe.example.com", ""), None);
     assert_eq!(id(Provider::GitLab, "gitlab.example.com", "x"), Some("x".into()));
+    assert_eq!(id(Provider::GitHub, "github.com", ""), Some("Ov23liWNVoyi5E8E5lb0".into()));
     // an empty built-in id (not registered yet) counts as none
-    assert_eq!(id(Provider::GitHub, "github.com", ""), None);
+    assert_eq!(id(Provider::GitLab, "gitlab.com", ""), None);
 }
 
 #[test]
@@ -56,6 +57,5 @@ fn sign_in_method_defaults_to_the_browser_when_an_app_exists() {
     assert_eq!(SignInMethod::default_for(Provider::Gitea, "git.example.com"), SignInMethod::Browser);
     assert_eq!(SignInMethod::default_for(Provider::GitHubEnterprise, "ghe.example.com"), SignInMethod::Token);
     assert_eq!(SignInMethod::default_for(Provider::Bitbucket, "bitbucket.org"), SignInMethod::Token);
-    // github.com has no registered app yet
-    assert_eq!(SignInMethod::default_for(Provider::GitHub, "github.com"), SignInMethod::Token);
+    assert_eq!(SignInMethod::default_for(Provider::GitHub, "github.com"), SignInMethod::Browser);
 }

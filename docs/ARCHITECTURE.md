@@ -561,7 +561,7 @@ GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the b
 - "Sign in with" is a radio group of `OptionRow`s (`SignInMethod` in `model.rs`: Browser only when `oauth_app(host, "")` exists, Personal access token, Your own OAuth app); only the chosen method's body shows. Default = `SignInMethod::default_for`; editing preselects the method the account used (secret's client id). A pasted token is checked with `/user` on "Add account" ("Checking...", "This token was rejected").
 - Client ids are public (no secret), so they are source constants in `accounts/model.rs`. `Provider::oauth_app(host, custom)`
   resolves: custom client id typed in the "Your own OAuth app" method > `BUILTIN_CLIENT_IDS` entry of the host (empty = not
-  registered) > Gitea/Forgejo default app > `None`. `None` (GHE, self-managed GitLab, or github.com/gitlab.com while unregistered)
+  registered) > Gitea/Forgejo default app > `None`. `None` (GHE, self-managed GitLab, or gitlab.com while unregistered)
   means the form shows "Create token" (opens `https://<host>/settings/tokens/new?scopes=repo,workflow,read:user&description=desktop-rs`
   or GitLab `/-/user_settings/personal_access_tokens?name=desktop-rs&scopes=api`) and the token field; saving a pasted token
   with an empty username looks `/user` up first. Pasted tokens have no refresh token (`Account.oauth = false`).
@@ -572,8 +572,9 @@ GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the b
   really public (`ConfidentialClient` column default is TRUE, `Init` does not set it; git-credential-oauth works with them in
   practice) and that an instance has not disabled them (`DEFAULT_APPLICATIONS=`). codeberg.org and gitea.com use that default app
   until own apps are registered there (another project's registered app ids are deliberately not reused).
-- Maintainer TODO: register the GitHub OAuth App (device flow enabled) and the gitlab.com application (non-confidential,
-  scope `api`, redirect `http://127.0.0.1:47123/callback`) and paste the ids in `BUILTIN_CLIENT_IDS`. Own apps on codeberg.org /
+- github.com uses the OAuth App "desktop-rs" (`Ov23liWNVoyi5E8E5lb0`, device flow enabled; an OAuth App, not a GitHub App,
+  which would need installing per org and expiring tokens with a secret to refresh). Maintainer TODO: register the gitlab.com
+  application (non-confidential, scope `api`, redirect `http://127.0.0.1:47123/callback`) and paste its id in `BUILTIN_CLIENT_IDS`. Own apps on codeberg.org /
   gitea.com (public client, redirect `http://127.0.0.1:47123`) are optional.
 - The secret per account is a JSON `TokenSecret` (`accounts/token.rs`: access/refresh token, `expires_at`, client id,
   token URL; bare strings from older versions still parse). `Account.oauth` marks signed-in accounts.

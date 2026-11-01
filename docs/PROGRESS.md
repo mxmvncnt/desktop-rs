@@ -38,7 +38,7 @@
 
 - [x] Account per repository ("Account for this repository": Automatic by remote host, or a pick saved in `repo_accounts.toml`), `account_for_repo` for the CI page.
 - [x] Sign in with the browser (GitHub/GHE device flow, GitLab/Gitea/Forgejo PKCE), token refresh, Gitea and Forgejo providers (see ARCHITECTURE §OAuth). Not verified against live servers.
-- [x] Seamless sign-in: built-in client ids in source, Gitea/Forgejo preregistered app, "Create token" fallback for GHE / self-managed GitLab, custom client id under "Advanced". **Maintainer TODO:** register the github.com and gitlab.com apps and paste the ids in `BUILTIN_CLIENT_IDS` (`accounts/model.rs`); until then those two use the token fallback.
+- [x] Seamless sign-in: built-in client ids in source, Gitea/Forgejo preregistered app, "Create token" fallback for GHE / self-managed GitLab, custom client id under "Advanced". github.com has its built-in app (`Ov23liWNVoyi5E8E5lb0`). **Maintainer TODO:** register the gitlab.com app and paste its id in `BUILTIN_CLIENT_IDS` (`accounts/model.rs`); until then gitlab.com uses the token fallback.
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
       (the per-repo override and account pick moved to repository settings), provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
       add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the secret store (`accounts/secrets.rs`: `oo7` Secret Service on Linux, `keyring` native backends on macOS/Windows; if the store is unavailable they go to `<config>/secrets.toml`, 0600, and the page warns). Token input is not masked (gpui-ce

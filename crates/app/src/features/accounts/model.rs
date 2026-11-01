@@ -111,9 +111,8 @@ pub struct OAuthApp {
 
 /// Client ids are public (device flow and PKCE need no secret). An empty id = not registered yet.
 const BUILTIN_CLIENT_IDS: [(&str, &str); 4] = [
-    // TODO(maintainer): register a GitHub OAuth App (Settings > Developer settings > OAuth Apps), tick
-    // "Enable Device Flow", any callback URL, and paste its client id here.
-    ("github.com", ""),
+    // OAuth App "desktop-rs" (device flow enabled) of github.com/mxmvncnt.
+    ("github.com", "Ov23liWNVoyi5E8E5lb0"),
     // TODO(maintainer): register a GitLab application on gitlab.com (User settings > Applications):
     // confidential unchecked, scope `api`, redirect URI `http://127.0.0.1:47123/callback`.
     ("gitlab.com", ""),
