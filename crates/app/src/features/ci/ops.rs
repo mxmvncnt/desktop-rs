@@ -54,6 +54,16 @@ impl CiStore {
         }
     }
 
+    /// The "Pipelines" crumb: straight to the list from any screen; Forward comes back to the screen it leaves.
+    pub fn show_list(&mut self, cx: &mut Context<Self>) {
+        if self.view != CiView::List {
+            self.forward.push(self.view);
+        }
+        self.log_load.cancel();
+        self.view = CiView::List;
+        cx.notify();
+    }
+
     pub fn open_pipeline(&mut self, id: PipelineId, cx: &mut Context<Self>) {
         self.forward.clear();
         self.show_pipeline(id, cx);

@@ -1,13 +1,14 @@
-//! A job: breadcrumb, then the log next to the job's details.
+//! A job: the breadcrumbs, then the log next to the job's details.
 
 use gd_forge::JobId;
-use gd_ui::{Icon, Theme, empty_state, icon, icon_button};
-use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px};
+use gd_ui::{Theme, empty_state};
+use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div};
 
 use super::actions::job_actions;
+use super::breadcrumbs::Breadcrumbs;
 use super::job_sidebar::JobSidebar;
 use super::log_view::LogView;
-use super::state::{CiStore, CiView};
+use super::state::CiStore;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -27,33 +28,12 @@ impl RenderOnce for JobView {
         let actions = ci.ready().map(|t| job_actions(&job, t.forge.capabilities())).unwrap_or_default();
         let number = ci.details[&self.id.pipeline].pipeline.number;
         let stage = ci.job(self.id).and_then(|_| ci.details[&self.id.pipeline].stages.iter().find(|s| s.jobs.iter().any(|j| j.id == self.id))).map(|s| s.name.clone());
-        let (to_list, to_pipeline, back) = (self.store.clone(), self.store.clone(), self.store.clone());
-        let chevron = || icon(Icon::ChevronRight).size(px(12.0)).text_color(theme.text_faint);
-        let link = |id: &'static str, text: String| div().id(id).cursor_pointer().hover_style(|s| s.underline()).child(text);
-        let breadcrumb = div()
-            .flex()
-            .items_center()
-            .flex_none()
-            .gap(px(6.0))
-            .px(px(24.0))
-            .py(px(14.0))
-            .text_color(theme.text_muted)
-            .child(icon_button("ci-back", Icon::ArrowLeft).on_click(move |_, _, cx| back.update(cx, |s, cx| s.back(cx))))
-            .child(link("ci-crumb-list", "Pipelines".into()).on_click(move |_, _, cx| to_list.update(cx, |s, cx| {
-                s.view = CiView::List;
-                s.log_load.cancel();
-                cx.notify()
-            })))
-            .child(chevron())
-            .child(link("ci-crumb-pipeline", format!("#{number}")).on_click(move |_, _, cx| to_pipeline.update(cx, |s, cx| s.back(cx))))
-            .child(chevron())
-            .child(div().text_color(theme.text).child(job.name.clone()));
         div()
             .flex_1()
             .min_h_0()
             .flex()
             .flex_col()
-            .child(breadcrumb)
+            .child(Breadcrumbs { store: self.store.clone(), pipeline: number, job: Some(job.name.clone()) })
             .child(
                 div()
                     .flex_1()

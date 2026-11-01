@@ -617,6 +617,8 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
 - `state.rs` (`CiStore`), `target.rs` (`Target` = forge + `RepoRef` + account; `Problem` = every empty state, `Problem::describe`; `forge_of(Provider)`),
   `ops.rs` (resolve, list, details), `polling.rs`, `handlers.rs` (`impl Workspace`: `toggle_ci`, `sync_ci`, `back_ci`).
   Components: `ci_page`, `pipelines_header`, `problem_view`, `pipeline_row` (plain fn), `stage_dots`, `status_badge` (status -> label/icon/tone, tested), `duration`.
+  `breadcrumbs` is the one breadcrumb bar of the pipeline and job pages (fixed 56px high, so it does not move between them; the list header's top padding
+  is set so its title is on the same line). Its "Pipelines" crumb is `CiStore::show_list`, the back arrow and the `#n` crumb are `back`.
 - Resolution (`CiStore::show`, background): `tracking_remote_url` -> `RepoRef::from_remote` -> `account_for_repo` -> `forge_of(provider)`.
   Bitbucket and Generic accounts are "not supported". Every request builds its `Client` with `accounts::fresh_token` on the background thread,
   so an expiring OAuth token is refreshed. Another repository resets the store (`epoch` bump drops late detail results); the same one keeps its cache.

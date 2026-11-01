@@ -33,7 +33,7 @@ impl RenderOnce for PipelinesHeader {
             .flex_none()
             .gap(px(14.0))
             .px(px(24.0))
-            .pt(px(18.0))
+            .pt(px(14.0))
             .pb(px(12.0))
             .child(
                 div()

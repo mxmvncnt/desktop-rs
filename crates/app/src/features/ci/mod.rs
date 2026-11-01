@@ -7,6 +7,7 @@ mod handlers;
 mod ops;
 mod actions;
 mod ansi;
+mod breadcrumbs;
 mod job_card;
 mod job_sidebar;
 mod job_view;

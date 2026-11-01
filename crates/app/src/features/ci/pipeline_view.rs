@@ -1,10 +1,11 @@
-//! A pipeline: breadcrumb, summary, and the graph / jobs tabs.
+//! A pipeline: the breadcrumbs, summary, and the graph / jobs tabs.
 
 use gd_forge::{Forge, Status};
-use gd_ui::{Button, Icon, Tabs, Theme, divider, empty_state, icon, icon_button};
+use gd_ui::{Button, Icon, Tabs, Theme, divider, empty_state, icon};
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
 
 use super::actions::CiAction;
+use super::breadcrumbs::Breadcrumbs;
 use super::duration::duration_text;
 use super::jobs_table::JobsTable;
 use super::problem_view::ProblemView;
@@ -41,24 +42,6 @@ impl RenderOnce for PipelineView {
         let url = p.web_url.clone();
         let id = p.id;
         let sha: String = p.sha.chars().take(8).collect();
-
-        let breadcrumb = div()
-            .flex()
-            .items_center()
-            .gap(px(6.0))
-            .text_color(theme.text_muted)
-            .child(icon_button("ci-back", Icon::ArrowLeft).on_click({
-                let store = store.clone();
-                move |_, _, cx| store.update(cx, |s, cx| s.back(cx))
-            }))
-            .child(
-                div().id("ci-crumb-list").cursor_pointer().hover_style(|s| s.underline()).child("Pipelines").on_click({
-                    let store = store.clone();
-                    move |_, _, cx| store.update(cx, |s, cx| s.back(cx))
-                }),
-            )
-            .child(icon(Icon::ChevronRight).size(px(12.0)).text_color(theme.text_faint))
-            .child(div().text_color(theme.text).child(format!("#{}", p.number)));
 
         let summary = div()
             .flex()
@@ -129,9 +112,8 @@ impl RenderOnce for PipelineView {
             .min_h_0()
             .flex()
             .flex_col()
-            .child(
-                div().flex().flex_col().flex_none().gap(px(12.0)).px(px(24.0)).pt(px(18.0)).pb(px(14.0)).child(breadcrumb).child(summary).child(facts),
-            )
+            .child(Breadcrumbs { store: store.clone(), pipeline: p.number, job: None })
+            .child(div().flex().flex_col().flex_none().gap(px(12.0)).px(px(24.0)).pb(px(14.0)).child(summary).child(facts))
             .child(divider(cx))
             .child(
                 div().flex_none().w(px(260.0)).mx(px(24.0)).my(px(12.0)).child(
