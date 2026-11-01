@@ -30,7 +30,7 @@ impl RenderOnce for RepoAccountBlock {
             None => "This repository has no remote.".into(),
         };
         let choices = std::iter::once((None, "Automatic".to_string()))
-            .chain(self.accounts.iter().map(|a| (Some(a.id.clone()), a.name.clone())))
+            .chain(self.accounts.iter().map(|a| (Some(a.id.clone()), format!("{} ({})", a.name, a.host))))
             .map(|(id, label)| {
                 let (store, path) = (self.store.clone(), self.repo_path.clone());
                 let button = Button::new(format!("repo-account-{}", id.as_deref().unwrap_or("auto"))).compact().label(label);
