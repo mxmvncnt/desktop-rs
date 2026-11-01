@@ -553,7 +553,7 @@ GitHub, GitHub Enterprise, GitLab, Gitea and Forgejo accounts sign in with the b
   `read:user write:repository` (unverified against a live server).
 - The flow runs on a `std::thread` and reports `Progress` over a `smol` channel; `AccountsStore::start_signin`
   applies it to the form. Cancelling the form (or switching provider) sets the stop flag of the loopback
-  listener and makes later results stale (ignored). The device flow keeps polling until its code expires.
+  listener and makes later results stale (ignored). The device flow polls by hand (`oauth.rs`): GitHub answers a pending poll with HTTP 200 + `error`, which the oauth2 crate fails to parse.
 - The only API call is `/user` (GitHub: `api.github.com` or `https://<host>/api/v3`; GitLab `/api/v4`;
   Gitea/Forgejo `/api/v1`) to fill the username. Hosts are assumed to be `https`.
 - The add form has no username or display name field (OAuth providers; Bitbucket/Generic keep Username). The username always comes from `/user`, the display name defaults to it (editable when editing). The Host field shows only for providers without a fixed host.

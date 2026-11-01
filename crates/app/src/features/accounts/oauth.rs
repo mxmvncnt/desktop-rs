@@ -4,9 +4,9 @@
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use oauth2::basic::BasicClient;
+use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, CsrfToken, DeviceAuthorizationUrl, PkceCodeChallenge, RedirectUrl, Scope,
     StandardDeviceAuthorizationResponse, TokenUrl,
@@ -39,8 +39,8 @@ fn scopes(provider: Provider) -> &'static [&'static str] {
     }
 }
 
-/// Run the sign-in of `provider` on `host` off-thread. `cancel` stops the loopback listener
-/// (the device flow just keeps polling until its code expires; its result is ignored).
+/// Run the sign-in of `provider` on `host` off-thread. `cancel` stops the loopback listener or the
+/// device flow polling.
 pub fn sign_in(provider: Provider, host: String, app: OAuthApp, cancel: Arc<AtomicBool>, tx: Sender<Progress>) {
     std::thread::spawn(move || {
         let base = format!("https://{host}");
@@ -50,7 +50,7 @@ pub fn sign_in(provider: Provider, host: String, app: OAuthApp, cancel: Arc<Atom
         };
         let (auth_url, token_url) = (format!("{base}/{auth}"), format!("{base}/{token}"));
         let res = if provider.uses_device_flow() {
-            device_flow(provider, &app.client_id, &auth_url, &token_url, &format!("{base}/login/device/code"), &tx)
+            device_flow(provider, &app.client_id, &auth_url, &token_url, &format!("{base}/login/device/code"), &cancel, &tx)
         } else {
             code_flow(provider, &app, &auth_url, &token_url, &cancel, &tx)
         };
@@ -68,6 +68,7 @@ fn device_flow(
     auth_url: &str,
     token_url: &str,
     device_url: &str,
+    cancel: &AtomicBool,
     tx: &Sender<Progress>,
 ) -> Result<TokenSecret, String> {
     let err = |e: &dyn std::fmt::Display| e.to_string();
@@ -86,11 +87,39 @@ fn device_flow(
         user_code: Some(details.user_code().secret().clone()),
     })
     .ok();
-    let res = client
-        .exchange_device_access_token(&details)
-        .request(&http, std::thread::sleep, None)
-        .map_err(|e| err(&e))?;
-    Ok(TokenSecret::from_response(&res, "", client_id, token_url))
+    // GitHub answers the poll with HTTP 200 and an `error` field while it waits, which the oauth2
+    // crate cannot parse ("Failed to parse server response"), so the poll is done here.
+    let deadline = Instant::now() + details.expires_in();
+    let mut interval = details.interval();
+    loop {
+        std::thread::sleep(interval);
+        if cancel.load(Ordering::Relaxed) {
+            return Err("Sign-in cancelled".into());
+        }
+        if Instant::now() > deadline {
+            return Err("The code expired, sign in again".into());
+        }
+        let res: serde_json::Value = http
+            .post(token_url)
+            .set("Accept", "application/json")
+            .send_form(&[
+                ("client_id", client_id),
+                ("device_code", details.device_code().secret()),
+                ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
+            ])
+            .map_err(|e| err(&e))?
+            .into_json()
+            .map_err(|e| err(&e))?;
+        match res["error"].as_str() {
+            None => {
+                let token: BasicTokenResponse = serde_json::from_value(res).map_err(|e| err(&e))?;
+                return Ok(TokenSecret::from_response(&token, "", client_id, token_url));
+            }
+            Some("authorization_pending") => {}
+            Some("slow_down") => interval += Duration::from_secs(5),
+            Some(code) => return Err(res["error_description"].as_str().unwrap_or(code).to_string()),
+        }
+    }
 }
 
 fn code_flow(
