@@ -636,6 +636,14 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
 - Steps in the log: the header line of a top-level section (`depth == 0`: a GitLab script stage, a GitHub/Gitea group) is drawn as a tinted band with a
   divider above it, so the steps can be told apart; nested sections keep the plain hover row. Uniform rows rule out a gap between steps.
   The rows inside an open section get the same wash, so an opened step is easy to tell from the lines around it.
+- Toggling a section is an accordion (`LogState::anim`, 200ms cubic ease-out, no fade): its body rows are drawn in a container under the header
+  (absolute, `overflow_hidden`) whose height grows (opening) or shrinks (collapsing), and the lines below are pushed down by exactly that height.
+  The list is laid out with the body hidden for the whole animation: opening keeps `visible` without the body and a timer commits it when the
+  animation is over, collapsing commits at once. So every row that must be drawn is in the list's rendered range, and the commit moves nothing. A
+  section with more than `MAX_ANIM_ROWS` (40) visible rows opens and collapses at once (its container would be taller than the window).
+  GPUI gotcha: `uniform_list` lays every row out as its own root (`layout_as_root` + `prepaint_at`), and a root ignores `relative().top(..)`, so the
+  offset of the lines below is on a child inside a flex wrapper. The harness waits for loads for longer than the animation, so to see a frame midway
+  raise `LOG_ANIM` (to 20 s) for the run, with the `ci-job-slide` / `ci-job-slide-close` views.
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
 - Polling (`polling.rs`): one task while the page is open, every 10 s when something in the list is unfinished, else every 60 s; skipped while the

@@ -6,18 +6,23 @@ use std::sync::Arc;
 use gd_forge::{Log, Style};
 use gd_ui::{Button, Icon, Theme, empty_state, icon};
 use gpui::{
-    App, ClipboardItem, Entity, FontStyle, FontWeight, HighlightStyle, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    RenderOnce, ScrollStrategy, StatefulInteractiveElement, Styled, StyledText, UnderlineStyle, Window, combine_highlights, div,
-    prelude::*, px, uniform_list,
+    Animation, AnimationExt, App, ClipboardItem, Entity, FontStyle, FontWeight, HighlightStyle, InteractiveElement, IntoElement,
+    MouseButton, ParentElement, RenderOnce, ScrollStrategy, SharedString, StatefulInteractiveElement, Styled, StyledText,
+    UnderlineStyle, Window, combine_highlights, div, prelude::*, px, uniform_list,
 };
 
 use super::ansi::ansi_color;
 use super::duration::format_duration;
-use super::state::CiStore;
+use super::state::{CiStore, LOG_ANIM};
 use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
 use crate::workspace::Workspace;
 
 const LINE_HEIGHT: f32 = 20.0;
+
+/// Cubic ease-out: fast at first, settling softly.
+fn ease_out_cubic(t: f32) -> f32 {
+    1.0 - (1.0 - t).powi(3)
+}
 
 #[derive(IntoElement)]
 pub struct LogView {
@@ -100,9 +105,45 @@ impl LogView {
         uniform_list("ci-log", count, move |range, _, cx| {
             let ci = store.read(cx);
             let theme = Theme::of(cx);
+            let anim = ci.log.anim.as_ref().filter(|a| a.at.elapsed() < LOG_ANIM * 2).and_then(|a| Some((a, log.sections.get(a.section)?)));
             range
                 .map(|row| match ci.log.visible.get(row) {
-                    Some(&line) => log_line(line, &log, &ci.log.toggled, ci.log.sel, &store, &ws, theme).into_any_element(),
+                    Some(&line) => {
+                        let el = log_line(line, &log, &ci.log.toggled, ci.log.sel, &store, &ws, theme);
+                        let Some((a, s)) = anim else { return el.into_any_element() };
+                        if line < s.header {
+                            return el.into_any_element();
+                        }
+                        let (opening, rows_h, id) = (a.opening, a.body.len() as f32 * LINE_HEIGHT, a.id);
+                        let animation = Animation::new(LOG_ANIM).with_easing(ease_out_cubic);
+                        if line == s.header {
+                            // The rows of the section are in a container under its header, clipped to a height that grows or shrinks.
+                            let rows = a.body.iter().map(|&l| log_line(l, &log, &ci.log.toggled, ci.log.sel, &store, &ws, theme).into_any_element());
+                            div()
+                                .relative()
+                                .w_full()
+                                .child(el)
+                                .child(div().absolute().top(px(LINE_HEIGHT)).left_0().w_full().overflow_hidden().children(rows).with_animation(
+                                    SharedString::from(format!("ci-log-rows-{id}")),
+                                    animation,
+                                    move |el, t| el.h(px(if opening { t } else { 1.0 - t } * rows_h)),
+                                ))
+                                .into_any_element()
+                        } else {
+                            // The lines below are pushed by that container. Rows of a `uniform_list` are layout roots, which ignore
+                            // a relative offset: it goes on a child.
+                            div()
+                                .w_full()
+                                .flex()
+                                .flex_col()
+                                .child(div().w_full().child(el).with_animation(
+                                    SharedString::from(format!("ci-log-below-{id}-{line}")),
+                                    animation,
+                                    move |el, t| el.relative().top(px(if opening { t } else { 1.0 - t } * rows_h)),
+                                ))
+                                .into_any_element()
+                        }
+                    }
                     None => div().h(px(LINE_HEIGHT)).into_any_element(),
                 })
                 .collect()

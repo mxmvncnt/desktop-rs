@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
 use gpui::{EventEmitter, Task, UniformListScrollHandle};
@@ -40,7 +41,28 @@ pub struct LogState {
     /// Selected text, in (line of `log.lines`, byte offset); `dragging` while the mouse button is down.
     pub sel: Option<TextSel>,
     pub dragging: bool,
+    /// The section being opened or collapsed: its rows are in a container under its header whose height animates (`LOG_ANIM`).
+    pub anim: Option<LogAnim>,
+    /// Counts the toggles: names the animation of a toggle and tells its timer whether it is still the last.
+    pub toggles: u64,
 }
+
+/// A section being opened or collapsed. The list is laid out with its body hidden for the whole animation, so the lines below are always
+/// where they must be drawn: they are pushed by the container of the body, which grows (opening) or shrinks (collapsing).
+pub struct LogAnim {
+    pub section: usize,
+    pub opening: bool,
+    pub id: u64,
+    pub at: Instant,
+    /// The lines of its body, as they show when it is open.
+    pub body: Vec<usize>,
+}
+
+/// How long a section takes to open or collapse.
+pub const LOG_ANIM: Duration = Duration::from_millis(200);
+
+/// A section with more visible rows than this opens and collapses at once: its container would be taller than the window.
+pub const MAX_ANIM_ROWS: usize = 40;
 
 /// Empty rows after the last line of a log: the list is virtualized, so its bottom margin is made of rows.
 const LOG_BOTTOM_ROWS: usize = 2;

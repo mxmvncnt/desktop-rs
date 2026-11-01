@@ -3,12 +3,13 @@
 use std::collections::HashSet;
 
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use gd_forge::{JobId, Log, PipelineDetail, PipelineFilter, PipelineId, parse_log, stages_from_workflow};
 use gd_git::Repository;
 use gpui::{AppContext, Context, ScrollStrategy};
 
-use super::state::{CiStore, CiView, LogState, PipelineTab};
+use super::state::{CiStore, CiView, LOG_ANIM, LogAnim, LogState, MAX_ANIM_ROWS, PipelineTab};
 use super::target::Target;
 use crate::features::accounts::{Account, RepoAccounts};
 use crate::repo::spawn_load;
@@ -111,11 +112,44 @@ impl CiStore {
 
     /// Collapse or expand the section whose header is line `section`'s header.
     pub fn toggle_section(&mut self, section: usize, cx: &mut Context<Self>) {
+        let Some(log) = self.log.log.clone() else { return };
+        let opening = log.sections[section].collapsed != self.log.toggled.contains(&section);
+        let before = visible_lines(&log, &self.log.toggled);
         if !self.log.toggled.remove(&section) {
             self.log.toggled.insert(section);
         }
-        if let Some(log) = &self.log.log {
-            self.log.visible = visible_lines(log, &self.log.toggled);
+        let after = visible_lines(&log, &self.log.toggled);
+        // The rows of the body as they show when the section is open.
+        let s = &log.sections[section];
+        let body: Vec<usize> = (if opening { &after } else { &before }).iter().copied().filter(|l| (s.header + 1..s.end).contains(l)).collect();
+        self.log.toggles += 1;
+        let id = self.log.toggles;
+        if body.is_empty() || body.len() > MAX_ANIM_ROWS {
+            self.log.visible = after;
+            self.log.anim = None;
+        } else if opening {
+            // The list keeps its body hidden while the container grows, and gets it when the animation is over.
+            self.log.visible = before;
+            self.log.anim = Some(LogAnim { section, opening, id, at: Instant::now(), body });
+            // The animation starts at the first paint, a frame after the toggle.
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(LOG_ANIM + Duration::from_millis(50)).await;
+                this.update(cx, |s, cx| {
+                    if s.log.anim.as_ref().is_some_and(|a| a.id == id)
+                        && let Some(log) = &s.log.log
+                    {
+                        s.log.visible = visible_lines(log, &s.log.toggled);
+                        s.log.anim = None;
+                        cx.notify();
+                    }
+                })
+                .ok();
+            })
+            .detach();
+        } else {
+            // The list loses the body at once; the container of its rows shrinks over where they were.
+            self.log.visible = after;
+            self.log.anim = Some(LogAnim { section, opening, id, at: Instant::now(), body });
         }
         cx.notify();
     }

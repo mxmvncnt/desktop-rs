@@ -36,6 +36,13 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
             ci.target = Some(Err(Problem::Unauthorized));
         } else {
             fill(ci, view);
+            // `ci-job-slide*`: the first section opens; `ci-job-slide-close*` collapses the second. The harness loads for longer than
+            // `LOG_ANIM`, so to see a frame midway raise it (to 20 s) for the run.
+            if view.starts_with("ci-job-slide-close") {
+                ci.toggle_section(1, cx);
+            } else if view.starts_with("ci-job-slide") {
+                ci.toggle_section(0, cx);
+            }
         }
         cx.notify();
     });
