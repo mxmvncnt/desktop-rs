@@ -648,6 +648,9 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
   raise `LOG_ANIM` (to 20 s) for the run, with the `ci-job-slide` / `ci-job-slide-close` views.
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
+- `CiStore::refreshing` is true from `show` (the Refresh and Retry buttons, opening the page, switching repository) until the list it loads is in, or the
+  account could not be resolved; both buttons are disabled meanwhile. It is not `loading`, which polls and "Load more" set too (the button would flicker
+  every poll). A poll that was already loading when `show` asked for the list satisfies it.
 - Polling (`polling.rs`): one task while the page is open, every 10 s when something in the list is unfinished, else every 60 s; skipped while the
   window is inactive, and coming back to the window polls at once. A poll reloads page 1 and merges it (older pages stay, rows the new page covers
   are replaced), and refetches the details that are not finished. Finished details are never refetched. Running status icons are static.

@@ -36,6 +36,8 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
             ci.target = Some(Err(Problem::Unauthorized));
         } else {
             fill(ci, view);
+            // `ci-pipelines-refreshing`: the Refresh button is disabled while a refresh waits for its list.
+            ci.refreshing = view.contains("refreshing");
             // `ci-job-slide*`: the first section opens; `ci-job-slide-close*` collapses the second. The harness loads for longer than
             // `LOG_ANIM`, so to see a frame midway raise it (to 20 s) for the run.
             if view.starts_with("ci-job-slide-close") {

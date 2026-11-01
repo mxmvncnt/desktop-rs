@@ -23,7 +23,7 @@ impl RenderOnce for PipelinesHeader {
         let ci = self.store.read(cx);
         let target = ci.ready();
         let selected = STATUS_TABS.iter().position(|(_, s)| *s == ci.status).unwrap_or(0);
-        let current_branch = ci.current_branch;
+        let (current_branch, refreshing) = (ci.current_branch, ci.refreshing);
         let account = target.map(|t| format!("via {} · {}", t.account_name, t.host));
         let (ws, store, branch_store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.store.clone(), self.ws.clone());
 
@@ -66,7 +66,7 @@ impl RenderOnce for PipelinesHeader {
                             })),
                     )
                     .child(
-                        Button::new("ci-refresh").icon(Icon::Refresh).label("Refresh").on_click(move |_, _, cx| {
+                        Button::new("ci-refresh").icon(Icon::Refresh).label("Refresh").disabled(refreshing).on_click(move |_, _, cx| {
                             refresh_ws.update(cx, |ws, cx| ws.sync_ci(cx))
                         }),
                     ),

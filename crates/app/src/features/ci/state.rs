@@ -100,6 +100,8 @@ pub struct CiStore {
     pub page: u32,
     pub more: bool,
     pub loading: bool,
+    /// A refresh (the Refresh button, opening the page) waits for its list: the button is disabled until it is in.
+    pub refreshing: bool,
     pub list_error: Option<Problem>,
     /// Details by pipeline: stages for the list dots, the graph and the jobs table. Finished ones never change.
     pub details: HashMap<PipelineId, PipelineDetail>,
@@ -139,6 +141,7 @@ impl Default for CiStore {
             page: 1,
             more: false,
             loading: false,
+            refreshing: false,
             list_error: None,
             detail_error: None,
             log: LogState::default(),

@@ -19,6 +19,7 @@ impl RenderOnce for ProblemView {
         let accounts = matches!(self.problem, Problem::NoAccount(_) | Problem::Unauthorized | Problem::NotFound);
         let pick = matches!(self.problem, Problem::Unsupported(_) | Problem::NotFound);
         let retry = !matches!(self.problem, Problem::NoRemote);
+        let refreshing = self.ws.read(cx).ci.read(cx).refreshing;
         let (open_ws, pick_ws, retry_ws) = (self.ws.clone(), self.ws.clone(), self.ws);
         div()
             .flex_1()
@@ -47,7 +48,7 @@ impl RenderOnce for ProblemView {
                         }))
                     })
                     .when(retry, |d| {
-                        d.child(Button::new("ci-retry").icon(Icon::Refresh).label("Retry").on_click(move |_, _, cx| {
+                        d.child(Button::new("ci-retry").icon(Icon::Refresh).label("Retry").disabled(refreshing).on_click(move |_, _, cx| {
                             retry_ws.update(cx, |ws, cx| ws.sync_ci(cx))
                         }))
                     }),

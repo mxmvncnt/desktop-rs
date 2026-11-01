@@ -177,6 +177,7 @@ impl CiStore {
             };
         }
         self.open = true;
+        self.refreshing = true;
         self.start_polling(cx);
         spawn_load(
             self,
@@ -187,6 +188,8 @@ impl CiStore {
                 this.target = Some(target);
                 if ready {
                     this.load_list(false, cx);
+                } else {
+                    this.refreshing = false;
                 }
                 cx.notify();
             },
@@ -210,6 +213,7 @@ impl CiStore {
             move || target.client()?.pipelines(&target.repo, &filter, page),
             move |this, res, cx| {
                 this.loading = false;
+                this.refreshing = false;
                 match res {
                     Ok(items) if more => {
                         this.more = items.len() >= PAGE_SIZE;
