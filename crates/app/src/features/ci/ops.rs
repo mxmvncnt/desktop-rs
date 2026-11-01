@@ -27,6 +27,7 @@ const WORKFLOW_DIRS: [&str; 3] = [".forgejo/workflows", ".gitea/workflows", ".gi
 impl CiStore {
     pub fn close(&mut self, cx: &mut Context<Self>) {
         self.open = false;
+        self.branch_menu = false;
         self.poll = None;
         cx.notify();
     }

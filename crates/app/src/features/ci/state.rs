@@ -112,6 +112,8 @@ pub struct CiStore {
     /// The list filters, empty = none. They follow `CiInputs` (see `set_filters`); `user` only where the account's forge can filter on it.
     pub branch: String,
     pub user: String,
+    /// The branch dropdown is open.
+    pub branch_menu: bool,
     pub pipelines: Vec<Pipeline>,
     /// Last page loaded; a full page means there may be another.
     pub page: u32,
@@ -157,6 +159,7 @@ impl Default for CiStore {
             status: None,
             branch: String::new(),
             user: String::new(),
+            branch_menu: false,
             filter_task: None,
             pipelines: Vec::new(),
             page: 1,

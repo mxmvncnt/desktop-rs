@@ -654,7 +654,9 @@ plays again each time its element comes back); the one that goes is gone at once
 - List filters: status tabs, a branch field and (where `Capabilities::filter_user`) a user field. The text lives in `CiInputs` (two `EditableTextState`s on
   `Workspace::ci_inputs`, since an `Entity` needs an `App`); `Workspace::ci_filters_edited` (on `TextChanged`) passes the trimmed texts to
   `CiStore::set_filters`, which stores them (`branch`, `user`; `load_list` turns them into a `PipelineFilter`) and reloads the list 350ms after typing
-  pauses (page closed: it only clears the list, the next `show` loads it). The branch icon button fills the field with the current branch. Opening another
+  pauses (page closed: it only clears the list, the next `show` loads it). The chevron next to the branch field opens `BranchMenu` (`branch_menu.rs`, `CiStore::branch_menu`): "All branches", the current branch, the
+  local branches, then the remote ones that are not local (`branch_names`); picking one writes it in the field, which is what reloads the list. The field
+  stays editable for anything else (a tag, a branch this clone does not know). Opening another
   repository clears both inputs (`clear_ci_filters` in `attach_model`). The user field is hidden for Forgejo: filtering client-side would break paging.
 - "Load more" is the last row of the pipelines list (`count + 1` rows while `CiStore::more`, same `ROW_HEIGHT`), so it scrolls with the list and sits under the last pipeline.
 - `CiStore::refreshing` is true from `show` (the Refresh and Retry buttons, opening the page, switching repository) until the list it loads is in, or the

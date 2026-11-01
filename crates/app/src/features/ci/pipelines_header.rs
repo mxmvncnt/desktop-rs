@@ -4,6 +4,7 @@ use gd_forge::Status;
 use gd_ui::{Button, Icon, Tabs, Theme, icon_button};
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
 
+use super::branch_menu::{BranchMenu, branch_names};
 use super::state::CiStore;
 use crate::components::text_field;
 use crate::workspace::Workspace;
@@ -29,7 +30,14 @@ impl RenderOnce for PipelinesHeader {
         let current_branch = target.and_then(|t| t.branch.clone());
         let can_filter_user = target.is_some_and(|t| t.forge.capabilities().filter_user);
         let inputs = self.ws.read(cx).ci_inputs.clone();
-        let (ws, store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.ws.clone());
+        let (ws, store, menu_store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.store.clone(), self.ws.clone());
+        let branch_menu = ci.branch_menu.then(|| BranchMenu {
+            store: self.store.clone(),
+            input: inputs.branch.clone(),
+            typed: inputs.branch.read(cx).as_str().trim().to_string(),
+            branches: self.ws.read(cx).repo.as_ref().map(|r| branch_names(&r.read(cx).branches, current_branch.as_deref())).unwrap_or_default(),
+            current: current_branch.clone(),
+        });
         let labeled = |label: &'static str| div().flex().items_center().gap(px(8.0)).child(div().text_size(px(12.0)).text_color(theme.text_muted).child(label));
 
         div()
@@ -91,15 +99,21 @@ impl RenderOnce for PipelinesHeader {
                             ),
                         )
                         .child(
-                            labeled("Branch")
-                                .child(div().w(px(180.0)).child(text_field("ci-branch-filter", &inputs.branch, "All branches", cx)))
-                                .children(current_branch.map(|name| {
-                                    let input = inputs.branch.clone();
-                                    div().id("ci-current-branch-wrap").tooltip(gd_ui::tooltip(format!("Filter on the current branch ({name})"))).child(
-                                        icon_button("ci-current-branch", Icon::GitBranch)
-                                            .on_click(move |_, _, cx| input.update(cx, |s, cx| s.emplace(&name, cx))),
-                                    )
-                                })),
+                            labeled("Branch").child(
+                                div()
+                                    .relative()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(4.0))
+                                    .child(div().w(px(180.0)).child(text_field("ci-branch-filter", &inputs.branch, "All branches", cx)))
+                                    .child(icon_button("ci-branch-menu-toggle", Icon::ChevronDown).on_click(move |_, _, cx| {
+                                        menu_store.update(cx, |s, cx| {
+                                            s.branch_menu = !s.branch_menu;
+                                            cx.notify()
+                                        })
+                                    }))
+                                    .children(branch_menu),
+                            ),
                         )
                         .when(can_filter_user, |d| {
                             d.child(labeled("User").child(div().w(px(150.0)).child(text_field("ci-user-filter", &inputs.user, "Anyone", cx))))

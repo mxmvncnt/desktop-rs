@@ -42,6 +42,8 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
             if view.contains("filters") {
                 (ci.branch, ci.user) = ("release/1.5".into(), "ada".into());
             }
+            // `ci-pipelines-branches`: the branch dropdown open.
+            ci.branch_menu = view.contains("branches");
             if let (true, Some(Ok(target))) = (view.contains("forgejo"), &mut ci.target) {
                 target.forge = Forge::Forgejo;
             }
