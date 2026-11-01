@@ -70,7 +70,7 @@ pub fn pipeline_row(ix: usize, p: &Pipeline, detail: Option<&PipelineDetail>, st
         .px(px(10.0))
         .rounded(px(6.0))
         .on_click(move |_, _, cx| store.update(cx, |s, cx| s.open_pipeline(id, cx)))
-        .child(cell(Some(STATUS_W)).child(status_badge(p.status, warnings, theme)))
+        .child(cell(Some(STATUS_W)).items_start().child(status_badge(p.status, warnings, theme)))
         .child(
             cell(None)
                 .gap(px(3.0))
