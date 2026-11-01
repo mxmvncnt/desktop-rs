@@ -652,19 +652,19 @@ plays again each time its element comes back); the one that goes is gone at once
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
 - List filters: status tabs, a branch field and (where `Capabilities::filter_user`) a user field. The text lives in `CiInputs` (two `EditableTextState`s on
-  `Workspace::ci_inputs`, since an `Entity` needs an `App`); `Workspace::ci_filters_edited` (on `TextChanged`) passes the trimmed texts to
-  `CiStore::filters_edited`, which stores them (`branch`, `user`; `load_list` turns them into a `PipelineFilter`) and reloads the list 350ms after typing
-  pauses (`set_filters`; page closed: it only clears the list, the next `show` loads it). Opening another repository clears both inputs
-  (`clear_ci_filters` in `attach_model`). The user field is hidden for Forgejo: filtering client-side would break paging.
-  - Branch: typed as is, or picked from the chevron's `BranchMenu` (`branch_menu.rs`, `CiStore::branch_menu`): "All branches", the current branch, the
-    local branches, then the remote ones that are not local (`branch_names`); picking one writes it in the field, which is what reloads the list. The
-    field stays editable for anything else (a tag, a branch this clone does not know).
-  - User: the forges only filter on an exact login, so typed text is not applied by itself (a part of a login would match nothing). Typing opens
-    `UserMenu` (`user_menu.rs`, `CiStore::user_menu`): the users seen in the loaded pipelines and details (`known_users`) whose login or name contains
-    the text (`suggest`, prefix matches first, 8 at most). Picking one, or Enter (`on_enter`: the exact login, else the first suggestion, else the text as
-    typed, for a login not seen yet), applies it (`apply_user`); emptying the field clears the filter. GitLab's list has no users until a pipeline's
-    detail is loaded, so its suggestions grow as rows come into view; users who never appear in the loaded pages are not suggested (type the login and
-    press Enter).
+  `Workspace::ci_inputs`, since an `Entity` needs an `App`). Both fields are one component, `FilterField` (`filter_field.rs`), a combobox:
+  - Clicking the field (a capture-phase mouse down: the input handles and stops its own clicks) or its chevron opens the dropdown (`CiStore::menu`),
+    listing everything. Typing opens it too and narrows it (`menu_typed`): `Workspace::ci_text_edited` (on `TextChanged`, via `subscribe_in`) tells
+    `CiStore::text_edited` whether the input has the focus, so changes made by the app (`clear_ci_filters`, a revert) never open it.
+  - What is listed (`filter_entries.rs`, tested): branches = local ones, then the remote ones that are not local, the current branch first and marked;
+    users = the ones seen in the loaded pipelines and details (`CiStore::known_users`), prefix matches first. Typed text keeps the entries that contain it.
+  - The forges filter on exact names, so typed text is never applied by itself (part of a name would match nothing). A pick, or Enter (`on_enter`: the
+    entry that is the text, else the first one, else the text as typed: a tag, a login not seen yet), applies it (`CiStore::apply` -> `set_filters`, which
+    reloads the list 350ms later, or only clears it while the page is closed). Emptying the field clears the filter.
+  - Closing without a pick (a click anywhere else, `Workspace::close_ci_menu` on the root's mouse down; Esc; the chevron again) puts the applied value
+    back in the field. A click inside the field, the chevron or the list stops its propagation so the root does not close it.
+  - GitLab's list has no users until a pipeline's detail is loaded, so its user entries grow as rows come into view. The user field is hidden for Forgejo:
+    filtering client-side would break paging. Opening another repository clears both inputs (`clear_ci_filters` in `attach_model`).
 - "Load more" is the last row of the pipelines list (`count + 1` rows while `CiStore::more`, same `ROW_HEIGHT`), so it scrolls with the list and sits under the last pipeline.
 - `CiStore::refreshing` is true from `show` (the Refresh and Retry buttons, opening the page, switching repository) until the list it loads is in, or the
   account could not be resolved; both buttons are disabled meanwhile. It is not `loading`, which polls and "Load more" set too (the button would flicker

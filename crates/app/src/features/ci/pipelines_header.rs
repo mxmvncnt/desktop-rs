@@ -1,14 +1,13 @@
 //! Top of the pipelines list: title, the account in use, the status tabs, the branch and user filters and Refresh.
 
 use gd_forge::Status;
-use gd_ui::{Button, Icon, Tabs, Theme, icon_button};
-use gpui_elements::editable_text::actions::Enter;
+use gd_ui::{Button, Icon, Tabs, Theme};
+use gpui_elements::editable_text::EditableTextState;
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
 
-use super::branch_menu::{BranchMenu, branch_names};
-use super::user_menu::{UserMenu, on_enter, suggest};
-use super::state::CiStore;
-use crate::components::text_field;
+use super::filter_entries::{branch_entries, user_entries};
+use super::filter_field::FilterField;
+use super::state::{CiStore, Field};
 use crate::workspace::Workspace;
 
 /// The status tabs, in order.
@@ -32,21 +31,16 @@ impl RenderOnce for PipelinesHeader {
         let current_branch = target.and_then(|t| t.branch.clone());
         let can_filter_user = target.is_some_and(|t| t.forge.capabilities().filter_user);
         let inputs = self.ws.read(cx).ci_inputs.clone();
-        let (ws, store, menu_store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.store.clone(), self.ws.clone());
-        let user_menu = ci.user_menu.then(|| suggest(ci.known_users(), inputs.user.read(cx).as_str())).filter(|s| !s.is_empty()).map(|suggestions| UserMenu {
-            store: self.store.clone(),
-            input: inputs.user.clone(),
-            suggestions,
+        let (ws, store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.ws.clone());
+        // The dropdown that is open, with what it lists for the text typed in it.
+        let typed = |input: &Entity<EditableTextState>| if ci.menu_typed { input.read(cx).as_str().trim().to_string() } else { String::new() };
+        let branch_typed = typed(&inputs.branch);
+        let branch_entries = (ci.menu == Some(Field::Branch)).then(|| {
+            let repo = self.ws.read(cx).repo.as_ref();
+            repo.map(|r| branch_entries(&r.read(cx).branches, current_branch.as_deref(), &branch_typed)).unwrap_or_default()
         });
-        let enter_store = self.store.clone();
-        let enter_input = inputs.user.clone();
-        let branch_menu = ci.branch_menu.then(|| BranchMenu {
-            store: self.store.clone(),
-            input: inputs.branch.clone(),
-            typed: inputs.branch.read(cx).as_str().trim().to_string(),
-            branches: self.ws.read(cx).repo.as_ref().map(|r| branch_names(&r.read(cx).branches, current_branch.as_deref())).unwrap_or_default(),
-            current: current_branch.clone(),
-        });
+        let user_typed = typed(&inputs.user);
+        let user_entries = (ci.menu == Some(Field::User)).then(|| user_entries(ci.known_users(), &user_typed));
         let labeled = |label: &'static str| div().flex().items_center().gap(px(8.0)).child(div().text_size(px(12.0)).text_color(theme.text_muted).child(label));
 
         div()
@@ -107,41 +101,25 @@ impl RenderOnce for PipelinesHeader {
                                     .on_select(move |ix, _, cx| store.update(cx, |s, cx| s.set_status(STATUS_TABS[ix].1, cx))),
                             ),
                         )
-                        .child(
-                            labeled("Branch").child(
-                                div()
-                                    .relative()
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(4.0))
-                                    .child(div().w(px(180.0)).child(text_field("ci-branch-filter", &inputs.branch, "All branches", cx)))
-                                    .child(icon_button("ci-branch-menu-toggle", Icon::ChevronDown).on_click(move |_, _, cx| {
-                                        menu_store.update(cx, |s, cx| {
-                                            s.branch_menu = !s.branch_menu;
-                                            cx.notify()
-                                        })
-                                    }))
-                                    .children(branch_menu),
-                            ),
-                        )
+                        .child(labeled("Branch").child(FilterField {
+                            store: self.store.clone(),
+                            field: Field::Branch,
+                            input: inputs.branch.clone(),
+                            placeholder: "All branches",
+                            width: 180.0,
+                            entries: branch_entries,
+                            typed: branch_typed,
+                        }))
                         .when(can_filter_user, |d| {
-                            d.child(
-                                labeled("User").child(
-                                    div()
-                                        .relative()
-                                        .w(px(150.0))
-                                        .capture_action(move |_: &Enter, _, cx| {
-                                            // Enter applies what the suggestions say (see `on_enter`).
-                                            cx.stop_propagation();
-                                            let typed = enter_input.read(cx).as_str().trim().to_string();
-                                            let login = on_enter(&suggest(enter_store.read(cx).known_users(), &typed), &typed);
-                                            enter_input.update(cx, |s, cx| s.emplace(&login, cx));
-                                            enter_store.update(cx, |s, cx| s.apply_user(login, cx));
-                                        })
-                                        .child(text_field("ci-user-filter", &inputs.user, "Anyone", cx))
-                                        .children(user_menu),
-                                ),
-                            )
+                            d.child(labeled("User").child(FilterField {
+                                store: self.store.clone(),
+                                field: Field::User,
+                                input: inputs.user.clone(),
+                                placeholder: "Anyone",
+                                width: 150.0,
+                                entries: user_entries,
+                                typed: user_typed,
+                            }))
                         }),
                 )
             })

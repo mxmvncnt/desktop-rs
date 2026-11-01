@@ -8,7 +8,7 @@ use gpui::{Context, ScrollStrategy, Window};
 
 use super::ops::visible_lines;
 use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
-use super::state::{CiStore, CiView, PipelineTab};
+use super::state::{CiStore, CiView, Field, PipelineTab};
 use super::target::{Problem, Target};
 use crate::features::settings::ThemeMode;
 use crate::snapshot::View;
@@ -42,10 +42,15 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
             if view.contains("filters") {
                 (ci.branch, ci.user) = ("release/1.5".into(), "ada".into());
             }
-            // `ci-pipelines-users`: "ad" typed in the user field, with its suggestions.
-            ci.user_menu = view.contains("users");
-            // `ci-pipelines-branches`: the branch dropdown open.
-            ci.branch_menu = view.contains("branches");
+            // `ci-pipelines-branches`: the branch dropdown open; `-typed`: "rel" typed in it. `ci-pipelines-users-typed`: "ad" in the user one.
+            ci.menu = if view.contains("branches") {
+                Some(Field::Branch)
+            } else if view.contains("users") {
+                Some(Field::User)
+            } else {
+                None
+            };
+            ci.menu_typed = view.contains("typed");
             if let (true, Some(Ok(target))) = (view.contains("forgejo"), &mut ci.target) {
                 target.forge = Forge::Forgejo;
             }
@@ -63,7 +68,10 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
         ws.ci_inputs.branch.update(cx, |s, cx| s.emplace("release/1.5", cx));
         ws.ci_inputs.user.update(cx, |s, cx| s.emplace("ada", cx));
     }
-    if view.contains("users") {
+    if view.contains("branches-typed") {
+        ws.ci_inputs.branch.update(cx, |s, cx| s.emplace("rel", cx));
+    }
+    if view.contains("users-typed") {
         ws.ci_inputs.user.update(cx, |s, cx| s.emplace("ad", cx));
     }
 }

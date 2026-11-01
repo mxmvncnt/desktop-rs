@@ -59,7 +59,9 @@ impl Workspace {
     /// Esc and the mouse Back button: close the top overlay, else go back in the CI page, else leave the pull request preview.
     pub(super) fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.overlays.is_empty() {
-            if !self.back_ci(cx) {
+            if self.ci.read(cx).menu.is_some() {
+                self.close_ci_menu(cx);
+            } else if !self.back_ci(cx) {
                 self.close_pr_preview_key(cx);
             }
         } else {

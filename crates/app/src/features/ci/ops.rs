@@ -9,7 +9,7 @@ use gd_forge::{JobId, Log, PipelineDetail, PipelineFilter, PipelineId, parse_log
 use gd_git::Repository;
 use gpui::{AppContext, Context, ScrollStrategy};
 
-use super::state::{CiStore, CiView, LOG_ANIM, LogAnim, LogState, MAX_ANIM_ROWS, PipelineTab};
+use super::state::{CiStore, CiView, Field, LOG_ANIM, LogAnim, LogState, MAX_ANIM_ROWS, PipelineTab};
 use super::target::Target;
 use crate::features::accounts::{Account, RepoAccounts};
 use crate::repo::spawn_load;
@@ -27,8 +27,7 @@ const WORKFLOW_DIRS: [&str; 3] = [".forgejo/workflows", ".gitea/workflows", ".gi
 impl CiStore {
     pub fn close(&mut self, cx: &mut Context<Self>) {
         self.open = false;
-        self.branch_menu = false;
-        self.user_menu = false;
+        self.menu = None;
         self.poll = None;
         cx.notify();
     }
@@ -263,20 +262,59 @@ impl CiStore {
         self.reload_list(cx);
     }
 
-    /// The filter inputs changed. The branch is filtered on as typed; the user only once picked (or Enter), as a part of a login would match
-    /// nothing, so typing one just opens the suggestions. Emptying the field clears the filter.
-    pub fn filters_edited(&mut self, branch: String, user_text: String, cx: &mut Context<Self>) {
-        self.user_menu = !user_text.is_empty() && user_text != self.user;
-        let user = if user_text.is_empty() { String::new() } else { self.user.clone() };
-        self.set_filters(branch, user, cx);
+    /// What a filter applies now.
+    pub fn applied(&self, field: Field) -> &str {
+        match field {
+            Field::Branch => &self.branch,
+            Field::User => &self.user,
+        }
+    }
+
+    /// The text of a filter input changed; `typed`: the user did it (the input has the focus), not the app. The forges filter on exact names, so
+    /// typed text is not applied by itself (part of a name would match nothing): it opens the dropdown, narrowed by it, and a pick or Enter
+    /// applies it (`apply`). Emptying the field clears the filter.
+    pub fn text_edited(&mut self, field: Field, text: String, typed: bool, cx: &mut Context<Self>) {
+        if text == self.applied(field) {
+            return;
+        }
+        if text.is_empty() {
+            self.set_field(field, String::new(), cx);
+        }
+        if typed {
+            self.menu = Some(field);
+            self.menu_typed = !text.is_empty();
+        }
         cx.notify();
     }
 
-    /// A suggestion was picked, or Enter was pressed in the user field.
-    pub fn apply_user(&mut self, login: String, cx: &mut Context<Self>) {
-        self.user_menu = false;
-        self.set_filters(self.branch.clone(), login, cx);
+    /// A click on the field or its chevron: list the choices, all of them.
+    pub fn open_menu(&mut self, field: Field, cx: &mut Context<Self>) {
+        if self.menu != Some(field) {
+            self.menu = Some(field);
+            self.menu_typed = false;
+            cx.notify();
+        }
+    }
+
+    pub fn close_menu(&mut self, cx: &mut Context<Self>) {
+        self.menu = None;
+        self.menu_typed = false;
         cx.notify();
+    }
+
+    /// A choice was picked, or Enter was pressed: filter on it and close the dropdown.
+    pub fn apply(&mut self, field: Field, value: String, cx: &mut Context<Self>) {
+        self.menu = None;
+        self.menu_typed = false;
+        self.set_field(field, value, cx);
+        cx.notify();
+    }
+
+    fn set_field(&mut self, field: Field, value: String, cx: &mut Context<Self>) {
+        match field {
+            Field::Branch => self.set_filters(value, self.user.clone(), cx),
+            Field::User => self.set_filters(self.branch.clone(), value, cx),
+        }
     }
 
     /// The filters changed: reload the list once typing pauses.

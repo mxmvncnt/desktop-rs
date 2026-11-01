@@ -11,7 +11,7 @@ use crate::features::accounts::AccountsStore;
 use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::branches::BranchUi;
 use crate::features::changes::CommitBox;
-use crate::features::ci::{CiEvent, CiInputs, CiStore};
+use crate::features::ci::{CiEvent, CiInputs, CiStore, Field};
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
 use crate::features::pickers::PopoverStore;
@@ -38,8 +38,10 @@ impl Workspace {
         subs.push(cx.observe(&ci, |_, _, cx| cx.notify()));
         subs.push(cx.subscribe(&ci, |this, _, ev: &CiEvent, cx| this.on_ci_event(ev, cx)));
         let ci_inputs = CiInputs::new(cx);
-        for input in [&ci_inputs.branch, &ci_inputs.user] {
-            subs.push(cx.subscribe(input, |this: &mut Workspace, _, _: &TextChanged, cx| this.ci_filters_edited(cx)));
+        for (field, input) in [(Field::Branch, &ci_inputs.branch), (Field::User, &ci_inputs.user)] {
+            subs.push(cx.subscribe_in(input, window, move |this: &mut Workspace, input, _: &TextChanged, window, cx| {
+                this.ci_text_edited(field, input, window, cx)
+            }));
         }
         subs.extend(window_subscriptions(window, cx));
 

@@ -3,11 +3,12 @@
 
 mod ci_page;
 mod duration;
+mod filter_entries;
+mod filter_field;
 mod handlers;
 mod ops;
 mod actions;
 mod ansi;
-mod branch_menu;
 mod breadcrumbs;
 mod job_card;
 mod job_sidebar;
@@ -25,9 +26,8 @@ mod stage_dots;
 mod state;
 mod status_badge;
 mod target;
-mod user_menu;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
 
 pub use ci_page::CiPage;
-pub use state::{CiEvent, CiInputs, CiStore};
+pub use state::{CiEvent, CiInputs, CiStore, Field};

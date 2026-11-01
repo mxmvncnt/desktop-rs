@@ -45,6 +45,7 @@ impl Render for Workspace {
             .on_drag_move(cx.listener(|this, e: &DragMoveEvent<SidebarResize>, _, cx| {
                 this.drag_sidebar_to(e.event.position.x.as_f32(), cx)
             }))
+            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| this.close_ci_menu(cx)))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| { this.finish_sidebar_drag(); this.commit_msg.end_drag(); this.commit_sel.drag = false; this.ci.update(cx, |ci, _| ci.log.dragging = false); }))
             .on_mouse_up(MouseButton::Navigate(NavigationDirection::Back), cx.listener(|this, _, w, cx| this.dismiss(w, cx)))
             .on_mouse_up(MouseButton::Navigate(NavigationDirection::Forward), cx.listener(|this, _, _, cx| this.forward_ci(cx)))

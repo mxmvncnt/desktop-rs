@@ -1,9 +1,10 @@
 //! `impl Workspace`: opening, closing and re-syncing the CI page.
 
-use gpui::{Context, Entity};
+use gpui::{Context, Entity, Focusable as _, Window};
 use gpui_elements::editable_text::EditableTextState;
 
 use super::CiEvent;
+use super::state::Field;
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -42,10 +43,22 @@ impl Workspace {
     }
 
     /// A filter input of the pipelines list changed.
-    pub(crate) fn ci_filters_edited(&mut self, cx: &mut Context<Self>) {
-        let text = |input: &Entity<EditableTextState>| input.read(cx).as_str().trim().to_string();
-        let (branch, user_text) = (text(&self.ci_inputs.branch), text(&self.ci_inputs.user));
-        self.ci.update(cx, |ci, cx| ci.filters_edited(branch, user_text, cx));
+    pub(crate) fn ci_text_edited(&mut self, field: Field, input: &Entity<EditableTextState>, window: &mut Window, cx: &mut Context<Self>) {
+        let typed = input.focus_handle(cx).is_focused(window);
+        let text = input.read(cx).as_str().trim().to_string();
+        self.ci.update(cx, |ci, cx| ci.text_edited(field, text, typed, cx));
+    }
+
+    /// A click outside the dropdown of a filter (or Esc): close it, and the text typed but not picked goes back to what the filter is.
+    pub(crate) fn close_ci_menu(&mut self, cx: &mut Context<Self>) {
+        let ci = self.ci.read(cx);
+        if ci.menu.is_none() {
+            return;
+        }
+        let (branch, user) = (ci.branch.clone(), ci.user.clone());
+        self.ci.update(cx, |ci, cx| ci.close_menu(cx));
+        self.ci_inputs.branch.update(cx, |s, cx| s.emplace(&branch, cx));
+        self.ci_inputs.user.update(cx, |s, cx| s.emplace(&user, cx));
     }
 
     /// Another repository: its branches and authors are not the ones typed.

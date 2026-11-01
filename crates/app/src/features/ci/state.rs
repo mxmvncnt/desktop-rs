@@ -14,6 +14,13 @@ use crate::features::diff::text_selection::model::TextSel;
 use crate::repo::LoadSlot;
 
 /// Which screen of the page is shown.
+/// A text filter of the pipelines list.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Field {
+    Branch,
+    User,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CiView {
     List,
@@ -112,10 +119,10 @@ pub struct CiStore {
     /// The list filters, empty = none. They follow `CiInputs` (see `set_filters`); `user` only where the account's forge can filter on it.
     pub branch: String,
     pub user: String,
-    /// The branch dropdown is open.
-    pub branch_menu: bool,
-    /// The suggestions under the user field are open: text was typed that is not (yet) the filter.
-    pub user_menu: bool,
+    /// The filter whose dropdown is open.
+    pub menu: Option<Field>,
+    /// Text was typed in it since it opened: the dropdown lists what contains it.
+    pub menu_typed: bool,
     pub pipelines: Vec<Pipeline>,
     /// Last page loaded; a full page means there may be another.
     pub page: u32,
@@ -161,8 +168,8 @@ impl Default for CiStore {
             status: None,
             branch: String::new(),
             user: String::new(),
-            branch_menu: false,
-            user_menu: false,
+            menu: None,
+            menu_typed: false,
             filter_task: None,
             pipelines: Vec::new(),
             page: 1,
