@@ -56,8 +56,8 @@ fn bind_menu_keys(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<
 }
 
 impl Workspace {
-    /// Esc: close the top overlay, else go back in the CI page, else leave the pull request preview.
-    fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    /// Esc and the mouse Back button: close the top overlay, else go back in the CI page, else leave the pull request preview.
+    pub(super) fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.overlays.is_empty() {
             if !self.back_ci(cx) {
                 self.close_pr_preview_key(cx);

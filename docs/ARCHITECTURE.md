@@ -596,8 +596,7 @@ is the remote host. `Repository::remote_host()` (gd-git) gives the host of the d
 
 - `Overlay::RepoSettings`, state in `RepoSettingsStore` (`Workspace::repo_settings`, observed like `accounts`): page, repository facts (`gd-git/info.rs`
   `Repository::info`, read in the background with `spawn_load`). Layout is `components::SettingsShell` (sidebar `NavItem`s, title bar, Esc captured even
-  while an input is focused); `SettingsModal` uses the same shell.
-  The shell owns the one scroll area of the body and pads inside it, so pages
+  while an input is focused); `SettingsModal` uses the same shell. The shell owns the one scroll area of the body and pads inside it, so pages
   do not scroll themselves and scrolled content reaches the title divider and the bottom edge.
 - Identity and account pages reuse `accounts::RepoIdentity` / `RepoAccountBlock` and `AccountsStore` (`load_identity(Some(repo))` runs on open and on
   every page switch). The app Settings → Accounts page only has the global identity (`load_identity(None)`).
@@ -623,6 +622,9 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
   through `window.defer`), at most 4 at a time, cached by pipeline id in `details`. A failed detail is remembered in `failed` (else the render
   would re-request it forever) and retried by the next poll. Without real stages (GitHub, Gitea) `load_detail` reads the workflow file from the
   working tree (`workflow_candidates`) and calls `stages_from_workflow`.
+- Navigation: Esc, the ← button of the breadcrumb and the mouse Back button all call `CiStore::back` (job -> pipeline -> list -> close the page; the
+  workspace root binds `MouseButton::Navigate(Back)` to `Workspace::dismiss`, which closes an open overlay first). Back pushes the screen it leaves on
+  `forward`; the Forward button (`Workspace::forward_ci`) pops it. Opening a pipeline or job from the UI clears `forward`; a new repository resets the store.
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
 - Polling (`polling.rs`): one task while the page is open, every 10 s when something in the list is unfinished, else every 60 s; skipped while the

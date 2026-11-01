@@ -53,6 +53,8 @@ pub struct CiStore {
     /// `None` while the account is being resolved.
     pub target: Option<Result<Target, Problem>>,
     pub view: CiView,
+    /// Screens left with Back, most recent last; the Forward button walks them again.
+    pub(super) forward: Vec<CiView>,
     pub tab: PipelineTab,
     /// Status tab of the list (`None` = All).
     pub status: Option<Status>,
@@ -93,6 +95,7 @@ impl Default for CiStore {
             focused: true,
             target: None,
             view: CiView::List,
+            forward: Vec::new(),
             tab: PipelineTab::Graph,
             status: None,
             current_branch: false,

@@ -40,6 +40,13 @@ impl Workspace {
         open
     }
 
+    /// The mouse Forward button: a screen of the CI page that Back left.
+    pub fn forward_ci(&mut self, cx: &mut Context<Self>) {
+        if self.ci.read(cx).open {
+            self.ci.update(cx, |ci, cx| ci.forward(cx));
+        }
+    }
+
     pub(crate) fn on_ci_event(&mut self, ev: &CiEvent, cx: &mut Context<Self>) {
         match ev {
             CiEvent::Notice(message) => self.show_notice(message.clone(), cx),

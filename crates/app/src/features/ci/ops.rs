@@ -27,12 +27,16 @@ impl CiStore {
         cx.notify();
     }
 
-    /// Esc: one screen back; from the list, close the page.
+    /// Esc, the ← button and the mouse Back button: one screen back; from the list, close the page.
     pub fn back(&mut self, cx: &mut Context<Self>) {
         match self.view {
             CiView::List => self.close(cx),
-            CiView::Pipeline(_) => self.view = CiView::List,
+            CiView::Pipeline(_) => {
+                self.forward.push(self.view);
+                self.view = CiView::List;
+            }
             CiView::Job(job) => {
+                self.forward.push(self.view);
                 self.log_load.cancel();
                 self.view = CiView::Pipeline(job.pipeline);
             }
@@ -40,7 +44,26 @@ impl CiStore {
         cx.notify();
     }
 
+    /// The mouse Forward button: the screen Back left last.
+    pub fn forward(&mut self, cx: &mut Context<Self>) {
+        match self.forward.pop() {
+            Some(CiView::Pipeline(id)) => self.show_pipeline(id, cx),
+            Some(CiView::Job(id)) => self.show_job(id, cx),
+            Some(CiView::List) | None => {}
+        }
+    }
+
     pub fn open_pipeline(&mut self, id: PipelineId, cx: &mut Context<Self>) {
+        self.forward.clear();
+        self.show_pipeline(id, cx);
+    }
+
+    pub fn open_job(&mut self, id: JobId, cx: &mut Context<Self>) {
+        self.forward.clear();
+        self.show_job(id, cx);
+    }
+
+    fn show_pipeline(&mut self, id: PipelineId, cx: &mut Context<Self>) {
         self.view = CiView::Pipeline(id);
         self.tab = PipelineTab::Graph;
         self.detail_error = None;
@@ -48,7 +71,7 @@ impl CiStore {
         cx.notify();
     }
 
-    pub fn open_job(&mut self, id: JobId, cx: &mut Context<Self>) {
+    fn show_job(&mut self, id: JobId, cx: &mut Context<Self>) {
         self.view = CiView::Job(id);
         self.log = LogState { follow: self.job(id).is_some_and(|j| !j.status.is_finished()), ..LogState::default() };
         self.load_log(id, cx);
