@@ -4,7 +4,7 @@ use chrono::{Duration, Utc};
 use std::sync::Arc;
 
 use gd_forge::{parse_log, Forge, Job, JobId, Pipeline, PipelineDetail, PipelineId, RepoRef, Stage, Status, User};
-use gpui::{Context, Window};
+use gpui::{Context, ScrollStrategy, Window};
 
 use super::ops::visible_lines;
 use super::state::{CiStore, CiView, PipelineTab};
@@ -60,9 +60,14 @@ fn fill(ci: &mut CiStore, view: &str) {
         let job = JobId { pipeline: release.pipeline.id, id: 1095 };
         ci.details.insert(release.pipeline.id, release);
         ci.view = CiView::Job(job);
-        let log = parse_log(SAMPLE_LOG);
+        // `ci-job-long*`: a log longer than the window, scrolled to its end (the bottom margin).
+        let long = view.starts_with("ci-job-long");
+        let log = parse_log(&if long { SAMPLE_LOG.repeat(3) } else { SAMPLE_LOG.to_string() });
         ci.log.visible = visible_lines(&log, &ci.log.toggled);
         ci.log.log = Some(Arc::new(log));
+        if long {
+            ci.log.scroll.scroll_to_item(ci.log.rows() - 1, ScrollStrategy::Bottom);
+        }
     } else if (view.starts_with("ci-pipeline") && !view.starts_with("ci-pipelines")) || view.starts_with("ci-jobs") {
         let release = release_pipeline();
         ci.view = CiView::Pipeline(release.pipeline.id);

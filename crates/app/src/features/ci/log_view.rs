@@ -78,7 +78,7 @@ impl LogView {
             .child(Button::new("ci-log-bottom").ghost().compact().icon(Icon::ArrowDown).label("Bottom").on_click(move |_, _, cx| {
                 bottom.update(cx, |s, cx| {
                     s.log.follow = true;
-                    s.log.scroll.scroll_to_item(s.log.visible.len().saturating_sub(1), ScrollStrategy::Bottom);
+                    s.log.scroll.scroll_to_item(s.log.rows() - 1, ScrollStrategy::Bottom);
                     cx.notify()
                 })
             }))
@@ -92,14 +92,14 @@ impl LogView {
 
     fn lines(&self, log: Arc<Log>, cx: &App) -> impl IntoElement + use<> {
         let ci = self.store.read(cx);
-        let (store, scroll, count) = (self.store.clone(), ci.log.scroll.clone(), ci.log.visible.len());
+        let (store, scroll, count) = (self.store.clone(), ci.log.scroll.clone(), ci.log.rows());
         uniform_list("ci-log", count, move |range, _, cx| {
             let ci = store.read(cx);
             let theme = Theme::of(cx);
             range
-                .filter_map(|row| {
-                    let line = *ci.log.visible.get(row)?;
-                    Some(log_line(line, &log, &ci.log.toggled, &store, theme))
+                .map(|row| match ci.log.visible.get(row) {
+                    Some(&line) => log_line(line, &log, &ci.log.toggled, &store, theme).into_any_element(),
+                    None => div().h(px(LINE_HEIGHT)).into_any_element(),
                 })
                 .collect()
         })

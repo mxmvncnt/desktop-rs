@@ -97,7 +97,7 @@ impl CiStore {
                         this.log.visible = visible_lines(&log, &this.log.toggled);
                         this.log.log = Some(log);
                         if this.log.follow {
-                            this.log.scroll.scroll_to_item(this.log.visible.len().saturating_sub(1), ScrollStrategy::Bottom);
+                            this.log.scroll.scroll_to_item(this.log.rows() - 1, ScrollStrategy::Bottom);
                         }
                     }
                     Err(e) => this.log.error = Some(e.into()),

@@ -625,6 +625,7 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
 - Navigation: Esc, the ← button of the breadcrumb and the mouse Back button all call `CiStore::back` (job -> pipeline -> list -> close the page; the
   workspace root binds `MouseButton::Navigate(Back)` to `Workspace::dismiss`, which closes an open overlay first). Back pushes the screen it leaves on
   `forward`; the Forward button (`Workspace::forward_ci`) pops it. Opening a pipeline or job from the UI clears `forward`; a new repository resets the store.
+- The log list is virtualized (uniform rows), so its bottom margin is `LOG_BOTTOM_ROWS` empty rows after the last line (`LogState::rows`).
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
 - Polling (`polling.rs`): one task while the page is open, every 10 s when something in the list is unfinished, else every 60 s; skipped while the

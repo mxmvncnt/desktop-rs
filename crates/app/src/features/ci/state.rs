@@ -38,6 +38,16 @@ pub struct LogState {
     pub scroll: UniformListScrollHandle,
 }
 
+/// Empty rows after the last line of a log: the list is virtualized, so its bottom margin is made of rows.
+const LOG_BOTTOM_ROWS: usize = 2;
+
+impl LogState {
+    /// Rows of the log list: the visible lines and the bottom margin.
+    pub fn rows(&self) -> usize {
+        self.visible.len() + LOG_BOTTOM_ROWS
+    }
+}
+
 /// Raised to the `Workspace`, which owns the notice banner.
 pub enum CiEvent {
     Notice(String),
