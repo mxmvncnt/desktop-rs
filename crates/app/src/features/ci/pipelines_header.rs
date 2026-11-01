@@ -1,7 +1,7 @@
-//! Top of the pipelines list: title, the account in use, the status tabs, the branch toggle and Refresh.
+//! Top of the pipelines list: title, the account in use, the status tabs, the current branch checkbox and Refresh.
 
 use gd_forge::Status;
-use gd_ui::{Button, Icon, Tabs, Theme};
+use gd_ui::{Button, CheckRow, Icon, Tabs, Theme};
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
 
 use super::state::CiStore;
@@ -85,13 +85,9 @@ impl RenderOnce for PipelinesHeader {
                                     .on_select(move |ix, _, cx| store.update(cx, |s, cx| s.set_status(STATUS_TABS[ix].1, cx))),
                             ),
                         )
-                        .child(
-                            Button::new("ci-current-branch")
-                                .icon(Icon::GitBranch)
-                                .label("Current branch")
-                                .selected(current_branch)
-                                .on_click(move |_, _, cx| branch_store.update(cx, |s, cx| s.toggle_current_branch(cx))),
-                        ),
+                        .child(CheckRow::new("ci-current-branch", "Current branch only", current_branch, move |_, cx| {
+                            branch_store.update(cx, |s, cx| s.toggle_current_branch(cx))
+                        })),
                 )
             })
     }
