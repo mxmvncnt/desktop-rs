@@ -650,6 +650,7 @@ plays again each time its element comes back); the one that goes is gone at once
   raise `LOG_ANIM` (to 20 s) for the run, with the `ci-job-slide` / `ci-job-slide-close` views.
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
+- "Load more" is the last row of the pipelines list (`count + 1` rows while `CiStore::more`, same `ROW_HEIGHT`), so it scrolls with the list and sits under the last pipeline.
 - `CiStore::refreshing` is true from `show` (the Refresh and Retry buttons, opening the page, switching repository) until the list it loads is in, or the
   account could not be resolved; both buttons are disabled meanwhile. It is not `loading`, which polls and "Load more" set too (the button would flicker
   every poll). A poll that was already loading when `show` asked for the list satisfies it.

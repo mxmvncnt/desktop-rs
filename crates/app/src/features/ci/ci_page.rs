@@ -3,7 +3,7 @@
 use gd_ui::{Button, Theme, empty_state};
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px};
 
-use super::pipeline_row::{columns_header, pipeline_row};
+use super::pipeline_row::{ROW_HEIGHT, columns_header, pipeline_row};
 use super::pipelines_header::PipelinesHeader;
 use super::problem_view::ProblemView;
 use super::job_view::JobView;
@@ -56,7 +56,8 @@ impl CiPage {
             };
         }
         let store = self.store.clone();
-        let rows = list("ci-pipelines", count, move |range, window, cx| {
+        // One more row after the pipelines holds the button that loads the next page.
+        let rows = list("ci-pipelines", count + usize::from(ci.more), move |range, window, cx| {
             let ci = store.read(cx);
             let ids: Vec<_> = range.clone().filter_map(|ix| ci.pipelines.get(ix)).map(|p| p.id).collect();
             if ids.iter().any(|id| ci.needs_detail(*id)) {
@@ -64,11 +65,29 @@ impl CiPage {
                 window.defer(cx, move |_, cx| store.update(cx, |s, cx| s.request_details(ids, cx)));
             }
             let ci = store.read(cx);
-            range.filter_map(|ix| ci.pipelines.get(ix).map(|p| pipeline_row(ix, p, ci.details.get(&p.id), store.clone(), cx))).collect()
+            range
+                .filter_map(|ix| {
+                    let Some(p) = ci.pipelines.get(ix) else {
+                        return ci.more.then(|| {
+                            let (store, label) = (store.clone(), if ci.loading { "Loading…" } else { "Load more" });
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .w_full()
+                                .h(px(ROW_HEIGHT))
+                                .child(Button::new("ci-load-more").label(label).disabled(ci.loading).on_click(move |_, _, cx| {
+                                    store.update(cx, |s, cx| s.load_list(true, cx))
+                                }))
+                                .into_any_element()
+                        });
+                    };
+                    Some(pipeline_row(ix, p, ci.details.get(&p.id), store.clone(), cx).into_any_element())
+                })
+                .collect()
         })
         .track_scroll(&ci.list_scroll)
         .flex_1();
-        let store = self.store.clone();
         div()
             .flex_1()
             .min_h_0()
@@ -81,12 +100,6 @@ impl CiPage {
             }))
             .child(columns_header(cx))
             .child(rows)
-            .when(ci.more, |d| {
-                let label = if ci.loading { "Loading…" } else { "Load more" };
-                d.child(div().flex().flex_none().justify_center().py(px(10.0)).child(
-                    Button::new("ci-load-more").label(label).disabled(ci.loading).on_click(move |_, _, cx| store.update(cx, |s, cx| s.load_list(true, cx))),
-                ))
-            })
             .into_any_element()
     }
 }
