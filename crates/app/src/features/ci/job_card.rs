@@ -1,8 +1,9 @@
 //! A job in the pipeline graph: status ring, name, duration.
 
 use gd_forge::{Capabilities, Job, Status};
-use gd_ui::{Theme, icon_button, pressable};
-use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, StatefulInteractiveElement, Styled, div, px};
+use gd_ui::motion::HOVER_MS;
+use gd_ui::{Theme, icon_button};
+use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, StatefulInteractiveElement, Styled, div, millis, px};
 
 use super::actions::job_actions;
 use super::duration::duration_text;
@@ -16,7 +17,10 @@ pub fn job_card(job: &Job, caps: Capabilities, store: Entity<CiStore>, cx: &App)
     let id = job.id;
     let group = format!("job-card-{}", id.id);
     let tint = look.tone.color(theme);
-    pressable(("job-card", job.id.id as usize), false, cx)
+    // Opaque at rest and on hover: `pressable`'s translucent wash would fade through the page behind the card.
+    div()
+        .id(("job-card", job.id.id as usize))
+        .cursor_pointer()
         .group(group.clone())
         .flex()
         .items_center()
@@ -26,7 +30,10 @@ pub fn job_card(job: &Job, caps: Capabilities, store: Entity<CiStore>, cx: &App)
         .rounded(px(8.0))
         .border_1()
         .border_color(if look.label == "warning" { tint } else { theme.border })
-        .bg(theme.surface)
+        .bg(theme.surface_raised)
+        .transitions(|t| t.bg(millis(HOVER_MS)))
+        .hover_style(|s| s.bg(theme.surface_raised_hover))
+        .active_style(|s| s.bg(theme.surface_raised_hover))
         .on_click({
             let store = store.clone();
             move |_, _, cx| store.update(cx, |s, cx| s.open_job(id, cx))

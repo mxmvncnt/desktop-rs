@@ -621,6 +621,8 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
   through `window.defer`), at most 4 at a time, cached by pipeline id in `details`. A failed detail is remembered in `failed` (else the render
   would re-request it forever) and retried by the next poll. Without real stages (GitHub, Gitea) `load_detail` reads the workflow file from the
   working tree (`workflow_candidates`) and calls `stages_from_workflow`.
+- Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
+  the opaque `surface_raised` / `surface_raised_hover` pair.
 - Polling (`polling.rs`): one task while the page is open, every 10 s when something in the list is unfinished, else every 60 s; skipped while the
   window is inactive, and coming back to the window polls at once. A poll reloads page 1 and merges it (older pages stay, rows the new page covers
   are replaced), and refetches the details that are not finished. Finished details are never refetched. Running status icons are static.
