@@ -28,4 +28,4 @@ mod target;
 pub mod snapshot;
 
 pub use ci_page::CiPage;
-pub use state::{CiEvent, CiStore};
+pub use state::{CiEvent, CiInputs, CiStore};

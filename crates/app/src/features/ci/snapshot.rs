@@ -38,6 +38,13 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
             fill(ci, view);
             // `ci-pipelines-refreshing`: the Refresh button is disabled while a refresh waits for its list.
             ci.refreshing = view.contains("refreshing");
+            // `ci-pipelines-filters`: both filters set; `ci-pipelines-forgejo`: an account whose forge cannot filter on the user.
+            if view.contains("filters") {
+                (ci.branch, ci.user) = ("release/1.5".into(), "ada".into());
+            }
+            if let (true, Some(Ok(target))) = (view.contains("forgejo"), &mut ci.target) {
+                target.forge = Forge::Forgejo;
+            }
             // `ci-job-slide*`: the first section opens; `ci-job-slide-close*` collapses the second. The harness loads for longer than
             // `LOG_ANIM`, so to see a frame midway raise it (to 20 s) for the run.
             if view.starts_with("ci-job-slide-close") {
@@ -48,6 +55,10 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
         }
         cx.notify();
     });
+    if view.contains("filters") {
+        ws.ci_inputs.branch.update(cx, |s, cx| s.emplace("release/1.5", cx));
+        ws.ci_inputs.user.update(cx, |s, cx| s.emplace("ada", cx));
+    }
 }
 
 fn fill(ci: &mut CiStore, view: &str) {

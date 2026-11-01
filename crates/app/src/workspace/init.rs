@@ -11,7 +11,7 @@ use crate::features::accounts::AccountsStore;
 use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::branches::BranchUi;
 use crate::features::changes::CommitBox;
-use crate::features::ci::{CiEvent, CiStore};
+use crate::features::ci::{CiEvent, CiInputs, CiStore};
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
 use crate::features::pickers::PopoverStore;
@@ -37,6 +37,10 @@ impl Workspace {
         let ci = cx.new(|_| CiStore::default());
         subs.push(cx.observe(&ci, |_, _, cx| cx.notify()));
         subs.push(cx.subscribe(&ci, |this, _, ev: &CiEvent, cx| this.on_ci_event(ev, cx)));
+        let ci_inputs = CiInputs::new(cx);
+        for input in [&ci_inputs.branch, &ci_inputs.user] {
+            subs.push(cx.subscribe(input, |this: &mut Workspace, _, _: &TextChanged, cx| this.ci_filters_edited(cx)));
+        }
         subs.extend(window_subscriptions(window, cx));
 
         let mut this = Self {
@@ -46,6 +50,7 @@ impl Workspace {
             accounts,
             repo_settings,
             ci,
+            ci_inputs,
             repo: None,
             overlays: Vec::new(),
             overlay_gen: 0,

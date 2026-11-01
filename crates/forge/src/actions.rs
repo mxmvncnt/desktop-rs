@@ -95,6 +95,9 @@ pub(crate) fn pipelines(c: &Client, repo: &RepoRef, filter: &PipelineFilter, pag
     if let Some(branch) = &filter.ref_name {
         query.push(("branch", branch.clone()));
     }
+    if let Some(user) = &filter.user {
+        query.push(("actor", user.clone()));
+    }
     if let Some(s) = filter.status {
         query.push(("status", s.query(false).to_string()));
     }

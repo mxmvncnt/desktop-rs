@@ -31,12 +31,13 @@ impl Forge {
             job_logs: true,
             steps: false,
             stages: false,
+            filter_user: false,
         };
         match self {
-            Forge::GitHub => Capabilities { retry_pipeline: true, retry_job: true, steps: true, ..none },
-            Forge::Gitea => Capabilities { retry_pipeline: true, retry_job: true, steps: true, ..none },
-            Forge::GitLab => Capabilities { retry_pipeline: true, retry_job: true, cancel_job: true, play_job: true, stages: true, ..none },
-            // Forgejo: runs, jobs with `needs`, logs and run cancel only.
+            Forge::GitHub => Capabilities { retry_pipeline: true, retry_job: true, steps: true, filter_user: true, ..none },
+            Forge::Gitea => Capabilities { retry_pipeline: true, retry_job: true, steps: true, filter_user: true, ..none },
+            Forge::GitLab => Capabilities { retry_pipeline: true, retry_job: true, cancel_job: true, play_job: true, stages: true, filter_user: true, ..none },
+            // Forgejo: runs, jobs with `needs`, logs and run cancel only; its runs list has no user filter.
             Forge::Forgejo => Capabilities { stages: true, ..none },
         }
     }

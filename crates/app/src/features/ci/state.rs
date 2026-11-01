@@ -6,7 +6,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
-use gpui::{EventEmitter, Task, UniformListScrollHandle};
+use gpui::{App, AppContext as _, Entity, EventEmitter, Task, UniformListScrollHandle};
+use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::target::{Problem, Target};
 use crate::features::diff::text_selection::model::TextSel;
@@ -74,6 +75,20 @@ impl LogState {
     }
 }
 
+/// The text inputs of the list filters. They live on the `Workspace`: an `Entity` is made from an `App`, a `CiStore` default has none.
+#[derive(Clone)]
+pub struct CiInputs {
+    pub branch: Entity<EditableTextState>,
+    pub user: Entity<EditableTextState>,
+}
+
+impl CiInputs {
+    pub fn new(cx: &mut App) -> Self {
+        let mk = |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
+        Self { branch: mk(cx), user: mk(cx) }
+    }
+}
+
 /// Raised to the `Workspace`, which owns the notice banner.
 pub enum CiEvent {
     Notice(String),
@@ -94,7 +109,9 @@ pub struct CiStore {
     pub tab: PipelineTab,
     /// Status tab of the list (`None` = All).
     pub status: Option<Status>,
-    pub current_branch: bool,
+    /// The list filters, empty = none. They follow `CiInputs` (see `set_filters`); `user` only where the account's forge can filter on it.
+    pub branch: String,
+    pub user: String,
     pub pipelines: Vec<Pipeline>,
     /// Last page loaded; a full page means there may be another.
     pub page: u32,
@@ -121,6 +138,8 @@ pub struct CiStore {
     pub(super) list_load: LoadSlot,
     pub(super) log_load: LoadSlot,
     pub(super) poll: Option<Task<()>>,
+    /// Reloads the list once typing in a filter pauses.
+    pub(super) filter_task: Option<Task<()>>,
 }
 
 impl EventEmitter<CiEvent> for CiStore {}
@@ -136,7 +155,9 @@ impl Default for CiStore {
             forward: Vec::new(),
             tab: PipelineTab::Graph,
             status: None,
-            current_branch: false,
+            branch: String::new(),
+            user: String::new(),
+            filter_task: None,
             pipelines: Vec::new(),
             page: 1,
             more: false,

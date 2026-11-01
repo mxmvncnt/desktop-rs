@@ -1,6 +1,7 @@
 //! `impl Workspace`: opening, closing and re-syncing the CI page.
 
-use gpui::Context;
+use gpui::{Context, Entity};
+use gpui_elements::editable_text::EditableTextState;
 
 use super::CiEvent;
 use crate::workspace::Workspace;
@@ -38,6 +39,20 @@ impl Workspace {
             self.ci.update(cx, |ci, cx| ci.back(cx));
         }
         open
+    }
+
+    /// A filter input of the pipelines list changed.
+    pub(crate) fn ci_filters_edited(&mut self, cx: &mut Context<Self>) {
+        let text = |input: &Entity<EditableTextState>| input.read(cx).as_str().trim().to_string();
+        let (branch, user) = (text(&self.ci_inputs.branch), text(&self.ci_inputs.user));
+        self.ci.update(cx, |ci, cx| ci.set_filters(branch, user, cx));
+    }
+
+    /// Another repository: its branches and authors are not the ones typed.
+    pub(crate) fn clear_ci_filters(&mut self, cx: &mut Context<Self>) {
+        for input in [&self.ci_inputs.branch, &self.ci_inputs.user] {
+            input.update(cx, |s, cx| s.emplace("", cx));
+        }
     }
 
     /// The mouse Forward button: a screen of the CI page that Back left.

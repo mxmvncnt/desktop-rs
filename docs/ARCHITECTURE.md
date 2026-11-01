@@ -77,6 +77,7 @@ Enterprise -> `https://<host>/api/v3`, GitLab `/api/v4`, Gitea and Forgejo `/api
 | cancel pipeline | yes | yes | yes | yes |
 | cancel job | no | yes | no | no |
 | play manual job | no | yes | no | no |
+| filter the list by user (`PipelineFilter::user`) | yes (`actor`) | yes (`username`) | yes (`actor`) | no (its runs list has only `ref`) |
 
 Logs (`log.rs`): `parse_log(raw) -> Log { lines, sections }`. A `Line` is a `String` plus `Span`s (byte ranges covering the whole text, with
 `Style { fg, bg: Option<Color::{Indexed, Rgb}>, bold, italic, underline }`) and the GitHub/Gitea timestamp if there was one. SGR is parsed with `vte`; other control
@@ -650,6 +651,11 @@ plays again each time its element comes back); the one that goes is gone at once
   raise `LOG_ANIM` (to 20 s) for the run, with the `ci-job-slide` / `ci-job-slide-close` views.
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
+- List filters: status tabs, a branch field and (where `Capabilities::filter_user`) a user field. The text lives in `CiInputs` (two `EditableTextState`s on
+  `Workspace::ci_inputs`, since an `Entity` needs an `App`); `Workspace::ci_filters_edited` (on `TextChanged`) passes the trimmed texts to
+  `CiStore::set_filters`, which stores them (`branch`, `user`; `load_list` turns them into a `PipelineFilter`) and reloads the list 350ms after typing
+  pauses (page closed: it only clears the list, the next `show` loads it). The branch icon button fills the field with the current branch. Opening another
+  repository clears both inputs (`clear_ci_filters` in `attach_model`). The user field is hidden for Forgejo: filtering client-side would break paging.
 - "Load more" is the last row of the pipelines list (`count + 1` rows while `CiStore::more`, same `ROW_HEIGHT`), so it scrolls with the list and sits under the last pipeline.
 - `CiStore::refreshing` is true from `show` (the Refresh and Retry buttons, opening the page, switching repository) until the list it loads is in, or the
   account could not be resolved; both buttons are disabled meanwhile. It is not `loading`, which polls and "Load more" set too (the button would flicker

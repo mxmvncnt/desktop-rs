@@ -1,10 +1,11 @@
-//! Top of the pipelines list: title, the account in use, the status tabs, the current branch checkbox and Refresh.
+//! Top of the pipelines list: title, the account in use, the status tabs, the branch and user filters and Refresh.
 
 use gd_forge::Status;
-use gd_ui::{Button, CheckRow, Icon, Tabs, Theme};
+use gd_ui::{Button, Icon, Tabs, Theme, icon_button};
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
 
 use super::state::CiStore;
+use crate::components::text_field;
 use crate::workspace::Workspace;
 
 /// The status tabs, in order.
@@ -23,9 +24,13 @@ impl RenderOnce for PipelinesHeader {
         let ci = self.store.read(cx);
         let target = ci.ready();
         let selected = STATUS_TABS.iter().position(|(_, s)| *s == ci.status).unwrap_or(0);
-        let (current_branch, refreshing) = (ci.current_branch, ci.refreshing);
+        let refreshing = ci.refreshing;
         let account = target.map(|t| format!("via {} · {}", t.account_name, t.host));
-        let (ws, store, branch_store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.store.clone(), self.ws.clone());
+        let current_branch = target.and_then(|t| t.branch.clone());
+        let can_filter_user = target.is_some_and(|t| t.forge.capabilities().filter_user);
+        let inputs = self.ws.read(cx).ci_inputs.clone();
+        let (ws, store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.ws.clone());
+        let labeled = |label: &'static str| div().flex().items_center().gap(px(8.0)).child(div().text_size(px(12.0)).text_color(theme.text_muted).child(label));
 
         div()
             .flex()
@@ -85,9 +90,20 @@ impl RenderOnce for PipelinesHeader {
                                     .on_select(move |ix, _, cx| store.update(cx, |s, cx| s.set_status(STATUS_TABS[ix].1, cx))),
                             ),
                         )
-                        .child(CheckRow::new("ci-current-branch", "Current branch only", current_branch, move |_, cx| {
-                            branch_store.update(cx, |s, cx| s.toggle_current_branch(cx))
-                        })),
+                        .child(
+                            labeled("Branch")
+                                .child(div().w(px(180.0)).child(text_field("ci-branch-filter", &inputs.branch, "All branches", cx)))
+                                .children(current_branch.map(|name| {
+                                    let input = inputs.branch.clone();
+                                    div().id("ci-current-branch-wrap").tooltip(gd_ui::tooltip(format!("Filter on the current branch ({name})"))).child(
+                                        icon_button("ci-current-branch", Icon::GitBranch)
+                                            .on_click(move |_, _, cx| input.update(cx, |s, cx| s.emplace(&name, cx))),
+                                    )
+                                })),
+                        )
+                        .when(can_filter_user, |d| {
+                            d.child(labeled("User").child(div().w(px(150.0)).child(text_field("ci-user-filter", &inputs.user, "Anyone", cx))))
+                        }),
                 )
             })
     }

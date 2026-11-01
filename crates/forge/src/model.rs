@@ -148,6 +148,8 @@ impl PipelineDetail {
 #[derive(Debug, Clone, Default)]
 pub struct PipelineFilter {
     pub ref_name: Option<String>,
+    /// Login of who triggered the pipeline; only where `Capabilities::filter_user`.
+    pub user: Option<String>,
     pub status: Option<Status>,
 }
 
@@ -166,6 +168,8 @@ pub struct Capabilities {
     pub steps: bool,
     /// `pipeline()` returns real stages (otherwise one stage; see `stages_from_workflow`).
     pub stages: bool,
+    /// The list can be filtered by who triggered the pipeline.
+    pub filter_user: bool,
 }
 
 /// Status of a stage from its jobs, like GitLab: failed jobs that are allowed to fail don't fail the stage.

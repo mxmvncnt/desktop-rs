@@ -55,6 +55,7 @@ impl Workspace {
         self.repo_event_sub = Some(cx.subscribe(&model, |this, _, ev: &RepoEvent, cx| this.on_repo_event(ev, cx)));
         self.repo = Some(model);
         self.overlays.clear();
+        self.clear_ci_filters(cx);
         if self.ci.read(cx).open {
             self.sync_ci(cx);
         }

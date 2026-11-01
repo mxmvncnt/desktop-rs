@@ -18,6 +18,9 @@ use crate::repo::spawn_load;
 const PAGE_SIZE: usize = 20;
 /// Detail requests for the list's stage dots running at once.
 const DETAIL_CONCURRENCY: usize = 4;
+
+/// How long typing in a filter pauses before the list reloads.
+const FILTER_DEBOUNCE: Duration = Duration::from_millis(350);
 /// Where Gitea, Forgejo and GitHub keep workflow files; Forgejo reports a bare file name.
 const WORKFLOW_DIRS: [&str; 3] = [".forgejo/workflows", ".gitea/workflows", ".github/workflows"];
 
@@ -170,7 +173,6 @@ impl CiStore {
             *self = Self {
                 epoch: self.epoch + 1,
                 focused: self.focused,
-                current_branch: self.current_branch,
                 poll: self.poll.take(),
                 root: Some(repo.root().to_path_buf()),
                 ..Self::default()
@@ -204,7 +206,8 @@ impl CiStore {
         if self.loading {
             return;
         }
-        let filter = PipelineFilter { ref_name: target.branch.clone().filter(|_| self.current_branch), status: self.status };
+        let non_empty = |text: &String| (!text.is_empty()).then(|| text.clone());
+        let filter = PipelineFilter { ref_name: non_empty(&self.branch), user: non_empty(&self.user), status: self.status };
         let page = if more { self.page + 1 } else { 1 };
         self.loading = true;
         spawn_load(
@@ -258,9 +261,22 @@ impl CiStore {
         self.reload_list(cx);
     }
 
-    pub fn toggle_current_branch(&mut self, cx: &mut Context<Self>) {
-        self.current_branch = !self.current_branch;
-        self.reload_list(cx);
+    /// A filter input changed: reload the list once typing pauses.
+    pub fn set_filters(&mut self, branch: String, user: String, cx: &mut Context<Self>) {
+        if (&branch, &user) == (&self.branch, &self.user) {
+            return;
+        }
+        (self.branch, self.user) = (branch, user);
+        if !self.open {
+            // The next `show` loads the list again, from page 1.
+            self.pipelines.clear();
+            self.more = false;
+            return;
+        }
+        self.filter_task = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(FILTER_DEBOUNCE).await;
+            this.update(cx, |s, cx| s.reload_list(cx)).ok();
+        }));
     }
 
     /// The list rows on screen want their stages: load the missing ones, a few at a time.
