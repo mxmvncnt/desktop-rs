@@ -50,6 +50,7 @@ features/stashes/
 | store | `Entity<X Store>` per feature (`RepoModel`, `PopoverStore`, `AccountsStore`) or a `cx.global` |
 | template | the `render()` fn |
 
+- Pick the control by what it means, see DESIGN.md ("Controls"): on/off is a `CheckRow`, never a button whose label or look flips with the state.
 - Default to `RenderOnce`. Only make an `Entity` when it owns state that
   outlives a frame (text input, scroll handle, open dialog, selection).
 - **One `Render`/`RenderOnce` impl per file.** Small private

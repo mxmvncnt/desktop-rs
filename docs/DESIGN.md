@@ -27,6 +27,12 @@ screenshots in `.ref/zeron/docs/screenshots/`):
 - Motion: entrances use `fade_in` (500ms, ease-out-quint, 4px rise). Popovers use
   `menu_in` (140ms, −2px). Content swaps use `fade_quick` (150ms).
   All honor `reduce_motion`.
+- Controls say what they do and what state they are in:
+  - A setting that is on or off is a checkbox row (`CheckRow`) with a fixed label that names what is on ("Current branch only"). Never a button.
+  - One choice among a few is a radio group (`OptionRow`) or segmented `Tabs`; among many, a dropdown.
+  - A button is an action: its label says what happens when it is pressed. No toggle buttons, and never a label that flips with the state
+    ("Show x" / "Hide x", "All branches" / "This branch"): it does not tell the current state or what the next click does.
+  - Exception: an icon-only toolbar button that opens or closes a page or panel (CI, settings) may show a pressed state while that is open.
 - Status colors: emerald add, red delete, amber modified, blue renamed, at 10% washes in diffs.
 
 Color themes are JSON files (`crates/ui/assets/themes/<id>.json`); see THEMES.md for the format and
