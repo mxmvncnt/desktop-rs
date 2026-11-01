@@ -8,10 +8,12 @@ use super::actions::job_actions;
 use super::job_sidebar::JobSidebar;
 use super::log_view::LogView;
 use super::state::{CiStore, CiView};
+use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct JobView {
     pub store: Entity<CiStore>,
+    pub ws: Entity<Workspace>,
     pub id: JobId,
 }
 
@@ -59,7 +61,7 @@ impl RenderOnce for JobView {
                     .flex()
                     .border_t_1()
                     .border_color(theme.border)
-                    .child(LogView { store: self.store.clone(), job: self.id })
+                    .child(LogView { store: self.store.clone(), ws: self.ws.clone(), job: self.id })
                     .child(JobSidebar { store: self.store.clone(), actions, acting: ci.acting, job, stage: stage.unwrap_or_default() }),
             )
             .into_any_element()

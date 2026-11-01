@@ -11,6 +11,7 @@ mod job_card;
 mod job_sidebar;
 mod job_view;
 mod jobs_table;
+mod log_selection;
 mod log_view;
 mod pipeline_row;
 mod pipeline_view;

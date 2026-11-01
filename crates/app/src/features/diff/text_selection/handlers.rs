@@ -1,5 +1,5 @@
 //! `impl Workspace` handlers of the diff text selection: press, drag, select
-//! all and copy.
+//! all and copy (on the CI page they act on the job log instead).
 
 use gpui::{ClipboardItem, Context, Window};
 
@@ -41,6 +41,9 @@ impl Workspace {
 
     /// Select all text of the shown diff (of the side last used in split view).
     pub fn select_all_diff_text(&mut self, cx: &mut Context<Self>) {
+        if self.ci.read(cx).open {
+            return self.ci.update(cx, |ci, cx| ci.select_all_log(cx));
+        }
         let Some(diff) = self.diff_view.shown_diff() else { return };
         let side = match (&self.diff_view.split_cache, self.settings.diff_split) {
             (Some(_), true) => self.diff_view.text_sel.map_or(TextSide::Right, |s| s.side),
@@ -52,6 +55,9 @@ impl Workspace {
 
     /// Copy the selected diff text (code only, no gutters) to the clipboard.
     pub fn copy_diff_text(&mut self, cx: &mut Context<Self>) {
+        if self.ci.read(cx).open {
+            return self.ci.read(cx).copy_log_selection(cx);
+        }
         if self.commit_sel.sel.is_some() {
             return self.copy_commit_text(cx);
         }

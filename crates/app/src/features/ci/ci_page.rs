@@ -26,7 +26,7 @@ impl RenderOnce for CiPage {
             Some(Err(problem)) => ProblemView { problem: problem.clone(), ws: self.ws.clone() }.into_any_element(),
             Some(Ok(_)) => match ci.view {
                 CiView::List => self.pipelines(cx).into_any_element(),
-                CiView::Job(id) => JobView { store: self.store.clone(), id }.into_any_element(),
+                CiView::Job(id) => JobView { store: self.store.clone(), ws: self.ws.clone(), id }.into_any_element(),
                 CiView::Pipeline(id) => PipelineView { store: self.store.clone(), ws: self.ws.clone(), id }.into_any_element(),
             },
         };

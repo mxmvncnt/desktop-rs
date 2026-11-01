@@ -626,6 +626,11 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
   workspace root binds `MouseButton::Navigate(Back)` to `Workspace::dismiss`, which closes an open overlay first). Back pushes the screen it leaves on
   `forward`; the Forward button (`Workspace::forward_ci`) pops it. Opening a pipeline or job from the UI clears `forward`; a new repository resets the store.
 - The log list is virtualized (uniform rows), so its bottom margin is `LOG_BOTTOM_ROWS` empty rows after the last line (`LogState::rows`).
+- Selecting log text (`log_selection.rs`): the log reuses the diff's `TextSel` / `TextPos` model (`Unified` side, lines of `Log::lines`, kept in
+  `LogState::sel`); `log_line` merges the selection wash over the ANSI highlights with `combine_highlights`, hit-tests with the line's `TextLayout`
+  (the text must sit in a flex column, see `diff::highlight::line_text`) and each row's mouse-move extends a drag. Section headers still toggle on
+  click and are not a place to start a selection. Ctrl/Cmd+C and +A (`copy_diff_text` / `select_all_diff_text`) act on the log while the page is open;
+  the copy skips lines a collapsed section hides. The mouse-up that ends a drag is the workspace root's.
 - Steps in the log: the header line of a top-level section (`depth == 0`: a GitLab script stage, a GitHub/Gitea group) is drawn as a tinted band with a
   divider above it, so the steps can be told apart; nested sections keep the plain hover row. Uniform rows rule out a gap between steps.
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use

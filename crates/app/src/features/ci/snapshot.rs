@@ -7,6 +7,7 @@ use gd_forge::{parse_log, Forge, Job, JobId, Pipeline, PipelineDetail, PipelineI
 use gpui::{Context, ScrollStrategy, Window};
 
 use super::ops::visible_lines;
+use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
 use super::state::{CiStore, CiView, PipelineTab};
 use super::target::{Problem, Target};
 use crate::features::settings::ThemeMode;
@@ -67,6 +68,11 @@ fn fill(ci: &mut CiStore, view: &str) {
         ci.log.log = Some(Arc::new(log));
         if long {
             ci.log.scroll.scroll_to_item(ci.log.rows() - 1, ScrollStrategy::Bottom);
+        }
+        // `ci-job-select*`: a selection over several lines, from the middle of line 9 to the middle of line 14.
+        if view.starts_with("ci-job-select") {
+            let pos = |line, col| TextPos { line, col };
+            ci.log.sel = Some(TextSel { anchor: pos(8, 3), head: pos(13, 14), side: TextSide::Unified });
         }
     } else if (view.starts_with("ci-pipeline") && !view.starts_with("ci-pipelines")) || view.starts_with("ci-jobs") {
         let release = release_pipeline();

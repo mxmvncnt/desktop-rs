@@ -8,6 +8,7 @@ use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
 use gpui::{EventEmitter, Task, UniformListScrollHandle};
 
 use super::target::{Problem, Target};
+use crate::features::diff::text_selection::model::TextSel;
 use crate::repo::LoadSlot;
 
 /// Which screen of the page is shown.
@@ -36,6 +37,9 @@ pub struct LogState {
     pub loading: bool,
     pub error: Option<Problem>,
     pub scroll: UniformListScrollHandle,
+    /// Selected text, in (line of `log.lines`, byte offset); `dragging` while the mouse button is down.
+    pub sel: Option<TextSel>,
+    pub dragging: bool,
 }
 
 /// Empty rows after the last line of a log: the list is virtualized, so its bottom margin is made of rows.

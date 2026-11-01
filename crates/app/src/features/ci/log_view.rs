@@ -6,19 +6,23 @@ use std::sync::Arc;
 use gd_forge::{Log, Style};
 use gd_ui::{Button, Icon, Theme, empty_state, icon};
 use gpui::{
-    App, ClipboardItem, Entity, FontStyle, FontWeight, HighlightStyle, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    ScrollStrategy, StatefulInteractiveElement, Styled, StyledText, UnderlineStyle, Window, div, prelude::*, px, uniform_list,
+    App, ClipboardItem, Entity, FontStyle, FontWeight, HighlightStyle, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    RenderOnce, ScrollStrategy, StatefulInteractiveElement, Styled, StyledText, UnderlineStyle, Window, combine_highlights, div,
+    prelude::*, px, uniform_list,
 };
 
 use super::ansi::ansi_color;
 use super::duration::format_duration;
 use super::state::CiStore;
+use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
+use crate::workspace::Workspace;
 
 const LINE_HEIGHT: f32 = 20.0;
 
 #[derive(IntoElement)]
 pub struct LogView {
     pub store: Entity<CiStore>,
+    pub ws: Entity<Workspace>,
     pub job: gd_forge::JobId,
 }
 
@@ -92,13 +96,13 @@ impl LogView {
 
     fn lines(&self, log: Arc<Log>, cx: &App) -> impl IntoElement + use<> {
         let ci = self.store.read(cx);
-        let (store, scroll, count) = (self.store.clone(), ci.log.scroll.clone(), ci.log.rows());
+        let (store, ws, scroll, count) = (self.store.clone(), self.ws.clone(), ci.log.scroll.clone(), ci.log.rows());
         uniform_list("ci-log", count, move |range, _, cx| {
             let ci = store.read(cx);
             let theme = Theme::of(cx);
             range
                 .map(|row| match ci.log.visible.get(row) {
-                    Some(&line) => log_line(line, &log, &ci.log.toggled, &store, theme).into_any_element(),
+                    Some(&line) => log_line(line, &log, &ci.log.toggled, ci.log.sel, &store, &ws, theme).into_any_element(),
                     None => div().h(px(LINE_HEIGHT)).into_any_element(),
                 })
                 .collect()
@@ -111,15 +115,45 @@ impl LogView {
 }
 
 /// A plain fn: rows of a virtualized list are rebuilt every frame.
-fn log_line(line: usize, log: &Log, toggled: &HashSet<usize>, store: &Entity<CiStore>, theme: &Theme) -> impl IntoElement + use<> {
+fn log_line(
+    line: usize,
+    log: &Log,
+    toggled: &HashSet<usize>,
+    sel: Option<TextSel>,
+    store: &Entity<CiStore>,
+    ws: &Entity<Workspace>,
+    theme: &Theme,
+) -> impl IntoElement + use<> {
     let text = &log.lines[line];
     let section = log.sections.iter().position(|s| s.header == line);
-    let highlights = text.spans.iter().map(|span| (span.range.clone(), highlight(&span.style, theme)));
-    let styled = StyledText::new(text.text.clone()).with_highlights(highlights);
-    let row = div().id(("ci-log-line", line)).flex().items_center().h(px(LINE_HEIGHT)).w_full().overflow_hidden().whitespace_nowrap();
+    let ansi = text.spans.iter().map(|span| (span.range.clone(), highlight(&span.style, theme)));
+    let selected = sel.and_then(|s| s.cols_in(line, TextSide::Unified, text.text.len()));
+    let wash = selected.map(|r| (r, HighlightStyle { background_color: Some(theme.selection), ..Default::default() }));
+    let styled = StyledText::new(text.text.clone()).with_highlights(combine_highlights(ansi, wash));
+    let layout = styled.layout().clone();
+    // While dragging, the pointer over any part of a row moves the caret to the nearest position in its text.
+    let drag = {
+        let (store, hit) = (store.clone(), layout.clone());
+        move |e: &gpui::MouseMoveEvent, _: &mut Window, cx: &mut App| {
+            if e.pressed_button == Some(MouseButton::Left) && store.read(cx).log.dragging {
+                let pos = TextPos { line, col: hit.index_for_position(e.position).unwrap_or_else(|nearest| nearest) };
+                store.update(cx, |s, cx| s.log_drag(pos, cx));
+            }
+        }
+    };
+    let row = div().id(("ci-log-line", line)).flex().items_center().h(px(LINE_HEIGHT)).w_full().overflow_hidden().whitespace_nowrap().on_mouse_move(drag);
     let number = div().flex_none().w(px(56.0)).pr(px(10.0)).text_right().text_color(theme.text_faint).child((line + 1).to_string());
+    // The text sits in a flex column so it is measured and can hit-test (see `diff::highlight::line_text`).
+    let cell = div().flex_1().min_w_0().overflow_hidden().flex().flex_col().child(styled);
     let Some(ix) = section else {
-        return row.child(number).child(div().flex_none().w(px(18.0))).child(div().flex_1().min_w_0().overflow_hidden().child(styled)).into_any_element();
+        let (store, ws) = (store.clone(), ws.clone());
+        let cell = cell.cursor_text().on_mouse_down(MouseButton::Left, move |e, window, cx| {
+            let pos = TextPos { line, col: layout.index_for_position(e.position).unwrap_or_else(|nearest| nearest) };
+            // Take focus away from anything else so Ctrl/Cmd+C and +A reach the log.
+            ws.update(cx, |w, cx| w.focus(window, cx));
+            store.update(cx, |s, cx| s.log_press(pos, e.click_count, e.modifiers.shift, cx));
+        });
+        return row.child(number).child(div().flex_none().w(px(18.0))).child(cell).into_any_element();
     };
     let s = &log.sections[ix];
     let collapsed = s.collapsed != toggled.contains(&ix);
@@ -133,7 +167,7 @@ fn log_line(line: usize, log: &Log, toggled: &HashSet<usize>, store: &Entity<CiS
         .on_click(move |_, _, cx| store.update(cx, |s, cx| s.toggle_section(ix, cx)))
         .child(number)
         .child(div().flex_none().w(px(18.0)).child(icon(if collapsed { Icon::ChevronRight } else { Icon::ChevronDown }).size(px(12.0)).text_color(theme.text_muted)))
-        .child(div().flex_1().min_w_0().overflow_hidden().child(styled))
+        .child(cell)
         .children(s.duration.map(|d| div().flex_none().px(px(12.0)).text_color(theme.text_faint).child(format_duration(d))))
         .into_any_element()
 }
