@@ -113,9 +113,8 @@ pub struct OAuthApp {
 const BUILTIN_CLIENT_IDS: [(&str, &str); 4] = [
     // OAuth App "desktop-rs" (device flow enabled) of github.com/mxmvncnt.
     ("github.com", "Ov23liWNVoyi5E8E5lb0"),
-    // TODO(maintainer): register a GitLab application on gitlab.com (User settings > Applications):
-    // confidential unchecked, scope `api`, redirect URI `http://127.0.0.1:47123/callback`.
-    ("gitlab.com", ""),
+    // Application "desktop-rs" of gitlab.com (confidential unchecked, scope `api`, redirect URI `http://127.0.0.1:47123/callback`).
+    ("gitlab.com", "4f94f81b48f3ee98ae4959ab9a411bca5c4a747caa2bbb8404317c3cdc122929"),
     // Optional (until then the Gitea/Forgejo default app below is used): register an OAuth2 app on the
     // host, confidential unchecked, redirect URI `http://127.0.0.1:47123` (no path).
     ("codeberg.org", ""),
