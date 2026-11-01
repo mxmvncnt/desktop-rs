@@ -613,6 +613,8 @@ is the remote host. `Repository::remote_host()` (gd-git) gives the host of the d
 A full page, not an overlay: `Workspace::body` returns `CiPage` instead of sidebar + main pane while `CiStore::open` (the toolbar button
 left of the settings cog, Ctrl/Cmd+Shift+I; Esc closes it after the overlays). Only the toolbar stays. `Workspace::ci: Entity<CiStore>`
 is observed like the other stores; `attach_model` calls `sync_ci` when a repository is opened while the page is open, so it shows the new repo.
+Opening and closing swap the body, and whichever appears fades in with `motion::fade_quick` (150ms; ids `ci-page-in` and `body-in`, so the animation
+plays again each time its element comes back); the one that goes is gone at once, as a fade-out would need the page kept alive after `open` is false.
 
 - `state.rs` (`CiStore`), `target.rs` (`Target` = forge + `RepoRef` + account; `Problem` = every empty state, `Problem::describe`; `forge_of(Provider)`),
   `ops.rs` (resolve, list, details), `polling.rs`, `handlers.rs` (`impl Workspace`: `toggle_ci`, `sync_ci`, `back_ci`).

@@ -1,7 +1,7 @@
 //! The root "template": toolbar, body (sidebar + main pane or welcome) and
 //! the overlay stack.
 
-use gd_ui::Theme;
+use gd_ui::{Theme, motion};
 use gpui::{
     AnyElement, Context, DragMoveEvent, MouseButton, NavigationDirection, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     div, px,
@@ -77,14 +77,16 @@ impl Workspace {
         let Some(repo) = self.repo.clone() else {
             return WelcomeScreen { ws: cx.entity() }.into_any_element();
         };
+        // Opening and closing the CI page swap the body: whichever appears fades in (the one that goes is gone at once).
         if self.ci.read(cx).open {
-            return CiPage { store: self.ci.clone(), ws: cx.entity() }.into_any_element();
+            let page = div().flex_1().min_h_0().flex().flex_col().child(CiPage { store: self.ci.clone(), ws: cx.entity() });
+            return motion::fade_quick("ci-page-in", page).into_any_element();
         }
         let (tab, pr_open) = {
             let r = repo.read(cx);
             (r.tab, r.pr.open)
         };
-        div()
+        let body = div()
             .flex()
             .flex_1()
             .min_h_0()
@@ -93,8 +95,8 @@ impl Workspace {
                 _ if pr_open => self.render_pr_preview(&repo, cx).into_any_element(),
                 Tab::Changes => self.render_changes_main(&repo, cx).into_any_element(),
                 Tab::History => self.render_history_main(&repo, cx).into_any_element(),
-            })
-            .into_any_element()
+            });
+        motion::fade_quick("body-in", body).into_any_element()
     }
 
     /// Notice banner, then the open overlays in stack order (last paints on top).
