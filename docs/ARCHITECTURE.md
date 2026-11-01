@@ -635,6 +635,7 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
   the copy skips lines a collapsed section hides. The mouse-up that ends a drag is the workspace root's.
 - Steps in the log: the header line of a top-level section (`depth == 0`: a GitLab script stage, a GitHub/Gitea group) is drawn as a tinted band with a
   divider above it, so the steps can be told apart; nested sections keep the plain hover row. Uniform rows rule out a gap between steps.
+  The rows inside an open section get the same wash, so an opened step is easy to tell from the lines around it.
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
 - Polling (`polling.rs`): one task while the page is open, every 10 s when something in the list is unfinished, else every 60 s; skipped while the

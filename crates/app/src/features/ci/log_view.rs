@@ -145,6 +145,8 @@ fn log_line(
     let number = div().flex_none().w(px(56.0)).pr(px(10.0)).text_right().text_color(theme.text_faint).child((line + 1).to_string());
     // The text sits in a flex column so it is measured and can hit-test (see `diff::highlight::line_text`).
     let cell = div().flex_1().min_w_0().overflow_hidden().flex().flex_col().child(styled);
+    // The rows of an open section have the band of its header, to tell them from the rest.
+    let inside = log.sections.iter().any(|s| s.header < line && line < s.end);
     let Some(ix) = section else {
         let (store, ws) = (store.clone(), ws.clone());
         let cell = cell.cursor_text().on_mouse_down(MouseButton::Left, move |e, window, cx| {
@@ -153,13 +155,13 @@ fn log_line(
             ws.update(cx, |w, cx| w.focus(window, cx));
             store.update(cx, |s, cx| s.log_press(pos, e.click_count, e.modifiers.shift, cx));
         });
-        return row.child(number).child(div().flex_none().w(px(18.0))).child(cell).into_any_element();
+        return row.when(inside, |d| d.bg(theme.ink(0.05))).child(number).child(div().flex_none().w(px(18.0))).child(cell).into_any_element();
     };
     let s = &log.sections[ix];
     let collapsed = s.collapsed != toggled.contains(&ix);
     let store = store.clone();
     // A top-level section is a step (GitLab script stage, GitHub/Gitea group): its header is a band that tells the steps apart.
-    let (rest, hover) = if s.depth == 0 { (theme.ink(0.05), theme.ink(0.09)) } else { (theme.ink(0.0), theme.element_hover) };
+    let (rest, hover) = if s.depth == 0 || inside { (theme.ink(0.05), theme.ink(0.09)) } else { (theme.ink(0.0), theme.element_hover) };
     row.cursor_pointer()
         .bg(rest)
         .when(s.depth == 0, |d| d.border_t_1().border_color(theme.border))
