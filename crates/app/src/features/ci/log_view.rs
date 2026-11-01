@@ -7,7 +7,7 @@ use gd_forge::{Log, Style};
 use gd_ui::{Button, Icon, Theme, empty_state, icon};
 use gpui::{
     App, ClipboardItem, Entity, FontStyle, FontWeight, HighlightStyle, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    ScrollStrategy, StatefulInteractiveElement, Styled, StyledText, UnderlineStyle, Window, div, px, uniform_list,
+    ScrollStrategy, StatefulInteractiveElement, Styled, StyledText, UnderlineStyle, Window, div, prelude::*, px, uniform_list,
 };
 
 use super::ansi::ansi_color;
@@ -124,8 +124,12 @@ fn log_line(line: usize, log: &Log, toggled: &HashSet<usize>, store: &Entity<CiS
     let s = &log.sections[ix];
     let collapsed = s.collapsed != toggled.contains(&ix);
     let store = store.clone();
+    // A top-level section is a step (GitLab script stage, GitHub/Gitea group): its header is a band that tells the steps apart.
+    let (rest, hover) = if s.depth == 0 { (theme.ink(0.05), theme.ink(0.09)) } else { (theme.ink(0.0), theme.element_hover) };
     row.cursor_pointer()
-        .hover_style(|d| d.bg(theme.element_hover))
+        .bg(rest)
+        .when(s.depth == 0, |d| d.border_t_1().border_color(theme.border))
+        .hover_style(move |d| d.bg(hover))
         .on_click(move |_, _, cx| store.update(cx, |s, cx| s.toggle_section(ix, cx)))
         .child(number)
         .child(div().flex_none().w(px(18.0)).child(icon(if collapsed { Icon::ChevronRight } else { Icon::ChevronDown }).size(px(12.0)).text_color(theme.text_muted)))
