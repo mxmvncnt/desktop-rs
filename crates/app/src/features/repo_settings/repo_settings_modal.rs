@@ -3,10 +3,7 @@
 use std::rc::Rc;
 
 use gd_git::Repository;
-use gpui::{
-    App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
-    Window, div, px,
-};
+use gpui::{App, Context, Entity, IntoElement, RenderOnce, Window};
 
 use super::config_page::ConfigPage;
 use super::ignore_page::IgnorePage;
@@ -93,7 +90,7 @@ impl RenderOnce for RepoSettingsModal {
             title: title.into(),
             nav: nav.into(),
             nav_bottom: Vec::new(),
-            body: div().id("repo-settings-scroll").size_full().overflow_y_scroll().child(div().pr(px(8.0)).child(body)).into_any_element(),
+            body,
             on_close: Rc::new(move |w, cx| ws.update(cx, |this, cx| this.close_overlay(w, cx))),
         }
     }

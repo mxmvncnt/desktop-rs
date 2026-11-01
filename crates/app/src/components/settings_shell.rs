@@ -75,7 +75,10 @@ impl RenderOnce for SettingsShell {
                     .flex_col()
                     .child(title_bar)
                     .child(divider(cx))
-                    .child(div().flex_1().min_h_0().p(px(24.0)).child(self.body)),
+                    .child(
+                        // The padding is inside the scroll area, so scrolled content runs up to the divider and the bottom edge.
+                        div().id("settings-scroll").flex_1().min_h_0().overflow_y_scroll().child(div().p(px(24.0)).child(self.body)),
+                    ),
             );
         modal(card, Some(backdrop), instant)
     }

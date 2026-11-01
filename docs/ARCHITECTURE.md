@@ -597,6 +597,8 @@ is the remote host. `Repository::remote_host()` (gd-git) gives the host of the d
 - `Overlay::RepoSettings`, state in `RepoSettingsStore` (`Workspace::repo_settings`, observed like `accounts`): page, repository facts (`gd-git/info.rs`
   `Repository::info`, read in the background with `spawn_load`). Layout is `components::SettingsShell` (sidebar `NavItem`s, title bar, Esc captured even
   while an input is focused); `SettingsModal` uses the same shell.
+  The shell owns the one scroll area of the body and pads inside it, so pages
+  do not scroll themselves and scrolled content reaches the title divider and the bottom edge.
 - Identity and account pages reuse `accounts::RepoIdentity` / `RepoAccountBlock` and `AccountsStore` (`load_identity(Some(repo))` runs on open and on
   every page switch). The app Settings → Accounts page only has the global identity (`load_identity(None)`).
 - Entry points: `Workspace::open_repo_settings`, `open_repo_menu` (right-click on `ToolbarButton::on_right_click`), the `OpenRepositorySettings` action.

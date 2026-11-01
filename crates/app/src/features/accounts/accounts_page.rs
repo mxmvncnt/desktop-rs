@@ -1,9 +1,7 @@
 //! Settings → Accounts: the global git identity, then provider accounts (or the
 //! add/edit form while it is open). Scrolls when taller than the modal.
 
-use gpui::{
-    App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
-};
+use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use super::account_form::AccountForm;
 use super::account_list::AccountList;
@@ -20,7 +18,7 @@ impl RenderOnce for AccountsPage {
         let s = self.store.read(cx);
         let (store, inputs) = (self.store.clone(), s.inputs.clone());
         // The form replaces the whole page so it is fully visible.
-        let content = match s.form.clone() {
+        match s.form.clone() {
             Some(form) => AccountForm { form, inputs, store }.into_any_element(),
             None => div()
                 .flex()
@@ -30,13 +28,6 @@ impl RenderOnce for AccountsPage {
                 .child(div().h(px(1.0)).bg(gd_ui::Theme::of(cx).border))
                 .child(AccountList { accounts: s.accounts.clone(), store })
                 .into_any_element(),
-        };
-        div()
-            .id("settings-accounts-scroll")
-            .size_full()
-            .overflow_y_scroll()
-            .child(
-                div().pr(px(8.0)).child(content),
-            )
+        }
     }
 }
