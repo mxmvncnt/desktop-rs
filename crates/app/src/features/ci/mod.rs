@@ -1,6 +1,7 @@
 //! CI pipelines page: a full-window view (under the toolbar) modeled on GitLab's pipelines UI.
 //! API work is in `gd-forge`; the account comes from `features/accounts`. See docs/ARCHITECTURE.md §CI page.
 
+mod ci_menu;
 mod ci_page;
 mod duration;
 mod filter_entries;
@@ -29,5 +30,6 @@ mod target;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
 
+pub use ci_menu::CiMenu;
 pub use ci_page::CiPage;
 pub use state::{CiEvent, CiInputs, CiStore, Field};

@@ -1,12 +1,14 @@
 //! CI page state: what is shown, the pipelines loaded so far and the per-pipeline detail cache.
 
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
-use gpui::{App, AppContext as _, Entity, EventEmitter, Task, UniformListScrollHandle};
+use gpui::{App, AppContext as _, Entity, EventEmitter, Pixels, Point, Task, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::target::{Problem, Target};
@@ -87,12 +89,15 @@ impl LogState {
 pub struct CiInputs {
     pub branch: Entity<EditableTextState>,
     pub user: Entity<EditableTextState>,
+    /// Where the dropdown of each opens: below the field, in window coordinates. Set while painting it.
+    pub branch_at: Rc<Cell<Point<Pixels>>>,
+    pub user_at: Rc<Cell<Point<Pixels>>>,
 }
 
 impl CiInputs {
     pub fn new(cx: &mut App) -> Self {
         let mk = |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
-        Self { branch: mk(cx), user: mk(cx) }
+        Self { branch: mk(cx), user: mk(cx), branch_at: Rc::default(), user_at: Rc::default() }
     }
 }
 

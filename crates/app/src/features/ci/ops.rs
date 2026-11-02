@@ -287,7 +287,7 @@ impl CiStore {
         cx.notify();
     }
 
-    /// A click on the field or its chevron: list the choices, all of them.
+    /// A click on the field: list the choices, all of them.
     pub fn open_menu(&mut self, field: Field, cx: &mut Context<Self>) {
         if self.menu != Some(field) {
             self.menu = Some(field);

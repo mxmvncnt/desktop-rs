@@ -1,9 +1,10 @@
 //! `impl Workspace`: opening, closing and re-syncing the CI page.
 
-use gpui::{Context, Entity, Focusable as _, Window};
+use gpui::{App, Context, Entity, Focusable as _, Window};
 use gpui_elements::editable_text::EditableTextState;
 
 use super::CiEvent;
+use super::filter_entries::{Entry, branch_entries, user_entries};
 use super::state::Field;
 use crate::workspace::Workspace;
 
@@ -59,6 +60,27 @@ impl Workspace {
         self.ci.update(cx, |ci, cx| ci.close_menu(cx));
         self.ci_inputs.branch.update(cx, |s, cx| s.emplace(&branch, cx));
         self.ci_inputs.user.update(cx, |s, cx| s.emplace(&user, cx));
+    }
+
+    /// What the dropdown of `field` lists, and whether text narrows it; `None` while it is closed.
+    pub(crate) fn ci_entries(&self, field: Field, cx: &App) -> Option<(Vec<Entry>, bool)> {
+        let ci = self.ci.read(cx);
+        if ci.menu != Some(field) {
+            return None;
+        }
+        let input = match field {
+            Field::Branch => &self.ci_inputs.branch,
+            Field::User => &self.ci_inputs.user,
+        };
+        let typed = if ci.menu_typed { input.read(cx).as_str().trim().to_string() } else { String::new() };
+        let entries = match field {
+            Field::Branch => {
+                let current = ci.ready().and_then(|t| t.branch.clone());
+                self.repo.as_ref().map(|r| branch_entries(&r.read(cx).branches, current.as_deref(), &typed)).unwrap_or_default()
+            }
+            Field::User => user_entries(ci.known_users(), &typed),
+        };
+        Some((entries, !typed.is_empty()))
     }
 
     /// Another repository: its branches and authors are not the ones typed.

@@ -18,6 +18,7 @@ use crate::features::history::HistoryDialogView;
 use crate::features::menus::DiscardDialogView;
 use crate::features::merge::{InProgressBanner, MergeDialogView};
 use crate::features::notices::NoticeBanner;
+use crate::features::ci::{CiMenu, Field};
 use crate::features::pickers::PopoverLayer;
 use crate::features::repo_settings::RepoSettingsModal;
 use crate::features::settings::SettingsModal;
@@ -104,6 +105,12 @@ impl Workspace {
     fn overlays(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let mut out: Vec<AnyElement> = NoticeBanner::open(self, cx).into_iter().map(IntoElement::into_any_element).collect();
         let ws = cx.entity();
+        for (field, at) in [(Field::Branch, &self.ci_inputs.branch_at), (Field::User, &self.ci_inputs.user_at)] {
+            if let Some((entries, typed)) = self.ci_entries(field, cx) {
+                let (store, inputs, position) = (self.ci.clone(), self.ci_inputs.clone(), at.get());
+                out.push(CiMenu { ws: ws.clone(), store, inputs, field, entries, typed, position }.into_any_element());
+            }
+        }
         for overlay in self.overlays.clone() {
             out.extend(match overlay {
                 Overlay::Popover(p) => Some(PopoverLayer::open(self, p, cx).into_any_element()),

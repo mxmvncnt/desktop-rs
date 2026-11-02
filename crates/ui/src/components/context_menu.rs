@@ -13,6 +13,8 @@ use crate::theme::Theme;
 /// One selectable row of a [`ContextMenu`].
 pub struct MenuItem {
     pub label: SharedString,
+    /// Faint note after the label.
+    pub detail: Option<SharedString>,
     pub icon: Option<Icon>,
     pub danger: bool,
     pub disabled: bool,
@@ -21,7 +23,11 @@ pub struct MenuItem {
 
 impl MenuItem {
     pub fn new(label: impl Into<SharedString>) -> Self {
-        Self { label: label.into(), icon: None, danger: false, disabled: false, on_select: None }
+        Self { label: label.into(), detail: None, icon: None, danger: false, disabled: false, on_select: None }
+    }
+    pub fn detail(mut self, d: impl Into<SharedString>) -> Self {
+        self.detail = Some(d.into());
+        self
     }
     pub fn icon(mut self, i: Icon) -> Self {
         self.icon = Some(i);
@@ -61,11 +67,13 @@ pub struct ContextMenu {
     entries: Vec<MenuEntry>,
     selected: Option<usize>,
     on_dismiss: Option<Callback>,
+    max_height: Option<f32>,
+    icon_column: bool,
 }
 
 impl ContextMenu {
     pub fn new(id: impl Into<ElementId>, position: Point<Pixels>) -> Self {
-        Self { id: id.into(), position, entries: Vec::new(), selected: None, on_dismiss: None }
+        Self { id: id.into(), position, entries: Vec::new(), selected: None, on_dismiss: None, max_height: None, icon_column: true }
     }
     pub fn item(mut self, item: MenuItem) -> Self {
         self.entries.push(MenuEntry::Item(item));
@@ -81,6 +89,16 @@ impl ContextMenu {
     }
     pub fn selected(mut self, ix: Option<usize>) -> Self {
         self.selected = ix;
+        self
+    }
+    /// Scroll when the entries are taller than this (no limit by default).
+    pub fn max_height(mut self, h: f32) -> Self {
+        self.max_height = Some(h);
+        self
+    }
+    /// Leave out the column the icons go in, for a menu whose rows have none.
+    pub fn without_icons(mut self) -> Self {
+        self.icon_column = false;
         self
     }
     /// Called when the backdrop is clicked (left or right).
@@ -110,6 +128,7 @@ impl RenderOnce for ContextMenu {
                     MenuEntry::Separator => SEPARATOR_H,
                 })
                 .sum::<f32>();
+        let height = self.max_height.map_or(height, |max| height.min(max));
         let x = position.x.min(view.width - px(MENU_WIDTH + 8.0)).max(px(8.0));
         let y = if position.y + px(height + 8.0) > view.height {
             (position.y - px(height)).max(px(8.0))
@@ -117,6 +136,7 @@ impl RenderOnce for ContextMenu {
             position.y
         };
 
+        let (icon_column, max_height) = (self.icon_column, self.max_height);
         let mut card = div().p(px(MENU_PAD)).flex().flex_col();
         for (ix, entry) in self.entries.into_iter().enumerate() {
             card = card.child(match entry {
@@ -139,12 +159,15 @@ impl RenderOnce for ContextMenu {
                         .rounded(px(6.0))
                         .text_size(px(13.0))
                         .text_color(fg)
-                        .child(
-                            div().flex_none().w(px(15.0)).children(
-                                item.icon.map(|i| icon(i).size(px(15.0)).text_color(icon_fg)),
-                            ),
-                        )
-                        .child(div().flex_1().min_w_0().truncate().child(item.label));
+                        .children(icon_column.then(|| {
+                            div().flex_none().w(px(15.0)).children(item.icon.map(|i| icon(i).size(px(15.0)).text_color(icon_fg)))
+                        }));
+                    row = match item.detail {
+                        None => row.child(div().flex_1().min_w_0().truncate().child(item.label)),
+                        Some(d) => row.child(div().flex_none().child(item.label)).child(
+                            div().flex_1().min_w_0().truncate().text_size(px(12.0)).text_color(theme.text_faint).child(d),
+                        ),
+                    };
                     if item.disabled {
                         row = row.opacity(0.4).cursor_default();
                     } else if let Some(f) = item.on_select {
@@ -155,6 +178,10 @@ impl RenderOnce for ContextMenu {
             });
         }
 
+        let card = match max_height {
+            Some(max) => div().id("menu-scroll").max_h(px(max)).overflow_y_scroll().child(card).into_any_element(),
+            None => card.into_any_element(),
+        };
         let mut menu = Popover::new(self.id, gpui::point(x, y), MENU_WIDTH, card);
         if let Some(f) = self.on_dismiss {
             menu = menu.on_dismiss(move |_, w, cx| f(w, cx));

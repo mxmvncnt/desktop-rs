@@ -2,10 +2,8 @@
 
 use gd_forge::Status;
 use gd_ui::{Button, Icon, Tabs, Theme};
-use gpui_elements::editable_text::EditableTextState;
 use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
 
-use super::filter_entries::{branch_entries, user_entries};
 use super::filter_field::FilterField;
 use super::state::{CiStore, Field};
 use crate::workspace::Workspace;
@@ -28,19 +26,9 @@ impl RenderOnce for PipelinesHeader {
         let selected = STATUS_TABS.iter().position(|(_, s)| *s == ci.status).unwrap_or(0);
         let refreshing = ci.refreshing;
         let account = target.map(|t| format!("via {} · {}", t.account_name, t.host));
-        let current_branch = target.and_then(|t| t.branch.clone());
         let can_filter_user = target.is_some_and(|t| t.forge.capabilities().filter_user);
         let inputs = self.ws.read(cx).ci_inputs.clone();
         let (ws, store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.ws.clone());
-        // The dropdown that is open, with what it lists for the text typed in it.
-        let typed = |input: &Entity<EditableTextState>| if ci.menu_typed { input.read(cx).as_str().trim().to_string() } else { String::new() };
-        let branch_typed = typed(&inputs.branch);
-        let branch_entries = (ci.menu == Some(Field::Branch)).then(|| {
-            let repo = self.ws.read(cx).repo.as_ref();
-            repo.map(|r| branch_entries(&r.read(cx).branches, current_branch.as_deref(), &branch_typed)).unwrap_or_default()
-        });
-        let user_typed = typed(&inputs.user);
-        let user_entries = (ci.menu == Some(Field::User)).then(|| user_entries(ci.known_users(), &user_typed));
         let labeled = |label: &'static str| div().flex().items_center().gap(px(8.0)).child(div().text_size(px(12.0)).text_color(theme.text_muted).child(label));
 
         div()
@@ -107,8 +95,8 @@ impl RenderOnce for PipelinesHeader {
                             input: inputs.branch.clone(),
                             placeholder: "All branches",
                             width: 180.0,
-                            entries: branch_entries,
-                            typed: branch_typed,
+                            entries: self.ws.read(cx).ci_entries(Field::Branch, cx).map(|(entries, _)| entries),
+                            anchor: inputs.branch_at.clone(),
                         }))
                         .when(can_filter_user, |d| {
                             d.child(labeled("User").child(FilterField {
@@ -117,8 +105,8 @@ impl RenderOnce for PipelinesHeader {
                                 input: inputs.user.clone(),
                                 placeholder: "Anyone",
                                 width: 150.0,
-                                entries: user_entries,
-                                typed: user_typed,
+                                entries: self.ws.read(cx).ci_entries(Field::User, cx).map(|(entries, _)| entries),
+                                anchor: inputs.user_at.clone(),
                             }))
                         }),
                 )
