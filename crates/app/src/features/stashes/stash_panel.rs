@@ -3,17 +3,25 @@
 use gd_ui::Theme;
 use gpui::{Animation, AnimationExt, App, Entity, IntoElement, RenderOnce, Window, div, ease_out_quint, prelude::*, px};
 
-use super::stash_list::{MAX_ROWS, StashList};
-use super::stash_row::STASH_ROW_HEIGHT;
-use crate::components::LIST_INSET_Y;
+use super::stash_list::{StashList, list_height};
+use super::state::StashState;
 use super::stash_panel_header::StashPanelHeader;
 use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
-/// Duration of the collapse / expand slide.
+/// Duration of the slide when the body collapses, expands or changes height.
 const SLIDE: std::time::Duration = std::time::Duration::from_millis(200);
 /// Height of [`empty_hint`].
 const HINT_HEIGHT: f32 = 28.0;
+
+/// Height of the panel body: nothing when collapsed, else the list or the empty hint.
+pub fn body_height(st: &StashState, current_branch: Option<&str>) -> f32 {
+    match (!st.collapsed, st.visible(current_branch).len()) {
+        (false, _) => 0.0,
+        (true, 0) => HINT_HEIGHT,
+        (true, n) => list_height(n),
+    }
+}
 
 #[derive(IntoElement)]
 pub struct StashPanel {
@@ -34,25 +42,27 @@ impl RenderOnce for StashPanel {
         let r = self.repo.read(cx);
         let st = &r.stashes;
         let visible = st.visible(r.current_branch());
-        let (shown, collapsed, all, animate) = (visible.len(), st.collapsed, st.all_branches, st.animate);
-        let (full, body) = if shown == 0 {
-            (HINT_HEIGHT, empty_hint(&theme).into_any_element())
+        let (shown, collapsed, all) = (visible.len(), st.collapsed, st.all_branches);
+        let target = body_height(st, r.current_branch());
+        let body = if shown == 0 {
+            empty_hint(&theme).into_any_element()
         } else {
-            let list = StashList {
+            StashList {
                 repo: self.repo.clone(),
                 ws: self.ws,
                 visible,
                 current_branch: r.current_branch().map(str::to_owned),
-            };
-            ((shown.min(MAX_ROWS) as f32) * STASH_ROW_HEIGHT + LIST_INSET_Y, list.into_any_element())
+            }
+            .into_any_element()
         };
-        let open = move |t: f32| px(full * if collapsed { 1.0 - t } else { t });
         let body = div().overflow_hidden().flex_none().child(body);
-        let body = if animate {
-            body.with_animation(("stash-body", collapsed as usize), Animation::new(SLIDE).with_easing(ease_out_quint()), move |el, t| el.h(open(t)))
-                .into_any_element()
-        } else {
-            body.h(open(1.0)).into_any_element()
+        let body = match st.slide_from {
+            Some(from) => body
+                .with_animation(("stash-body", st.slides), Animation::new(SLIDE).with_easing(ease_out_quint()), move |el, t| {
+                    el.h(px(from + (target - from) * t))
+                })
+                .into_any_element(),
+            None => body.h(px(target)).into_any_element(),
         };
         div()
             .flex()
