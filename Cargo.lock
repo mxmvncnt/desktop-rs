@@ -1375,7 +1375,7 @@ dependencies = [
 
 [[package]]
 name = "desktop-rs"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2078,7 +2078,7 @@ dependencies = [
 
 [[package]]
 name = "gd-forge"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "chrono",
  "gd-git",
@@ -2093,7 +2093,7 @@ dependencies = [
 
 [[package]]
 name = "gd-git"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "log",
@@ -2105,7 +2105,7 @@ dependencies = [
 
 [[package]]
 name = "gd-syntax"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "thiserror 2.0.21",
  "tree-sitter",
@@ -2128,7 +2128,7 @@ dependencies = [
 
 [[package]]
 name = "gd-ui"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "gd-syntax",
