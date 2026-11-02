@@ -1,6 +1,6 @@
-//! Header of the stash panel: collapse toggle and the branch filter button.
+//! Header of the stash panel: collapse toggle and the branch filter checkbox.
 
-use gd_ui::{Button, Icon, Theme, icon, pressable};
+use gd_ui::{CheckRow, Icon, Theme, icon, pressable};
 use gpui::{App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 use crate::repo::RepoModel;
@@ -48,12 +48,8 @@ impl RenderOnce for StashPanelHeader {
                     )
                     .on_click(move |_, _, cx| repo_a.update(cx, |r, cx| r.toggle_stash_panel(cx))),
             )
-            .child(
-                Button::new("stash-filter")
-                    .ghost()
-                    .compact()
-                    .label(if self.all_branches { "All branches" } else { "This branch" })
-                    .on_click(move |_, _, cx| repo_b.update(cx, |r, cx| r.toggle_stash_filter(cx))),
-            )
+            .child(CheckRow::new("stash-filter", "Current branch only", !self.all_branches, move |_, cx| {
+                repo_b.update(cx, |r, cx| r.toggle_stash_filter(cx))
+            }))
     }
 }

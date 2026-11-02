@@ -66,8 +66,8 @@ impl RenderOnce for StashPanel {
     }
 }
 
-/// Shown when the branch filter hides every stash; the header's filter
-/// button switches to "All branches".
+/// Shown when the branch filter hides every stash; the header's
+/// "Current branch only" checkbox shows all of them.
 fn empty_hint(theme: &Theme) -> impl IntoElement + use<> {
     div()
         .flex()
