@@ -43,7 +43,6 @@ impl RenderOnce for StashPanel {
                 ws: self.ws,
                 visible,
                 current_branch: r.current_branch().map(str::to_owned),
-                all_branches: all,
             };
             ((shown.min(MAX_ROWS) as f32) * STASH_ROW_HEIGHT + LIST_INSET_Y, list.into_any_element())
         };

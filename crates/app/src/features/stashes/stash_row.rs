@@ -1,7 +1,7 @@
 //! One row of the sidebar stash list: title, branch, relative time.
 
 use gd_git::Stash;
-use gd_ui::{Icon, Theme, badge, icon, pressable};
+use gd_ui::{Icon, Theme, icon, pressable};
 use gpui::{App, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelude::*, px};
 
 use crate::repo::RepoModel;
@@ -16,8 +16,6 @@ pub struct StashRow {
     pub selected: bool,
     /// Made on the checked-out branch.
     pub here: bool,
-    /// "All branches" filter is on (shows the "this branch" badge).
-    pub all_branches: bool,
     pub repo: Entity<RepoModel>,
     pub ws: Entity<Workspace>,
 }
@@ -46,7 +44,7 @@ impl RenderOnce for StashRow {
                     .text_color(if here || selected { theme.text } else { theme.text_muted })
                     .child(stash.title()),
             )
-            .child(meta_line(&stash, here, self.all_branches, &theme, cx))
+            .child(meta_line(&stash, here, &theme))
             .on_mouse_down(MouseButton::Right, move |e, w, cx| {
                 let (pos, s) = (e.position, menu_stash.clone());
                 ws.update(cx, |this, cx| this.open_stash_menu(s, pos, w, cx))
@@ -58,9 +56,8 @@ impl RenderOnce for StashRow {
     }
 }
 
-/// Second line: branch name, relative time, optional "this branch" badge.
-fn meta_line(s: &Stash, here: bool, all: bool, theme: &Theme, cx: &App) -> impl IntoElement + use<> {
-    let accent = theme.accent;
+/// Second line: branch name, relative time.
+fn meta_line(s: &Stash, here: bool, theme: &Theme) -> impl IntoElement + use<> {
     div()
         .flex()
         .items_center()
@@ -77,8 +74,4 @@ fn meta_line(s: &Stash, here: bool, all: bool, theme: &Theme, cx: &App) -> impl 
                 .child(s.branch.clone().unwrap_or_else(|| "(no branch)".into())),
         )
         .child(div().flex_none().child(format!("• {}", relative_time(s.time))))
-        .when(here && all, |d| {
-            d.child(div().flex_1())
-                .child(badge("this branch", cx).h(px(16.0)).text_size(px(10.5)).text_color(accent))
-        })
 }

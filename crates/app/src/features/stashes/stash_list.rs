@@ -17,7 +17,6 @@ pub struct StashList {
     /// Indices into `StashState::list` that pass the branch filter.
     pub visible: Vec<usize>,
     pub current_branch: Option<String>,
-    pub all_branches: bool,
 }
 
 impl RenderOnce for StashList {
@@ -26,7 +25,7 @@ impl RenderOnce for StashList {
         let st = &self.repo.read(cx).stashes;
         let (scroll, viewing, selected) = (st.list_scroll.clone(), st.viewing, st.selected.clone());
         let nav_ws = self.ws.clone();
-        let Self { repo, ws, visible, current_branch, all_branches } = self;
+        let Self { repo, ws, visible, current_branch } = self;
         let list = list("stashes", n, move |range, _w, cx| {
             let r = repo.read(cx);
             range
@@ -38,7 +37,6 @@ impl RenderOnce for StashList {
                         stash: s,
                         selected: selected_here,
                         here,
-                        all_branches,
                         repo: repo.clone(),
                         ws: ws.clone(),
                     })
