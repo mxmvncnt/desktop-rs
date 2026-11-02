@@ -16,7 +16,7 @@ const HINT_HEIGHT: f32 = 28.0;
 
 /// Height of the panel body: nothing when collapsed, else the list or the empty hint.
 pub fn body_height(st: &StashState, current_branch: Option<&str>) -> f32 {
-    match (!st.collapsed, st.visible(current_branch).len()) {
+    match (st.expanded, st.visible(current_branch).len()) {
         (false, _) => 0.0,
         (true, 0) => HINT_HEIGHT,
         (true, n) => list_height(n),
@@ -42,7 +42,7 @@ impl RenderOnce for StashPanel {
         let r = self.repo.read(cx);
         let st = &r.stashes;
         let visible = st.visible(r.current_branch());
-        let (shown, collapsed, all) = (visible.len(), st.collapsed, st.all_branches);
+        let (shown, collapsed, all) = (visible.len(), !st.expanded, st.all_branches);
         let target = body_height(st, r.current_branch());
         let body = if shown == 0 {
             empty_hint(&theme).into_any_element()

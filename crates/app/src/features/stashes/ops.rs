@@ -52,7 +52,7 @@ impl RepoModel {
 
     pub fn toggle_stash_panel(&mut self, cx: &mut Context<Self>) {
         self.start_stash_slide();
-        self.stashes.collapsed = !self.stashes.collapsed;
+        self.stashes.expanded = !self.stashes.expanded;
         cx.notify();
     }
 
@@ -88,7 +88,7 @@ impl RepoModel {
             move |r| r.stash_push(&message, &paths),
             move |this, sha, cx| {
                 this.notice = Some(if n == 0 { "Stashed all changes".into() } else { format!("Stashed {n} path{}", plural(n as u32)) });
-                this.stashes.collapsed = false;
+                this.stashes.expanded = true;
                 this.stashes.selected = Some(sha);
                 this.stashes.viewing = false;
                 this.stashes.detail.clear();

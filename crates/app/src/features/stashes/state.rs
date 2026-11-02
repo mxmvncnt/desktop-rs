@@ -13,8 +13,8 @@ pub struct StashState {
     pub list: Vec<Stash>,
     /// Show stashes made on other branches too (default: this branch only).
     pub all_branches: bool,
-    /// Panel collapsed (kept for the session, per repository).
-    pub collapsed: bool,
+    /// Panel expanded (kept for the session, per repository); collapsed by default.
+    pub expanded: bool,
     /// Body height before the user collapsed, expanded or filtered the panel: it slides from there instead of snapping.
     pub slide_from: Option<f32>,
     /// Bumped on every slide so the animation restarts.

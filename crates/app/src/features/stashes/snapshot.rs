@@ -28,6 +28,7 @@ fn select_stash(ws: &mut Workspace, first: bool, cx: &mut Context<Workspace>) {
     let Some(r) = &ws.repo else { return };
     r.update(cx, |r, cx| {
         r.stashes.all_branches = true;
+        r.stashes.expanded = true;
         let stash = if first { r.stashes.list.first() } else { r.stashes.list.last() };
         if let Some(s) = stash.cloned() {
             r.select_stash(s.sha, cx);
@@ -39,6 +40,7 @@ fn stash_all(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Works
     if let Some(r) = &ws.repo {
         r.update(cx, |r, cx| {
             r.stashes.all_branches = true;
+            r.stashes.expanded = true;
             cx.notify()
         });
     }
