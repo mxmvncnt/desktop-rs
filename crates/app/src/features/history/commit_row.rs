@@ -95,6 +95,7 @@ impl CommitRow {
                     .truncate()
                     .text_size(px(13.0))
                     .text_color(color)
+                    .font_weight(gpui::FontWeight::MEDIUM)
                     .when(is_merge, |d| d.italic())
                     .child(self.commit.summary.clone()),
             )
