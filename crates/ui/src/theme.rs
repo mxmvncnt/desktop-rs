@@ -7,6 +7,8 @@
 //! palettes in `themes.rs`.
 
 use gd_syntax::HighlightKind;
+use std::collections::BTreeMap;
+
 use gpui::{App, Global, Hsla, SharedString, hsla, rgb, rgb_to_hsla};
 
 #[derive(Debug, Clone)]
@@ -72,6 +74,9 @@ pub struct Theme {
     /// Split view placeholder opposite an added/deleted line.
     pub diff_empty_bg: Hsla,
     pub diff_gutter: Hsla,
+
+    /// Pill color per lowercase conventional commit type.
+    pub commit_types: BTreeMap<String, Hsla>,
 
     // ---- syntax ----
     pub syntax: SyntaxPalette,

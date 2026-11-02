@@ -216,6 +216,13 @@
               "type": "null"
             }
           ]
+        },
+        "commit_types": {
+          "description": "Pill colors of conventional commit types (`feat`, `fix`, ...), merged over the defaults.\nTypes without a color get a neutral pill.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Hex"
+          }
         }
       },
       "required": [

@@ -2,7 +2,7 @@
 
 use gd_git::Commit;
 use gd_ui::{Icon, Theme, icon, pressable};
-use gpui::{App, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelude::*, px};
+use gpui::{App, ColorExt as _, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelude::*, px};
 
 use super::state::ClickKind;
 use crate::repo::RepoModel;
@@ -82,10 +82,17 @@ impl CommitRow {
     fn title_line(&self, theme: &Theme) -> impl IntoElement + use<> {
         let is_merge = self.commit.parents.len() > 1;
         let color = if is_merge && !self.selected { theme.text_muted } else { theme.text };
+        let summary = &self.commit.summary;
+        let parsed = git_conventional::Commit::parse(summary).ok();
+        let title = match &parsed {
+            Some(c) => c.scope().map_or(c.description().to_string(), |s| format!("{s}: {}", c.description())),
+            None => summary.clone(),
+        };
         div()
             .flex()
             .items_center()
             .gap(px(6.0))
+            .children(parsed.map(|c| type_pill(c.type_().as_str(), c.breaking(), theme)))
             .child(
                 div()
                     .id(("commit-title", self.ix))
@@ -97,7 +104,7 @@ impl CommitRow {
                     .text_color(color)
                     .font_weight(gpui::FontWeight::MEDIUM)
                     .when(is_merge, |d| d.italic())
-                    .child(self.commit.summary.clone()),
+                    .child(title),
             )
             .children(tag_pills(&self.tags, theme))
             .when(self.unpushed, |d| d.child(unpushed_arrow(self.ix, theme)))
@@ -120,6 +127,23 @@ fn unpushed_arrow(ix: usize, theme: &Theme) -> impl IntoElement + use<> {
         .flex_none()
         .child(icon(Icon::ArrowUp).size(px(13.0)).text_color(theme.text_faint))
         .tooltip(gd_ui::tooltip("This commit hasn't been pushed to the remote repository yet"))
+}
+
+/// Conventional commit type, tinted by the theme; unknown types get a neutral pill.
+fn type_pill(ty: &str, breaking: bool, theme: &Theme) -> impl IntoElement + use<> {
+    let (bg, fg) = match theme.commit_types.get(&ty.to_lowercase()) {
+        Some(c) => (c.opacity(0.18), *c),
+        None => (theme.ink(0.07), theme.text_muted),
+    };
+    div()
+        .flex_none()
+        .px(px(6.0))
+        .py(px(1.0))
+        .rounded(px(5.0))
+        .bg(bg)
+        .text_size(px(11.0))
+        .text_color(fg)
+        .child(if breaking { format!("{ty}!") } else { ty.to_string() })
 }
 
 /// Up to [`MAX_TAG_PILLS`] tag pills (+N for the rest).

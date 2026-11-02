@@ -16,7 +16,16 @@
     "danger": "#f38ba8",
     "warning": "#f9e2af",
     "success": "#a6e3a1",
-    "on_accent": "#1e1e2e"
+    "on_accent": "#1e1e2e",
+    "commit_types": {
+      "feat": "#a6e3a1",
+      "fix": "#f38ba8",
+      "docs": "#89b4fa",
+      "perf": "#f9e2af",
+      "refactor": "#cba6f7",
+      "style": "#f5c2e7",
+      "test": "#fab387"
+    }
   },
   "light": {
     "bg": "#eff1f5",
@@ -32,6 +41,15 @@
     "danger": "#d20f39",
     "warning": "#df8e1d",
     "success": "#40a02b",
-    "on_accent": "#ffffff"
+    "on_accent": "#ffffff",
+    "commit_types": {
+      "feat": "#40a02b",
+      "fix": "#d20f39",
+      "docs": "#1e66f5",
+      "perf": "#df8e1d",
+      "refactor": "#8839ef",
+      "style": "#ea76cb",
+      "test": "#fe640b"
+    }
   }
 }

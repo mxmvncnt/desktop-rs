@@ -410,7 +410,7 @@ needs `&mut Workspace` today). Not done.
   `theme.ink()`, and check new UI with both `changes` and `changes-light` snapshots.
 - Color themes (`themes.rs`): JSON files (default, Nord, Tokyo Night, VS Code, Catppuccin, Solarized embedded from
   `crates/ui/assets/themes/<id>.json`). Each family is `{"id", "label", "dark": {..}, "light": {..}}` with a `Palette` of
-  14 `"#rrggbb"` colors per variant (see `default.json` for the field names); syntax colors are not part of a palette: `SyntaxPalette::new(light, text)` gives one fixed dark and one fixed light set, only the plain code `text` follows the theme;
+  `"#rrggbb"` colors per variant (see `default.json` for the field names); syntax colors are not part of a palette: `SyntaxPalette::new(light, text)` gives one fixed dark and one fixed light set, only the plain code `text` follows the theme;
   `Theme::from_palette` (the only constructor, default included) derives washes/diff colors (a palette may override them with optional `diff_*` keys, see `docs/THEMES.md`). The System/Light/Dark mode
   picks the variant, so every family needs both. Add a built-in theme = copy `default.json` (the template) to `assets/themes/<id>.json`
   (the `embedded_themes_parse` test covers it). `docs/theme.schema.json` is the JSON Schema for editors, generated from the

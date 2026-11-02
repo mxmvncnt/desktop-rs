@@ -9,6 +9,7 @@
 //! Mode rule: every family has both variants, so System/Light/Dark simply picks
 //! the variant. The default theme is the first entry.
 
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use gpui::{App, ColorExt as _, Global, Hsla, Rgba, hsla, rgb, rgb_to_hsla};
@@ -34,7 +35,7 @@ impl TryFrom<String> for Hex {
 }
 
 /// Source colors of one theme variant.
-#[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct Palette {
     /// Diff plane (the deepest surface in dark variants).
     pub bg: Hex,
@@ -98,6 +99,10 @@ pub struct Palette {
     /// Line number text. Defaults to `faint`.
     #[serde(default)]
     pub diff_gutter: Option<Hex>,
+    /// Pill colors of conventional commit types (`feat`, `fix`, ...), merged over the defaults.
+    /// Types without a color get a neutral pill.
+    #[serde(default)]
+    pub commit_types: BTreeMap<String, Hex>,
 }
 
 /// A color theme family: one palette per appearance.
@@ -190,6 +195,19 @@ impl Theme {
         };
         let (add_wash, emph) = if light { (0.12, 0.28) } else { (0.10, 0.30) };
         let o = |v: Option<Hex>, derived: Hsla| v.map_or(derived, c);
+        let mut commit_types: BTreeMap<String, Hsla> = [
+            ("feat", success),
+            ("fix", danger),
+            ("docs", accent),
+            ("perf", c(p.warning)),
+            ("refactor", rgb_to_hsla(rgb(0x8f96ed))),
+            ("style", rgb_to_hsla(rgb(0xe679b4))),
+            ("test", rgb_to_hsla(rgb(0xdba924))),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v))
+        .collect();
+        commit_types.extend(p.commit_types.iter().map(|(k, v)| (k.to_lowercase(), c(*v))));
         let plate = hsla(0.0, 0.0, wash, if light { 0.02 } else { 0.025 });
         let add_bg = o(p.diff_add_bg, success.opacity(add_wash));
         let del_bg = o(p.diff_del_bg, danger.opacity(add_wash));
@@ -235,6 +253,7 @@ impl Theme {
             diff_gutter_bg: o(p.diff_gutter_bg, plate),
             diff_empty_bg: o(p.diff_empty_bg, plate),
             diff_gutter: o(p.diff_gutter, c(p.faint)),
+            commit_types,
             syntax: SyntaxPalette::new(light, c(p.text)),
             font_sans: "Geist".into(),
             font_mono: "Geist Mono".into(),

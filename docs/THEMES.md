@@ -10,7 +10,7 @@ logged and skipped.
 Copy one of the built-in themes in
 [`crates/ui/assets/themes/`](../crates/ui/assets/themes) as a starting point
 (`default.json` is the default). Each file has an `id`, a `label` and a `dark` and
-a `light` palette of 14 `#rrggbb` colors. Syntax highlighting colors are fixed (one dark and one light set) and not themeable; the old `comment`, `keyword`, `string`, `number` and `special` keys are ignored. The System/Light/Dark mode picks the
+a `light` palette of `#rrggbb` colors. Syntax highlighting colors are fixed (one dark and one light set) and not themeable; the old `comment`, `keyword`, `string`, `number` and `special` keys are ignored. The System/Light/Dark mode picks the
 variant, so both are required.
 
 ```json
@@ -18,8 +18,8 @@ variant, so both are required.
   "$schema": "https://raw.githubusercontent.com/mxmvncnt/desktop-rs/main/docs/theme.schema.json",
   "id": "mine",
   "label": "Mine",
-  "dark": { "bg": "#060606", "...": "14 colors in total" },
-  "light": { "bg": "#ffffff", "...": "14 colors in total" }
+  "dark": { "bg": "#060606", "...": "more colors" },
+  "light": { "bg": "#ffffff", "...": "more colors" }
 }
 ```
 
@@ -36,6 +36,17 @@ descriptions):
   `diff_gutter_bg` (unchanged lines)
 - `diff_empty_bg`: split view placeholder opposite an added or deleted line
 - `diff_gutter`: line number text (default `faint`)
+
+## Commit type pills
+
+Commit titles that follow the conventional commit format show their type (`feat`, `fix`, ...)
+in a pill tinted with the type's color. Defaults: `feat` success, `fix` danger, `docs` accent,
+`perf` warning, `refactor`, `style` and `test` fixed purple, pink and amber. Types without a color
+get a neutral pill. A palette can add or override colors with `commit_types`:
+
+```json
+"commit_types": { "feat": "#00d492", "chore": "#a1a1a1" }
+```
 
 ## Editor support
 

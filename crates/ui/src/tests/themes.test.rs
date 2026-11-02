@@ -59,7 +59,7 @@ fn checked_in_schema_is_current() {
 }
 
 fn default_palette() -> Palette {
-    ColorThemes::builtin().get(DEFAULT_THEME).dark
+    ColorThemes::builtin().get(DEFAULT_THEME).dark.clone()
 }
 
 #[test]
