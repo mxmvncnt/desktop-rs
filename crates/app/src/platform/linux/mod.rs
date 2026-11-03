@@ -20,4 +20,7 @@ pub fn configure_window(options: &mut WindowOptions) {
     // Transparent so the rounded corners + shadow margin show the desktop
     // behind the window.
     options.linux_window_background = gpui::LinuxWindowBackground::Transparent;
+    // GNOME takes keyboard focus away during an interactive resize, and GPUI
+    // caps unfocused windows at 30fps, so resizing looked choppy.
+    options.inactive_frame_interval = None;
 }
