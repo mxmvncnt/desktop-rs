@@ -16,7 +16,9 @@ pub fn matching_commits(commits: &[Commit], query: &str) -> Option<Vec<usize>> {
         .enumerate()
         .filter(|(_, c)| {
             let hay = haystack(c);
-            words.iter().all(|w| hay.contains(w) || c.sha.starts_with(w))
+            words
+                .iter()
+                .all(|w| hay.contains(w) || c.sha.starts_with(w))
         })
         .map(|(i, _)| i)
         .collect();
@@ -24,7 +26,10 @@ pub fn matching_commits(commits: &[Commit], query: &str) -> Option<Vec<usize>> {
 }
 
 fn haystack(c: &Commit) -> String {
-    let mut s = format!("{}\n{}\n{}\n{}", c.summary, c.body, c.author_name, c.author_email);
+    let mut s = format!(
+        "{}\n{}\n{}\n{}",
+        c.summary, c.body, c.author_name, c.author_email
+    );
     for a in &c.co_authors {
         s.push('\n');
         s.push_str(&a.name);

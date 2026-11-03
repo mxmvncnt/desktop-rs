@@ -48,7 +48,10 @@ impl RepoModel {
 
     /// Why history operations are unavailable right now (shown as disabled menu items).
     pub fn history_blocked(&self) -> bool {
-        self.merge.busy.is_some() || self.merge.in_progress.is_some() || self.remote_op.is_some() || self.committing
+        self.merge.busy.is_some()
+            || self.merge.in_progress.is_some()
+            || self.remote_op.is_some()
+            || self.committing
     }
 
     pub fn is_unpushed(&self, sha: &str) -> bool {
@@ -81,7 +84,9 @@ impl RepoModel {
         self.run(
             Op::labeled("Reverting"),
             move |r| r.revert_commit(&sha),
-            |this, o, _| this.notice_for_outcome(o, "Reverted commit".into(), "Nothing to revert".into()),
+            |this, o, _| {
+                this.notice_for_outcome(o, "Reverted commit".into(), "Nothing to revert".into())
+            },
             cx,
         );
     }
@@ -123,7 +128,10 @@ impl RepoModel {
             move |r| r.cherry_pick(&shas, &target),
             move |this, o, _| {
                 this.last_commit = None;
-                let done = format!("Cherry-picked {n} commit{}", crate::utils::text::plural(n as u32));
+                let done = format!(
+                    "Cherry-picked {n} commit{}",
+                    crate::utils::text::plural(n as u32)
+                );
                 this.notice_for_outcome(o, done, "Nothing to cherry-pick".into())
             },
             cx,
@@ -136,7 +144,13 @@ impl RepoModel {
         self.run(
             Op::labeled("Squashing"),
             move |r| r.squash_commits(&shas, &message),
-            move |this, o, _| this.notice_for_outcome(o, format!("Squashed {n} commits"), "Nothing to squash".into()),
+            move |this, o, _| {
+                this.notice_for_outcome(
+                    o,
+                    format!("Squashed {n} commits"),
+                    "Nothing to squash".into(),
+                )
+            },
             cx,
         );
     }
@@ -146,7 +160,9 @@ impl RepoModel {
         self.run(
             Op::labeled("Rewording"),
             move |r| r.reword_commit(&sha, &message),
-            |this, o, _| this.notice_for_outcome(o, "Reworded commit".into(), "Nothing to reword".into()),
+            |this, o, _| {
+                this.notice_for_outcome(o, "Reworded commit".into(), "Nothing to reword".into())
+            },
             cx,
         );
     }
@@ -156,7 +172,9 @@ impl RepoModel {
         self.run(
             Op::labeled("Reordering"),
             move |r| r.move_commit(&sha, up),
-            |this, o, _| this.notice_for_outcome(o, "Reordered commits".into(), "Nothing to reorder".into()),
+            |this, o, _| {
+                this.notice_for_outcome(o, "Reordered commits".into(), "Nothing to reorder".into())
+            },
             cx,
         );
     }
@@ -167,7 +185,11 @@ impl RepoModel {
         let partial = self.partial_files();
         self.last_commit = None;
         self.run(
-            Op { label: Some("Amending"), committing: true, ..Op::default() },
+            Op {
+                label: Some("Amending"),
+                committing: true,
+                ..Op::default()
+            },
             move |r| r.amend_commit(&summary, &description, &paths, &partial),
             |this, _, _| {
                 this.notice = Some("Amended last commit".into());
@@ -181,7 +203,9 @@ impl RepoModel {
     /// Undo the HEAD commit (soft reset), putting its message back in the
     /// commit box through the existing `CommitUndone` event.
     pub fn undo_head_commit(&mut self, cx: &mut Context<Self>) {
-        let Some(head) = self.log.commits.first().cloned() else { return };
+        let Some(head) = self.log.commits.first().cloned() else {
+            return;
+        };
         self.last_commit = Some(LastCommit {
             summary: head.summary,
             description: head.body,

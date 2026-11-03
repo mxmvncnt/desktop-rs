@@ -3,14 +3,16 @@
 
 use gd_git::{Commit, ResetMode};
 use gd_ui::{Dialog, Icon, Tabs, Theme, icon};
-use gpui::{App, Context, Entity, IntoElement, RenderOnce, SharedString, Window, div, prelude::*, px};
+use gpui::{
+    App, Context, Entity, IntoElement, RenderOnce, SharedString, Window, div, prelude::*, px,
+};
 use gpui_elements::editable_text::EditableTextState;
 
 use super::state::{CherryPickTarget, HistoryAction, HistoryDialog};
 use crate::components::{BranchRow, LIST_INSET_Y, list};
-use crate::utils::text::sanitize_branch_name;
-use crate::utils::text::plural;
 use crate::components::{text_area, text_field};
+use crate::utils::text::plural;
+use crate::utils::text::sanitize_branch_name;
 use crate::workspace::Workspace;
 
 const BRANCH_ROW_HEIGHT: f32 = 30.0;
@@ -50,7 +52,10 @@ impl RenderOnce for HistoryDialogView {
             HistoryDialog::CreateTag(c) => self.create_tag(c, cx),
             HistoryDialog::CherryPick { commits, target } => self.cherry_pick(commits, target),
             HistoryDialog::Reword(c) => self.reword(c, cx),
-            HistoryDialog::Squash { commits, any_pushed } => self.squash(commits.len(), *any_pushed, cx),
+            HistoryDialog::Squash {
+                commits,
+                any_pushed,
+            } => self.squash(commits.len(), *any_pushed, cx),
         };
         let (ws, ws2) = (self.ws.clone(), self.ws);
         dialog
@@ -67,12 +72,20 @@ impl HistoryDialogView {
             .tab("Keep changes staged", None)
             .tab("Keep changes unstaged", None)
             .on_select(move |ix, _, cx| {
-                let mode = if ix == 0 { ResetMode::Soft } else { ResetMode::Mixed };
+                let mode = if ix == 0 {
+                    ResetMode::Soft
+                } else {
+                    ResetMode::Mixed
+                };
                 ws.update(cx, |this, cx| this.set_reset_mode(mode, cx))
             });
         let detail = match mode {
-            ResetMode::Soft => "Commits after it are removed from the branch. Their changes stay staged, ready to commit again.",
-            ResetMode::Mixed => "Commits after it are removed from the branch. Their changes stay in your working directory, unstaged.",
+            ResetMode::Soft => {
+                "Commits after it are removed from the branch. Their changes stay staged, ready to commit again."
+            }
+            ResetMode::Mixed => {
+                "Commits after it are removed from the branch. Their changes stay in your working directory, unstaged."
+            }
         };
         Dialog::new("hist-dialog", "Reset to commit")
             .body(format!("Reset the current branch to {}?", short(commit)))
@@ -89,9 +102,13 @@ impl HistoryDialogView {
             format!("Creates {name}").into()
         };
         let theme = Theme::of(cx);
-        let content = self
-            .name_field("Branch name", cx)
-            .child(div().pt(px(6.0)).text_size(px(12.0)).text_color(theme.text_faint).child(hint));
+        let content = self.name_field("Branch name", cx).child(
+            div()
+                .pt(px(6.0))
+                .text_size(px(12.0))
+                .text_color(theme.text_faint)
+                .child(hint),
+        );
         Dialog::new("hist-dialog", "Create branch from commit")
             .body(format!("Create a branch at {} and switch to it.", short(c)))
             .confirm_label("Create branch")
@@ -125,7 +142,11 @@ impl HistoryDialogView {
 
     fn branch_list(&self, target: &CherryPickTarget) -> impl IntoElement + use<> {
         let n = target.branches.len();
-        let (branches, current, sel) = (target.branches.clone(), target.current.clone(), target.selected);
+        let (branches, current, sel) = (
+            target.branches.clone(),
+            target.current.clone(),
+            target.selected,
+        );
         let ws = self.ws.clone();
         list("cp-branches", n, move |range, _w, cx| {
             let (text, faint) = (Theme::of(cx).text, Theme::of(cx).text_faint);
@@ -134,24 +155,42 @@ impl HistoryDialogView {
                     let name = branches.get(ix)?.clone();
                     let is_current = current.as_deref() == Some(name.as_str());
                     let ws = ws.clone();
-                    let on_select = move |_: &mut Window, cx: &mut App| ws.update(cx, |this, cx| this.set_cherry_pick_branch(ix, cx));
+                    let on_select = move |_: &mut Window, cx: &mut App| {
+                        ws.update(cx, |this, cx| this.set_cherry_pick_branch(ix, cx))
+                    };
                     Some(
                         BranchRow::new("cp-branch", ix, name, on_select)
                             .selected(sel == ix)
                             .bright(sel == ix)
-                            .children(is_current.then(|| div().text_size(px(11.5)).text_color(faint).child("current")))
-                            .children((sel == ix).then(|| icon(Icon::Check).size(px(14.0)).text_color(text))),
+                            .children(is_current.then(|| {
+                                div().text_size(px(11.5)).text_color(faint).child("current")
+                            }))
+                            .children(
+                                (sel == ix)
+                                    .then(|| icon(Icon::Check).size(px(14.0)).text_color(text)),
+                            ),
                     )
                 })
                 .collect()
         })
-        .h(px(BRANCH_ROW_HEIGHT * n.clamp(1, BRANCH_ROWS_VISIBLE) as f32 + LIST_INSET_Y))
+        .h(px(BRANCH_ROW_HEIGHT
+            * n.clamp(1, BRANCH_ROWS_VISIBLE) as f32
+            + LIST_INSET_Y))
     }
 
     fn message_fields(&self, cx: &App) -> gpui::Div {
-        let desc = text_area("hist-desc", &self.msg_desc, "Description", cx).w_full().h(px(120.0)).overflow_y_scroll();
+        let desc = text_area("hist-desc", &self.msg_desc, "Description", cx)
+            .w_full()
+            .h(px(120.0))
+            .overflow_y_scroll();
         let summary = text_field("hist-summary", &self.msg_summary, "Summary (required)", cx);
-        div().flex().flex_col().gap(px(8.0)).pt(px(4.0)).child(summary).child(desc)
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(8.0))
+            .pt(px(4.0))
+            .child(summary)
+            .child(desc)
     }
 
     fn reword(&self, c: &Commit, cx: &App) -> Dialog {
@@ -176,7 +215,9 @@ impl HistoryDialogView {
     }
 
     fn name_field(&self, placeholder: &str, cx: &App) -> gpui::Div {
-        div().pt(px(4.0)).child(text_field("hist-name", &self.name, placeholder, cx))
+        div()
+            .pt(px(4.0))
+            .child(text_field("hist-name", &self.name, placeholder, cx))
     }
 }
 

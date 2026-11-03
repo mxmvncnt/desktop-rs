@@ -21,7 +21,17 @@ fn open_from_subdir_and_linked_worktree() {
     assert!(repo.git_dir().ends_with(".git"));
 
     let linked = tmp.path().join("linked");
-    sh(&dir, &["worktree", "add", "-q", "-b", "wt", linked.to_str().unwrap()]);
+    sh(
+        &dir,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "wt",
+            linked.to_str().unwrap(),
+        ],
+    );
     let wt = Repository::open(&linked).unwrap();
     assert!(wt.git_dir().ends_with(".git/worktrees/linked"));
     assert!(wt.common_git_dir().ends_with(".git"));

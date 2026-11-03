@@ -10,7 +10,8 @@ use std::path::PathBuf;
 use gd_git::Commit;
 use gd_ui::{Button, Icon, Theme};
 use gpui::{
-    AppContext, Context, Entity, IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled, Subscription, WeakEntity, Window, div, px,
+    AppContext, Context, Entity, IntoElement, ParentElement, Render, StatefulInteractiveElement,
+    Styled, Subscription, WeakEntity, Window, div, px,
 };
 use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
 
@@ -42,7 +43,15 @@ impl CommitBox {
     pub fn new(ws: WeakEntity<Workspace>, cx: &mut Context<Self>) -> Self {
         let message = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
         let _input_sub = cx.subscribe(&message, |_, _, _: &TextChanged, cx| cx.notify());
-        Self { message, amend: None, repo: None, placeholder: None, ws, _input_sub, repo_sub: None }
+        Self {
+            message,
+            amend: None,
+            repo: None,
+            placeholder: None,
+            ws,
+            _input_sub,
+            repo_sub: None,
+        }
     }
 
     /// Follow `repo` (re-render and refresh the placeholder when it changes).
@@ -113,12 +122,18 @@ impl CommitBox {
 impl Render for CommitBox {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let repo = self.repo.clone().expect("commit box is rendered with a repository");
+        let repo = self
+            .repo
+            .clone()
+            .expect("commit box is rendered with a repository");
         let amending = self.amending(cx);
         let summary_typed = !self.text(cx).0.is_empty();
         let r = repo.read(cx);
         let b = CommitButton::of(r, SelectionSummary::of(r).included, amending, summary_typed);
-        let amend_notice = amending.then(|| AmendNotice { pushed: b.head_pushed, commit_box: cx.entity() });
+        let amend_notice = amending.then(|| AmendNotice {
+            pushed: b.head_pushed,
+            commit_box: cx.entity(),
+        });
         let commit = Button::new("commit")
             .primary()
             .full_width()
@@ -141,11 +156,18 @@ impl Render for CommitBox {
 }
 
 impl CommitBox {
-    fn message_input(&self, default_summary: Option<&str>, cx: &gpui::App) -> impl IntoElement + use<> {
+    fn message_input(
+        &self,
+        default_summary: Option<&str>,
+        cx: &gpui::App,
+    ) -> impl IntoElement + use<> {
         let placeholder = default_summary.unwrap_or("Commit message (required)");
         // A definite width: with `w_full` gpui-ce also measures the text at max-content
         // width, and its layout cache then paints that unwrapped layout.
-        let width = self.ws.read_with(cx, |ws, _| ws.sidebar_width()).unwrap_or_default();
+        let width = self
+            .ws
+            .read_with(cx, |ws, _| ws.sidebar_width())
+            .unwrap_or_default();
         text_area("message", &self.message, placeholder, cx)
             .w(px(width - SIDEBAR_BORDER - 2.0 * PADDING))
             .min_h(px(64.0))

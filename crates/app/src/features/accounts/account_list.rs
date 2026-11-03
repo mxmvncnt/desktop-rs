@@ -16,20 +16,25 @@ pub struct AccountList {
 }
 
 impl AccountList {
-
     fn header(&self) -> impl IntoElement + use<> {
         let store = self.store.clone();
         div()
             .flex()
             .items_center()
             .justify_between()
-            .child(div().font_weight(gpui::FontWeight::MEDIUM).child("Accounts"))
+            .child(
+                div()
+                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .child("Accounts"),
+            )
             .child(
                 Button::new("account-add")
                     .compact()
                     .icon(Icon::Plus)
                     .label("Add account")
-                    .on_click(move |_, _, cx| store.update(cx, |this, cx| this.open_account_form(None, cx))),
+                    .on_click(move |_, _, cx| {
+                        store.update(cx, |this, cx| this.open_account_form(None, cx))
+                    }),
             )
     }
 }
@@ -37,7 +42,12 @@ impl AccountList {
 impl RenderOnce for AccountList {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let caption = |t: &'static str| div().text_size(px(12.0)).text_color(theme.text_faint).child(t);
+        let caption = |t: &'static str| {
+            div()
+                .text_size(px(12.0))
+                .text_color(theme.text_faint)
+                .child(t)
+        };
         let store = self.store.clone();
         div()
             .flex()

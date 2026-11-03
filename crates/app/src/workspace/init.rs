@@ -3,18 +3,20 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use gpui::{App, AppContext, Context, Entity, Focusable, Subscription, UniformListScrollHandle, Window};
+use gpui::{
+    App, AppContext, Context, Entity, Focusable, Subscription, UniformListScrollHandle, Window,
+};
 use gpui_elements::editable_text::{EditableTextState, TextChanged};
 
 use super::state::Workspace;
 use crate::features::accounts::AccountsStore;
-use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::branches::BranchUi;
 use crate::features::changes::CommitBox;
 use crate::features::ci::{CiEvent, CiInputs, CiStore, Field};
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
 use crate::features::pickers::PopoverStore;
+use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::settings::{Settings, ThemeMode};
 use crate::features::stashes::StashUi;
 
@@ -38,10 +40,17 @@ impl Workspace {
         subs.push(cx.observe(&ci, |_, _, cx| cx.notify()));
         subs.push(cx.subscribe(&ci, |this, _, ev: &CiEvent, cx| this.on_ci_event(ev, cx)));
         let ci_inputs = CiInputs::new(cx);
-        for (field, input) in [(Field::Branch, &ci_inputs.branch), (Field::User, &ci_inputs.user)] {
-            subs.push(cx.subscribe_in(input, window, move |this: &mut Workspace, input, _: &TextChanged, window, cx| {
-                this.ci_text_edited(field, input, window, cx)
-            }));
+        for (field, input) in [
+            (Field::Branch, &ci_inputs.branch),
+            (Field::User, &ci_inputs.user),
+        ] {
+            subs.push(cx.subscribe_in(
+                input,
+                window,
+                move |this: &mut Workspace, input, _: &TextChanged, window, cx| {
+                    this.ci_text_edited(field, input, window, cx)
+                },
+            ));
         }
         subs.extend(window_subscriptions(window, cx));
 
@@ -119,11 +128,15 @@ fn window_subscriptions(window: &mut Window, cx: &mut Context<Workspace>) -> [Su
     [
         // Desktop refreshes status when the window regains focus.
         cx.observe_window_activation(window, |this, window, cx| {
-            this.ci.update(cx, |ci, cx| ci.set_focused(window.is_window_active(), cx));
+            this.ci
+                .update(cx, |ci, cx| ci.set_focused(window.is_window_active(), cx));
             if window.is_window_active() {
                 // The watcher already keeps us fresh; skip if it just refreshed.
                 let recent = this.repo.as_ref().is_some_and(|r| {
-                    r.read(cx).sync.last_watch_refresh.is_some_and(|t| t.elapsed() < RECENT_WATCH_REFRESH)
+                    r.read(cx)
+                        .sync
+                        .last_watch_refresh
+                        .is_some_and(|t| t.elapsed() < RECENT_WATCH_REFRESH)
                 });
                 if !recent {
                     this.refresh(cx);

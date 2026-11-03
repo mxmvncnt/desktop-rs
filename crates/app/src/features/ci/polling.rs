@@ -26,7 +26,11 @@ impl CiStore {
         }
         self.poll = Some(cx.spawn(async move |this, cx| {
             loop {
-                let Ok(wait) = this.update(cx, |s, _| poll_interval(s.shows_running(), matches!(s.view, CiView::Job(_)))) else { break };
+                let Ok(wait) = this.update(cx, |s, _| {
+                    poll_interval(s.shows_running(), matches!(s.view, CiView::Job(_)))
+                }) else {
+                    break;
+                };
                 cx.background_executor().timer(wait).await;
                 if this.update(cx, |s, cx| s.poll(cx)).is_err() {
                     break;
@@ -47,7 +51,10 @@ impl CiStore {
     fn shows_running(&self) -> bool {
         match self.view {
             CiView::List => self.pipelines.iter().any(|p| !p.status.is_finished()),
-            CiView::Pipeline(id) => self.details.get(&id).is_none_or(|d| !d.pipeline.status.is_finished()),
+            CiView::Pipeline(id) => self
+                .details
+                .get(&id)
+                .is_none_or(|d| !d.pipeline.status.is_finished()),
             CiView::Job(job) => self.job(job).is_none_or(|j| !j.status.is_finished()),
         }
     }
@@ -57,7 +64,12 @@ impl CiStore {
             return;
         }
         self.failed.clear();
-        let running: Vec<_> = self.details.values().filter(|d| !d.pipeline.status.is_finished()).map(|d| d.pipeline.id).collect();
+        let running: Vec<_> = self
+            .details
+            .values()
+            .filter(|d| !d.pipeline.status.is_finished())
+            .map(|d| d.pipeline.id)
+            .collect();
         match self.view {
             CiView::List => {
                 self.load_list(false, cx);

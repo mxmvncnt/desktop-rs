@@ -3,11 +3,14 @@
 
 use std::rc::Rc;
 
-use gpui::{App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, SharedString, Styled, Window, deferred, div, px};
+use gpui::{
+    App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
+    SharedString, Styled, Window, deferred, div, px,
+};
 
 use gpui_elements::editable_text::actions::{Enter, Escape};
 
-use super::{Callback, Button, ButtonStyle, overlay_card};
+use super::{Button, ButtonStyle, Callback, overlay_card};
 use crate::motion;
 use crate::theme::{Theme, scrim};
 
@@ -100,7 +103,10 @@ impl RenderOnce for Dialog {
         let instant = motion::handoff(&self.id, cx);
         let cancel = self.on_cancel;
         let confirm = self.on_confirm;
-        let (enter, escape) = (confirm.clone().filter(|_| !self.confirm_disabled), cancel.clone());
+        let (enter, escape) = (
+            confirm.clone().filter(|_| !self.confirm_disabled),
+            cancel.clone(),
+        );
 
         let mut cancel_btn = Button::new("dialog-cancel").label(self.cancel_label);
         if let Some(f) = cancel.clone() {
@@ -108,7 +114,11 @@ impl RenderOnce for Dialog {
         }
         let mut confirm_btn = Button::new("dialog-confirm")
             .label(self.confirm_label)
-            .style(if self.danger { ButtonStyle::Danger } else { ButtonStyle::Primary });
+            .style(if self.danger {
+                ButtonStyle::Danger
+            } else {
+                ButtonStyle::Primary
+            });
         confirm_btn = confirm_btn.disabled(self.confirm_disabled);
         if let Some(f) = confirm {
             confirm_btn = confirm_btn.on_click(move |_, w, cx| f(w, cx));
@@ -135,10 +145,16 @@ impl RenderOnce for Dialog {
                             .child(self.title),
                     )
                     .children(self.body.map(|b| {
-                        div().text_size(px(13.0)).text_color(theme.text_muted).child(b)
+                        div()
+                            .text_size(px(13.0))
+                            .text_color(theme.text_muted)
+                            .child(b)
                     }))
                     .children(self.detail.map(|d| {
-                        div().text_size(px(12.0)).text_color(theme.text_faint).child(d)
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(theme.text_faint)
+                            .child(d)
                     }))
                     .children(self.content),
             )
@@ -178,8 +194,17 @@ impl RenderOnce for Dialog {
 
 /// Scrim plus a centered card for custom modals (settings); a backdrop click
 /// calls `on_cancel`. `instant` skips the entrance (see `motion::handoff`).
-pub fn modal(card: impl IntoElement + Styled + 'static, on_cancel: Option<Callback>, instant: bool) -> impl IntoElement {
-    let mut backdrop = div().id("dialog-backdrop").occlude().absolute().inset_0().bg(scrim(0.5));
+pub fn modal(
+    card: impl IntoElement + Styled + 'static,
+    on_cancel: Option<Callback>,
+    instant: bool,
+) -> impl IntoElement {
+    let mut backdrop = div()
+        .id("dialog-backdrop")
+        .occlude()
+        .absolute()
+        .inset_0()
+        .bg(scrim(0.5));
     if let Some(f) = on_cancel {
         backdrop = backdrop.on_mouse_down(MouseButton::Left, move |_, w, cx| f(w, cx));
     }

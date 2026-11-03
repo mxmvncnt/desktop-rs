@@ -14,7 +14,10 @@ impl RepoModel {
             None => (String::new(), false),
         };
         self.run(
-            Op { remote: Some(op), ..Op::default() },
+            Op {
+                remote: Some(op),
+                ..Op::default()
+            },
             move |r| match op {
                 RemoteOp::Fetch => r.fetch().map(|_| true),
                 RemoteOp::Pull => r.pull().map(|_| true),
@@ -32,7 +35,9 @@ impl RepoModel {
 
 fn done_message(op: RemoteOp, done: bool) -> &'static str {
     match (op, done) {
-        (RemoteOp::Push | RemoteOp::ForcePush, false) => "Remote has new commits: pull to merge them, then push",
+        (RemoteOp::Push | RemoteOp::ForcePush, false) => {
+            "Remote has new commits: pull to merge them, then push"
+        }
         (RemoteOp::Fetch, _) => "Fetched from remote",
         (RemoteOp::Pull, _) => "Pulled from remote",
         (RemoteOp::Push | RemoteOp::ForcePush, true) => "Pushed to remote",

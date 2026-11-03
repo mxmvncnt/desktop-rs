@@ -5,8 +5,8 @@
 mod force_push_header;
 mod force_push_pane;
 mod ops;
-mod state;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
+mod state;
 
 pub use state::ForcePushState;

@@ -25,16 +25,23 @@ pub struct CiMenu {
 impl RenderOnce for CiMenu {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
         let (field, ws) = (self.field, self.ws);
-        let mut menu = ContextMenu::new(match field {
-            Field::Branch => "ci-branch-menu",
-            Field::User => "ci-user-menu",
-        }, self.position)
+        let mut menu = ContextMenu::new(
+            match field {
+                Field::Branch => "ci-branch-menu",
+                Field::User => "ci-user-menu",
+            },
+            self.position,
+        )
         .selected(self.typed.then_some(0))
         .without_icons()
         .max_height(MAX_HEIGHT)
         .on_dismiss(move |_, cx| ws.update(cx, |ws, cx| ws.close_ci_menu(cx)));
         if self.entries.is_empty() {
-            let note = if self.typed { "No match, Enter applies it" } else { "Nothing to suggest yet." };
+            let note = if self.typed {
+                "No match, Enter applies it"
+            } else {
+                "Nothing to suggest yet."
+            };
             return menu.item(MenuItem::new(note).disabled(true));
         }
         for entry in self.entries {

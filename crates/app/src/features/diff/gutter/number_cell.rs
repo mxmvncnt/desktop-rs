@@ -4,7 +4,10 @@
 
 use gd_git::{Diff, DiffLineKind};
 use gd_ui::{Theme, theme::DIFF_ROW_HEIGHT};
-use gpui::{AnyElement, Div, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Styled, div, prelude::*, px};
+use gpui::{
+    AnyElement, Div, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Styled,
+    div, prelude::*, px,
+};
 
 use super::block_handle::RowSelect;
 use super::style::{CHECK_W, check_mark, line_selected_bg};
@@ -31,7 +34,9 @@ pub fn number_cell(
         _ => theme.diff_gutter_bg,
     };
     let selectable = row.filter(|&ix| gd_git::selectable(diff, ix));
-    let included = select.zip(selectable).is_some_and(|((_, r), ix)| r.row_included(ix));
+    let included = select
+        .zip(selectable)
+        .is_some_and(|((_, r), ix)| r.row_included(ix));
     let cell = cell_shell(select.is_some(), included, numbers, num_w, theme);
     let (Some((sel, _)), Some(ix)) = (select, selectable) else {
         return cell.bg(tint).into_any_element();
@@ -43,7 +48,13 @@ pub fn number_cell(
 /// Top-aligned so numbers stay on the first line of a wrapped row. No
 /// `h_full`: a percentage can't resolve in an auto-height (wrapped) row,
 /// and it would stop the cell from stretching to the row's height.
-fn cell_shell(has_select: bool, included: bool, numbers: &[Option<u32>], num_w: Pixels, theme: &Theme) -> Div {
+fn cell_shell(
+    has_select: bool,
+    included: bool,
+    numbers: &[Option<u32>],
+    num_w: Pixels,
+    theme: &Theme,
+) -> Div {
     div()
         .flex()
         .flex_none()
@@ -91,25 +102,37 @@ fn selectable_cell(
         .map(|d| {
             if included {
                 let hover = theme.accent;
-                d.bg(line_selected_bg()).text_color(theme.on_accent).hover_style(move |s| s.bg(hover))
+                d.bg(line_selected_bg())
+                    .text_color(theme.on_accent)
+                    .hover_style(move |s| s.bg(hover))
             } else {
                 let hover = theme.text_muted;
-                d.bg(tint).hover_style(move |s| s.bg(theme.ink(0.14)).text_color(hover))
+                d.bg(tint)
+                    .hover_style(move |s| s.bg(theme.ink(0.14)).text_color(hover))
             }
         })
         .on_mouse_down(MouseButton::Left, move |_, _, cx| {
             let include = repo_down.update(cx, |r, cx| r.toggle_row(ix, cx));
-            ws_down.update(cx, |w, _| w.diff_select.drag = Some(GutterDrag { anchor: ix, include }));
+            ws_down.update(cx, |w, _| {
+                w.diff_select.drag = Some(GutterDrag {
+                    anchor: ix,
+                    include,
+                })
+            });
         })
         .on_mouse_down(MouseButton::Right, move |e, w, cx| {
-            ws_menu.update(cx, |this, cx| this.open_discard_rows_menu(vec![ix], false, e.position, w, cx))
+            ws_menu.update(cx, |this, cx| {
+                this.open_discard_rows_menu(vec![ix], false, e.position, w, cx)
+            })
         })
         .on_mouse_move(move |e, _, cx| {
             if e.pressed_button != Some(MouseButton::Left) {
                 return;
             }
             if let Some(GutterDrag { anchor, include }) = ws_move.read(cx).diff_select.drag {
-                repo_move.update(cx, |r, cx| r.set_rows_included(anchor.min(ix)..=anchor.max(ix), include, cx));
+                repo_move.update(cx, |r, cx| {
+                    r.set_rows_included(anchor.min(ix)..=anchor.max(ix), include, cx)
+                });
             }
         })
         .into_any_element()

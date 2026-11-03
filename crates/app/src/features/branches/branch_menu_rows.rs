@@ -14,7 +14,12 @@ pub fn branch_menu_rows(b: &Branch, paused: bool) -> Vec<BranchRow> {
     let no_merge = b.is_head || paused;
     vec![
         item(A::Merge, "Merge into current branch…", Icon::Fork, no_merge),
-        item(A::Rebase, "Rebase onto this branch…", Icon::Restart, no_merge),
+        item(
+            A::Rebase,
+            "Rebase onto this branch…",
+            Icon::Restart,
+            no_merge,
+        ),
         MenuRow::Separator,
         item(A::CreateFrom, "Create branch from this…", Icon::Plus, false),
         item(A::Rename, "Rename…", Icon::Pen, remote),
@@ -22,9 +27,17 @@ pub fn branch_menu_rows(b: &Branch, paused: bool) -> Vec<BranchRow> {
         MenuRow::Separator,
         // git refuses to delete the checked-out branch.
         MenuRow::Item(
-            RowItem::new(A::Delete, if remote { "Delete remote branch…" } else { "Delete…" }, Icon::Trash)
-                .danger()
-                .disabled(b.is_head),
+            RowItem::new(
+                A::Delete,
+                if remote {
+                    "Delete remote branch…"
+                } else {
+                    "Delete…"
+                },
+                Icon::Trash,
+            )
+            .danger()
+            .disabled(b.is_head),
         ),
     ]
 }

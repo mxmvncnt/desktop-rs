@@ -16,7 +16,11 @@ fn store(raw: &str, toggled: &[usize]) -> CiStore {
 
 fn select(ci: &mut CiStore, from: (usize, usize), to: (usize, usize)) {
     let pos = |(line, col)| TextPos { line, col };
-    ci.log.sel = Some(TextSel { anchor: pos(from), head: pos(to), side: TextSide::Unified });
+    ci.log.sel = Some(TextSel {
+        anchor: pos(from),
+        head: pos(to),
+        side: TextSide::Unified,
+    });
 }
 
 #[test]

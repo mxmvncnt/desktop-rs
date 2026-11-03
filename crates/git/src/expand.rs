@@ -25,18 +25,28 @@ pub enum Expansion {
 
 /// Unchanged lines between hunk `h` and the previous hunk (or the file start).
 pub fn gap_above(diff: &Diff, h: usize) -> usize {
-    let Some(hunk) = diff.hunks.get(h) else { return 0 };
-    let prev_end = h.checked_sub(1).map_or(0, |p| diff.hunks[p].new_start + diff.hunks[p].new_len);
+    let Some(hunk) = diff.hunks.get(h) else {
+        return 0;
+    };
+    let prev_end = h
+        .checked_sub(1)
+        .map_or(0, |p| diff.hunks[p].new_start + diff.hunks[p].new_len);
     hunk.new_start.saturating_sub(prev_end)
 }
 
 /// Unchanged lines between hunk `h` and the next hunk (or the file end).
 pub fn gap_below(diff: &Diff, h: usize) -> usize {
-    let Some(hunk) = diff.hunks.get(h) else { return 0 };
+    let Some(hunk) = diff.hunks.get(h) else {
+        return 0;
+    };
     let end = hunk.new_start + hunk.new_len;
     match diff.hunks.get(h + 1) {
         Some(next) => next.new_start.saturating_sub(end),
-        None => diff.source.as_ref().map_or(0, |s| split_lines(&s.new).len()).saturating_sub(end),
+        None => diff
+            .source
+            .as_ref()
+            .map_or(0, |s| split_lines(&s.new).len())
+            .saturating_sub(end),
     }
 }
 
@@ -63,7 +73,10 @@ pub fn expand(diff: &Diff, e: Expansion) -> Option<Diff> {
         .iter()
         .enumerate()
         .map(|(i, h)| {
-            let end = diff.hunks.get(i + 1).map_or(diff.lines.len(), |n| n.header_index);
+            let end = diff
+                .hunks
+                .get(i + 1)
+                .map_or(diff.lines.len(), |n| n.header_index);
             Hunk {
                 meta: h.clone(),
                 rows: diff.lines[h.header_index + 1..end].to_vec(),
@@ -81,15 +94,32 @@ pub fn expand(diff: &Diff, e: Expansion) -> Option<Diff> {
     let hunk = &mut hunks[h];
     if up {
         let (os, ns) = (hunk.meta.old_start - count, hunk.meta.new_start - count);
-        let rows: Vec<DiffLine> = (0..count).map(|i| DiffLine::new(DiffLineKind::Context, Some(os + i), Some(ns + i), new_lines[ns + i].text)).collect();
+        let rows: Vec<DiffLine> = (0..count)
+            .map(|i| {
+                DiffLine::new(
+                    DiffLineKind::Context,
+                    Some(os + i),
+                    Some(ns + i),
+                    new_lines[ns + i].text,
+                )
+            })
+            .collect();
         hunk.rows.splice(0..0, rows);
         hunk.meta.old_start = os;
         hunk.meta.new_start = ns;
     } else {
-        let (os, ns) = (hunk.meta.old_start + hunk.meta.old_len, hunk.meta.new_start + hunk.meta.new_len);
+        let (os, ns) = (
+            hunk.meta.old_start + hunk.meta.old_len,
+            hunk.meta.new_start + hunk.meta.new_len,
+        );
         for i in 0..count {
             let line = &new_lines[ns + i];
-            hunk.rows.push(DiffLine::new(DiffLineKind::Context, Some(os + i), Some(ns + i), line.text));
+            hunk.rows.push(DiffLine::new(
+                DiffLineKind::Context,
+                Some(os + i),
+                Some(ns + i),
+                line.text,
+            ));
             if !line.terminated {
                 hunk.rows.push(DiffLine::no_newline());
             }
@@ -110,14 +140,24 @@ pub fn expand(diff: &Diff, e: Expansion) -> Option<Diff> {
         }
     }
     // Re-flatten.
-    let mut out = Diff { source: diff.source.clone(), added: diff.added, deleted: diff.deleted, ..Default::default() };
+    let mut out = Diff {
+        source: diff.source.clone(),
+        added: diff.added,
+        deleted: diff.deleted,
+        ..Default::default()
+    };
     for hunk in merged {
-        let meta = DiffHunk { header_index: out.lines.len(), ..hunk.meta };
+        let meta = DiffHunk {
+            header_index: out.lines.len(),
+            ..hunk.meta
+        };
         out.lines.push(DiffLine::hunk(&meta));
         out.hunks.push(meta);
         out.lines.extend(hunk.rows);
     }
-    out.longest_line = (0..out.lines.len()).max_by_key(|&i| out.lines[i].text.len()).unwrap_or(0);
+    out.longest_line = (0..out.lines.len())
+        .max_by_key(|&i| out.lines[i].text.len())
+        .unwrap_or(0);
     Some(out)
 }
 

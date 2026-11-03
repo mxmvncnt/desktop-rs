@@ -2,8 +2,9 @@
 //! with `on_drag_move::<P>` on an ancestor); double-click calls `on_reset`.
 
 use gpui::{
-    AppContext as _, ClickEvent, ColorExt as _, Context, CursorStyle, ElementId, InteractiveElement, IntoElement,
-    MouseButton, ParentElement, Render, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
+    AppContext as _, ClickEvent, ColorExt as _, Context, CursorStyle, ElementId,
+    InteractiveElement, IntoElement, MouseButton, ParentElement, Render, RenderOnce,
+    StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use std::rc::Rc;
@@ -37,11 +38,21 @@ pub struct ResizeHandle<P: 'static> {
 
 impl<P: 'static> ResizeHandle<P> {
     pub fn right_edge(id: impl Into<ElementId>, payload: P) -> Self {
-        Self { id: id.into(), edge: Edge::Right, payload, on_reset: None }
+        Self {
+            id: id.into(),
+            edge: Edge::Right,
+            payload,
+            on_reset: None,
+        }
     }
 
     pub fn bottom_edge(id: impl Into<ElementId>, payload: P) -> Self {
-        Self { id: id.into(), edge: Edge::Bottom, payload, on_reset: None }
+        Self {
+            id: id.into(),
+            edge: Edge::Bottom,
+            payload,
+            on_reset: None,
+        }
     }
 
     /// Called on double-click.

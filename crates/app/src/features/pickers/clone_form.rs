@@ -1,7 +1,10 @@
 //! "Clone a repository" popover.
 
 use gd_ui::{Button, Theme};
-use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
+use gpui::{
+    App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
+    px,
+};
 use gpui_elements::editable_text::{EditableTextState, actions::Enter};
 
 use crate::components::text_field;
@@ -34,7 +37,12 @@ impl RenderOnce for CloneForm {
                     .text_color(theme.text_muted)
                     .child("Clone a repository"),
             )
-            .child(text_field("clone-url", &self.input, "https://github.com/owner/repo.git", cx))
+            .child(text_field(
+                "clone-url",
+                &self.input,
+                "https://github.com/owner/repo.git",
+                cx,
+            ))
             .child(
                 div()
                     .text_size(px(12.0))
@@ -47,7 +55,9 @@ impl RenderOnce for CloneForm {
                     .full_width()
                     .label("Clone")
                     .disabled(self.url_empty)
-                    .on_click(move |_, _, cx| click_ws.update(cx, |this, cx| this.submit_clone(cx))),
+                    .on_click(move |_, _, cx| {
+                        click_ws.update(cx, |this, cx| this.submit_clone(cx))
+                    }),
             )
     }
 }

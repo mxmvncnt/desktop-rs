@@ -90,11 +90,19 @@ impl RepoWatcher {
                 log::trace!("fs event: {:?}", ev.paths);
                 // Reads (`git status` opening files) must never count as changes,
                 // otherwise our own refresh would retrigger itself.
-                if !matches!(ev.kind, EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) | EventKind::Any) {
+                if !matches!(
+                    ev.kind,
+                    EventKind::Create(_)
+                        | EventKind::Modify(_)
+                        | EventKind::Remove(_)
+                        | EventKind::Any
+                ) {
                     continue;
                 }
                 for p in &ev.paths {
-                    let Some(full) = classify(&handler_paths, p) else { continue };
+                    let Some(full) = classify(&handler_paths, p) else {
+                        continue;
+                    };
                     hit = Some(hit.unwrap_or(false) || full);
                     // A new top-level directory needs its own recursive watch.
                     if matches!(ev.kind, EventKind::Create(_))
@@ -151,8 +159,12 @@ fn add_initial_watches(d: &mut Deb, p: &Paths) {
 
 fn watch_top_level(d: &mut Deb, p: &Paths, path: &Path) {
     // `is_dir` follows symlinks; don't recurse through links (cycles).
-    let is_real_dir = std::fs::symlink_metadata(path).map(|m| m.is_dir()).unwrap_or(false);
-    let ignored = path.file_name().is_some_and(|n| n == ".git" || p.ignore.matched(n, true).is_ignore());
+    let is_real_dir = std::fs::symlink_metadata(path)
+        .map(|m| m.is_dir())
+        .unwrap_or(false);
+    let ignored = path
+        .file_name()
+        .is_some_and(|n| n == ".git" || p.ignore.matched(n, true).is_ignore());
     if is_real_dir && !ignored {
         let _ = d.watch(path, RecursiveMode::Recursive);
     }
@@ -174,7 +186,9 @@ fn classify(p: &Paths, path: &Path) -> Option<bool> {
 
 /// `rel` is relative to the git dir.
 fn classify_git(rel: &Path) -> bool {
-    let mut comps = rel.components().map(|c| c.as_os_str().to_str().unwrap_or(""));
+    let mut comps = rel
+        .components()
+        .map(|c| c.as_os_str().to_str().unwrap_or(""));
     match comps.next() {
         Some("refs") => !rel.to_str().is_some_and(|s| s.ends_with(".lock")),
         Some(name) if comps.next().is_none() => {

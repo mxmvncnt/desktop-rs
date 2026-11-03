@@ -16,7 +16,10 @@ fn parse_list(out: &str) -> Vec<ConfigEntry> {
         .filter(|r| !r.is_empty())
         .map(|r| {
             let (key, value) = r.split_once('\n').unwrap_or((r, ""));
-            ConfigEntry { key: key.into(), value: value.into() }
+            ConfigEntry {
+                key: key.into(),
+                value: value.into(),
+            }
         })
         .collect()
 }
@@ -24,10 +27,19 @@ fn parse_list(out: &str) -> Vec<ConfigEntry> {
 /// `section.name` or `section.subsection.name`: the section and the name are letters, digits and `-`
 /// and start with a letter; the subsection may hold anything but a newline.
 pub fn validate_key(key: &str) -> Result<()> {
-    let bad = |m: &str| Err(GitError::Invalid(format!("{m}: use section.key or section.subsection.key")));
-    let Some((section, rest)) = key.split_once('.') else { return bad("Invalid key") };
+    let bad = |m: &str| {
+        Err(GitError::Invalid(format!(
+            "{m}: use section.key or section.subsection.key"
+        )))
+    };
+    let Some((section, rest)) = key.split_once('.') else {
+        return bad("Invalid key");
+    };
     let name = rest.rsplit_once('.').map_or(rest, |(_, name)| name);
-    let word = |w: &str| w.starts_with(|c: char| c.is_ascii_alphabetic()) && w.chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+    let word = |w: &str| {
+        w.starts_with(|c: char| c.is_ascii_alphabetic())
+            && w.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+    };
     if !word(section) || !word(name) {
         return bad("Invalid key");
     }
@@ -39,23 +51,51 @@ pub fn validate_key(key: &str) -> Result<()> {
 
 impl Repository {
     pub fn local_config(&self) -> Result<Vec<ConfigEntry>> {
-        Ok(parse_list(&self.git().args(["config", "--local", "--list", "-z"]).run()?))
+        Ok(parse_list(
+            &self
+                .git()
+                .args(["config", "--local", "--list", "-z"])
+                .run()?,
+        ))
     }
 
     /// Add `key = value`, keeping the other values of a multi-valued key.
     pub fn add_config(&self, key: &str, value: &str) -> Result<()> {
         validate_key(key)?;
-        self.git().args(["config", "--local", "--add", "--", key, value]).exec()
+        self.git()
+            .args(["config", "--local", "--add", "--", key, value])
+            .exec()
     }
 
     /// Replace the entry `key = old` by `key = new`.
     pub fn replace_config(&self, key: &str, old: &str, new: &str) -> Result<()> {
-        self.git().args(["config", "--local", "--fixed-value", "--replace-all", "--", key, new, old]).exec()
+        self.git()
+            .args([
+                "config",
+                "--local",
+                "--fixed-value",
+                "--replace-all",
+                "--",
+                key,
+                new,
+                old,
+            ])
+            .exec()
     }
 
     /// Remove the entry `key = value` only.
     pub fn remove_config(&self, key: &str, value: &str) -> Result<()> {
-        self.git().args(["config", "--local", "--fixed-value", "--unset-all", "--", key, value]).exec()
+        self.git()
+            .args([
+                "config",
+                "--local",
+                "--fixed-value",
+                "--unset-all",
+                "--",
+                key,
+                value,
+            ])
+            .exec()
     }
 }
 

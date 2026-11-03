@@ -9,10 +9,18 @@ use crate::workspace::Workspace;
 
 #[derive(Clone)]
 pub enum BranchDialog {
-    Rename { old: String },
+    Rename {
+        old: String,
+    },
     /// `remote` is the upstream (`origin/x`) that can be deleted along with it.
-    Delete { branch: Branch, remote: Option<String>, also_remote: bool },
-    CreateFrom { base: String },
+    Delete {
+        branch: Branch,
+        remote: Option<String>,
+        also_remote: bool,
+    },
+    CreateFrom {
+        base: String,
+    },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -36,7 +44,10 @@ impl RemoteBranch {
     /// Parse `origin/feature/x` (remote name = first segment).
     pub fn parse(full: &str) -> Option<Self> {
         let (remote, branch) = full.split_once('/')?;
-        Some(Self { remote: remote.to_string(), branch: branch.to_string() })
+        Some(Self {
+            remote: remote.to_string(),
+            branch: branch.to_string(),
+        })
     }
 }
 
@@ -51,7 +62,11 @@ pub struct BranchUi {
 impl BranchUi {
     pub fn new(cx: &mut Context<Workspace>) -> Self {
         let input = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
-        let subs = vec![cx.subscribe(&input, |_: &mut Workspace, _, _: &TextChanged, cx| cx.notify())];
+        let subs = vec![
+            cx.subscribe(&input, |_: &mut Workspace, _, _: &TextChanged, cx| {
+                cx.notify()
+            }),
+        ];
         Self { input, _subs: subs }
     }
 }

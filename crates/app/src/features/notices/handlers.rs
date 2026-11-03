@@ -47,7 +47,11 @@ impl Workspace {
 
 /// `cx.observe` callback for the repo model: re-render, and start the
 /// auto-dismiss timer when a notice appears.
-pub(crate) fn observe_notices(this: &mut Workspace, model: Entity<RepoModel>, cx: &mut Context<Workspace>) {
+pub(crate) fn observe_notices(
+    this: &mut Workspace,
+    model: Entity<RepoModel>,
+    cx: &mut Context<Workspace>,
+) {
     if model.read(cx).notice.is_some() && this.notice_task.is_none() {
         let model = model.downgrade();
         this.notice_task = Some(cx.spawn(async move |this, cx| {

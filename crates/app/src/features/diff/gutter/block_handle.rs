@@ -5,7 +5,10 @@
 use std::ops::Range;
 
 use gd_ui::{CheckState, Theme, mixed_mark, theme::DIFF_ROW_HEIGHT};
-use gpui::{AnyElement, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, StatefulInteractiveElement, Styled, div, prelude::*, px};
+use gpui::{
+    AnyElement, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    StatefulInteractiveElement, Styled, div, prelude::*, px,
+};
 
 use super::style::{HANDLE_W, check_mark};
 use crate::features::diff::state::HoveredHandle;
@@ -60,7 +63,9 @@ impl RowSelect {
                 (_, false) => theme.accent_strong,
                 (_, true) => theme.accent,
             })
-            .when(row == BlockRow::First, |d| d.children(handle_mark(state, theme)))
+            .when(row == BlockRow::First, |d| {
+                d.children(handle_mark(state, theme))
+            })
             .on_hover(move |&on, _, cx| {
                 ws_hover.update(cx, |w, cx| {
                     let next = if on {
@@ -81,7 +86,15 @@ impl RowSelect {
             })
             .on_mouse_down(MouseButton::Right, move |e, w, cx| {
                 cx.stop_propagation();
-                ws_menu.update(cx, |this, cx| this.open_discard_rows_menu(menu_rows.clone().collect(), true, e.position, w, cx));
+                ws_menu.update(cx, |this, cx| {
+                    this.open_discard_rows_menu(
+                        menu_rows.clone().collect(),
+                        true,
+                        e.position,
+                        w,
+                        cx,
+                    )
+                });
             })
             .into_any_element()
     }
@@ -90,7 +103,12 @@ impl RowSelect {
 /// The check (all) or dash (some) mark of a block, in a box one line tall: a
 /// wrapped first row keeps its mark at the top.
 fn handle_mark(state: CheckState, theme: &Theme) -> Option<gpui::Div> {
-    let mark = div().flex().flex_1().h(px(DIFF_ROW_HEIGHT)).items_center().justify_center();
+    let mark = div()
+        .flex()
+        .flex_1()
+        .h(px(DIFF_ROW_HEIGHT))
+        .items_center()
+        .justify_center();
     match state {
         CheckState::Checked => Some(mark.child(check_mark(theme.on_accent))),
         CheckState::Mixed => Some(mark.child(mixed_mark(theme.on_accent))),

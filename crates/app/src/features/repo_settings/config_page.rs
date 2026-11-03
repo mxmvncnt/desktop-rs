@@ -3,7 +3,9 @@
 
 use gd_git::ConfigEntry;
 use gd_ui::{Button, Theme};
-use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px};
+use gpui::{
+    App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
+};
 
 use super::config_form::ConfigForm;
 use super::state::{Edit, RepoSettingsInputs, RepoSettingsStore};
@@ -47,12 +49,26 @@ impl ConfigPage {
                     .font_family(theme.font_mono.clone())
                     .child(SharedString::from(entry.value.replace('\n', " ⏎ "))),
             )
-            .child(Button::new(("config-edit", ix)).compact().ghost().label("Edit").on_click(move |_, _, cx| {
-                edit.update(cx, |this, cx| this.open_config_form(Some(edit_entry.clone()), cx))
-            }))
-            .child(Button::new(("config-remove", ix)).compact().ghost().label("Remove").on_click(move |_, _, cx| {
-                remove.update(cx, |this, cx| this.remove_config(remove_entry.clone(), cx))
-            }))
+            .child(
+                Button::new(("config-edit", ix))
+                    .compact()
+                    .ghost()
+                    .label("Edit")
+                    .on_click(move |_, _, cx| {
+                        edit.update(cx, |this, cx| {
+                            this.open_config_form(Some(edit_entry.clone()), cx)
+                        })
+                    }),
+            )
+            .child(
+                Button::new(("config-remove", ix))
+                    .compact()
+                    .ghost()
+                    .label("Remove")
+                    .on_click(move |_, _, cx| {
+                        remove.update(cx, |this, cx| this.remove_config(remove_entry.clone(), cx))
+                    }),
+            )
     }
 }
 
@@ -60,11 +76,20 @@ impl RenderOnce for ConfigPage {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let add = self.store.clone();
-        let form = |editing: bool| ConfigForm { editing, inputs: self.inputs.clone(), error: self.error.clone(), store: self.store.clone() };
-        let rows = self.entries.iter().enumerate().map(|(ix, e)| match &self.edit {
-            Some(Edit::Config(editing)) if editing == e => form(true).into_any_element(),
-            _ => self.row(ix, e, &theme).into_any_element(),
-        });
+        let form = |editing: bool| ConfigForm {
+            editing,
+            inputs: self.inputs.clone(),
+            error: self.error.clone(),
+            store: self.store.clone(),
+        };
+        let rows = self
+            .entries
+            .iter()
+            .enumerate()
+            .map(|(ix, e)| match &self.edit {
+                Some(Edit::Config(editing)) if editing == e => form(true).into_any_element(),
+                _ => self.row(ix, e, &theme).into_any_element(),
+            });
         let form_open = matches!(self.edit, Some(Edit::AddConfig | Edit::Config(_)));
         div()
             .flex()

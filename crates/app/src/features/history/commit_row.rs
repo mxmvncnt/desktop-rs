@@ -2,12 +2,14 @@
 
 use gd_git::Commit;
 use gd_ui::{Icon, Theme, icon, pressable};
-use gpui::{App, ColorExt as _, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelude::*, px};
+use gpui::{
+    App, ColorExt as _, Entity, IntoElement, MouseButton, RenderOnce, Window, div, prelude::*, px,
+};
 
 use super::state::ClickKind;
 use crate::repo::RepoModel;
-use crate::utils::text::{authors_list, authors_text, full_date};
 use crate::utils::text::relative_time;
+use crate::utils::text::{authors_list, authors_text, full_date};
 use crate::workspace::Workspace;
 
 pub const COMMIT_ROW_HEIGHT: f32 = 50.0;
@@ -27,7 +29,12 @@ pub struct CommitRow {
 
 impl CommitRow {
     /// Reads the row's display state from the model; `None` past the end.
-    pub fn from_model(ix: usize, repo: &Entity<RepoModel>, ws: &Entity<Workspace>, cx: &App) -> Option<Self> {
+    pub fn from_model(
+        ix: usize,
+        repo: &Entity<RepoModel>,
+        ws: &Entity<Workspace>,
+        cx: &App,
+    ) -> Option<Self> {
         let r = repo.read(cx);
         let commit = r.log.commits.get(ix)?.clone();
         Some(Self {
@@ -60,11 +67,19 @@ impl RenderOnce for CommitRow {
             .child(
                 div()
                     .id(("commit-meta", ix))
-                    .tooltip(gd_ui::tooltip(format!("{}\n{}", authors_list(&self.commit), full_date(self.commit.time))))
+                    .tooltip(gd_ui::tooltip(format!(
+                        "{}\n{}",
+                        authors_list(&self.commit),
+                        full_date(self.commit.time)
+                    )))
                     .truncate()
                     .text_size(px(11.5))
                     .text_color(theme.text_muted)
-                    .child(format!("{} • {}", authors_text(&self.commit), relative_time(self.commit.time))),
+                    .child(format!(
+                        "{} • {}",
+                        authors_text(&self.commit),
+                        relative_time(self.commit.time)
+                    )),
             )
             .on_mouse_down(MouseButton::Right, move |e, w, cx| {
                 let pos = e.position;
@@ -72,7 +87,9 @@ impl RenderOnce for CommitRow {
             })
             .on_click(move |ev, _, cx| {
                 if ev.standard_click() {
-                    repo.update(cx, |r, cx| r.click_commit(ix, click_kind(&ev.modifiers()), cx))
+                    repo.update(cx, |r, cx| {
+                        r.click_commit(ix, click_kind(&ev.modifiers()), cx)
+                    })
                 }
             })
     }
@@ -81,11 +98,17 @@ impl RenderOnce for CommitRow {
 impl CommitRow {
     fn title_line(&self, theme: &Theme) -> impl IntoElement + use<> {
         let is_merge = self.commit.parents.len() > 1;
-        let color = if is_merge && !self.selected { theme.text_muted } else { theme.text };
+        let color = if is_merge && !self.selected {
+            theme.text_muted
+        } else {
+            theme.text
+        };
         let summary = &self.commit.summary;
         let parsed = git_conventional::Commit::parse(summary).ok();
         let title = match &parsed {
-            Some(c) => c.scope().map_or(c.description().to_string(), |s| format!("{s}: {}", c.description())),
+            Some(c) => c.scope().map_or(c.description().to_string(), |s| {
+                format!("{s}: {}", c.description())
+            }),
             None => summary.clone(),
         };
         div()
@@ -125,8 +148,14 @@ fn unpushed_arrow(ix: usize, theme: &Theme) -> impl IntoElement + use<> {
     div()
         .id(("unpushed", ix))
         .flex_none()
-        .child(icon(Icon::ArrowUp).size(px(13.0)).text_color(theme.text_faint))
-        .tooltip(gd_ui::tooltip("This commit hasn't been pushed to the remote repository yet"))
+        .child(
+            icon(Icon::ArrowUp)
+                .size(px(13.0))
+                .text_color(theme.text_faint),
+        )
+        .tooltip(gd_ui::tooltip(
+            "This commit hasn't been pushed to the remote repository yet",
+        ))
 }
 
 /// Conventional commit type, tinted by the theme; unknown types get a neutral pill.
@@ -143,7 +172,11 @@ fn type_pill(ty: &str, breaking: bool, theme: &Theme) -> impl IntoElement + use<
         .bg(bg)
         .text_size(px(11.0))
         .text_color(fg)
-        .child(if breaking { format!("{ty}!") } else { ty.to_string() })
+        .child(if breaking {
+            format!("{ty}!")
+        } else {
+            ty.to_string()
+        })
 }
 
 /// Up to [`MAX_TAG_PILLS`] tag pills (+N for the rest).

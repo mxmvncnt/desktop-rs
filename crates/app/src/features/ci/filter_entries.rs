@@ -29,7 +29,13 @@ pub fn branch_entries(branches: &[Branch], current: Option<&str>, typed: &str) -
     if let Some(ix) = names.iter().position(|n| Some(n.as_str()) == current) {
         names[..=ix].rotate_right(1);
     }
-    names.into_iter().map(|name| Entry { detail: (Some(name.as_str()) == current).then(|| "current".to_string()), value: name }).collect()
+    names
+        .into_iter()
+        .map(|name| Entry {
+            detail: (Some(name.as_str()) == current).then(|| "current".to_string()),
+            value: name,
+        })
+        .collect()
 }
 
 /// The users that contain `typed` (ignoring case) in their login or name, those that start with it first; all of them when nothing was typed.
@@ -41,9 +47,19 @@ pub fn user_entries<'a>(users: impl IntoIterator<Item = &'a User>, typed: &str) 
         .into_iter()
         .filter(|u| seen.insert(u.username.to_lowercase()))
         .filter_map(|u| {
-            let (login, name) = (u.username.to_lowercase(), u.name.as_deref().unwrap_or("").to_lowercase());
-            (login.contains(&typed) || name.contains(&typed))
-                .then(|| (login.starts_with(&typed) || name.starts_with(&typed), Entry { value: u.username.clone(), detail: u.name.clone() }))
+            let (login, name) = (
+                u.username.to_lowercase(),
+                u.name.as_deref().unwrap_or("").to_lowercase(),
+            );
+            (login.contains(&typed) || name.contains(&typed)).then(|| {
+                (
+                    login.starts_with(&typed) || name.starts_with(&typed),
+                    Entry {
+                        value: u.username.clone(),
+                        detail: u.name.clone(),
+                    },
+                )
+            })
         })
         .collect();
     found.sort_by_key(|(prefix, e)| (!prefix, e.value.to_lowercase()));
@@ -57,7 +73,12 @@ pub fn on_enter(values: &[String], typed: &str) -> String {
     if typed.is_empty() {
         return String::new();
     }
-    values.iter().find(|v| v.eq_ignore_ascii_case(typed)).or(values.first()).cloned().unwrap_or_else(|| typed.to_string())
+    values
+        .iter()
+        .find(|v| v.eq_ignore_ascii_case(typed))
+        .or(values.first())
+        .cloned()
+        .unwrap_or_else(|| typed.to_string())
 }
 
 #[cfg(test)]

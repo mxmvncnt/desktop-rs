@@ -34,11 +34,34 @@ impl Forge {
             filter_user: false,
         };
         match self {
-            Forge::GitHub => Capabilities { retry_pipeline: true, retry_job: true, steps: true, filter_user: true, ..none },
-            Forge::Gitea => Capabilities { retry_pipeline: true, retry_job: true, steps: true, filter_user: true, ..none },
-            Forge::GitLab => Capabilities { retry_pipeline: true, retry_job: true, cancel_job: true, play_job: true, stages: true, filter_user: true, ..none },
+            Forge::GitHub => Capabilities {
+                retry_pipeline: true,
+                retry_job: true,
+                steps: true,
+                filter_user: true,
+                ..none
+            },
+            Forge::Gitea => Capabilities {
+                retry_pipeline: true,
+                retry_job: true,
+                steps: true,
+                filter_user: true,
+                ..none
+            },
+            Forge::GitLab => Capabilities {
+                retry_pipeline: true,
+                retry_job: true,
+                cancel_job: true,
+                play_job: true,
+                stages: true,
+                filter_user: true,
+                ..none
+            },
             // Forgejo: runs, jobs with `needs`, logs and run cancel only; its runs list has no user filter.
-            Forge::Forgejo => Capabilities { stages: true, ..none },
+            Forge::Forgejo => Capabilities {
+                stages: true,
+                ..none
+            },
         }
     }
 }
@@ -60,8 +83,16 @@ impl Client {
             Forge::GitLab => format!("https://{host}/api/v4"),
             Forge::Gitea | Forge::Forgejo => format!("https://{host}/api/v1"),
         };
-        let agent = ureq::AgentBuilder::new().timeout_connect(Duration::from_secs(10)).timeout(Duration::from_secs(120)).build();
-        Self { forge, base, token: token.to_string(), agent }
+        let agent = ureq::AgentBuilder::new()
+            .timeout_connect(Duration::from_secs(10))
+            .timeout(Duration::from_secs(120))
+            .build();
+        Self {
+            forge,
+            base,
+            token: token.to_string(),
+            agent,
+        }
     }
 
     pub fn capabilities(&self) -> Capabilities {
@@ -70,7 +101,12 @@ impl Client {
 
     /// Runs, newest first, `PAGE_SIZE` per page; `page` starts at 1. List entries lack the commit title and,
     /// on GitLab, the user; `pipeline()` has them.
-    pub fn pipelines(&self, repo: &RepoRef, filter: &PipelineFilter, page: u32) -> Result<Vec<Pipeline>> {
+    pub fn pipelines(
+        &self,
+        repo: &RepoRef,
+        filter: &PipelineFilter,
+        page: u32,
+    ) -> Result<Vec<Pipeline>> {
         match self.forge {
             Forge::GitHub | Forge::Gitea => actions::pipelines(self, repo, filter, page),
             Forge::GitLab => gitlab::pipelines(self, repo, filter, page),
@@ -105,7 +141,9 @@ impl Client {
 
     pub fn cancel_pipeline(&self, repo: &RepoRef, id: &PipelineId) -> Result<()> {
         match self.forge {
-            Forge::GitHub | Forge::Gitea | Forge::Forgejo => actions::cancel_pipeline(self, repo, id),
+            Forge::GitHub | Forge::Gitea | Forge::Forgejo => {
+                actions::cancel_pipeline(self, repo, id)
+            }
             Forge::GitLab => gitlab::post(self, repo, &format!("/pipelines/{}/cancel", id.0)),
         }
     }
@@ -133,13 +171,21 @@ impl Client {
         }
     }
 
-    pub(crate) fn call(&self, method: &str, path: &str, query: &[(&str, String)]) -> Result<ureq::Response> {
+    pub(crate) fn call(
+        &self,
+        method: &str,
+        path: &str,
+        query: &[(&str, String)],
+    ) -> Result<ureq::Response> {
         let mut req = self
             .agent
             .request(method, &format!("{}{path}", self.base))
             .set("Authorization", &format!("Bearer {}", self.token))
             .set("User-Agent", "desktop-rs")
-            .set("Accept", "application/vnd.github+json, application/json, text/plain")
+            .set(
+                "Accept",
+                "application/vnd.github+json, application/json, text/plain",
+            )
             .set("X-GitHub-Api-Version", "2022-11-28");
         for (key, value) in query {
             req = req.query(key, value);
@@ -151,13 +197,23 @@ impl Client {
         }
     }
 
-    pub(crate) fn get<T: DeserializeOwned>(&self, path: &str, query: &[(&str, String)]) -> Result<T> {
-        self.call("GET", path, query)?.into_json().map_err(|e| Error::Parse(e.to_string()))
+    pub(crate) fn get<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &[(&str, String)],
+    ) -> Result<T> {
+        self.call("GET", path, query)?
+            .into_json()
+            .map_err(|e| Error::Parse(e.to_string()))
     }
 
     pub(crate) fn text(&self, path: &str) -> Result<String> {
         let mut bytes = Vec::new();
-        self.call("GET", path, &[])?.into_reader().take(MAX_LOG_BYTES).read_to_end(&mut bytes).map_err(|e| Error::Network(e.to_string()))?;
+        self.call("GET", path, &[])?
+            .into_reader()
+            .take(MAX_LOG_BYTES)
+            .read_to_end(&mut bytes)
+            .map_err(|e| Error::Network(e.to_string()))?;
         Ok(String::from_utf8_lossy(&bytes).into_owned())
     }
 }
@@ -171,7 +227,15 @@ fn status_error(code: u16, resp: ureq::Response) -> Error {
         403 => Error::Forbidden,
         404 => Error::NotFound,
         429 => Error::RateLimited(retry_after),
-        _ => Error::Http { status: code, message: resp.into_string().unwrap_or_default().chars().take(300).collect() },
+        _ => Error::Http {
+            status: code,
+            message: resp
+                .into_string()
+                .unwrap_or_default()
+                .chars()
+                .take(300)
+                .collect(),
+        },
     }
 }
 

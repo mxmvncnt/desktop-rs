@@ -21,21 +21,39 @@ pub struct RepoAccountBlock {
 impl RenderOnce for RepoAccountBlock {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let picked = self.picks.get(self.repo_path.to_string_lossy().as_ref()).filter(|id| self.accounts.iter().any(|a| &a.id == *id));
+        let picked = self
+            .picks
+            .get(self.repo_path.to_string_lossy().as_ref())
+            .filter(|id| self.accounts.iter().any(|a| &a.id == *id));
         let in_use = match &self.remote_host {
-            Some(host) => match account_for_repo(&self.accounts, &self.picks, &self.repo_path, host) {
-                Some(a) => format!("In use: {} ({})", a.name, a.host),
-                None => format!("No account for {host}. Add one, or pick another account."),
-            },
+            Some(host) => {
+                match account_for_repo(&self.accounts, &self.picks, &self.repo_path, host) {
+                    Some(a) => format!("In use: {} ({})", a.name, a.host),
+                    None => format!("No account for {host}. Add one, or pick another account."),
+                }
+            }
             None => "This repository has no remote.".into(),
         };
         let choices = std::iter::once((None, "Automatic".to_string()))
-            .chain(self.accounts.iter().map(|a| (Some(a.id.clone()), format!("{} ({})", a.name, a.host))))
+            .chain(
+                self.accounts
+                    .iter()
+                    .map(|a| (Some(a.id.clone()), format!("{} ({})", a.name, a.host))),
+            )
             .map(|(id, label)| {
                 let (store, path) = (self.store.clone(), self.repo_path.clone());
-                let button = Button::new(format!("repo-account-{}", id.as_deref().unwrap_or("auto"))).compact().label(label);
-                let button = if id.as_ref() == picked { button.primary() } else { button };
-                button.on_click(move |_, _, cx| store.update(cx, |this, cx| this.set_repo_account(&path, id.clone(), cx)))
+                let button =
+                    Button::new(format!("repo-account-{}", id.as_deref().unwrap_or("auto")))
+                        .compact()
+                        .label(label);
+                let button = if id.as_ref() == picked {
+                    button.primary()
+                } else {
+                    button
+                };
+                button.on_click(move |_, _, cx| {
+                    store.update(cx, |this, cx| this.set_repo_account(&path, id.clone(), cx))
+                })
             });
         div()
             .flex()

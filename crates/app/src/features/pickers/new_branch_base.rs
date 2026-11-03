@@ -34,7 +34,11 @@ impl RenderOnce for NewBranchBase {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let pickers = self.pickers.clone();
-        let chevron = if self.open { Icon::ChevronUp } else { Icon::ChevronDown };
+        let chevron = if self.open {
+            Icon::ChevronUp
+        } else {
+            Icon::ChevronDown
+        };
         let label = if self.chosen.is_none() {
             format!("{} (current)", self.current)
         } else {
@@ -49,15 +53,31 @@ impl RenderOnce for NewBranchBase {
             .rounded(px(6.0))
             .border_1()
             .border_color(theme.border)
-            .child(icon(Icon::GitBranch).size(px(14.0)).text_color(theme.text_faint))
-            .child(div().flex_1().min_w_0().truncate().text_color(theme.text).child(label))
+            .child(
+                icon(Icon::GitBranch)
+                    .size(px(14.0))
+                    .text_color(theme.text_faint),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .text_color(theme.text)
+                    .child(label),
+            )
             .child(icon(chevron).size(px(14.0)).text_color(theme.text_faint))
             .on_click(move |_, _, cx| pickers.update(cx, |p, cx| p.toggle_base_list(cx)));
         div()
             .flex()
             .flex_col()
             .gap(px(6.0))
-            .child(div().text_size(px(12.0)).text_color(theme.text_muted).child("Based on"))
+            .child(
+                div()
+                    .text_size(px(12.0))
+                    .text_color(theme.text_muted)
+                    .child("Based on"),
+            )
             .child(trigger)
             .children(self.open.then(|| NewBranchBaseList::new(&self)))
     }

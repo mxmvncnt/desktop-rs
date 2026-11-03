@@ -36,14 +36,25 @@ pub fn http() -> ureq::Agent {
 impl TokenSecret {
     /// From a stored string: the JSON blob, or a bare token saved by older versions.
     pub fn parse(raw: &str) -> Self {
-        serde_json::from_str(raw).unwrap_or_else(|_| Self { access_token: raw.into(), ..Self::default() })
+        serde_json::from_str(raw).unwrap_or_else(|_| Self {
+            access_token: raw.into(),
+            ..Self::default()
+        })
     }
 
     /// From an OAuth token response; `old_refresh` is kept when the server sends no new one.
-    pub fn from_response(res: &impl TokenResponse, old_refresh: &str, client_id: &str, token_url: &str) -> Self {
+    pub fn from_response(
+        res: &impl TokenResponse,
+        old_refresh: &str,
+        client_id: &str,
+        token_url: &str,
+    ) -> Self {
         Self {
             access_token: res.access_token().secret().clone(),
-            refresh_token: res.refresh_token().map_or(old_refresh, |t| t.secret()).to_string(),
+            refresh_token: res
+                .refresh_token()
+                .map_or(old_refresh, |t| t.secret())
+                .to_string(),
             expires_at: res.expires_in().map_or(0, |d| now() + d.as_secs() as i64),
             client_id: client_id.into(),
             token_url: token_url.into(),
@@ -51,7 +62,9 @@ impl TokenSecret {
     }
 
     pub fn needs_refresh(&self, now: i64) -> bool {
-        !self.refresh_token.is_empty() && self.expires_at != 0 && now + REFRESH_MARGIN_SECS >= self.expires_at
+        !self.refresh_token.is_empty()
+            && self.expires_at != 0
+            && now + REFRESH_MARGIN_SECS >= self.expires_at
     }
 
     pub fn store(&self, id: &str) {
@@ -65,7 +78,12 @@ impl TokenSecret {
             .exchange_refresh_token(&RefreshToken::new(self.refresh_token.clone()))
             .request(&http())
             .map_err(|e| e.to_string())?;
-        Ok(Self::from_response(&res, &self.refresh_token, &self.client_id, &self.token_url))
+        Ok(Self::from_response(
+            &res,
+            &self.refresh_token,
+            &self.client_id,
+            &self.token_url,
+        ))
     }
 }
 

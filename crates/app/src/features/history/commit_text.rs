@@ -34,23 +34,46 @@ impl Workspace {
     ) {
         self.focus(window, cx);
         let prev = self.commit_sel.on(&texts);
-        let sel = TextSel::press(prev, pos, TextSide::Unified, clicks, shift, &texts[pos.line]);
+        let sel = TextSel::press(
+            prev,
+            pos,
+            TextSide::Unified,
+            clicks,
+            shift,
+            &texts[pos.line],
+        );
         self.diff_view.text_sel = None;
-        self.commit_sel = CommitSelection { sel: Some(sel), texts, drag: clicks == 1 };
+        self.commit_sel = CommitSelection {
+            sel: Some(sel),
+            texts,
+            drag: clicks == 1,
+        };
         cx.notify();
     }
 
     pub fn commit_text_drag(&mut self, pos: TextPos, cx: &mut Context<Self>) {
-        let Some(sel) = self.commit_sel.sel.as_mut().filter(|s| s.head != pos) else { return };
+        let Some(sel) = self.commit_sel.sel.as_mut().filter(|s| s.head != pos) else {
+            return;
+        };
         sel.head = pos;
         cx.notify();
     }
 
     pub fn copy_commit_text(&mut self, cx: &mut Context<Self>) {
-        let CommitSelection { sel: Some(sel), texts, .. } = &self.commit_sel else { return };
+        let CommitSelection {
+            sel: Some(sel),
+            texts,
+            ..
+        } = &self.commit_sel
+        else {
+            return;
+        };
         let (a, b) = sel.ordered();
         let text = (a.line..=b.line)
-            .filter_map(|l| sel.cols_in(l, TextSide::Unified, texts[l].len()).map(|r| &texts[l][r]))
+            .filter_map(|l| {
+                sel.cols_in(l, TextSide::Unified, texts[l].len())
+                    .map(|r| &texts[l][r])
+            })
             .collect::<Vec<_>>()
             .join("\n");
         if !text.is_empty() {

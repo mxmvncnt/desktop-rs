@@ -21,7 +21,12 @@ impl RepoModel {
     }
 
     /// Delete a local branch (force) and/or `remote` on the server.
-    pub fn delete_branch(&mut self, branch: Branch, remote: Option<RemoteBranch>, cx: &mut Context<Self>) {
+    pub fn delete_branch(
+        &mut self,
+        branch: Branch,
+        remote: Option<RemoteBranch>,
+        cx: &mut Context<Self>,
+    ) {
         let name = branch.name.clone();
         let local = branch.kind == BranchKind::Local;
         self.run(
@@ -78,6 +83,11 @@ impl RepoModel {
     }
 
     pub fn create_branch(&mut self, name: String, cx: &mut Context<Self>) {
-        self.run(Op::default(), move |r| r.create_branch(&name, None), |_, _, _| {}, cx);
+        self.run(
+            Op::default(),
+            move |r| r.create_branch(&name, None),
+            |_, _, _| {},
+            cx,
+        );
     }
 }

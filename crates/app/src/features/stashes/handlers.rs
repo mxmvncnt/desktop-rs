@@ -12,7 +12,13 @@ use crate::repo::RepoModel;
 use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
-    fn run_stash_action(&mut self, action: StashAction, s: Stash, window: &mut Window, cx: &mut Context<Self>) {
+    fn run_stash_action(
+        &mut self,
+        action: StashAction,
+        s: Stash,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         match action {
             StashAction::Apply => self.with_repo(cx, move |r, cx| r.stash_apply(s.sha, cx)),
             StashAction::Pop => self.with_repo(cx, move |r, cx| r.stash_pop(s.sha, cx)),
@@ -25,7 +31,13 @@ impl Workspace {
         }
     }
 
-    pub fn open_stash_menu(&mut self, stash: Stash, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_stash_menu(
+        &mut self,
+        stash: Stash,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let menu = Menu::new(position, stash_menu_rows(), move |ws, action, w, cx| {
             ws.run_stash_action(action, stash.clone(), w, cx)
         });
@@ -33,8 +45,15 @@ impl Workspace {
     }
 
     /// Ctrl+Shift+S / the header menu. `selected_only` stashes the checked files.
-    pub fn open_stash_create(&mut self, selected_only: bool, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(repo) = self.repo.clone() else { return };
+    pub fn open_stash_create(
+        &mut self,
+        selected_only: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
         let r = repo.read(cx);
         if r.changes().is_empty() {
             return;
@@ -53,7 +72,13 @@ impl Workspace {
     /// Called when a checkout was requested with a dirty working tree.
     pub fn open_switch_dialog(&mut self, branch: Branch, cx: &mut Context<Self>) {
         // Desktop's default: leave the changes behind (stash).
-        self.open_overlay(Overlay::Stash(StashDialog::Switch { branch, stash: true }), cx);
+        self.open_overlay(
+            Overlay::Stash(StashDialog::Switch {
+                branch,
+                stash: true,
+            }),
+            cx,
+        );
     }
 
     /// Swap the open dialog's content (option rows toggling a choice).
@@ -65,13 +90,22 @@ impl Workspace {
     }
 
     pub fn stash_confirm(&mut self, cx: &mut Context<Self>) {
-        let Some(Overlay::Stash(d)) = self.overlays.pop_if(|o| matches!(o, Overlay::Stash(_))) else { return };
+        let Some(Overlay::Stash(d)) = self.overlays.pop_if(|o| matches!(o, Overlay::Stash(_)))
+        else {
+            return;
+        };
         cx.notify();
-        let Some(repo) = self.repo.clone() else { return };
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
         let text = self.stash_ui.input.read(cx).as_str().trim().to_string();
         match d {
             StashDialog::Create { selected_only } => {
-                let paths = if selected_only { stash_paths(repo.read(cx)) } else { Vec::new() };
+                let paths = if selected_only {
+                    stash_paths(repo.read(cx))
+                } else {
+                    Vec::new()
+                };
                 repo.update(cx, |r, cx| r.stash_push(text, paths, cx));
             }
             StashDialog::Rename(s) => repo.update(cx, |r, cx| r.stash_rename(s, text, cx)),
@@ -82,7 +116,12 @@ impl Workspace {
         }
     }
 
-    pub(super) fn open_stash_dialog(&mut self, d: StashDialog, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn open_stash_dialog(
+        &mut self,
+        d: StashDialog,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let wants_input = matches!(d, StashDialog::Create { .. } | StashDialog::Rename(_));
         self.open_overlay(Overlay::Stash(d), cx);
         if wants_input {

@@ -77,8 +77,15 @@ impl Repository {
             && st.ahead_behind.ahead > 0
             && st.ahead_behind.behind > 0
         {
-            let tip = self.git().args(["rev-parse", "--verify", "@{upstream}"]).run()?;
-            let reflog = self.git().args(["reflog", "show", "--format=%H"]).arg(format!("refs/heads/{branch}")).run()?;
+            let tip = self
+                .git()
+                .args(["rev-parse", "--verify", "@{upstream}"])
+                .run()?;
+            let reflog = self
+                .git()
+                .args(["reflog", "show", "--format=%H"])
+                .arg(format!("refs/heads/{branch}"))
+                .run()?;
             let tip = tip.trim();
             st.rewritten = reflog.lines().any(|sha| sha == tip);
         }
@@ -100,10 +107,15 @@ fn status_from_xy(xy: &str) -> FileStatus {
 
 pub(crate) fn parse_status(out: &[u8]) -> Result<WorkingStatus> {
     let mut st = WorkingStatus::default();
-    let mut fields = out.split(|&b| b == 0).filter(|f| !f.is_empty()).map(String::from_utf8_lossy);
+    let mut fields = out
+        .split(|&b| b == 0)
+        .filter(|f| !f.is_empty())
+        .map(String::from_utf8_lossy);
     while let Some(line) = fields.next() {
         let bad = || GitError::Parse(line.to_string());
-        let Some((kind, rest)) = line.split_once(' ') else { return Err(bad()) };
+        let Some((kind, rest)) = line.split_once(' ') else {
+            return Err(bad());
+        };
         match kind {
             "#" => {
                 let (key, value) = rest.split_once(' ').unwrap_or((rest, ""));
@@ -125,12 +137,21 @@ pub(crate) fn parse_status(out: &[u8]) -> Result<WorkingStatus> {
             }
             // 1 XY sub mH mI mW hH hI path
             "1" => {
-                let [xy, _, _, _, _, _, _, path] = rest.splitn(8, ' ').collect::<Vec<_>>()[..] else { return Err(bad()) };
-                st.files.push(FileChange { path: path.into(), old_path: None, status: status_from_xy(xy) });
+                let [xy, _, _, _, _, _, _, path] = rest.splitn(8, ' ').collect::<Vec<_>>()[..]
+                else {
+                    return Err(bad());
+                };
+                st.files.push(FileChange {
+                    path: path.into(),
+                    old_path: None,
+                    status: status_from_xy(xy),
+                });
             }
             // 2 XY sub mH mI mW hH hI Xscore path \0 origPath
             "2" => {
-                let [xy, _, _, _, _, _, _, score, path] = rest.splitn(9, ' ').collect::<Vec<_>>()[..] else {
+                let [xy, _, _, _, _, _, _, score, path] =
+                    rest.splitn(9, ' ').collect::<Vec<_>>()[..]
+                else {
                     return Err(bad());
                 };
                 let status = match status_from_xy(xy) {
@@ -139,20 +160,35 @@ pub(crate) fn parse_status(out: &[u8]) -> Result<WorkingStatus> {
                     s => s,
                 };
                 let old_path = fields.next().map(|p| p.into_owned());
-                st.files.push(FileChange { path: path.into(), old_path, status });
+                st.files.push(FileChange {
+                    path: path.into(),
+                    old_path,
+                    status,
+                });
             }
             // u XY sub m1 m2 m3 mW h1 h2 h3 path
             "u" => {
-                let Some(path) = rest.splitn(10, ' ').nth(9) else { return Err(bad()) };
-                st.files.push(FileChange { path: path.into(), old_path: None, status: FileStatus::Conflicted });
+                let Some(path) = rest.splitn(10, ' ').nth(9) else {
+                    return Err(bad());
+                };
+                st.files.push(FileChange {
+                    path: path.into(),
+                    old_path: None,
+                    status: FileStatus::Conflicted,
+                });
             }
-            "?" => st.files.push(FileChange { path: rest.into(), old_path: None, status: FileStatus::Untracked }),
+            "?" => st.files.push(FileChange {
+                path: rest.into(),
+                old_path: None,
+                status: FileStatus::Untracked,
+            }),
             _ => {}
         }
     }
     // Conflicted files first (Desktop lists them in their own section on top).
     st.files.sort_by(|a, b| {
-        (a.status != FileStatus::Conflicted, &a.path).cmp(&(b.status != FileStatus::Conflicted, &b.path))
+        (a.status != FileStatus::Conflicted, &a.path)
+            .cmp(&(b.status != FileStatus::Conflicted, &b.path))
     });
     Ok(st)
 }

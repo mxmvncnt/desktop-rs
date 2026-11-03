@@ -1,6 +1,7 @@
 use gd_ui::{CheckState, Checkbox, Theme};
 use gpui::{
-    App, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, Styled, Window, div, px,
+    App, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, Styled,
+    Window, div, px,
 };
 
 use super::state::SelectionSummary;
@@ -36,7 +37,9 @@ impl RenderOnce for ChangesHeader {
             .text_size(px(12.0))
             .text_color(theme.text_muted)
             .child(Checkbox::new("all-files", all).on_click(move |_, _, cx| {
-                repo.update(cx, |r, cx| r.set_all_included(all != CheckState::Checked, cx))
+                repo.update(cx, |r, cx| {
+                    r.set_all_included(all != CheckState::Checked, cx)
+                })
             }))
             .child(format!("{total} changed file{}", plural(total as u32)))
     }

@@ -8,8 +8,8 @@ use std::time::{Duration, Instant};
 
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, CsrfToken, DeviceAuthorizationUrl, PkceCodeChallenge, RedirectUrl, Scope,
-    StandardDeviceAuthorizationResponse, TokenUrl,
+    AuthUrl, AuthorizationCode, ClientId, CsrfToken, DeviceAuthorizationUrl, PkceCodeChallenge,
+    RedirectUrl, Scope, StandardDeviceAuthorizationResponse, TokenUrl,
 };
 use smol::channel::Sender;
 
@@ -27,7 +27,10 @@ const CALLBACK_WAIT_SECS: u32 = 300;
 
 pub enum Progress {
     /// Open `url` in the browser; the device flow also shows `user_code`.
-    Open { url: String, user_code: Option<String> },
+    Open {
+        url: String,
+        user_code: Option<String>,
+    },
     Done(Result<(TokenSecret, String), String>),
 }
 
@@ -41,7 +44,13 @@ fn scopes(provider: Provider) -> &'static [&'static str] {
 
 /// Run the sign-in of `provider` on `host` off-thread. `cancel` stops the loopback listener or the
 /// device flow polling.
-pub fn sign_in(provider: Provider, host: String, app: OAuthApp, cancel: Arc<AtomicBool>, tx: Sender<Progress>) {
+pub fn sign_in(
+    provider: Provider,
+    host: String,
+    app: OAuthApp,
+    cancel: Arc<AtomicBool>,
+    tx: Sender<Progress>,
+) {
     std::thread::spawn(move || {
         let base = format!("https://{host}");
         let (auth, token) = match provider {
@@ -50,7 +59,15 @@ pub fn sign_in(provider: Provider, host: String, app: OAuthApp, cancel: Arc<Atom
         };
         let (auth_url, token_url) = (format!("{base}/{auth}"), format!("{base}/{token}"));
         let res = if provider.uses_device_flow() {
-            device_flow(provider, &app.client_id, &auth_url, &token_url, &format!("{base}/login/device/code"), &cancel, &tx)
+            device_flow(
+                provider,
+                &app.client_id,
+                &auth_url,
+                &token_url,
+                &format!("{base}/login/device/code"),
+                &cancel,
+                &tx,
+            )
         } else {
             code_flow(provider, &app, &auth_url, &token_url, &cancel, &tx)
         };
@@ -75,7 +92,9 @@ fn device_flow(
     let client = BasicClient::new(ClientId::new(client_id.into()))
         .set_auth_uri(AuthUrl::new(auth_url.into()).map_err(|e| err(&e))?)
         .set_token_uri(TokenUrl::new(token_url.into()).map_err(|e| err(&e))?)
-        .set_device_authorization_url(DeviceAuthorizationUrl::new(device_url.into()).map_err(|e| err(&e))?);
+        .set_device_authorization_url(
+            DeviceAuthorizationUrl::new(device_url.into()).map_err(|e| err(&e))?,
+        );
     let http = http();
     let details: StandardDeviceAuthorizationResponse = client
         .exchange_device_code()
@@ -117,7 +136,12 @@ fn device_flow(
             }
             Some("authorization_pending") => {}
             Some("slow_down") => interval += Duration::from_secs(5),
-            Some(code) => return Err(res["error_description"].as_str().unwrap_or(code).to_string()),
+            Some(code) => {
+                return Err(res["error_description"]
+                    .as_str()
+                    .unwrap_or(code)
+                    .to_string());
+            }
         }
     }
 }
@@ -142,21 +166,43 @@ fn code_flow(
         .add_scopes(scopes(provider).iter().map(|s| Scope::new(s.to_string())))
         .url();
     let redirect = url::Url::parse(app.redirect_uri).map_err(|e| err(&e))?;
-    let server = tiny_http::Server::http("127.0.0.1:47123").map_err(|e| format!("cannot listen on 127.0.0.1:47123: {e}"))?;
-    tx.send_blocking(Progress::Open { url: url.to_string(), user_code: None }).ok();
+    let server = tiny_http::Server::http("127.0.0.1:47123")
+        .map_err(|e| format!("cannot listen on 127.0.0.1:47123: {e}"))?;
+    tx.send_blocking(Progress::Open {
+        url: url.to_string(),
+        user_code: None,
+    })
+    .ok();
 
-    let page = tiny_http::Header::from_bytes("Content-Type", "text/html; charset=utf-8").map_err(|()| "bad header".to_string())?;
+    let page = tiny_http::Header::from_bytes("Content-Type", "text/html; charset=utf-8")
+        .map_err(|()| "bad header".to_string())?;
     let mut code = None;
     for _ in 0..CALLBACK_WAIT_SECS {
         if cancel.load(Ordering::Relaxed) {
             return Err("cancelled".into());
         }
-        let Some(request) = server.recv_timeout(Duration::from_secs(1)).map_err(|e| err(&e))? else { continue };
+        let Some(request) = server
+            .recv_timeout(Duration::from_secs(1))
+            .map_err(|e| err(&e))?
+        else {
+            continue;
+        };
         let callback = redirect.join(request.url()).map_err(|e| err(&e))?;
         let ours = callback.path() == redirect.path();
-        let query = |key: &str| callback.query_pairs().find(|(k, _)| k == key).map(|(_, v)| v.into_owned());
-        let body = if ours { "You can close this tab and return to desktop-rs." } else { "Not found" };
-        request.respond(tiny_http::Response::from_string(body).with_header(page.clone())).ok();
+        let query = |key: &str| {
+            callback
+                .query_pairs()
+                .find(|(k, _)| k == key)
+                .map(|(_, v)| v.into_owned())
+        };
+        let body = if ours {
+            "You can close this tab and return to desktop-rs."
+        } else {
+            "Not found"
+        };
+        request
+            .respond(tiny_http::Response::from_string(body).with_header(page.clone()))
+            .ok();
         if !ours {
             continue;
         }
@@ -175,7 +221,12 @@ fn code_flow(
         .set_pkce_verifier(verifier)
         .request(&http())
         .map_err(|e| err(&e))?;
-    Ok(TokenSecret::from_response(&res, "", &app.client_id, token_url))
+    Ok(TokenSecret::from_response(
+        &res,
+        "",
+        &app.client_id,
+        token_url,
+    ))
 }
 
 /// The login of the token's owner (`/user` of the provider's API).
@@ -197,5 +248,8 @@ pub(super) fn username(provider: Provider, host: &str, token: &str) -> Result<St
         })?
         .into_json()
         .map_err(|e| e.to_string())?;
-    user[field].as_str().map(str::to_string).ok_or_else(|| format!("no `{field}` in the response of {url}"))
+    user[field]
+        .as_str()
+        .map(str::to_string)
+        .ok_or_else(|| format!("no `{field}` in the response of {url}"))
 }

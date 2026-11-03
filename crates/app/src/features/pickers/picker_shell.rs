@@ -5,17 +5,17 @@
 
 use gd_ui::{Theme, divider, empty_state};
 use gpui::{
-    AnyElement, App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window,
-    div, prelude::*, px,
+    AnyElement, App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled,
+    Window, div, prelude::*, px,
 };
 use gpui_elements::editable_text::{
     EditableTextState,
     actions::{Enter, NavDown, NavUp},
 };
 
+use super::store::PopoverStore;
 use crate::actions::{SelectNext, SelectPrevious};
 use crate::components::{LIST_INSET_Y, text_field};
-use super::store::PopoverStore;
 
 pub(super) const PICKER_ROW: f32 = 34.0;
 const PICKER_MAX_ROWS: usize = 10;
@@ -104,15 +104,22 @@ impl RenderOnce for PickerShell {
                     .text_color(theme.text_muted)
                     .child(self.title),
             )
-            .child(
-                div()
-                    .px(px(10.0))
-                    .pb(px(10.0))
-                    .child(text_field("picker-filter", &self.filter, self.placeholder, cx)),
-            )
+            .child(div().px(px(10.0)).pb(px(10.0)).child(text_field(
+                "picker-filter",
+                &self.filter,
+                self.placeholder,
+                cx,
+            )))
             .child(divider(cx))
             .child(body)
             .child(divider(cx))
-            .child(div().flex().gap(px(6.0)).p(px(8.0)).bg(theme.ink(0.02)).child(self.footer))
+            .child(
+                div()
+                    .flex()
+                    .gap(px(6.0))
+                    .p(px(8.0))
+                    .bg(theme.ink(0.02))
+                    .child(self.footer),
+            )
     }
 }

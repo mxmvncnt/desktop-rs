@@ -1,6 +1,9 @@
 //! Small zeron-style tooltip for `.tooltip(gd_ui::tooltip("text"))`.
 
-use gpui::{AnyView, App, AppContext, Context, IntoElement, ParentElement, Render, SharedString, Styled, Window, div, px};
+use gpui::{
+    AnyView, App, AppContext, Context, IntoElement, ParentElement, Render, SharedString, Styled,
+    Window, div, px,
+};
 
 use crate::theme::Theme;
 
@@ -33,7 +36,9 @@ impl Render for Tooltip {
 }
 
 /// Builder for `InteractiveElement::tooltip`.
-pub fn tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> AnyView + 'static {
+pub fn tooltip(
+    text: impl Into<SharedString>,
+) -> impl Fn(&mut Window, &mut App) -> AnyView + 'static {
     let text = text.into();
     move |_, cx| cx.new(|_| Tooltip { text: text.clone() }).into()
 }

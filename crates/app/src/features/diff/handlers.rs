@@ -11,7 +11,12 @@ use super::list::SplitDiff;
 use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
-    pub fn open_diff_options(&mut self, pos: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_diff_options(
+        &mut self,
+        pos: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if matches!(self.overlays.last(), Some(Overlay::DiffOptions(_))) {
             return self.close_overlay(window, cx);
         }
@@ -26,7 +31,11 @@ impl Workspace {
         self.settings.diff_split = split;
         self.settings.save();
         // Row indices mean something else in the other mode.
-        self.diff_scroll.0.borrow().base_handle.set_offset(point(px(0.0), px(0.0)));
+        self.diff_scroll
+            .0
+            .borrow()
+            .base_handle
+            .set_offset(point(px(0.0), px(0.0)));
         self.diff_view.hscroll = px(0.0);
         self.diff_view.text_sel = None;
         cx.notify();
@@ -39,7 +48,11 @@ impl Workspace {
         self.settings.diff_wrap = wrap;
         self.settings.save();
         // The other mode uses another list; start both at the top.
-        self.diff_scroll.0.borrow().base_handle.set_offset(point(px(0.0), px(0.0)));
+        self.diff_scroll
+            .0
+            .borrow()
+            .base_handle
+            .set_offset(point(px(0.0), px(0.0)));
         self.diff_view.wrap_for = None;
         cx.notify();
     }
@@ -56,13 +69,20 @@ impl Workspace {
 
     /// Push the persisted options into the repository model (reloads diffs if changed).
     pub fn apply_diff_options(&mut self, cx: &mut Context<Self>) {
-        let opts = DiffOptions { ignore_whitespace: self.settings.diff_ignore_whitespace };
+        let opts = DiffOptions {
+            ignore_whitespace: self.settings.diff_ignore_whitespace,
+        };
         self.with_repo(cx, |r, cx| r.set_diff_options(opts, cx));
     }
 
     /// Paired rows for `diff`, built once per loaded diff and cached.
     pub fn split_for(&mut self, diff: &Arc<Diff>) -> Arc<SplitDiff> {
-        if let Some(s) = self.diff_view.split_cache.as_ref().filter(|s| Arc::ptr_eq(&s.diff, diff)) {
+        if let Some(s) = self
+            .diff_view
+            .split_cache
+            .as_ref()
+            .filter(|s| Arc::ptr_eq(&s.diff, diff))
+        {
             return s.clone();
         }
         let s = Arc::new(SplitDiff::build(diff));
@@ -75,8 +95,15 @@ impl Workspace {
     /// Wheel/trackpad horizontal scroll of the (non-wrapped) diff, shared by
     /// both split columns. Clamped so the widest line can just be read to its end.
     pub fn scroll_diff_x(&mut self, by: Pixels, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(ext) = &self.diff_view.extent else { return };
-        let Some(line) = ext.diff.lines.get(ext.diff.longest_line).filter(|l| !l.text.is_empty()) else {
+        let Some(ext) = &self.diff_view.extent else {
+            return;
+        };
+        let Some(line) = ext
+            .diff
+            .lines
+            .get(ext.diff.longest_line)
+            .filter(|l| !l.text.is_empty())
+        else {
             return;
         };
         let run = TextRun {
@@ -88,7 +115,10 @@ impl Workspace {
             strikethrough: None,
             letter_spacing: None,
         };
-        let width = window.text_system().shape_line(line.text.clone().into(), px(12.0), &[run]).width;
+        let width = window
+            .text_system()
+            .shape_line(line.text.clone().into(), px(12.0), &[run])
+            .width;
         let view = self.diff_scroll.0.borrow().base_handle.bounds().size.width;
         let visible = (view - ext.fixed) / ext.columns;
         let max = (width + px(24.0) - visible).max(px(0.0));

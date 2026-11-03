@@ -17,7 +17,11 @@ impl RepoRef {
     pub fn from_remote(remote: &str) -> Option<Self> {
         let (host, path) = gd_git::split_remote(remote)?;
         let (owner, name) = path.rsplit_once('/')?;
-        Some(Self { host, owner: owner.to_string(), name: name.to_string() })
+        Some(Self {
+            host,
+            owner: owner.to_string(),
+            name: name.to_string(),
+        })
     }
 
     /// `owner/name`, as in the web URL.

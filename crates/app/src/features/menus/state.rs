@@ -7,7 +7,11 @@ pub enum ConfirmDialog {
     File(FileChange),
     All(Vec<FileChange>),
     /// Changed `rows` of the working diff of `path`: one line or a whole chunk.
-    Rows { path: String, diff: Arc<Diff>, rows: Vec<usize> },
+    Rows {
+        path: String,
+        diff: Arc<Diff>,
+        rows: Vec<usize>,
+    },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

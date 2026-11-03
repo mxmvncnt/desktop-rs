@@ -1,7 +1,10 @@
 //! Small style building blocks: icons, hairline dividers, the pressable
 //! row/ghost surface, pill badges and the overlay card.
 
-use gpui::{App, Div, Hsla, ElementId, SharedString, Stateful, Styled, Svg, div, millis, prelude::*, px, svg};
+use gpui::{
+    App, Div, ElementId, Hsla, SharedString, Stateful, Styled, Svg, div, millis, prelude::*, px,
+    svg,
+};
 
 use crate::assets::Icon;
 use crate::motion::HOVER_MS;
@@ -13,12 +16,20 @@ pub fn icon(icon: Icon) -> Svg {
 
 /// Horizontal hairline divider.
 pub fn divider(cx: &App) -> Div {
-    div().h(px(1.0)).w_full().flex_none().bg(Theme::of(cx).border)
+    div()
+        .h(px(1.0))
+        .w_full()
+        .flex_none()
+        .bg(Theme::of(cx).border)
 }
 
 /// Vertical hairline divider.
 pub fn vdivider(cx: &App) -> Div {
-    div().w(px(1.0)).h_full().flex_none().bg(Theme::of(cx).border)
+    div()
+        .w(px(1.0))
+        .h_full()
+        .flex_none()
+        .bg(Theme::of(cx).border)
 }
 
 /// An interactive surface with zeron's hover/active ink washes, transitioned.

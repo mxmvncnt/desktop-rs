@@ -31,12 +31,15 @@ mod stash;
 mod status;
 
 pub use config::{ConfigEntry, validate_key as validate_config_key};
+pub use credentials::{HostCredential, set_credentials, set_token_source};
+pub use identity::{
+    EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity,
+};
 pub use info::RepoInfo;
 pub use remotes::Remote;
-pub use credentials::{HostCredential, set_credentials, set_token_source};
-pub use identity::{EffectiveIdentity, Identity, IdentitySource, global_identity, set_global_identity};
 
-pub use diff::{Side, Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};
+pub use diff::{Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions, Side};
+pub use diff_summary::LineStats;
 pub use exec::GitError;
 pub use expand::{EXPANSION_STEP, Expansion, expand, expandable, gap_above, gap_below};
 pub use history_ops::{ForcePushPreview, ResetMode};
@@ -44,11 +47,10 @@ pub use log::{CoAuthor, Commit, parse_co_authors};
 pub use merge::{MergePreview, default_squash_summary};
 pub use partial::{PartialFile, selectable, staged_text};
 pub use pr_preview::{Comparison, compare_url};
-pub use remote::{Host, github_web_url, host_of, split_remote};
 pub use progress::{InProgress, OpOutcome};
 pub use refs::{Branch, BranchKind};
+pub use remote::{Host, github_web_url, host_of, split_remote};
 pub use stash::Stash;
-pub use diff_summary::LineStats;
 pub use status::{AheadBehind, FileChange, FileStatus, WorkingStatus};
 
 use std::path::{Path, PathBuf};
@@ -69,11 +71,21 @@ impl Repository {
     /// Open the repository containing `path` (any subdirectory works).
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let out = Git::new(path.as_ref())
-            .args(["rev-parse", "--path-format=absolute", "--show-toplevel", "--git-dir", "--git-common-dir"])
+            .args([
+                "rev-parse",
+                "--path-format=absolute",
+                "--show-toplevel",
+                "--git-dir",
+                "--git-common-dir",
+            ])
             .run()?;
         let mut lines = out.lines().map(PathBuf::from);
         match (lines.next(), lines.next(), lines.next()) {
-            (Some(root), Some(git_dir), Some(common_git_dir)) => Ok(Self { root, git_dir, common_git_dir }),
+            (Some(root), Some(git_dir), Some(common_git_dir)) => Ok(Self {
+                root,
+                git_dir,
+                common_git_dir,
+            }),
             _ => Err(GitError::Parse(out)),
         }
     }
@@ -177,7 +189,12 @@ impl Repository {
     }
 
     pub(crate) fn head_sha(&self) -> Result<String> {
-        Ok(self.git().args(["rev-parse", "HEAD"]).run()?.trim().to_string())
+        Ok(self
+            .git()
+            .args(["rev-parse", "HEAD"])
+            .run()?
+            .trim()
+            .to_string())
     }
 
     /// Discard working-tree changes for `paths`. Untracked files are deleted.
@@ -188,9 +205,15 @@ impl Repository {
         if !tracked.is_empty() {
             let paths = tracked.iter().map(|c| &c.path);
             if self.has_head() {
-                self.git().args(["checkout", "-q", "HEAD", "--"]).args(paths).exec()?;
+                self.git()
+                    .args(["checkout", "-q", "HEAD", "--"])
+                    .args(paths)
+                    .exec()?;
             } else {
-                self.git().args(["rm", "-q", "--cached", "--"]).args(paths).exec()?;
+                self.git()
+                    .args(["rm", "-q", "--cached", "--"])
+                    .args(paths)
+                    .exec()?;
             }
         }
         for c in untracked {
@@ -210,8 +233,13 @@ impl Repository {
         // a broken secondary remote (e.g. a mistyped `upstream` URL) doesn't
         // fail the whole fetch like `git fetch --all` would.
         let remotes = self.remotes()?;
-        let Some(default) = default_remote(&remotes) else { return Ok(()) };
-        self.git().args(["fetch", "--prune", default]).network().exec()?;
+        let Some(default) = default_remote(&remotes) else {
+            return Ok(());
+        };
+        self.git()
+            .args(["fetch", "--prune", default])
+            .network()
+            .exec()?;
         for (name, _) in remotes.iter().filter(|(n, _)| n != default) {
             if let Err(e) = self.git().args(["fetch", "--prune", name]).network().exec() {
                 ::log::warn!("fetch of remote '{name}' failed: {e}");
@@ -221,7 +249,10 @@ impl Repository {
     }
 
     pub fn pull(&self) -> Result<()> {
-        self.git().args(["pull", "--ff", "--no-edit"]).network().exec()
+        self.git()
+            .args(["pull", "--ff", "--no-edit"])
+            .network()
+            .exec()
     }
 
     /// Fetch, then push only if the remote has no commits we lack. Returns
@@ -244,14 +275,20 @@ impl Repository {
         } else {
             let remotes = self.remotes()?;
             let remote = default_remote(&remotes).unwrap_or("origin");
-            self.git().args(["push", "--set-upstream", remote, branch]).network().exec()
+            self.git()
+                .args(["push", "--set-upstream", remote, branch])
+                .network()
+                .exec()
         }
     }
 
     /// Force push the current branch to its upstream, refusing if the remote
     /// moved since the last fetch (`--force-with-lease`).
     pub fn push_force(&self) -> Result<()> {
-        self.git().args(["push", "--force-with-lease"]).network().exec()
+        self.git()
+            .args(["push", "--force-with-lease"])
+            .network()
+            .exec()
     }
 
     /// Append `patterns` to the repository's root `.gitignore` (created if
@@ -300,7 +337,10 @@ impl Repository {
 
 /// `origin` if present, else the first remote.
 fn default_remote(remotes: &[(String, String)]) -> Option<&str> {
-    let (name, _) = remotes.iter().find(|(n, _)| n == "origin").or(remotes.first())?;
+    let (name, _) = remotes
+        .iter()
+        .find(|(n, _)| n == "origin")
+        .or(remotes.first())?;
     Some(name)
 }
 

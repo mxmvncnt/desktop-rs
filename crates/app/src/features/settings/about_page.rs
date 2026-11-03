@@ -18,7 +18,12 @@ impl RenderOnce for AboutPage {
             .flex()
             .flex_col()
             .gap(px(6.0))
-            .child(div().text_size(px(18.0)).font_weight(gpui::FontWeight::SEMIBOLD).child("Desktop"))
+            .child(
+                div()
+                    .text_size(px(18.0))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child("Desktop"),
+            )
             .child(
                 div()
                     .pb(px(10.0))

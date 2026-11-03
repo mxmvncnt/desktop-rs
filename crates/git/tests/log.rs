@@ -21,12 +21,24 @@ fn log_pages_and_reads_trailers() {
     let summaries: Vec<_> = all.iter().map(|c| c.summary.as_str()).collect();
     assert_eq!(summaries, ["c5", "c4", "c3", "c2", "c1"]);
     let page = repo.log(1, 2).unwrap();
-    assert_eq!(page.iter().map(|c| c.summary.as_str()).collect::<Vec<_>>(), ["c4", "c3"]);
+    assert_eq!(
+        page.iter().map(|c| c.summary.as_str()).collect::<Vec<_>>(),
+        ["c4", "c3"]
+    );
     let c = &page[0];
-    assert_eq!((c.author_name.as_str(), c.author_email.as_str()), ("T", "t@x.io"));
+    assert_eq!(
+        (c.author_name.as_str(), c.author_email.as_str()),
+        ("T", "t@x.io")
+    );
     assert_eq!(c.parents, [all[2].sha.clone()]);
     assert_eq!(c.body, "body 4\n\nCo-authored-by: Al <al@x.io>");
-    assert_eq!(c.co_authors, [CoAuthor { name: "Al".into(), email: "al@x.io".into() }]);
+    assert_eq!(
+        c.co_authors,
+        [CoAuthor {
+            name: "Al".into(),
+            email: "al@x.io".into()
+        }]
+    );
     assert!(c.sha.starts_with(&c.short_sha));
 }
 
@@ -44,9 +56,27 @@ fn tree_changes_for_commit_and_comparison() {
     sh(&dir, &["add", "."]);
     sh(&dir, &["commit", "-qm", "root"]);
     let root = repo.log(0, 1).unwrap().remove(0);
-    assert_eq!(repo.commit_stats(&root.sha).unwrap(), LineStats { added: 12, deleted: 0 });
-    let files: Vec<_> = repo.commit_files(&root.sha).unwrap().into_iter().map(|f| (f.path, f.status)).collect();
-    assert_eq!(files, [("gone".into(), FileStatus::New), ("keep".into(), FileStatus::New), ("old".into(), FileStatus::New)]);
+    assert_eq!(
+        repo.commit_stats(&root.sha).unwrap(),
+        LineStats {
+            added: 12,
+            deleted: 0
+        }
+    );
+    let files: Vec<_> = repo
+        .commit_files(&root.sha)
+        .unwrap()
+        .into_iter()
+        .map(|f| (f.path, f.status))
+        .collect();
+    assert_eq!(
+        files,
+        [
+            ("gone".into(), FileStatus::New),
+            ("keep".into(), FileStatus::New),
+            ("old".into(), FileStatus::New)
+        ]
+    );
 
     sh(&dir, &["checkout", "-q", "-b", "feat"]);
     sh(&dir, &["mv", "old", "new"]);
@@ -55,9 +85,26 @@ fn tree_changes_for_commit_and_comparison() {
     sh(&dir, &["add", "-A"]);
     sh(&dir, &["commit", "-qm", "feat"]);
     // The rename counts for nothing; `keep` goes from 4 lines to 1 and `gone` loses 4.
-    assert_eq!(repo.commit_stats("HEAD").unwrap(), LineStats { added: 1, deleted: 8 });
-    assert_eq!(repo.compare("main", "feat").unwrap().stats, LineStats { added: 1, deleted: 8 });
-    let got: Vec<_> = repo.commit_files("HEAD").unwrap().into_iter().map(|f| (f.path, f.old_path, f.status)).collect();
+    assert_eq!(
+        repo.commit_stats("HEAD").unwrap(),
+        LineStats {
+            added: 1,
+            deleted: 8
+        }
+    );
+    assert_eq!(
+        repo.compare("main", "feat").unwrap().stats,
+        LineStats {
+            added: 1,
+            deleted: 8
+        }
+    );
+    let got: Vec<_> = repo
+        .commit_files("HEAD")
+        .unwrap()
+        .into_iter()
+        .map(|f| (f.path, f.old_path, f.status))
+        .collect();
     assert_eq!(
         got,
         [
@@ -83,9 +130,17 @@ fn blob_sides_read_missing_paths_as_empty() {
     sh(&dir, &["commit", "-qm", "root"]);
     let root = repo.log(0, 1).unwrap().remove(0);
     let file = repo.commit_files(&root.sha).unwrap().remove(0);
-    let diff = repo.commit_diff(&root.sha, &file, Default::default()).unwrap();
+    let diff = repo
+        .commit_diff(&root.sha, &file, Default::default())
+        .unwrap();
     assert_eq!((diff.added, diff.deleted), (2, 0));
-    let blob = |rev: &str, path: &str| repo.read_side(&Side::Blob { rev: rev.into(), path: path.into() }).unwrap();
+    let blob = |rev: &str, path: &str| {
+        repo.read_side(&Side::Blob {
+            rev: rev.into(),
+            path: path.into(),
+        })
+        .unwrap()
+    };
     assert_eq!(blob("HEAD", "f"), b"one\ntwo\n");
     assert!(blob("HEAD", "missing").is_empty());
 }

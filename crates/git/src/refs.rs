@@ -34,10 +34,15 @@ impl Repository {
             .run()?;
         let mut branches = Vec::new();
         for line in out.lines() {
-            let [refname, name, head, upstream, time] = line.split('\0').collect::<Vec<_>>()[..] else {
+            let [refname, name, head, upstream, time] = line.split('\0').collect::<Vec<_>>()[..]
+            else {
                 return Err(GitError::Parse(line.into()));
             };
-            let kind = if refname.starts_with("refs/heads/") { BranchKind::Local } else { BranchKind::Remote };
+            let kind = if refname.starts_with("refs/heads/") {
+                BranchKind::Local
+            } else {
+                BranchKind::Remote
+            };
             // Skip symbolic `origin/HEAD`.
             if kind == BranchKind::Remote && refname.ends_with("/HEAD") {
                 continue;
@@ -69,7 +74,10 @@ impl Repository {
 
     /// Delete `branch` on `remote` (`git push <remote> --delete <branch>`).
     pub fn delete_remote_branch(&self, remote: &str, branch: &str) -> Result<()> {
-        self.git().args(["push", remote, "--delete", branch]).network().exec()
+        self.git()
+            .args(["push", remote, "--delete", branch])
+            .network()
+            .exec()
     }
 
     /// Switch to an existing local branch, or create a tracking branch for a
@@ -78,8 +86,13 @@ impl Repository {
         match branch.kind {
             BranchKind::Local => self.git().args(["checkout", "-q", &branch.name]).exec(),
             BranchKind::Remote => {
-                let local = branch.name.split_once('/').map_or(&*branch.name, |(_, rest)| rest);
-                self.git().args(["checkout", "-q", "-b", local, "--track", &branch.name]).exec()
+                let local = branch
+                    .name
+                    .split_once('/')
+                    .map_or(&*branch.name, |(_, rest)| rest);
+                self.git()
+                    .args(["checkout", "-q", "-b", local, "--track", &branch.name])
+                    .exec()
             }
         }
     }

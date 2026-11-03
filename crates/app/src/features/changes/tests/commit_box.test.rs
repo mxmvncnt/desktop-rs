@@ -17,7 +17,14 @@ fn typing_does_not_notify_workspace(cx: &mut TestAppContext) {
     std::fs::remove_dir_all(dir).ok();
     let repo = dir.join("repo");
     std::fs::create_dir_all(&repo).unwrap();
-    assert!(std::process::Command::new("git").args(["init", "-q"]).current_dir(&repo).status().unwrap().success());
+    assert!(
+        std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(&repo)
+            .status()
+            .unwrap()
+            .success()
+    );
     // SAFETY: the only test touching the environment; settings are written here, not to ~/.config.
     unsafe { std::env::set_var("GD_CONFIG_DIR", dir.join("config")) };
 
@@ -32,7 +39,10 @@ fn typing_does_not_notify_workspace(cx: &mut TestAppContext) {
     let commit_box_notifies = Rc::new(Cell::new(0));
     let commit_box: Entity<CommitBox> = ws.read_with(cx, |ws, _| ws.commit_box.clone());
     let _subs = cx.update(|window, cx| {
-        window.focus(&gpui::Focusable::focus_handle(&commit_box.read(cx).message, cx), cx);
+        window.focus(
+            &gpui::Focusable::focus_handle(&commit_box.read(cx).message, cx),
+            cx,
+        );
         let (w, c) = (workspace_notifies.clone(), commit_box_notifies.clone());
         [
             cx.observe(&ws, move |_, _| w.set(w.get() + 1)),
@@ -44,7 +54,17 @@ fn typing_does_not_notify_workspace(cx: &mut TestAppContext) {
     cx.simulate_input("hello");
     cx.run_until_parked();
 
-    assert_eq!(commit_box.read_with(cx, |b, cx| b.text(cx)), ("hello".to_string(), String::new()));
-    assert!(commit_box_notifies.get() > 0, "the commit box re-renders on input");
-    assert_eq!(workspace_notifies.get(), 0, "typing must not notify Workspace");
+    assert_eq!(
+        commit_box.read_with(cx, |b, cx| b.text(cx)),
+        ("hello".to_string(), String::new())
+    );
+    assert!(
+        commit_box_notifies.get() > 0,
+        "the commit box re-renders on input"
+    );
+    assert_eq!(
+        workspace_notifies.get(),
+        0,
+        "typing must not notify Workspace"
+    );
 }

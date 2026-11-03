@@ -37,11 +37,22 @@ fn up_down_and_merge() {
 
     let all = expand(&d, Expansion::All(1)).unwrap();
     assert_eq!(all.hunks.len(), 1);
-    assert_eq!(all.lines.iter().filter(|l| l.kind == DiffLineKind::Hunk).count(), 1);
+    assert_eq!(
+        all.lines
+            .iter()
+            .filter(|l| l.kind == DiffLineKind::Hunk)
+            .count(),
+        1
+    );
     check_rows(&all, &new);
     // Changes and staging are unaffected by expansion.
     assert_eq!((all.added, all.deleted), (d.added, d.deleted));
-    let pick = |d: &Diff| crate::staged_text(d, |ix| d.lines[ix].text == "ten" || d.lines[ix].text == "10").unwrap();
+    let pick = |d: &Diff| {
+        crate::staged_text(d, |ix| {
+            d.lines[ix].text == "ten" || d.lines[ix].text == "10"
+        })
+        .unwrap()
+    };
     assert_eq!(pick(&all), pick(&d));
 }
 

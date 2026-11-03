@@ -1,7 +1,9 @@
 //! Repository settings → Ignored files: the root `.gitignore` and `.git/info/exclude` as text.
 
 use gd_ui::{Button, Theme};
-use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px};
+use gpui::{
+    App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px,
+};
 
 use super::state::{IgnoreFile, RepoSettingsInputs, RepoSettingsStore};
 use crate::components::text_area;
@@ -17,14 +19,23 @@ pub struct IgnorePage {
 impl RenderOnce for IgnorePage {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let section = |file: IgnoreFile, title: &'static str, caption: &'static str, id: &'static str, input| {
+        let section = |file: IgnoreFile,
+                       title: &'static str,
+                       caption: &'static str,
+                       id: &'static str,
+                       input| {
             let store = self.store.clone();
             div()
                 .flex()
                 .flex_col()
                 .gap(px(8.0))
                 .child(div().font_weight(gpui::FontWeight::MEDIUM).child(title))
-                .child(div().text_size(px(12.0)).text_color(theme.text_faint).child(caption))
+                .child(
+                    div()
+                        .text_size(px(12.0))
+                        .text_color(theme.text_faint)
+                        .child(caption),
+                )
                 .child(
                     text_area(id, input, "One pattern per line, e.g. target/ or *.log", cx)
                         .w_full()
@@ -34,11 +45,11 @@ impl RenderOnce for IgnorePage {
                         .overflow_y_scroll(),
                 )
                 .child(
-                    div().flex().child(
-                        Button::new(id).compact().label("Save").on_click(move |_, _, cx| {
-                            store.update(cx, |this, cx| this.save_ignore(file, cx))
-                        }),
-                    ),
+                    div()
+                        .flex()
+                        .child(Button::new(id).compact().label("Save").on_click(
+                            move |_, _, cx| store.update(cx, |this, cx| this.save_ignore(file, cx)),
+                        )),
                 )
         };
         div()
@@ -59,7 +70,13 @@ impl RenderOnce for IgnorePage {
                 "ignore-exclude",
                 &self.inputs.exclude,
             ))
-            .children(self.notice.map(|n| div().text_size(px(12.0)).text_color(theme.success).child(n)))
-            .children(self.error.map(|e| div().text_size(px(12.0)).text_color(theme.danger).child(e)))
+            .children(
+                self.notice
+                    .map(|n| div().text_size(px(12.0)).text_color(theme.success).child(n)),
+            )
+            .children(
+                self.error
+                    .map(|e| div().text_size(px(12.0)).text_color(theme.danger).child(e)),
+            )
     }
 }

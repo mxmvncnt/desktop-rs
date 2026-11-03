@@ -1,7 +1,10 @@
 //! The virtualized list around a row renderer, shared by unified and split.
 
 use gd_ui::{Theme, theme::DIFF_ROW_HEIGHT};
-use gpui::{AnyElement, App, InteractiveElement, IntoElement, ListState, SharedString, Styled, UniformListScrollHandle, list, px, uniform_list};
+use gpui::{
+    AnyElement, App, InteractiveElement, IntoElement, ListState, SharedString, Styled,
+    UniformListScrollHandle, list, px, uniform_list,
+};
 
 /// A `uniform_list` when rows are one line tall, or (`wrap`) a `list` whose
 /// rows measure their own height.

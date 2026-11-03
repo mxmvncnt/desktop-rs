@@ -6,9 +6,9 @@ mod features;
 mod frame_debug;
 mod platform;
 mod repo;
-mod utils;
 #[cfg(feature = "snapshot")]
 mod snapshot;
+mod utils;
 
 mod watcher;
 #[cfg(all(test, feature = "snapshot"))]

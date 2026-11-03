@@ -22,12 +22,18 @@ impl Repository {
         let out = self.git().args(["remote", "-v"]).run()?;
         let mut list: Vec<Remote> = Vec::new();
         for line in out.lines() {
-            let Some((name, rest)) = line.split_once('\t') else { continue };
+            let Some((name, rest)) = line.split_once('\t') else {
+                continue;
+            };
             let (url, kind) = rest.rsplit_once(' ').unwrap_or((rest, ""));
             match list.iter_mut().find(|r| r.name == name) {
                 Some(r) if kind == "(push)" => r.push_url = url.into(),
                 Some(_) => {}
-                None => list.push(Remote { name: name.into(), fetch_url: url.into(), push_url: url.into() }),
+                None => list.push(Remote {
+                    name: name.into(),
+                    fetch_url: url.into(),
+                    push_url: url.into(),
+                }),
             }
         }
         Ok(list)
@@ -53,9 +59,19 @@ impl Repository {
     pub fn set_remote_push_url(&self, name: &str, url: &str) -> Result<()> {
         if url.is_empty() {
             // Exit 5 when no push URL is set: nothing to drop.
-            let _ = self.git().args(["config", "--local", "--unset-all", &format!("remote.{name}.pushurl")]).exec();
+            let _ = self
+                .git()
+                .args([
+                    "config",
+                    "--local",
+                    "--unset-all",
+                    &format!("remote.{name}.pushurl"),
+                ])
+                .exec();
             return Ok(());
         }
-        self.git().args(["remote", "set-url", "--push", name, url]).exec()
+        self.git()
+            .args(["remote", "set-url", "--push", name, url])
+            .exec()
     }
 }

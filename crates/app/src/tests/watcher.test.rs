@@ -23,8 +23,14 @@ fn classifies() {
     assert_eq!(classify(&p, Path::new("/r/.git/index")), Some(true));
     assert_eq!(classify(&p, Path::new("/r/.git/index.lock")), None);
     assert_eq!(classify(&p, Path::new("/r/.git/HEAD")), Some(true));
-    assert_eq!(classify(&p, Path::new("/r/.git/refs/heads/main")), Some(true));
-    assert_eq!(classify(&p, Path::new("/r/.git/refs/heads/main.lock")), None);
+    assert_eq!(
+        classify(&p, Path::new("/r/.git/refs/heads/main")),
+        Some(true)
+    );
+    assert_eq!(
+        classify(&p, Path::new("/r/.git/refs/heads/main.lock")),
+        None
+    );
     assert_eq!(classify(&p, Path::new("/r/.git/objects/ab/cdef")), None);
     assert_eq!(classify(&p, Path::new("/r/.git/logs/HEAD")), None);
     assert_eq!(classify(&p, Path::new("/r/.git/FETCH_HEAD")), Some(true));

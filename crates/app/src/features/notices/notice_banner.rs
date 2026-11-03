@@ -3,8 +3,7 @@ use std::hash::{BuildHasher, BuildHasherDefault};
 
 use gd_ui::{Icon, Theme, icon, motion};
 use gpui::{
-    App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled,
-    Window, div, px,
+    App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
 };
 
 use crate::workspace::Workspace;
@@ -37,7 +36,11 @@ impl NoticeBanner {
             (None, Some(n)) => (NoticeKind::Success, n),
             _ => return None,
         };
-        Some(Self { ws: cx.entity(), kind, message })
+        Some(Self {
+            ws: cx.entity(),
+            kind,
+            message,
+        })
     }
 }
 
@@ -45,7 +48,10 @@ impl RenderOnce for NoticeBanner {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let is_error = self.kind == NoticeKind::Error;
-        let key = format!("banner-{}", BuildHasherDefault::<DefaultHasher>::default().hash_one(&self.message));
+        let key = format!(
+            "banner-{}",
+            BuildHasherDefault::<DefaultHasher>::default().hash_one(&self.message)
+        );
         let ws = self.ws;
         div()
             .absolute()
@@ -60,8 +66,13 @@ impl RenderOnce for NoticeBanner {
                     .gap(px(10.0))
                     .p(px(12.0))
                     .child(
-                        icon(if is_error { Icon::Warning } else { Icon::Check })
-                            .text_color(if is_error { theme.danger } else { theme.success }),
+                        icon(if is_error { Icon::Warning } else { Icon::Check }).text_color(
+                            if is_error {
+                                theme.danger
+                            } else {
+                                theme.success
+                            },
+                        ),
                     )
                     .child(
                         div()
@@ -74,7 +85,9 @@ impl RenderOnce for NoticeBanner {
                     .child(
                         gd_ui::icon_button("dismiss-banner", Icon::Close)
                             .compact()
-                            .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.dismiss_notices(cx))),
+                            .on_click(move |_, _, cx| {
+                                ws.update(cx, |this, cx| this.dismiss_notices(cx))
+                            }),
                     ),
             ))
     }

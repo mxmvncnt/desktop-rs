@@ -11,9 +11,9 @@ mod ops;
 mod remote_form;
 mod remotes_page;
 mod repo_settings_modal;
-mod state;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
+mod state;
 
 pub use repo_settings_modal::RepoSettingsModal;
 pub use state::RepoSettingsStore;

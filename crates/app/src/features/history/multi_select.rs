@@ -1,8 +1,8 @@
 //! Main pane while 2+ commits are selected: count, hints and the commit list.
 
+use crate::components::list;
 use gd_git::Commit;
 use gd_ui::Theme;
-use crate::components::list;
 use gpui::{App, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 use crate::repo::RepoModel;
@@ -15,7 +15,11 @@ pub struct MultiSelectPane {
 impl RenderOnce for MultiSelectPane {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let r = self.repo.read(cx);
-        let commits: Vec<Commit> = r.multi_indices().iter().filter_map(|&i| r.log.commits.get(i).cloned()).collect();
+        let commits: Vec<Commit> = r
+            .multi_indices()
+            .iter()
+            .filter_map(|&i| r.log.commits.get(i).cloned())
+            .collect();
         let pushed = commits.iter().filter(|c| !r.is_unpushed(&c.sha)).count();
         let n = commits.len();
         div()
@@ -26,7 +30,9 @@ impl RenderOnce for MultiSelectPane {
             .child(header(n, pushed, cx))
             .child(
                 list("multi-commits", n, move |range, _w, cx| {
-                    range.filter_map(|ix| Some(multi_commit_row(ix, commits.get(ix)?, cx))).collect()
+                    range
+                        .filter_map(|ix| Some(multi_commit_row(ix, commits.get(ix)?, cx)))
+                        .collect()
                 })
                 .flex_1(),
             )
@@ -75,6 +81,19 @@ fn multi_commit_row(ix: usize, c: &Commit, cx: &App) -> impl IntoElement + use<>
                 .text_color(theme.text_faint)
                 .child(c.short_sha.clone()),
         )
-        .child(div().flex_1().min_w_0().truncate().text_color(theme.text_muted).child(c.summary.clone()))
-        .child(div().flex_none().text_size(px(12.0)).text_color(theme.text_faint).child(c.author_name.clone()))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .truncate()
+                .text_color(theme.text_muted)
+                .child(c.summary.clone()),
+        )
+        .child(
+            div()
+                .flex_none()
+                .text_size(px(12.0))
+                .text_color(theme.text_faint)
+                .child(c.author_name.clone()),
+        )
 }

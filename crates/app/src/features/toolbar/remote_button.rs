@@ -25,8 +25,19 @@ impl RemoteButton {
         }
     }
 
-    fn new(icon: Icon, caption: impl Into<SharedString>, title: impl Into<SharedString>, op: Option<RemoteOp>) -> Self {
-        Self { icon, caption: caption.into(), title: title.into(), op, busy: false }
+    fn new(
+        icon: Icon,
+        caption: impl Into<SharedString>,
+        title: impl Into<SharedString>,
+        op: Option<RemoteOp>,
+    ) -> Self {
+        Self {
+            icon,
+            caption: caption.into(),
+            title: title.into(),
+            op,
+            busy: false,
+        }
     }
 
     fn busy(mut self) -> Self {
@@ -52,15 +63,30 @@ impl RemoteButton {
 
     fn in_flight(op: RemoteOp, remote: &str) -> Self {
         match op {
-            RemoteOp::Fetch => Self::new(Icon::Refresh, "Fetching…", format!("Fetch {remote}"), None),
-            RemoteOp::Pull => Self::new(Icon::ArrowDown, "Pulling…", format!("Pull {remote}"), None),
+            RemoteOp::Fetch => {
+                Self::new(Icon::Refresh, "Fetching…", format!("Fetch {remote}"), None)
+            }
+            RemoteOp::Pull => {
+                Self::new(Icon::ArrowDown, "Pulling…", format!("Pull {remote}"), None)
+            }
             RemoteOp::Push => Self::new(Icon::ArrowUp, "Pushing…", format!("Push {remote}"), None),
-            RemoteOp::ForcePush => Self::new(Icon::ArrowUp, "Force pushing…", format!("Force push {remote}"), None),
+            RemoteOp::ForcePush => Self::new(
+                Icon::ArrowUp,
+                "Force pushing…",
+                format!("Force push {remote}"),
+                None,
+            ),
         }
         .busy()
     }
 
-    fn idle(r: &RepoModel, has_upstream: bool, has_branch: bool, ab: AheadBehind, remote: &str) -> Self {
+    fn idle(
+        r: &RepoModel,
+        has_upstream: bool,
+        has_branch: bool,
+        ab: AheadBehind,
+        remote: &str,
+    ) -> Self {
         if !has_upstream && has_branch {
             return Self::new(
                 Icon::Cloud,
@@ -79,11 +105,21 @@ impl RemoteButton {
         }
         if has_upstream && ab.behind > 0 {
             let caption = format!("{} commit{} behind", ab.behind, plural(ab.behind));
-            return Self::new(Icon::ArrowDown, caption, format!("Pull {remote}"), Some(RemoteOp::Pull));
+            return Self::new(
+                Icon::ArrowDown,
+                caption,
+                format!("Pull {remote}"),
+                Some(RemoteOp::Pull),
+            );
         }
         if has_upstream && ab.ahead > 0 {
             let caption = format!("{} commit{} ahead", ab.ahead, plural(ab.ahead));
-            return Self::new(Icon::ArrowUp, caption, format!("Push {remote}"), Some(RemoteOp::Push));
+            return Self::new(
+                Icon::ArrowUp,
+                caption,
+                format!("Push {remote}"),
+                Some(RemoteOp::Push),
+            );
         }
         Self::new(
             Icon::Refresh,

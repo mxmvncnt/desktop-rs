@@ -3,6 +3,8 @@
 
 mod handlers;
 mod ops;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 mod stash_detail;
 mod stash_dialog;
 mod stash_header;
@@ -12,8 +14,6 @@ mod stash_panel;
 mod stash_panel_header;
 mod stash_row;
 mod state;
-#[cfg(feature = "snapshot")]
-pub mod snapshot;
 
 pub use stash_dialog::StashDialogView;
 pub use stash_panel::StashPanel;

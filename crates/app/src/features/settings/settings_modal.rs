@@ -44,17 +44,28 @@ impl RenderOnce for SettingsModal {
                 label: p.label(),
                 icon: p.icon(),
                 active: p == self.page,
-                on_click: Rc::new(move |_, cx| ws.update(cx, |this, cx| this.set_settings_page(p, cx))),
+                on_click: Rc::new(move |_, cx| {
+                    ws.update(cx, |this, cx| this.set_settings_page(p, cx))
+                }),
             }
         };
         let [top @ .., about] = SettingsPage::ALL;
         let body = match self.page {
-            SettingsPage::Appearance => {
-                AppearancePage { mode: self.theme, color_theme: self.color_theme.clone(), ws: self.ws.clone() }.into_any_element()
+            SettingsPage::Appearance => AppearancePage {
+                mode: self.theme,
+                color_theme: self.color_theme.clone(),
+                ws: self.ws.clone(),
             }
-            SettingsPage::Diff => DiffPage { ws: self.ws.clone() }.into_any_element(),
+            .into_any_element(),
+            SettingsPage::Diff => DiffPage {
+                ws: self.ws.clone(),
+            }
+            .into_any_element(),
             SettingsPage::About => AboutPage.into_any_element(),
-            SettingsPage::Accounts => AccountsPage { store: self.accounts.clone() }.into_any_element(),
+            SettingsPage::Accounts => AccountsPage {
+                store: self.accounts.clone(),
+            }
+            .into_any_element(),
         };
         let ws = self.ws.clone();
         SettingsShell {

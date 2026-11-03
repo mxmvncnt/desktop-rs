@@ -2,9 +2,7 @@
 //! strip and the commit box.
 
 use gd_ui::divider;
-use gpui::{
-    App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
-};
+use gpui::{App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div};
 
 use super::changes_header::ChangesHeader;
 use super::changes_list::ChangesList;
@@ -33,7 +31,11 @@ impl ChangesPanel {
         let last: Option<LastCommit> = r.undoable_commit().cloned().filter(|_| !amending);
         let ws_entity = cx.entity();
         Self {
-            header: ChangesHeader { selection, repo: repo.clone(), ws: ws_entity.clone() },
+            header: ChangesHeader {
+                selection,
+                repo: repo.clone(),
+                ws: ws_entity.clone(),
+            },
             list: ChangesList {
                 count: selection.total,
                 repo: repo.clone(),
@@ -42,7 +44,10 @@ impl ChangesPanel {
             },
             ws: ws_entity.clone(),
             stashes: StashPanel::new(repo, ws_entity.clone(), cx),
-            undo: last.map(|c| UndoStrip { commit: c, ws: ws_entity.clone() }),
+            undo: last.map(|c| UndoStrip {
+                commit: c,
+                ws: ws_entity.clone(),
+            }),
             commit_box: ws.commit_box.clone(),
         }
     }
@@ -57,10 +62,16 @@ impl RenderOnce for ChangesPanel {
             .min_h_0()
             .child(self.header)
             .child(divider(cx))
-            .child(nav_focus(div(), NavList::Changes, self.ws).flex().flex_col().flex_1().min_h_0().child(self.list))
+            .child(
+                nav_focus(div(), NavList::Changes, self.ws)
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_h_0()
+                    .child(self.list),
+            )
             .children(self.stashes)
             .children(self.undo)
             .child(self.commit_box)
     }
 }
-

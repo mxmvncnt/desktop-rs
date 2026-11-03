@@ -4,7 +4,10 @@ use super::*;
 
 fn job(status: Status) -> Job {
     Job {
-        id: JobId { pipeline: PipelineId(1), id: 2 },
+        id: JobId {
+            pipeline: PipelineId(1),
+            id: 2,
+        },
         name: "build".into(),
         stage: None,
         status,
@@ -20,7 +23,10 @@ fn job(status: Status) -> Job {
 }
 
 fn labels(status: Status, forge: Forge) -> Vec<&'static str> {
-    job_actions(&job(status), forge.capabilities()).into_iter().map(|(_, _, label)| label).collect()
+    job_actions(&job(status), forge.capabilities())
+        .into_iter()
+        .map(|(_, _, label)| label)
+        .collect()
 }
 
 #[test]

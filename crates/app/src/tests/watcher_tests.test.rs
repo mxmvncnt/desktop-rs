@@ -14,14 +14,29 @@ use gpui::{AppContext as _, HeadlessAppContext, px, size};
 use crate::workspace::Workspace;
 
 fn git(repo: &Path, args: &[&str]) {
-    let out = Command::new("git").args(args).current_dir(repo).output().unwrap();
-    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(repo)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }
 
 /// utime + stime in clock ticks (100/s) from /proc/self/stat (fields 14, 15).
 fn process_cpu_ticks() -> u64 {
     let stat = std::fs::read_to_string("/proc/self/stat").unwrap_or_default();
-    let fields: Vec<u64> = stat.rsplit_once(')').map_or("", |x| x.1).split_whitespace().skip(11).take(2).filter_map(|v| v.parse().ok()).collect();
+    let fields: Vec<u64> = stat
+        .rsplit_once(')')
+        .map_or("", |x| x.1)
+        .split_whitespace()
+        .skip(11)
+        .take(2)
+        .filter_map(|v| v.parse().ok())
+        .collect();
     fields.iter().sum()
 }
 
@@ -32,15 +47,39 @@ fn watcher_updates_status_without_feedback_loop() {
     git(repo, &["init", "-q", "-b", "main"]);
     std::fs::write(repo.join("a.txt"), "a\n").unwrap();
     git(repo, &["add", "-A"]);
-    git(repo, &["-c", "user.name=T", "-c", "user.email=t@example.com", "commit", "-qm", "init"]);
+    git(
+        repo,
+        &[
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "-qm",
+            "init",
+        ],
+    );
 
     let platform = gpui_platform::current_platform(true);
-    let mut cx = HeadlessAppContext::with_platform(platform.text_system(), Arc::new(gd_ui::Assets), || None);
+    let mut cx =
+        HeadlessAppContext::with_platform(platform.text_system(), Arc::new(gd_ui::Assets), || None);
     cx.update(gd_ui::init);
     let window = cx
-        .open_window(size(px(1280.0), px(820.0)), |window, cx| cx.new(|cx| Workspace::new(Some(repo.to_path_buf()), window, cx)))
+        .open_window(size(px(1280.0), px(820.0)), |window, cx| {
+            cx.new(|cx| Workspace::new(Some(repo.to_path_buf()), window, cx))
+        })
         .unwrap();
-    let m = cx.update_window(window.into(), |_, w, cx| w.root::<Workspace>().flatten().unwrap().read(cx).repo.clone().unwrap()).unwrap();
+    let m = cx
+        .update_window(window.into(), |_, w, cx| {
+            w.root::<Workspace>()
+                .flatten()
+                .unwrap()
+                .read(cx)
+                .repo
+                .clone()
+                .unwrap()
+        })
+        .unwrap();
     let settle = |cx: &mut HeadlessAppContext, ms: u64| {
         let end = Instant::now() + Duration::from_millis(ms);
         while Instant::now() < end {
@@ -77,7 +116,13 @@ fn watcher_updates_status_without_feedback_loop() {
     // 3. Git metadata change (new branch via CLI) -> full refresh sees it.
     git(repo, &["branch", "watch-branch"]);
     settle(&mut cx, 1500);
-    assert!(cx.read_entity(&m, |r, _| r.branches.iter().any(|b| b.name == "watch-branch")), "ref change not picked up");
+    assert!(
+        cx.read_entity(&m, |r, _| r
+            .branches
+            .iter()
+            .any(|b| b.name == "watch-branch")),
+        "ref change not picked up"
+    );
 
     // 4. Deleting files again; then idle once more.
     for i in 0..20 {

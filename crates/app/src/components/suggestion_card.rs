@@ -66,9 +66,24 @@ impl RenderOnce for SuggestionCard {
                     .flex_1()
                     .min_w_0()
                     .gap(px(2.0))
-                    .child(div().font_weight(gpui::FontWeight::MEDIUM).child(self.title))
-                    .child(div().text_size(px(12.0)).text_color(theme.text_faint).truncate().child(self.body)),
+                    .child(
+                        div()
+                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .child(self.title),
+                    )
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(theme.text_faint)
+                            .truncate()
+                            .child(self.body),
+                    ),
             )
-            .child(Button::new(self.id).label(self.action).compact().on_click(self.on_click))
+            .child(
+                Button::new(self.id)
+                    .label(self.action)
+                    .compact()
+                    .on_click(self.on_click),
+            )
     }
 }

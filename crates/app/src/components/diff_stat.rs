@@ -18,7 +18,15 @@ impl RenderOnce for DiffStat {
             .gap(px(8.0))
             .text_size(px(12.0))
             .font_family(theme.font_mono.clone())
-            .child(div().text_color(theme.diff_add).child(format!("+{}", self.added)))
-            .child(div().text_color(theme.diff_del).child(format!("−{}", self.deleted)))
+            .child(
+                div()
+                    .text_color(theme.diff_add)
+                    .child(format!("+{}", self.added)),
+            )
+            .child(
+                div()
+                    .text_color(theme.diff_del)
+                    .child(format!("−{}", self.deleted)),
+            )
     }
 }

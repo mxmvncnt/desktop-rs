@@ -47,7 +47,13 @@ impl PrHeader {
     fn title_row(&self, cx: &App) -> impl IntoElement + use<> {
         let close = self.repo.clone();
         let url = self.url(cx);
-        let host = self.repo.read(cx).pr.remote_url.as_deref().and_then(host_of);
+        let host = self
+            .repo
+            .read(cx)
+            .pr
+            .remote_url
+            .as_deref()
+            .and_then(host_of);
         let label = host.map_or("Create pull request".to_string(), |h| match h {
             gd_git::Host::GitLab => "Create merge request".to_string(),
             _ => "Create pull request".to_string(),
@@ -57,7 +63,13 @@ impl PrHeader {
             .items_center()
             .gap(px(10.0))
             .child(icon(Icon::Fork).size(px(16.0)))
-            .child(div().flex_1().text_size(px(15.0)).font_weight(gpui::FontWeight::SEMIBOLD).child("Preview pull request"))
+            .child(
+                div()
+                    .flex_1()
+                    .text_size(px(15.0))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child("Preview pull request"),
+            )
             .child(
                 Button::new("pr-create")
                     .primary()
@@ -87,7 +99,14 @@ impl PrHeader {
         let summary: SharedString = match (&pr.comparison, pr.loading) {
             (Some(c), _) => {
                 let files = c.files.len();
-                format!("{} commit{} • {} file{} changed", c.ahead, plural(c.ahead), files, plural(files as u32)).into()
+                format!(
+                    "{} commit{} • {} file{} changed",
+                    c.ahead,
+                    plural(c.ahead),
+                    files,
+                    plural(files as u32)
+                )
+                .into()
             }
             (None, true) => "Comparing…".into(),
             (None, false) => "".into(),
@@ -100,19 +119,26 @@ impl PrHeader {
             .gap(px(8.0))
             .text_color(theme.text_muted)
             .child(summary)
-            .children(pr.comparison.as_ref().map(|c| DiffStat { added: c.stats.added, deleted: c.stats.deleted }))
+            .children(pr.comparison.as_ref().map(|c| DiffStat {
+                added: c.stats.added,
+                deleted: c.stats.deleted,
+            }))
             .child("from")
             .child(badge(r.branch_name(), cx).text_color(theme.accent))
             .child("into")
             .child(
-                div().relative().child(
-                    Button::new("pr-base")
-                        .compact()
-                        .icon(Icon::GitBranch)
-                        .label(base)
-                        .on_click(move |_, _, cx| toggle.update(cx, |r, cx| r.toggle_pr_base_menu(cx))),
-                )
-                .children(menu),
+                div()
+                    .relative()
+                    .child(
+                        Button::new("pr-base")
+                            .compact()
+                            .icon(Icon::GitBranch)
+                            .label(base)
+                            .on_click(move |_, _, cx| {
+                                toggle.update(cx, |r, cx| r.toggle_pr_base_menu(cx))
+                            }),
+                    )
+                    .children(menu),
             )
             .children(behind.map(|b| {
                 div()
@@ -132,20 +158,38 @@ impl PrHeader {
         }
         let status = r.work.status.as_ref()?;
         if status.branch.is_none() {
-            return Some(("HEAD is detached: check out a branch to open a pull request.".into(), warn));
+            return Some((
+                "HEAD is detached: check out a branch to open a pull request.".into(),
+                warn,
+            ));
         }
         if status.upstream.is_none() {
-            return Some(("This branch is not published yet. Publish it before creating the pull request.".into(), warn));
+            return Some((
+                "This branch is not published yet. Publish it before creating the pull request."
+                    .into(),
+                warn,
+            ));
         }
         if status.ahead_behind.ahead > 0 {
             let n = status.ahead_behind.ahead;
-            return Some((format!("{n} local commit{} not pushed yet and missing from the pull request.", plural(n)), warn));
+            return Some((
+                format!(
+                    "{n} local commit{} not pushed yet and missing from the pull request.",
+                    plural(n)
+                ),
+                warn,
+            ));
         }
         match r.pr.remote_url.as_deref() {
-            None => Some(("No remote configured: the pull request can't be opened in a browser.".into(), faint)),
-            Some(u) if host_of(u).is_none() => {
-                Some(("Only GitHub, GitLab and Bitbucket remotes can open a pull request from here.".into(), faint))
-            }
+            None => Some((
+                "No remote configured: the pull request can't be opened in a browser.".into(),
+                faint,
+            )),
+            Some(u) if host_of(u).is_none() => Some((
+                "Only GitHub, GitLab and Bitbucket remotes can open a pull request from here."
+                    .into(),
+                faint,
+            )),
             _ => None,
         }
     }

@@ -2,16 +2,19 @@
 
 use gd_git::{Commit, LineStats};
 use gd_ui::{Icon, ResizeHandle, Theme, icon};
-use gpui::{AnyElement, App, DragMoveEvent, Div, Entity, FontWeight, IntoElement, RenderOnce, Window, div, prelude::*, px};
+use gpui::{
+    AnyElement, App, Div, DragMoveEvent, Entity, FontWeight, IntoElement, RenderOnce, Window, div,
+    prelude::*, px,
+};
 
 use super::CommitSelection;
-use super::message_resize::MessageDrag;
 use super::message_resize::MSG_DEFAULT_MAX;
+use super::message_resize::MessageDrag;
 use crate::components::{DiffStat, drag_selection, selectable_line};
-use crate::workspace::Workspace;
-use crate::utils::text::{authors_list, authors_text, body_without_trailers, full_date};
-use crate::utils::text::relative_time;
 use crate::utils::text::plural;
+use crate::utils::text::relative_time;
+use crate::utils::text::{authors_list, authors_text, body_without_trailers, full_date};
+use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
 pub struct CommitHeader {
@@ -37,22 +40,52 @@ impl CommitHeader {
         sel: CommitSelection,
         ws: Entity<Workspace>,
     ) -> Self {
-        Self { commit, n_files, stats, trailing: trailing.into_any_element(), msg_height, sel, ws }
+        Self {
+            commit,
+            n_files,
+            stats,
+            trailing: trailing.into_any_element(),
+            msg_height,
+            sel,
+            ws,
+        }
     }
 }
 
 impl RenderOnce for CommitHeader {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let texts = [self.commit.summary.clone(), body_without_trailers(&self.commit.body)];
+        let texts = [
+            self.commit.summary.clone(),
+            body_without_trailers(&self.commit.body),
+        ];
         let sel = self.sel.on(&texts);
         let meta = self.meta_line(&theme);
-        let (summary, summary_layout) =
-            selectable_line(&self.ws, &texts, 0, sel, theme.text, FontWeight::SEMIBOLD, &theme);
-        let (body, body_layout) = selectable_line(&self.ws, &texts, 1, sel, theme.text_muted, FontWeight::NORMAL, &theme);
+        let (summary, summary_layout) = selectable_line(
+            &self.ws,
+            &texts,
+            0,
+            sel,
+            theme.text,
+            FontWeight::SEMIBOLD,
+            &theme,
+        );
+        let (body, body_layout) = selectable_line(
+            &self.ws,
+            &texts,
+            1,
+            sel,
+            theme.text_muted,
+            FontWeight::NORMAL,
+            &theme,
+        );
         let has_body = !texts[1].is_empty();
         let message = has_body.then(|| self.message_area(body, &theme));
-        let layouts = if has_body { vec![summary_layout, body_layout] } else { vec![summary_layout] };
+        let layouts = if has_body {
+            vec![summary_layout, body_layout]
+        } else {
+            vec![summary_layout]
+        };
         div()
             .flex()
             .flex_col()
@@ -90,9 +123,13 @@ impl CommitHeader {
                 ws.update(cx, |this, cx| this.drag_commit_message_to(y, shown, cx))
             })
             .child(text)
-            .child(ResizeHandle::bottom_edge("commit-message-handle", MessageDrag).on_reset(move |_, cx| {
-                reset_ws.update(cx, |this, cx| this.reset_commit_message_height(cx))
-            }))
+            .child(
+                ResizeHandle::bottom_edge("commit-message-handle", MessageDrag).on_reset(
+                    move |_, cx| {
+                        reset_ws.update(cx, |this, cx| this.reset_commit_message_height(cx))
+                    },
+                ),
+            )
     }
 
     fn title_line(self, summary: Div) -> impl IntoElement {
@@ -129,8 +166,20 @@ impl CommitHeader {
                     .font_family(theme.font_mono.clone())
                     .child(c.short_sha.clone()),
             )
-            .child(div().id("commit-time").tooltip(gd_ui::tooltip(full_date(c.time))).child(relative_time(c.time)))
-            .child(format!("{} changed file{}", self.n_files, plural(self.n_files as u32)))
-            .child(DiffStat { added: self.stats.added, deleted: self.stats.deleted })
+            .child(
+                div()
+                    .id("commit-time")
+                    .tooltip(gd_ui::tooltip(full_date(c.time)))
+                    .child(relative_time(c.time)),
+            )
+            .child(format!(
+                "{} changed file{}",
+                self.n_files,
+                plural(self.n_files as u32)
+            ))
+            .child(DiffStat {
+                added: self.stats.added,
+                deleted: self.stats.deleted,
+            })
     }
 }

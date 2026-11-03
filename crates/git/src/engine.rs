@@ -55,11 +55,17 @@ pub(crate) fn split_lines(s: &str) -> Vec<Line<'_>> {
     while !rest.is_empty() {
         match rest.find('\n') {
             Some(i) => {
-                out.push(Line { text: rest[..i].strip_suffix('\r').unwrap_or(&rest[..i]), terminated: true });
+                out.push(Line {
+                    text: rest[..i].strip_suffix('\r').unwrap_or(&rest[..i]),
+                    terminated: true,
+                });
                 rest = &rest[i + 1..];
             }
             None => {
-                out.push(Line { text: rest.strip_suffix('\r').unwrap_or(rest), terminated: false });
+                out.push(Line {
+                    text: rest.strip_suffix('\r').unwrap_or(rest),
+                    terminated: false,
+                });
                 rest = "";
             }
         }
@@ -109,7 +115,9 @@ pub fn diff_texts(old: &str, new: &str, opts: DiffOptions) -> Diff {
 
     let mut longest = 0usize;
     'groups: for group in group_diff_ops(ops, CONTEXT) {
-        let (Some(first), Some(last)) = (group.first(), group.last()) else { continue };
+        let (Some(first), Some(last)) = (group.first(), group.last()) else {
+            continue;
+        };
         let old_start = first.old_range().start;
         let new_start = first.new_range().start;
         let old_len = last.old_range().end - old_start;
@@ -130,19 +138,40 @@ pub fn diff_texts(old: &str, new: &str, opts: DiffOptions) -> Diff {
                     for (oi, ni) in o.zip(n) {
                         // Under -w "equal" lines may differ in whitespace;
                         // show the new side like git does.
-                        push_line(&mut diff, &mut longest, DiffLineKind::Context, Some(oi), Some(ni), new_lines[ni].text);
+                        push_line(
+                            &mut diff,
+                            &mut longest,
+                            DiffLineKind::Context,
+                            Some(oi),
+                            Some(ni),
+                            new_lines[ni].text,
+                        );
                         no_newline_marker(&mut diff, &new_lines, ni);
                     }
                 }
                 DiffTag::Delete | DiffTag::Insert | DiffTag::Replace => {
                     let del_first = diff.lines.len();
                     for oi in o.clone() {
-                        push_line(&mut diff, &mut longest, DiffLineKind::Delete, Some(oi), None, old_lines[oi].text);
+                        push_line(
+                            &mut diff,
+                            &mut longest,
+                            DiffLineKind::Delete,
+                            Some(oi),
+                            None,
+                            old_lines[oi].text,
+                        );
                         no_newline_marker(&mut diff, &old_lines, oi);
                     }
                     let add_first = diff.lines.len();
                     for ni in n.clone() {
-                        push_line(&mut diff, &mut longest, DiffLineKind::Add, None, Some(ni), new_lines[ni].text);
+                        push_line(
+                            &mut diff,
+                            &mut longest,
+                            DiffLineKind::Add,
+                            None,
+                            Some(ni),
+                            new_lines[ni].text,
+                        );
                         no_newline_marker(&mut diff, &new_lines, ni);
                     }
                     if tag == DiffTag::Replace {
@@ -157,7 +186,10 @@ pub fn diff_texts(old: &str, new: &str, opts: DiffOptions) -> Diff {
         }
     }
     diff.longest_line = longest;
-    diff.source = Some(Arc::new(DiffSource { old: old.to_string(), new: new.to_string() }));
+    diff.source = Some(Arc::new(DiffSource {
+        old: old.to_string(),
+        new: new.to_string(),
+    }));
     log::debug!(
         "diff_texts: {} rows ({}+ {}-) in {:?}",
         diff.lines.len(),
@@ -168,14 +200,27 @@ pub fn diff_texts(old: &str, new: &str, opts: DiffOptions) -> Diff {
     diff
 }
 
-pub(crate) fn hunk_header(old_start: usize, old_len: usize, new_start: usize, new_len: usize) -> String {
+pub(crate) fn hunk_header(
+    old_start: usize,
+    old_len: usize,
+    new_start: usize,
+    new_len: usize,
+) -> String {
     // Same numbering as git: 1-based start, and a 0-length side starts at
     // the line *before* the change.
     let side = |start: usize, len: usize| {
         let s = if len == 0 { start } else { start + 1 };
-        if len == 1 { format!("{s}") } else { format!("{s},{len}") }
+        if len == 1 {
+            format!("{s}")
+        } else {
+            format!("{s},{len}")
+        }
     };
-    format!("@@ -{} +{} @@", side(old_start, old_len), side(new_start, new_len))
+    format!(
+        "@@ -{} +{} @@",
+        side(old_start, old_len),
+        side(new_start, new_len)
+    )
 }
 
 fn push_line(
@@ -207,9 +252,12 @@ fn no_newline_marker(diff: &mut Diff, lines: &[Line<'_>], ix: usize) {
 /// Pair the i-th deleted row with the i-th added row of a replace block and
 /// mark the words that differ, like Desktop's intra-line highlighting.
 fn emphasize_pairs(diff: &mut Diff, del_first: usize, add_first: usize) {
-    let dels: Vec<usize> = (del_first..add_first).filter(|&i| diff.lines[i].kind == DiffLineKind::Delete).collect();
-    let adds: Vec<usize> =
-        (add_first..diff.lines.len()).filter(|&i| diff.lines[i].kind == DiffLineKind::Add).collect();
+    let dels: Vec<usize> = (del_first..add_first)
+        .filter(|&i| diff.lines[i].kind == DiffLineKind::Delete)
+        .collect();
+    let adds: Vec<usize> = (add_first..diff.lines.len())
+        .filter(|&i| diff.lines[i].kind == DiffLineKind::Add)
+        .collect();
     for (&d, &a) in dels.iter().zip(adds.iter()) {
         let (old_e, new_e) = word_emphasis(&diff.lines[d].text, &diff.lines[a].text);
         diff.lines[d].emphasis = old_e;
@@ -264,7 +312,12 @@ pub fn word_emphasis(old: &str, new: &str) -> (Emphasis, Emphasis) {
     let nt = tokenize(new);
     let ok: Vec<&str> = ot.iter().map(|r| &old[r.clone()]).collect();
     let nk: Vec<&str> = nt.iter().map(|r| &new[r.clone()]).collect();
-    let ops = capture_diff_slices_deadline(Algorithm::Myers, &ok, &nk, Some(Instant::now() + Duration::from_millis(5)));
+    let ops = capture_diff_slices_deadline(
+        Algorithm::Myers,
+        &ok,
+        &nk,
+        Some(Instant::now() + Duration::from_millis(5)),
+    );
     let mut oe: Emphasis = Vec::new();
     let mut ne: Emphasis = Vec::new();
     let push = |v: &mut Vec<(usize, usize)>, toks: &[Range<usize>], r: Range<usize>| {
@@ -286,10 +339,16 @@ pub fn word_emphasis(old: &str, new: &str) -> (Emphasis, Emphasis) {
         push(&mut ne, &nt, n);
     }
     let changed = |v: &[(usize, usize)], len: usize| {
-        if len == 0 { 0.0 } else { v.iter().map(|(s, e)| e - s).sum::<usize>() as f32 / len as f32 }
+        if len == 0 {
+            0.0
+        } else {
+            v.iter().map(|(s, e)| e - s).sum::<usize>() as f32 / len as f32
+        }
     };
     // Whole-line rewrites: emphasis adds nothing.
-    if changed(&oe, old.len()) > EMPHASIS_MAX_CHANGED && changed(&ne, new.len()) > EMPHASIS_MAX_CHANGED {
+    if changed(&oe, old.len()) > EMPHASIS_MAX_CHANGED
+        && changed(&ne, new.len()) > EMPHASIS_MAX_CHANGED
+    {
         return (Vec::new(), Vec::new());
     }
     (oe, ne)

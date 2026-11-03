@@ -1,14 +1,16 @@
 //! Virtualized, infinitely-paged list of commits (History tab sidebar).
 
 use gd_ui::empty_state;
-use gpui::{App, Entity, IntoElement, RenderOnce, UniformListScrollHandle, Window, div, prelude::*};
+use gpui::{
+    App, Entity, IntoElement, RenderOnce, UniformListScrollHandle, Window, div, prelude::*,
+};
 
 use gpui_elements::editable_text::EditableTextState;
 
-use crate::components::list;
 use super::commit_row::CommitRow;
 use super::search::matching_commits;
 use super::search_box::SearchBox;
+use crate::components::list;
 use crate::repo::RepoModel;
 use crate::workspace::{NavList, Workspace, nav_focus};
 
@@ -55,9 +57,16 @@ impl CommitList {
             }
         }
         if n == 0 {
-            return empty_state(if searching { "No matching commits" } else { "No commits yet" }, cx)
-                .flex_1()
-                .into_any_element();
+            return empty_state(
+                if searching {
+                    "No matching commits"
+                } else {
+                    "No commits yet"
+                },
+                cx,
+            )
+            .flex_1()
+            .into_any_element();
         }
         let nav_ws = ws.clone();
         let list = list("history", n, move |range, _w, cx| {
@@ -74,6 +83,12 @@ impl CommitList {
         })
         .track_scroll(&self.scroll)
         .flex_1();
-        nav_focus(div(), NavList::Commits, nav_ws).flex().flex_col().flex_1().min_h_0().child(list).into_any_element()
+        nav_focus(div(), NavList::Commits, nav_ws)
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_h_0()
+            .child(list)
+            .into_any_element()
     }
 }

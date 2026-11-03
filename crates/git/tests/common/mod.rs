@@ -9,7 +9,16 @@ pub fn tempdir() -> tempfile::TempDir {
 #[allow(dead_code)] // not every test file runs git directly
 /// Run `git` in `dir`, assert success, return trimmed stdout.
 pub fn sh(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git").current_dir(dir).env("LC_ALL", "C").args(args).output().unwrap();
-    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    let out = Command::new("git")
+        .current_dir(dir)
+        .env("LC_ALL", "C")
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }

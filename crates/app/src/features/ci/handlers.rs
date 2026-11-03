@@ -31,7 +31,8 @@ impl Workspace {
             let a = self.accounts.read(cx);
             (a.accounts.clone(), a.repo_accounts.clone())
         };
-        self.ci.update(cx, |ci, cx| ci.show(repo, branch, accounts, picks, cx));
+        self.ci
+            .update(cx, |ci, cx| ci.show(repo, branch, accounts, picks, cx));
     }
 
     /// Esc: one screen back, then close the page. `false` when it is not open.
@@ -44,10 +45,17 @@ impl Workspace {
     }
 
     /// A filter input of the pipelines list changed.
-    pub(crate) fn ci_text_edited(&mut self, field: Field, input: &Entity<EditableTextState>, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn ci_text_edited(
+        &mut self,
+        field: Field,
+        input: &Entity<EditableTextState>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let typed = input.focus_handle(cx).is_focused(window);
         let text = input.read(cx).as_str().trim().to_string();
-        self.ci.update(cx, |ci, cx| ci.text_edited(field, text, typed, cx));
+        self.ci
+            .update(cx, |ci, cx| ci.text_edited(field, text, typed, cx));
     }
 
     /// A click outside the dropdown of a filter (or Esc): close it, and the text typed but not picked goes back to what the filter is.
@@ -58,7 +66,9 @@ impl Workspace {
         }
         let (branch, user) = (ci.branch.clone(), ci.user.clone());
         self.ci.update(cx, |ci, cx| ci.close_menu(cx));
-        self.ci_inputs.branch.update(cx, |s, cx| s.emplace(&branch, cx));
+        self.ci_inputs
+            .branch
+            .update(cx, |s, cx| s.emplace(&branch, cx));
         self.ci_inputs.user.update(cx, |s, cx| s.emplace(&user, cx));
     }
 
@@ -72,11 +82,18 @@ impl Workspace {
             Field::Branch => &self.ci_inputs.branch,
             Field::User => &self.ci_inputs.user,
         };
-        let typed = if ci.menu_typed { input.read(cx).as_str().trim().to_string() } else { String::new() };
+        let typed = if ci.menu_typed {
+            input.read(cx).as_str().trim().to_string()
+        } else {
+            String::new()
+        };
         let entries = match field {
             Field::Branch => {
                 let current = ci.ready().and_then(|t| t.branch.clone());
-                self.repo.as_ref().map(|r| branch_entries(&r.read(cx).branches, current.as_deref(), &typed)).unwrap_or_default()
+                self.repo
+                    .as_ref()
+                    .map(|r| branch_entries(&r.read(cx).branches, current.as_deref(), &typed))
+                    .unwrap_or_default()
             }
             Field::User => user_entries(ci.known_users(), &typed),
         };

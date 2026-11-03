@@ -28,11 +28,16 @@ mod store {
     pub fn get(id: &str) -> Result<Option<String>, String> {
         smol::block_on(async {
             let keyring = oo7::Keyring::new().await.map_err(|e| e.to_string())?;
-            let items = keyring.search_items(&[("service", super::SERVICE), ("id", id)]).await.map_err(|e| e.to_string())?;
+            let items = keyring
+                .search_items(&[("service", super::SERVICE), ("id", id)])
+                .await
+                .map_err(|e| e.to_string())?;
             match items.first() {
                 Some(item) => {
                     let secret = item.secret().await.map_err(|e| e.to_string())?;
-                    Ok(Some(String::from_utf8_lossy(secret.as_bytes()).into_owned()))
+                    Ok(Some(
+                        String::from_utf8_lossy(secret.as_bytes()).into_owned(),
+                    ))
                 }
                 None => Ok(None),
             }
@@ -43,14 +48,20 @@ mod store {
         smol::block_on(async {
             let keyring = oo7::Keyring::new().await.map_err(|e| e.to_string())?;
             let attributes = [("service", super::SERVICE), ("id", id)];
-            keyring.create_item("desktop-rs account", &attributes, secret, true).await.map_err(|e| e.to_string())
+            keyring
+                .create_item("desktop-rs account", &attributes, secret, true)
+                .await
+                .map_err(|e| e.to_string())
         })
     }
 
     pub fn delete(id: &str) -> Result<(), String> {
         smol::block_on(async {
             let keyring = oo7::Keyring::new().await.map_err(|e| e.to_string())?;
-            keyring.delete(&[("service", super::SERVICE), ("id", id)]).await.map_err(|e| e.to_string())
+            keyring
+                .delete(&[("service", super::SERVICE), ("id", id)])
+                .await
+                .map_err(|e| e.to_string())
         })
     }
 }
@@ -82,7 +93,9 @@ mod store {
 }
 
 fn read_file() -> BTreeMap<String, String> {
-    let text = file_path().and_then(|p| std::fs::read_to_string(p).ok()).unwrap_or_default();
+    let text = file_path()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_default();
     toml::from_str(&text).unwrap_or_default()
 }
 

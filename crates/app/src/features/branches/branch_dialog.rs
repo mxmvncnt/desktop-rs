@@ -44,7 +44,11 @@ impl RenderOnce for BranchDialogView {
         let dialog = match &self.dialog {
             BranchDialog::Rename { old } => self.rename(old, cx),
             BranchDialog::CreateFrom { base } => self.create_from(base, cx),
-            BranchDialog::Delete { branch, remote, also_remote } => self.delete(branch, remote.as_deref(), *also_remote, cx),
+            BranchDialog::Delete {
+                branch,
+                remote,
+                also_remote,
+            } => self.delete(branch, remote.as_deref(), *also_remote, cx),
         };
         let (ws_ok, ws_cancel) = (self.ws.clone(), self.ws.clone());
         dialog
@@ -70,19 +74,40 @@ impl BranchDialogView {
 
     fn create_from(&self, base: &str, cx: &App) -> Dialog {
         Dialog::new("create-from", format!("Create branch from {base}"))
-            .body(format!("The new branch starts at {base} and is checked out."))
+            .body(format!(
+                "The new branch starts at {base} and is checked out."
+            ))
             .content(self.name_field("create-from-input", cx))
-            .detail(format!("Currently on {}. Uncommitted changes come along.", self.current))
+            .detail(format!(
+                "Currently on {}. Uncommitted changes come along.",
+                self.current
+            ))
             .confirm_label("Create branch")
     }
 
-    fn delete(&self, branch: &Branch, upstream: Option<&str>, also_remote: bool, cx: &App) -> Dialog {
+    fn delete(
+        &self,
+        branch: &Branch,
+        upstream: Option<&str>,
+        also_remote: bool,
+        cx: &App,
+    ) -> Dialog {
         let is_remote = branch.kind == BranchKind::Remote;
-        let title = if is_remote { "Delete remote branch" } else { "Delete branch" };
-        let body = if is_remote {
-            format!("Delete {} from the remote? Other people lose it too.", branch.name)
+        let title = if is_remote {
+            "Delete remote branch"
         } else {
-            format!("Are you sure you want to delete the branch {}?", branch.name)
+            "Delete branch"
+        };
+        let body = if is_remote {
+            format!(
+                "Delete {} from the remote? Other people lose it too.",
+                branch.name
+            )
+        } else {
+            format!(
+                "Are you sure you want to delete the branch {}?",
+                branch.name
+            )
         };
         let dlg = Dialog::new("delete-branch", title)
             .body(body)
@@ -96,13 +121,19 @@ impl BranchDialogView {
     }
 
     fn name_field(&self, id: &'static str, cx: &App) -> impl IntoElement + use<> {
-        div().mt(px(4.0)).child(text_field(id, &self.input, "Branch name", cx))
+        div()
+            .mt(px(4.0))
+            .child(text_field(id, &self.input, "Branch name", cx))
     }
 
     fn also_remote_row(&self, remote: &str, checked: bool, cx: &App) -> impl IntoElement + use<> {
         let theme = Theme::of(cx);
         let ws = self.ws.clone();
-        let state = if checked { CheckState::Checked } else { CheckState::Unchecked };
+        let state = if checked {
+            CheckState::Checked
+        } else {
+            CheckState::Unchecked
+        };
         div()
             .flex()
             .items_center()
@@ -111,8 +142,9 @@ impl BranchDialogView {
             .text_size(px(13.0))
             .text_color(theme.text)
             .child(
-                Checkbox::new("delete-remote", state)
-                    .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.toggle_also_remote(cx))),
+                Checkbox::new("delete-remote", state).on_click(move |_, _, cx| {
+                    ws.update(cx, |this, cx| this.toggle_also_remote(cx))
+                }),
             )
             .child(format!("Also delete the remote branch {remote}"))
     }

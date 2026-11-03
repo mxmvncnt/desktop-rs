@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use gd_git::{Diff, DiffLineKind, FileChange, InProgress};
 use gd_ui::{Button, Icon, Theme, icon};
-use gpui::{App, ColorExt as _, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
+use gpui::{
+    App, ColorExt as _, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+};
 
 use super::state::Resolve;
 use crate::repo::RepoModel;
@@ -24,14 +26,28 @@ pub struct ConflictHint {
 }
 
 impl ConflictHint {
-    pub fn new(change: &FileChange, diff: Option<&Arc<Diff>>, repo: Entity<RepoModel>, cx: &App) -> Self {
+    pub fn new(
+        change: &FileChange,
+        diff: Option<&Arc<Diff>>,
+        repo: Entity<RepoModel>,
+        cx: &App,
+    ) -> Self {
         let r = repo.read(cx);
         let sides = match &r.merge.in_progress {
-            Some(InProgress::Merge { branch: Some(b), .. }) => Some(format!("ours: {} · theirs: {b}", r.branch_name())),
+            Some(InProgress::Merge {
+                branch: Some(b), ..
+            }) => Some(format!("ours: {} · theirs: {b}", r.branch_name())),
             _ => None,
         };
         let (busy, root) = (r.merge.busy.is_some(), r.repo.root().to_path_buf());
-        Self { path: change.path.clone(), markers: count_markers(diff), sides, busy, root, repo }
+        Self {
+            path: change.path.clone(),
+            markers: count_markers(diff),
+            sides,
+            busy,
+            root,
+            repo,
+        }
     }
 }
 
@@ -61,7 +77,10 @@ impl RenderOnce for ConflictHint {
                     .label("Open in editor")
                     .on_click(move |_, _, cx| cx.open_url(&file_url(&abs))),
             )
-            .child(self.resolve_button("hint-resolved", "Mark as resolved", Resolve::Marked).primary())
+            .child(
+                self.resolve_button("hint-resolved", "Mark as resolved", Resolve::Marked)
+                    .primary(),
+            )
     }
 }
 
@@ -84,12 +103,18 @@ impl ConflictHint {
             .flex_col()
             .flex_1()
             .min_w(px(260.0))
-            .child(div().text_size(px(12.5)).text_color(theme.text).child(self.message()))
-            .children(
-                self.sides
-                    .clone()
-                    .map(|s| div().text_size(px(11.5)).text_color(theme.text_faint).child(s)),
+            .child(
+                div()
+                    .text_size(px(12.5))
+                    .text_color(theme.text)
+                    .child(self.message()),
             )
+            .children(self.sides.clone().map(|s| {
+                div()
+                    .text_size(px(11.5))
+                    .text_color(theme.text_faint)
+                    .child(s)
+            }))
     }
 
     fn resolve_button(&self, id: &'static str, label: &'static str, how: Resolve) -> Button {
@@ -98,12 +123,17 @@ impl ConflictHint {
             .compact()
             .label(label)
             .disabled(self.busy)
-            .on_click(move |_, _, cx| repo.update(cx, |r, cx| r.resolve_file(path.clone(), how, cx)))
+            .on_click(move |_, _, cx| {
+                repo.update(cx, |r, cx| r.resolve_file(path.clone(), how, cx))
+            })
     }
 }
 
 fn count_markers(diff: Option<&Arc<Diff>>) -> usize {
     diff.map_or(0, |d| {
-        d.lines.iter().filter(|l| l.kind == DiffLineKind::Add && l.text.starts_with("<<<<<<<")).count()
+        d.lines
+            .iter()
+            .filter(|l| l.kind == DiffLineKind::Add && l.text.starts_with("<<<<<<<"))
+            .count()
     })
 }

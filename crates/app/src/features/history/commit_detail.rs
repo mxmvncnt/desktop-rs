@@ -9,7 +9,11 @@ use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
 impl Workspace {
-    pub fn render_history_main(&mut self, repo: &Entity<RepoModel>, cx: &mut Context<Self>) -> AnyElement {
+    pub fn render_history_main(
+        &mut self,
+        repo: &Entity<RepoModel>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let r = repo.read(cx);
         if r.multi_indices().len() >= 2 {
             return MultiSelectPane { repo: repo.clone() }.into_any_element();
@@ -17,13 +21,25 @@ impl Workspace {
         // Show the loaded commit (not the just-clicked one) so header, files
         // and diff change together instead of in separate steps.
         let detail = &r.log.detail;
-        let shown = detail.base.as_ref().and_then(|sha| r.log.commits.iter().find(|c| &c.sha == sha));
-        let Some(commit) = shown.or_else(|| r.log.selected.and_then(|ix| r.log.commits.get(ix))).cloned() else {
+        let shown = detail
+            .base
+            .as_ref()
+            .and_then(|sha| r.log.commits.iter().find(|c| &c.sha == sha));
+        let Some(commit) = shown
+            .or_else(|| r.log.selected.and_then(|ix| r.log.commits.get(ix)))
+            .cloned()
+        else {
             return div().flex_1().into_any_element();
         };
-        let header = CommitHeader::new(commit, detail.files.len(), detail.stats, DiffOptionsButton {
-            ws: cx.entity(),
-        }, self.commit_msg.height, self.commit_sel.clone(), cx.entity());
+        let header = CommitHeader::new(
+            commit,
+            detail.files.len(),
+            detail.stats,
+            DiffOptionsButton { ws: cx.entity() },
+            self.commit_msg.height,
+            self.commit_sel.clone(),
+            cx.entity(),
+        );
         self.render_file_diff_pane(header, repo, DiffPane::Commit, cx)
     }
 }

@@ -1,14 +1,29 @@
 use super::*;
 
 fn oauth(expires_at: i64, refresh: &str) -> TokenSecret {
-    TokenSecret { access_token: "a".into(), refresh_token: refresh.into(), expires_at, ..TokenSecret::default() }
+    TokenSecret {
+        access_token: "a".into(),
+        refresh_token: refresh.into(),
+        expires_at,
+        ..TokenSecret::default()
+    }
 }
 
 #[test]
 fn blob_round_trips_and_bare_tokens_still_parse() {
-    let s = TokenSecret { client_id: "c".into(), token_url: "https://h/t".into(), ..oauth(100, "r") };
+    let s = TokenSecret {
+        client_id: "c".into(),
+        token_url: "https://h/t".into(),
+        ..oauth(100, "r")
+    };
     assert_eq!(TokenSecret::parse(&serde_json::to_string(&s).unwrap()), s);
-    assert_eq!(TokenSecret::parse("ghp_plain"), TokenSecret { access_token: "ghp_plain".into(), ..TokenSecret::default() });
+    assert_eq!(
+        TokenSecret::parse("ghp_plain"),
+        TokenSecret {
+            access_token: "ghp_plain".into(),
+            ..TokenSecret::default()
+        }
+    );
 }
 
 #[test]

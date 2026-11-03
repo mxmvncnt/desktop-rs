@@ -13,7 +13,11 @@ fn commit(dir: &Path, file: &str, content: &str, msg: &str) -> String {
 }
 
 fn summaries(repo: &Repository) -> Vec<String> {
-    repo.log(0, 50).unwrap().into_iter().map(|c| c.summary).collect()
+    repo.log(0, 50)
+        .unwrap()
+        .into_iter()
+        .map(|c| c.summary)
+        .collect()
 }
 
 #[test]
@@ -33,7 +37,12 @@ fn history_ops() {
     // ---- push status ----
     assert!(repo.unpushed_commits().unwrap().is_empty(), "empty repo");
     for i in 1..=4 {
-        commit(&work, &format!("f{i}.txt"), &format!("{i}\n"), &format!("c{i}"));
+        commit(
+            &work,
+            &format!("f{i}.txt"),
+            &format!("{i}\n"),
+            &format!("c{i}"),
+        );
     }
     // No upstream yet: all commits are unpushed (remote exists, nothing on it).
     assert_eq!(repo.unpushed_commits().unwrap().len(), 4);
@@ -55,11 +64,26 @@ fn history_ops() {
 
     // ---- web urls ----
     for (u, want) in [
-        ("git@github.com:octo/hello.git", Some("https://github.com/octo/hello")),
-        ("https://github.com/octo/hello", Some("https://github.com/octo/hello")),
-        ("https://user:pw@github.com/octo/hello.git", Some("https://github.com/octo/hello")),
-        ("ssh://git@github.com:22/octo/hello.git", Some("https://github.com/octo/hello")),
-        ("git@github.example.org:team/x.git", Some("https://github.example.org/team/x")),
+        (
+            "git@github.com:octo/hello.git",
+            Some("https://github.com/octo/hello"),
+        ),
+        (
+            "https://github.com/octo/hello",
+            Some("https://github.com/octo/hello"),
+        ),
+        (
+            "https://user:pw@github.com/octo/hello.git",
+            Some("https://github.com/octo/hello"),
+        ),
+        (
+            "ssh://git@github.com:22/octo/hello.git",
+            Some("https://github.com/octo/hello"),
+        ),
+        (
+            "git@github.example.org:team/x.git",
+            Some("https://github.example.org/team/x"),
+        ),
         ("git@gitlab.com:a/b.git", None),
         ("/home/me/remote.git", None),
     ] {
@@ -107,8 +131,14 @@ fn history_ops() {
     let conf = commit(&work, "f5.txt", "5 changed\n", "touch f5");
     commit(&work, "f5.txt", "5 changed again\n", "touch f5 again");
     assert_eq!(repo.revert_commit(&conf).unwrap(), OpOutcome::Conflicts);
-    assert!(matches!(repo.in_progress(), Some(InProgress::Revert { .. })));
-    assert!(repo.revert_commit(&c6).is_err(), "ops blocked while in progress");
+    assert!(matches!(
+        repo.in_progress(),
+        Some(InProgress::Revert { .. })
+    ));
+    assert!(
+        repo.revert_commit(&c6).is_err(),
+        "ops blocked while in progress"
+    );
     repo.abort_operation(&repo.in_progress().unwrap()).unwrap();
     assert!(repo.in_progress().is_none());
     sh(&work, &["reset", "-q", "--hard", &c6]);
@@ -117,7 +147,8 @@ fn history_ops() {
     // ---- cherry-pick (clean onto other branch + conflict) ----
     sh(&work, &["checkout", "-q", "-b", "other", &c5]);
     sh(&work, &["checkout", "-q", "main"]);
-    repo.cherry_pick(std::slice::from_ref(&c6), "other").unwrap();
+    repo.cherry_pick(std::slice::from_ref(&c6), "other")
+        .unwrap();
     assert_eq!(repo.status().unwrap().branch.as_deref(), Some("other"));
     assert_eq!(summaries(&repo)[0], "c6");
     // conflict: main has f5 changed twice; other has a different f5.
@@ -126,8 +157,15 @@ fn history_ops() {
     sh(&work, &["checkout", "-q", "main"]);
     let c7 = commit(&work, "f5.txt", "main five\n", "main f5");
     sh(&work, &["checkout", "-q", "other"]);
-    assert_eq!(repo.cherry_pick(std::slice::from_ref(&c7), "other").unwrap(), OpOutcome::Conflicts);
-    assert!(matches!(repo.in_progress(), Some(InProgress::CherryPick { .. })));
+    assert_eq!(
+        repo.cherry_pick(std::slice::from_ref(&c7), "other")
+            .unwrap(),
+        OpOutcome::Conflicts
+    );
+    assert!(matches!(
+        repo.in_progress(),
+        Some(InProgress::CherryPick { .. })
+    ));
     repo.abort_operation(&repo.in_progress().unwrap()).unwrap();
     assert!(repo.in_progress().is_none());
     sh(&work, &["checkout", "-q", "main"]);
@@ -144,17 +182,27 @@ fn history_ops() {
     std::fs::write(work.join("f1.txt"), "modified\n").unwrap();
     // Non-adjacent: refused.
     assert!(!repo.can_squash(&[d1.clone(), d3.clone()]));
-    repo.squash_commits(&[d1.clone(), d3.clone()], "x").unwrap_err();
+    repo.squash_commits(&[d1.clone(), d3.clone()], "x")
+        .unwrap_err();
     // Tip run (d3 + d4), working tree untouched.
-    repo.squash_commits(&[d4.clone(), d3.clone()], "d3+d4\n\nbody").unwrap();
+    repo.squash_commits(&[d4.clone(), d3.clone()], "d3+d4\n\nbody")
+        .unwrap();
     assert_eq!(&summaries(&repo)[..3], ["d3+d4", "d2", "d1"]);
     assert_eq!(sh(&work, &["rev-parse", "HEAD^{tree}"]), tree_before);
-    assert_eq!(std::fs::read_to_string(work.join("f1.txt")).unwrap(), "modified\n");
+    assert_eq!(
+        std::fs::read_to_string(work.join("f1.txt")).unwrap(),
+        "modified\n"
+    );
     // Middle run (d1 + d2) with a commit above it.
-    repo.squash_commits(&[d1.clone(), d2.clone()], "d1+d2").unwrap();
+    repo.squash_commits(&[d1.clone(), d2.clone()], "d1+d2")
+        .unwrap();
     assert_eq!(&summaries(&repo)[..3], ["d3+d4", "d1+d2", "c6"]);
     assert_eq!(sh(&work, &["rev-parse", "HEAD^{tree}"]), tree_before);
-    assert_eq!(std::fs::read_to_string(work.join("f1.txt")).unwrap(), "modified\n", "autostash restored");
+    assert_eq!(
+        std::fs::read_to_string(work.join("f1.txt")).unwrap(),
+        "modified\n",
+        "autostash restored"
+    );
     assert!(repo.in_progress().is_none());
     println!("squash (tip + middle, dirty tree preserved) OK");
     sh(&work, &["checkout", "--", "f1.txt"]);
@@ -168,7 +216,8 @@ fn history_ops() {
     let top = repo.log(0, 2).unwrap()[1].sha.clone();
     repo.move_commit(&top, true).unwrap();
     assert_eq!(summaries(&repo)[..2], before[..2]);
-    repo.move_commit(&repo.log(0, 1).unwrap()[0].sha, true).unwrap_err();
+    repo.move_commit(&repo.log(0, 1).unwrap()[0].sha, true)
+        .unwrap_err();
     assert!(!work.join(".git/gd-rebase-todo").exists());
     println!("reorder move down/up OK");
 
@@ -177,7 +226,10 @@ fn history_ops() {
     commit(&work, "r.txt", "one\n", "r1");
     let r2 = commit(&work, "r.txt", "two\n", "r2");
     assert_eq!(repo.move_commit(&r2, false).unwrap(), OpOutcome::Conflicts);
-    assert!(matches!(repo.in_progress(), Some(InProgress::Rebase { .. })));
+    assert!(matches!(
+        repo.in_progress(),
+        Some(InProgress::Rebase { .. })
+    ));
     repo.abort_operation(&repo.in_progress().unwrap()).unwrap();
     assert!(repo.in_progress().is_none());
     println!("reorder conflict + abort_operation OK");
@@ -186,13 +238,22 @@ fn history_ops() {
     sh(&work, &["checkout", "-q", "main"]);
     std::fs::write(work.join("amended.txt"), "a\n").unwrap();
     let old = sh(&work, &["rev-parse", "HEAD"]);
-    repo.amend_commit("reworded", "new body", &["amended.txt".into()], &[]).unwrap();
+    repo.amend_commit("reworded", "new body", &["amended.txt".into()], &[])
+        .unwrap();
     let log = repo.log(0, 2).unwrap();
     assert_eq!(log[0].summary, "reworded");
     assert_eq!(log[0].body, "new body");
     assert_ne!(log[0].sha, old);
-    assert_eq!(log[0].parents, log[1..2].iter().map(|c| c.sha.clone()).collect::<Vec<_>>());
-    assert!(repo.commit_files(&log[0].sha).unwrap().iter().any(|f| f.path == "amended.txt"));
+    assert_eq!(
+        log[0].parents,
+        log[1..2].iter().map(|c| c.sha.clone()).collect::<Vec<_>>()
+    );
+    assert!(
+        repo.commit_files(&log[0].sha)
+            .unwrap()
+            .iter()
+            .any(|f| f.path == "amended.txt")
+    );
     // Amending a pushed commit makes it unpushed-diverged: HEAD sha is in the unpushed set.
     assert!(repo.unpushed_commits().unwrap().contains(&log[0].sha));
     println!("amend OK");
@@ -211,18 +272,36 @@ fn reword_keeps_author_and_replays_later_commits() {
     let c1 = commit(&work, "a.txt", "1\n", "c1");
     let c2 = commit(&work, "b.txt", "2\n", "c2");
     commit(&work, "c.txt", "3\n", "c3");
-    let author = |rev: &str| sh(&work, &["log", "-1", "--format=%an <%ae> %ad", "--date=raw", rev]);
+    let author = |rev: &str| {
+        sh(
+            &work,
+            &["log", "-1", "--format=%an <%ae> %ad", "--date=raw", rev],
+        )
+    };
     let before = author(&c2);
 
     sh(&work, &["config", "user.name", "Someone Else"]);
-    assert!(matches!(repo.reword_commit(&c2, "new c2\n\nbody").unwrap(), OpOutcome::Done));
+    assert!(matches!(
+        repo.reword_commit(&c2, "new c2\n\nbody").unwrap(),
+        OpOutcome::Done
+    ));
     assert_eq!(summaries(&repo), ["c3", "new c2", "c1"]);
     assert_eq!(author("HEAD~1"), before);
-    assert_eq!(sh(&work, &["log", "-1", "--format=%b", "HEAD~1"]).trim(), "body");
+    assert_eq!(
+        sh(&work, &["log", "-1", "--format=%b", "HEAD~1"]).trim(),
+        "body"
+    );
 
-    assert!(matches!(repo.reword_commit(&sh(&work, &["rev-parse", "HEAD"]), "new c3").unwrap(), OpOutcome::Done));
+    assert!(matches!(
+        repo.reword_commit(&sh(&work, &["rev-parse", "HEAD"]), "new c3")
+            .unwrap(),
+        OpOutcome::Done
+    ));
     assert_eq!(summaries(&repo), ["new c3", "new c2", "c1"]);
-    assert!(matches!(repo.reword_commit(&c1, "new c1").unwrap(), OpOutcome::Done));
+    assert!(matches!(
+        repo.reword_commit(&c1, "new c1").unwrap(),
+        OpOutcome::Done
+    ));
     assert_eq!(summaries(&repo), ["new c3", "new c2", "new c1"]);
     assert!(repo.reword_commit(&c1, "  ").is_err());
 }
@@ -233,7 +312,15 @@ fn rewritten_history_needs_force_push_not_pull() {
     let base = tmp.path().to_path_buf();
     let work = base.join("work");
     sh(&base, &["init", "-q", "--bare", "-b", "main", "remote.git"]);
-    sh(&base, &["clone", "-q", base.join("remote.git").to_str().unwrap(), "work"]);
+    sh(
+        &base,
+        &[
+            "clone",
+            "-q",
+            base.join("remote.git").to_str().unwrap(),
+            "work",
+        ],
+    );
     for (k, v) in [("user.name", "Tester"), ("user.email", "t@example.com")] {
         sh(&work, &["config", k, v]);
     }
@@ -246,13 +333,35 @@ fn rewritten_history_needs_force_push_not_pull() {
 
     repo.reword_commit(&c2, "new c2").unwrap();
     let st = repo.status().unwrap();
-    assert!(st.rewritten && st.ahead_behind == AheadBehind { ahead: 1, behind: 1 });
+    assert!(
+        st.rewritten
+            && st.ahead_behind
+                == AheadBehind {
+                    ahead: 1,
+                    behind: 1
+                }
+    );
     repo.push_force().unwrap();
     let st = repo.status().unwrap();
-    assert!(!st.rewritten && st.ahead_behind == AheadBehind { ahead: 0, behind: 0 });
+    assert!(
+        !st.rewritten
+            && st.ahead_behind
+                == AheadBehind {
+                    ahead: 0,
+                    behind: 0
+                }
+    );
 
     // A teammate's commit on the remote is a real divergence: pull, not force push.
-    sh(&base, &["clone", "-q", base.join("remote.git").to_str().unwrap(), "other"]);
+    sh(
+        &base,
+        &[
+            "clone",
+            "-q",
+            base.join("remote.git").to_str().unwrap(),
+            "other",
+        ],
+    );
     let other = base.join("other");
     for (k, v) in [("user.name", "Mate"), ("user.email", "m@example.com")] {
         sh(&other, &["config", k, v]);
@@ -262,7 +371,14 @@ fn rewritten_history_needs_force_push_not_pull() {
     commit(&work, "w.txt", "w\n", "mine");
     repo.fetch().unwrap();
     let st = repo.status().unwrap();
-    assert!(!st.rewritten && st.ahead_behind == AheadBehind { ahead: 1, behind: 1 });
+    assert!(
+        !st.rewritten
+            && st.ahead_behind
+                == AheadBehind {
+                    ahead: 1,
+                    behind: 1
+                }
+    );
 }
 
 #[test]
@@ -271,7 +387,15 @@ fn force_push_preview_lists_both_sides() {
     let base = tmp.path().to_path_buf();
     let work = base.join("work");
     sh(&base, &["init", "-q", "--bare", "-b", "main", "remote.git"]);
-    sh(&base, &["clone", "-q", base.join("remote.git").to_str().unwrap(), "work"]);
+    sh(
+        &base,
+        &[
+            "clone",
+            "-q",
+            base.join("remote.git").to_str().unwrap(),
+            "work",
+        ],
+    );
     for (k, v) in [("user.name", "Tester"), ("user.email", "t@example.com")] {
         sh(&work, &["config", k, v]);
     }
@@ -292,5 +416,8 @@ fn force_push_preview_lists_both_sides() {
     commit(&work, "d.txt", "4\n", "c4");
     let p = repo.force_push_preview().unwrap();
     assert_eq!(p.files.len(), 1);
-    assert_eq!((p.files[0].path.as_str(), p.files[0].status), ("d.txt", FileStatus::New));
+    assert_eq!(
+        (p.files[0].path.as_str(), p.files[0].status),
+        ("d.txt", FileStatus::New)
+    );
 }

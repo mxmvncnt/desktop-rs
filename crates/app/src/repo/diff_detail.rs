@@ -49,7 +49,13 @@ impl DiffDetail {
 
 impl DiffPane {
     /// Diff of `file` within `base` (commit or stash sha, PR merge base).
-    pub(crate) fn file_diff(self, repo: &Repository, base: &str, file: &FileChange, opts: DiffOptions) -> gd_git::Result<Diff> {
+    pub(crate) fn file_diff(
+        self,
+        repo: &Repository,
+        base: &str,
+        file: &FileChange,
+        opts: DiffOptions,
+    ) -> gd_git::Result<Diff> {
         match self {
             Self::Changes => repo.working_diff(file, opts),
             Self::Commit => repo.commit_diff(base, file, opts),
@@ -82,7 +88,12 @@ impl RepoModel {
 
     /// Show `diff` (with the path it was loaded for) and highlight it in the
     /// background. A newer diff drops the highlight still in flight.
-    pub(crate) fn show_diff(&mut self, pane: DiffPane, diff: Option<(Diff, String)>, cx: &mut Context<Self>) {
+    pub(crate) fn show_diff(
+        &mut self,
+        pane: DiffPane,
+        diff: Option<(Diff, String)>,
+        cx: &mut Context<Self>,
+    ) {
         let cache = self.hl_cache.clone();
         let detail = self.detail_mut(pane);
         detail.hl = None;
@@ -144,7 +155,9 @@ impl RepoModel {
                 };
                 Ok((files, stats, first))
             },
-            move |this, (files, stats, first), cx| this.show_files(pane, loaded, files, stats, first, cx),
+            move |this, (files, stats, first), cx| {
+                this.show_files(pane, loaded, files, stats, first, cx)
+            },
             cx,
         );
     }
@@ -171,8 +184,12 @@ impl RepoModel {
     /// is redone in the background.
     pub fn expand_diff(&mut self, pane: DiffPane, e: Expansion, cx: &mut Context<Self>) {
         let detail = self.detail(pane);
-        let (Some(diff), Some(path)) = (&detail.diff, detail.path.clone()) else { return };
-        let Some(expanded) = gd_git::expand(diff, e) else { return };
+        let (Some(diff), Some(path)) = (&detail.diff, detail.path.clone()) else {
+            return;
+        };
+        let Some(expanded) = gd_git::expand(diff, e) else {
+            return;
+        };
         self.show_diff(pane, Some((expanded, path)), cx);
         cx.notify();
     }

@@ -83,7 +83,10 @@ pub fn parse_log(raw: &str) -> Log {
                 marked = true;
             } else if let Some(marker) = segment.strip_prefix("section_end:") {
                 let (ended, name) = marker.split_once(':').unwrap_or(("", marker));
-                if let Some(at) = open.iter().rposition(|o| log.sections[o.index].name == name) {
+                if let Some(at) = open
+                    .iter()
+                    .rposition(|o| log.sections[o.index].name == name)
+                {
                     end_section(&mut log, open.remove(at), ended.parse().ok());
                 }
                 marked = true;
@@ -103,7 +106,11 @@ pub fn parse_log(raw: &str) -> Log {
             continue;
         }
         painter.paint(content);
-        log.lines.push(Line { text: std::mem::take(&mut painter.text), spans: std::mem::take(&mut painter.spans), time });
+        log.lines.push(Line {
+            text: std::mem::take(&mut painter.text),
+            spans: std::mem::take(&mut painter.spans),
+            time,
+        });
     }
     for unclosed in open {
         end_section(&mut log, unclosed, None);
@@ -112,19 +119,39 @@ pub fn parse_log(raw: &str) -> Log {
 }
 
 /// A section starts at the next line pushed, which is its header.
-fn start_section(log: &mut Log, open: &mut Vec<Open>, name: &str, started: Option<i64>, collapsed: bool) {
-    log.sections.push(Section { name: name.to_string(), header: log.lines.len(), end: 0, duration: None, collapsed, depth: open.len() });
-    open.push(Open { index: log.sections.len() - 1, started });
+fn start_section(
+    log: &mut Log,
+    open: &mut Vec<Open>,
+    name: &str,
+    started: Option<i64>,
+    collapsed: bool,
+) {
+    log.sections.push(Section {
+        name: name.to_string(),
+        header: log.lines.len(),
+        end: 0,
+        duration: None,
+        collapsed,
+        depth: open.len(),
+    });
+    open.push(Open {
+        index: log.sections.len() - 1,
+        started,
+    });
 }
 
 fn end_section(log: &mut Log, section: Open, ended: Option<i64>) {
     let s = &mut log.sections[section.index];
     s.end = log.lines.len();
-    s.duration = ended.zip(section.started).and_then(|(e, s)| u64::try_from(e - s).ok());
+    s.duration = ended
+        .zip(section.started)
+        .and_then(|(e, s)| u64::try_from(e - s).ok());
 }
 
 fn split_timestamp(line: &str) -> (Option<DateTime<Utc>>, &str) {
-    let Some((token, rest)) = line.split_once(' ') else { return (None, line) };
+    let Some((token, rest)) = line.split_once(' ') else {
+        return (None, line);
+    };
     let time = (token.len() >= 20 && token.ends_with('Z') && token.as_bytes()[4] == b'-')
         .then(|| DateTime::parse_from_rfc3339(token).ok())
         .flatten();
@@ -169,12 +196,18 @@ impl Painter {
                     let color = match codes.next() {
                         Some(5) => codes.next().map(|n| Color::Indexed(n as u8)),
                         Some(2) => match (codes.next(), codes.next(), codes.next()) {
-                            (Some(r), Some(g), Some(b)) => Some(Color::Rgb(r as u8, g as u8, b as u8)),
+                            (Some(r), Some(g), Some(b)) => {
+                                Some(Color::Rgb(r as u8, g as u8, b as u8))
+                            }
                             _ => None,
                         },
                         _ => None,
                     };
-                    if code == 38 { style.fg = color } else { style.bg = color }
+                    if code == 38 {
+                        style.fg = color
+                    } else {
+                        style.bg = color
+                    }
                 }
                 _ => {}
             }
@@ -188,7 +221,10 @@ impl Perform for Painter {
         self.text.push(c);
         match self.spans.last_mut() {
             Some(last) if last.style == self.style => last.range.end = self.text.len(),
-            _ => self.spans.push(Span { range: start..self.text.len(), style: self.style }),
+            _ => self.spans.push(Span {
+                range: start..self.text.len(),
+                style: self.style,
+            }),
         }
     }
 

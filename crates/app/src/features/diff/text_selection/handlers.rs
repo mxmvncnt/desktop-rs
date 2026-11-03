@@ -20,7 +20,9 @@ impl Workspace {
     ) {
         // Take focus away from text inputs so Ctrl/Cmd+C and +A reach the diff.
         self.focus(window, cx);
-        let Some(text) = self.diff_view.line_text(pos.line) else { return };
+        let Some(text) = self.diff_view.line_text(pos.line) else {
+            return;
+        };
         let sel = TextSel::press(self.diff_view.text_sel, pos, side, clicks, shift, text);
         self.commit_sel.sel = None;
         self.diff_view.text_sel = Some(sel);
@@ -30,7 +32,9 @@ impl Workspace {
 
     /// The pointer moved to `pos` while the button is down.
     pub fn diff_text_drag(&mut self, pos: TextPos, cx: &mut Context<Self>) {
-        let Some(sel) = self.diff_view.text_sel.as_mut().filter(|s| s.head != pos) else { return };
+        let Some(sel) = self.diff_view.text_sel.as_mut().filter(|s| s.head != pos) else {
+            return;
+        };
         sel.head = pos;
         cx.notify();
     }
@@ -44,7 +48,9 @@ impl Workspace {
         if self.ci.read(cx).open {
             return self.ci.update(cx, |ci, cx| ci.select_all_log(cx));
         }
-        let Some(diff) = self.diff_view.shown_diff() else { return };
+        let Some(diff) = self.diff_view.shown_diff() else {
+            return;
+        };
         let side = match (&self.diff_view.split_cache, self.settings.diff_split) {
             (Some(_), true) => self.diff_view.text_sel.map_or(TextSide::Right, |s| s.side),
             _ => TextSide::Unified,
@@ -61,8 +67,14 @@ impl Workspace {
         if self.commit_sel.sel.is_some() {
             return self.copy_commit_text(cx);
         }
-        let (Some(sel), Some(diff)) = (self.diff_view.text_sel, self.diff_view.shown_diff()) else { return };
-        let split = self.diff_view.split_cache.as_deref().filter(|_| sel.side != TextSide::Unified);
+        let (Some(sel), Some(diff)) = (self.diff_view.text_sel, self.diff_view.shown_diff()) else {
+            return;
+        };
+        let split = self
+            .diff_view
+            .split_cache
+            .as_deref()
+            .filter(|_| sel.side != TextSide::Unified);
         let text = sel.text(&diff, split);
         if !text.is_empty() {
             cx.write_to_clipboard(ClipboardItem::new_string(text));

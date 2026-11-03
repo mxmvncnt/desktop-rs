@@ -29,8 +29,13 @@ impl TryFrom<String> for Hex {
     type Error = String;
 
     fn try_from(s: String) -> Result<Self, String> {
-        let digits = s.strip_prefix('#').filter(|d| d.len() == 6 && d.bytes().all(|b| b.is_ascii_hexdigit()));
-        digits.and_then(|d| u32::from_str_radix(d, 16).ok()).map(Self).ok_or(format!("invalid color {s:?}, expected \"#rrggbb\""))
+        let digits = s
+            .strip_prefix('#')
+            .filter(|d| d.len() == 6 && d.bytes().all(|b| b.is_ascii_hexdigit()));
+        digits
+            .and_then(|d| u32::from_str_radix(d, 16).ok())
+            .map(Self)
+            .ok_or(format!("invalid color {s:?}, expected \"#rrggbb\""))
     }
 }
 
@@ -148,11 +153,19 @@ impl ColorThemes {
 
     /// Add every `*.json` in `dir` (by file name); a file that fails to parse is logged and skipped.
     pub fn load_user(&mut self, dir: &Path) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
-        let mut paths: Vec<_> = entries.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == "json")).collect();
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        let mut paths: Vec<_> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "json"))
+            .collect();
         paths.sort();
         for path in paths {
-            let parsed = std::fs::read(&path).map_err(|e| e.to_string()).and_then(|b| serde_json::from_slice(&b).map_err(|e| e.to_string()));
+            let parsed = std::fs::read(&path)
+                .map_err(|e| e.to_string())
+                .and_then(|b| serde_json::from_slice(&b).map_err(|e| e.to_string()));
             match parsed {
                 Ok(theme) => self.add(theme),
                 Err(e) => log::error!("cannot load theme {}: {e}", path.display()),
@@ -207,7 +220,11 @@ impl Theme {
         .into_iter()
         .map(|(k, v)| (k.to_string(), v))
         .collect();
-        commit_types.extend(p.commit_types.iter().map(|(k, v)| (k.to_lowercase(), c(*v))));
+        commit_types.extend(
+            p.commit_types
+                .iter()
+                .map(|(k, v)| (k.to_lowercase(), c(*v))),
+        );
         let plate = hsla(0.0, 0.0, wash, if light { 0.02 } else { 0.025 });
         let add_bg = o(p.diff_add_bg, success.opacity(add_wash));
         let del_bg = o(p.diff_del_bg, danger.opacity(add_wash));
@@ -249,7 +266,14 @@ impl Theme {
             diff_hunk_bg: o(p.diff_hunk_bg, accent.opacity(0.08)),
             diff_add_gutter_bg: p.diff_add_gutter_bg.map_or(add_bg, c),
             diff_del_gutter_bg: p.diff_del_gutter_bg.map_or(del_bg, c),
-            diff_hunk_gutter_bg: o(p.diff_hunk_gutter_bg, if light { hsla(0.0, 0.0, 0.0, 0.16) } else { hsla(0.0, 0.0, 0.0, 0.6) }),
+            diff_hunk_gutter_bg: o(
+                p.diff_hunk_gutter_bg,
+                if light {
+                    hsla(0.0, 0.0, 0.0, 0.16)
+                } else {
+                    hsla(0.0, 0.0, 0.0, 0.6)
+                },
+            ),
             diff_gutter_bg: o(p.diff_gutter_bg, plate),
             diff_empty_bg: o(p.diff_empty_bg, plate),
             diff_gutter: o(p.diff_gutter, c(p.faint)),

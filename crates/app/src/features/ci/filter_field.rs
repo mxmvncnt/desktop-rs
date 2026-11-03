@@ -5,7 +5,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use gpui::{
-    App, Entity, InteractiveElement, IntoElement, ParentElement, Pixels, Point, RenderOnce, Styled, Window, canvas, div, point, px,
+    App, Entity, InteractiveElement, IntoElement, ParentElement, Pixels, Point, RenderOnce, Styled,
+    Window, canvas, div, point, px,
 };
 use gpui_elements::editable_text::{
     EditableTextState,
@@ -36,7 +37,12 @@ impl RenderOnce for FilterField {
             Field::Branch => "ci-branch-filter",
             Field::User => "ci-user-filter",
         };
-        let values: Vec<String> = self.entries.iter().flatten().map(|e| e.value.clone()).collect();
+        let values: Vec<String> = self
+            .entries
+            .iter()
+            .flatten()
+            .map(|e| e.value.clone())
+            .collect();
 
         // Closing without a pick puts the applied value back in the field.
         let revert = {
@@ -72,7 +78,9 @@ impl RenderOnce for FilterField {
         // The input handles its own clicks (caret, focus) and stops them, so this listens before it, in the capture phase.
         let open_on_click = {
             let store = store.clone();
-            move |_: &gpui::MouseDownEvent, _: &mut Window, cx: &mut App| store.update(cx, |s, cx| s.open_menu(field, cx))
+            move |_: &gpui::MouseDownEvent, _: &mut Window, cx: &mut App| {
+                store.update(cx, |s, cx| s.open_menu(field, cx))
+            }
         };
         div()
             .relative()
@@ -84,7 +92,16 @@ impl RenderOnce for FilterField {
                 div()
                     .w(px(self.width))
                     .capture_any_mouse_down(open_on_click)
-                    .child(canvas(move |bounds, _, _| anchor.set(bounds.bottom_left() + point(px(0.0), px(4.0))), |_, _, _, _| {}).absolute().size_full())
+                    .child(
+                        canvas(
+                            move |bounds, _, _| {
+                                anchor.set(bounds.bottom_left() + point(px(0.0), px(4.0)))
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .absolute()
+                        .size_full(),
+                    )
                     .child(text_field(field_id, &input, self.placeholder, cx)),
             )
     }

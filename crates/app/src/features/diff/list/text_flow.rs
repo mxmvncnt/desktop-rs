@@ -29,12 +29,21 @@ pub fn row_box(flow: TextFlow) -> Div {
 pub fn text_cell(text: AnyElement, flow: TextFlow) -> Div {
     let cell = div().flex_1().min_w_0();
     match flow {
-        TextFlow::Scroll(x) => cell.h_full().overflow_hidden().child(div().relative().left(-x).child(text)),
+        TextFlow::Scroll(x) => cell
+            .h_full()
+            .overflow_hidden()
+            .child(div().relative().left(-x).child(text)),
         TextFlow::Wrap => cell.whitespace_normal().child(text),
     }
 }
 
 /// The `+`/`-` marker column.
 pub fn marker_cell(marker: &'static str, color: Hsla) -> Div {
-    div().flex_none().w(px(MARKER_W)).flex().justify_center().text_color(color).child(marker)
+    div()
+        .flex_none()
+        .w(px(MARKER_W))
+        .flex()
+        .justify_center()
+        .text_color(color)
+        .child(marker)
 }

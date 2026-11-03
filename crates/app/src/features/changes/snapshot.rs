@@ -9,9 +9,18 @@ const NEXT: Step = |ws, _, w, cx| press_next(None, ws, w, cx);
 
 pub fn views() -> &'static [View] {
     &[
-        View { name: "changes@*", steps: &[select_file] },
-        View { name: "commit-long", steps: &[commit_long] },
-        View { name: "undo-strip", steps: &[undo_strip] },
+        View {
+            name: "changes@*",
+            steps: &[select_file],
+        },
+        View {
+            name: "commit-long",
+            steps: &[commit_long],
+        },
+        View {
+            name: "undo-strip",
+            steps: &[undo_strip],
+        },
         View {
             name: "sidebar-wide",
             steps: &[|ws, _, _, cx| {
@@ -19,7 +28,10 @@ pub fn views() -> &'static [View] {
                 cx.notify();
             }],
         },
-        View { name: "nav-changes", steps: &[NEXT, NEXT, NEXT] },
+        View {
+            name: "nav-changes",
+            steps: &[NEXT, NEXT, NEXT],
+        },
     ]
 }
 
@@ -33,9 +45,13 @@ fn select_file(ws: &mut Workspace, view: &str, _: &mut Window, cx: &mut Context<
 
 /// Multi-line, wrapping message typed into the commit box.
 fn commit_long(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
-    let body = (1..=12).map(|i| format!("Line {i} of a long description that wraps around the box")).collect::<Vec<_>>().join("\n");
+    let body = (1..=12)
+        .map(|i| format!("Line {i} of a long description that wraps around the box"))
+        .collect::<Vec<_>>()
+        .join("\n");
     let summary = "A fairly long summary supercalifragilisticexpialidocious_unbreakable_identifier_name_here_and_more";
-    ws.commit_box.update(cx, |b, cx| b.set_text(summary, &body, cx));
+    ws.commit_box
+        .update(cx, |b, cx| b.set_text(summary, &body, cx));
 }
 
 fn undo_strip(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {

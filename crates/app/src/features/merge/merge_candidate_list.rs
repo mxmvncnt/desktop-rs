@@ -3,8 +3,7 @@
 use gd_git::{Branch, BranchKind};
 use gd_ui::{Icon, empty_state};
 use gpui::{
-    App, Entity, IntoElement, ParentElement, RenderOnce, Styled,
-    UniformListScrollHandle, Window,
+    App, Entity, IntoElement, ParentElement, RenderOnce, Styled, UniformListScrollHandle, Window,
 };
 
 use crate::components::{BranchRow, list};
@@ -24,7 +23,9 @@ impl RenderOnce for MergeCandidateList {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let n = self.branches.len();
         if n == 0 {
-            return empty_state("No matching branches", cx).h_full().into_any_element();
+            return empty_state("No matching branches", cx)
+                .h_full()
+                .into_any_element();
         }
         let (rows, ws, selected) = (self.branches, self.ws, self.selected);
         list("merge-branches", n, move |range, _w, cx| {
@@ -38,11 +39,23 @@ impl RenderOnce for MergeCandidateList {
     }
 }
 
-fn row(i: usize, b: &Branch, selected: bool, ws: Entity<Workspace>, cx: &App) -> impl IntoElement + use<> {
-    let kind_icon = if b.kind == BranchKind::Remote { Icon::Cloud } else { Icon::GitBranch };
-    BranchRow::new("merge-branch", i, b.name.clone(), move |_, cx| ws.update(cx, |this, cx| this.merge_select(i, cx)))
-        .icon(kind_icon)
-        .selected(selected)
-        .bright(selected)
-        .child(BranchRow::tip_time(b.tip_time, cx))
+fn row(
+    i: usize,
+    b: &Branch,
+    selected: bool,
+    ws: Entity<Workspace>,
+    cx: &App,
+) -> impl IntoElement + use<> {
+    let kind_icon = if b.kind == BranchKind::Remote {
+        Icon::Cloud
+    } else {
+        Icon::GitBranch
+    };
+    BranchRow::new("merge-branch", i, b.name.clone(), move |_, cx| {
+        ws.update(cx, |this, cx| this.merge_select(i, cx))
+    })
+    .icon(kind_icon)
+    .selected(selected)
+    .bright(selected)
+    .child(BranchRow::tip_time(b.tip_time, cx))
 }

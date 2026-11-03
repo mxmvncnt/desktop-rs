@@ -2,8 +2,8 @@
 
 use gd_ui::Icon;
 
-use crate::components::{MenuRow, RowItem};
 use super::state::StashAction;
+use crate::components::{MenuRow, RowItem};
 
 pub fn stash_menu_rows() -> Vec<MenuRow<StashAction>> {
     vec![

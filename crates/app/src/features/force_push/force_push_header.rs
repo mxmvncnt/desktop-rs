@@ -43,14 +43,18 @@ impl RenderOnce for ForcePushHeader {
                 Button::new("force-push-cancel")
                     .ghost()
                     .label("Cancel")
-                    .on_click(move |_, w, cx| cancel.update(cx, |this, cx| this.close_overlay(w, cx))),
+                    .on_click(move |_, w, cx| {
+                        cancel.update(cx, |this, cx| this.close_overlay(w, cx))
+                    }),
             )
             .child(
                 Button::new("force-push-confirm")
                     .style(ButtonStyle::Danger)
                     .label("Force push")
                     .disabled(!ready)
-                    .on_click(move |_, w, cx| confirm.update(cx, |this, cx| this.confirm_force_push(w, cx))),
+                    .on_click(move |_, w, cx| {
+                        confirm.update(cx, |this, cx| this.confirm_force_push(w, cx))
+                    }),
             );
         let warning = r.force_push.error.clone().unwrap_or_else(|| {
             format!(
@@ -82,7 +86,11 @@ impl RenderOnce for ForcePushHeader {
                     .flex()
                     .gap(px(24.0))
                     .child(commit_column("Will be pushed".into(), &p.outgoing, &theme))
-                    .child(commit_column(format!("Will be removed from {remote}"), &p.replaced, &theme))
+                    .child(commit_column(
+                        format!("Will be removed from {remote}"),
+                        &p.replaced,
+                        &theme,
+                    ))
             }))
             .children(preview.map(|p| {
                 div()
@@ -92,7 +100,10 @@ impl RenderOnce for ForcePushHeader {
                     .text_size(px(12.5))
                     .text_color(theme.text_muted)
                     .child(change_summary(p.files.iter().map(|f| f.status)))
-                    .child(DiffStat { added: p.stats.added, deleted: p.stats.deleted })
+                    .child(DiffStat {
+                        added: p.stats.added,
+                        deleted: p.stats.deleted,
+                    })
             }))
     }
 }
@@ -104,8 +115,20 @@ fn commit_column(title: String, commits: &[Commit], theme: &Theme) -> impl IntoE
             .flex()
             .gap(px(8.0))
             .text_size(px(12.5))
-            .child(div().font_family("monospace").text_color(theme.text_faint).child(c.short_sha.clone()))
-            .child(div().flex_1().min_w_0().truncate().text_color(theme.text).child(c.summary.clone()))
+            .child(
+                div()
+                    .font_family("monospace")
+                    .text_color(theme.text_faint)
+                    .child(c.short_sha.clone()),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .text_color(theme.text)
+                    .child(c.summary.clone()),
+            )
     });
     div()
         .flex()
@@ -120,7 +143,12 @@ fn commit_column(title: String, commits: &[Commit], theme: &Theme) -> impl IntoE
                 .child(format!("{title} ({})", commits.len())),
         )
         .children(rows)
-        .children((more > 0).then(|| div().text_size(px(12.0)).text_color(theme.text_faint).child(format!("+{more} more"))))
+        .children((more > 0).then(|| {
+            div()
+                .text_size(px(12.0))
+                .text_color(theme.text_faint)
+                .child(format!("+{more} more"))
+        }))
 }
 
 /// "2 added • 3 modified • 1 deleted • 1 renamed" for what the remote's files would go through.

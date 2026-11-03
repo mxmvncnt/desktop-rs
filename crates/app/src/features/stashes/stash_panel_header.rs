@@ -18,7 +18,11 @@ impl RenderOnce for StashPanelHeader {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let (repo_a, repo_b) = (self.repo.clone(), self.repo);
-        let chevron = if self.collapsed { Icon::ChevronRight } else { Icon::ChevronDown };
+        let chevron = if self.collapsed {
+            Icon::ChevronRight
+        } else {
+            Icon::ChevronDown
+        };
         div()
             .flex()
             .flex_none()
@@ -38,7 +42,11 @@ impl RenderOnce for StashPanelHeader {
                     .px(px(6.0))
                     .rounded(px(6.0))
                     .child(icon(chevron).size(px(12.0)).text_color(theme.text_faint))
-                    .child(icon(Icon::Archive).size(px(14.0)).text_color(theme.text_muted))
+                    .child(
+                        icon(Icon::Archive)
+                            .size(px(14.0))
+                            .text_color(theme.text_muted),
+                    )
                     .child(
                         div()
                             .text_size(px(12.0))
@@ -48,8 +56,11 @@ impl RenderOnce for StashPanelHeader {
                     )
                     .on_click(move |_, _, cx| repo_a.update(cx, |r, cx| r.toggle_stash_panel(cx))),
             )
-            .child(CheckRow::new("stash-filter", "Current branch only", !self.all_branches, move |_, cx| {
-                repo_b.update(cx, |r, cx| r.toggle_stash_filter(cx))
-            }))
+            .child(CheckRow::new(
+                "stash-filter",
+                "Current branch only",
+                !self.all_branches,
+                move |_, cx| repo_b.update(cx, |r, cx| r.toggle_stash_filter(cx)),
+            ))
     }
 }

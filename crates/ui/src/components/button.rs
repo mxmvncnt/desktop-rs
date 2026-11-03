@@ -1,7 +1,10 @@
 //! Buttons: primary plate, secondary pill, ghost and danger, plus the
 //! icon-only ghost button.
 
-use gpui::{App, ClickEvent, ElementId, Hsla, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, millis, prelude::*, px};
+use gpui::{
+    App, ClickEvent, ElementId, Hsla, IntoElement, ParentElement, RenderOnce, SharedString, Styled,
+    Window, div, millis, prelude::*, px,
+};
 
 use super::{ClickHandler, icon};
 use crate::assets::Icon;
@@ -97,7 +100,11 @@ impl RenderOnce for Button {
             ButtonStyle::Ghost => (theme.ink(0.0), theme.element_hover, theme.text_muted),
             ButtonStyle::Danger => (theme.danger_strong, theme.danger, theme.on_accent),
         };
-        let (bg, fg) = if self.selected { (theme.element_active, theme.text) } else { (bg, fg) };
+        let (bg, fg) = if self.selected {
+            (theme.element_active, theme.text)
+        } else {
+            (bg, fg)
+        };
         let hover_fg = if self.style == ButtonStyle::Ghost {
             theme.text
         } else {
@@ -118,7 +125,9 @@ impl RenderOnce for Button {
             .bg(bg)
             .text_color(fg)
             .when(self.full_width, |d| d.w_full())
-            .when_some(self.icon, |d, i| d.child(icon(i).size(px(15.0)).text_color(fg)))
+            .when_some(self.icon, |d, i| {
+                d.child(icon(i).size(px(15.0)).text_color(fg))
+            })
             .when_some(self.label, |d, l| d.child(l));
         if self.disabled {
             el = el.opacity(0.4);

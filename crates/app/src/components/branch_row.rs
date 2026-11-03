@@ -4,8 +4,8 @@ use std::rc::Rc;
 
 use gd_ui::{Callback, Icon, Theme, icon, pressable};
 use gpui::{
-    AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Point, RenderOnce,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+    AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Point,
+    RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::utils::text::relative_time;
@@ -70,7 +70,10 @@ impl BranchRow {
         self
     }
 
-    pub fn on_right_click(mut self, f: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static) -> Self {
+    pub fn on_right_click(
+        mut self,
+        f: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static,
+    ) -> Self {
         self.on_right_click = Some(Box::new(f));
         self
     }
@@ -78,7 +81,11 @@ impl BranchRow {
     /// The faint relative tip time shown at the end of a row.
     pub fn tip_time(tip_time: i64, cx: &App) -> impl IntoElement + use<> {
         let faint = Theme::of(cx).text_faint;
-        div().flex_none().text_size(px(11.0)).text_color(faint).child(relative_time(tip_time))
+        div()
+            .flex_none()
+            .text_size(px(11.0))
+            .text_color(faint)
+            .child(relative_time(tip_time))
     }
 }
 
@@ -101,15 +108,21 @@ impl RenderOnce for BranchRow {
             .px(px(8.0))
             .rounded(px(6.0))
             .text_size(px(13.0))
-            .child(
-                icon(self.icon).size(px(14.0)).text_color(if self.bright { theme.text } else { theme.text_faint }),
-            )
+            .child(icon(self.icon).size(px(14.0)).text_color(if self.bright {
+                theme.text
+            } else {
+                theme.text_faint
+            }))
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .truncate()
-                    .text_color(if self.bright { theme.text } else { theme.text_muted })
+                    .text_color(if self.bright {
+                        theme.text
+                    } else {
+                        theme.text_muted
+                    })
                     .child(self.name),
             )
             .children(self.trailing)

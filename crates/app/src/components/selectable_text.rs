@@ -3,8 +3,8 @@
 
 use gd_ui::Theme;
 use gpui::{
-    App, Div, Entity, FontWeight, HighlightStyle, Hsla, MouseButton, MouseMoveEvent, StyledText, TextLayout, Window, div,
-    prelude::*,
+    App, Div, Entity, FontWeight, HighlightStyle, Hsla, MouseButton, MouseMoveEvent, StyledText,
+    TextLayout, Window, div, prelude::*,
 };
 
 use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
@@ -21,20 +21,38 @@ pub fn selectable_line(
     theme: &Theme,
 ) -> (Div, TextLayout) {
     let text = &texts[line];
-    let highlight = HighlightStyle { background_color: Some(theme.selection), ..Default::default() };
+    let highlight = HighlightStyle {
+        background_color: Some(theme.selection),
+        ..Default::default()
+    };
     let cols = sel.and_then(|s| s.cols_in(line, TextSide::Unified, text.len()));
     let styled = StyledText::new(text.clone()).with_highlights(cols.map(|r| (r, highlight)));
     let layout = styled.layout().clone();
     let (ws, hit, texts) = (ws.clone(), layout.clone(), texts.clone());
     // The text sits in a flex column so it is measured and can hit-test (see `diff::highlight::line_text`).
-    let cell = div().flex().flex_col().cursor_text().text_color(fg).font_weight(weight).child(styled).on_mouse_down(
-        MouseButton::Left,
-        move |e, window, cx| {
-            let col = hit.index_for_position(e.position).unwrap_or_else(|nearest| nearest);
+    let cell = div()
+        .flex()
+        .flex_col()
+        .cursor_text()
+        .text_color(fg)
+        .font_weight(weight)
+        .child(styled)
+        .on_mouse_down(MouseButton::Left, move |e, window, cx| {
+            let col = hit
+                .index_for_position(e.position)
+                .unwrap_or_else(|nearest| nearest);
             let (clicks, shift) = (e.click_count, e.modifiers.shift);
-            ws.update(cx, |w, cx| w.commit_text_down(texts.clone(), TextPos { line, col }, clicks, shift, window, cx));
-        },
-    );
+            ws.update(cx, |w, cx| {
+                w.commit_text_down(
+                    texts.clone(),
+                    TextPos { line, col },
+                    clicks,
+                    shift,
+                    window,
+                    cx,
+                )
+            });
+        });
     (cell, layout)
 }
 
@@ -48,8 +66,13 @@ pub fn drag_selection(
         if e.pressed_button != Some(MouseButton::Left) || !ws.read(cx).commit_sel.drag {
             return;
         }
-        let line = layouts.iter().position(|l| e.position.y < l.bounds().bottom()).unwrap_or(layouts.len() - 1);
-        let col = layouts[line].index_for_position(e.position).unwrap_or_else(|nearest| nearest);
+        let line = layouts
+            .iter()
+            .position(|l| e.position.y < l.bounds().bottom())
+            .unwrap_or(layouts.len() - 1);
+        let col = layouts[line]
+            .index_for_position(e.position)
+            .unwrap_or_else(|nearest| nearest);
         ws.update(cx, |w, cx| w.commit_text_drag(TextPos { line, col }, cx));
     }
 }

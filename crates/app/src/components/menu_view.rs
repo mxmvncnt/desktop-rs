@@ -39,16 +39,28 @@ impl Menu {
                     cx.notify();
                     run(ws, action.clone(), w, cx)
                 });
-                MenuRow::Item(RowItem { action, label: i.label, icon: i.icon, danger: i.danger, disabled: i.disabled })
+                MenuRow::Item(RowItem {
+                    action,
+                    label: i.label,
+                    icon: i.icon,
+                    danger: i.danger,
+                    disabled: i.disabled,
+                })
             }
         };
-        Self { position, selected: None, rows: rows.into_iter().map(bind).collect() }
+        Self {
+            position,
+            selected: None,
+            rows: rows.into_iter().map(bind).collect(),
+        }
     }
 
     /// Arrow keys: move the highlight, skipping separators and disabled rows.
     pub fn step(&mut self, delta: isize) {
         let n = self.rows.len() as isize;
-        let mut ix = self.selected.map_or(if delta > 0 { -1 } else { n }, |s| s as isize);
+        let mut ix = self
+            .selected
+            .map_or(if delta > 0 { -1 } else { n }, |s| s as isize);
         for _ in 0..n {
             ix = (ix + delta).rem_euclid(n);
             if self.rows[ix as usize].is_selectable() {
@@ -78,12 +90,19 @@ impl RenderOnce for MenuView {
         ContextMenu::new(self.id, self.menu.position)
             .selected(self.menu.selected)
             .on_dismiss(move |w, cx| ws.update(cx, |this, cx| this.close_overlay(w, cx)))
-            .entries(self.menu.rows.into_iter().map(|row| menu_entry(row, &self.ws)))
+            .entries(
+                self.menu
+                    .rows
+                    .into_iter()
+                    .map(|row| menu_entry(row, &self.ws)),
+            )
     }
 }
 
 fn menu_entry(row: MenuRow<Run>, ws: &Entity<Workspace>) -> MenuEntry {
-    let MenuRow::Item(r) = row else { return MenuEntry::Separator };
+    let MenuRow::Item(r) = row else {
+        return MenuEntry::Separator;
+    };
     let (ws, run) = (ws.clone(), r.action);
     let item = MenuItem::new(r.label)
         .icon(r.icon)

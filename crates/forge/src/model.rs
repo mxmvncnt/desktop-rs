@@ -24,7 +24,10 @@ pub enum Status {
 impl Status {
     /// Not going to change any more.
     pub fn is_finished(self) -> bool {
-        matches!(self, Status::Success | Status::Failed | Status::Canceled | Status::Skipped)
+        matches!(
+            self,
+            Status::Success | Status::Failed | Status::Canceled | Status::Skipped
+        )
     }
 
     /// The value of the `status` query parameter that selects this status. GitLab uses its own names;
@@ -141,7 +144,11 @@ impl PipelineDetail {
     /// "Passed with warnings": the pipeline succeeded but a job that is allowed to fail did not.
     pub fn passed_with_warnings(&self) -> bool {
         self.pipeline.status == Status::Success
-            && self.stages.iter().flat_map(|s| &s.jobs).any(|j| j.allow_failure && j.status == Status::Failed)
+            && self
+                .stages
+                .iter()
+                .flat_map(|s| &s.jobs)
+                .any(|j| j.allow_failure && j.status == Status::Failed)
     }
 }
 
@@ -174,9 +181,22 @@ pub struct Capabilities {
 
 /// Status of a stage from its jobs, like GitLab: failed jobs that are allowed to fail don't fail the stage.
 pub(crate) fn stage_status(jobs: &[Job]) -> Status {
-    let all: Vec<Status> = jobs.iter().filter(|j| !(j.allow_failure && j.status == Status::Failed)).map(|j| j.status).collect();
+    let all: Vec<Status> = jobs
+        .iter()
+        .filter(|j| !(j.allow_failure && j.status == Status::Failed))
+        .map(|j| j.status)
+        .collect();
     let any = |s| all.contains(&s);
-    for s in [Status::Failed, Status::Running, Status::Preparing, Status::WaitingForResource, Status::Pending, Status::Manual, Status::Scheduled, Status::Created] {
+    for s in [
+        Status::Failed,
+        Status::Running,
+        Status::Preparing,
+        Status::WaitingForResource,
+        Status::Pending,
+        Status::Manual,
+        Status::Scheduled,
+        Status::Created,
+    ] {
         if any(s) {
             return s;
         }

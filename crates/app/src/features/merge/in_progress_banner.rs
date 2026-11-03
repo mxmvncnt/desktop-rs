@@ -3,7 +3,10 @@
 
 use gd_git::InProgress;
 use gd_ui::{Button, Icon, Theme, icon, motion};
-use gpui::{App, ColorExt as _, Context, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px};
+use gpui::{
+    App, ColorExt as _, Context, Entity, IntoElement, ParentElement, RenderOnce, SharedString,
+    Styled, Window, div, px,
+};
 
 use crate::repo::RepoModel;
 use crate::utils::text::plural;
@@ -77,7 +80,13 @@ impl InProgressBanner {
                     .text_color(theme.text)
                     .child(self.title.clone()),
             )
-            .child(div().truncate().text_size(px(12.0)).text_color(theme.text_muted).child(self.detail.clone()))
+            .child(
+                div()
+                    .truncate()
+                    .text_size(px(12.0))
+                    .text_color(theme.text_muted)
+                    .child(self.detail.clone()),
+            )
     }
 
     fn abort_button(&self) -> Button {
@@ -118,15 +127,26 @@ fn describe(op: &InProgress, current: &str, conflicts: usize) -> Text {
             todo,
         ),
         InProgress::Squash => (format!("Squash merging into {current}"), todo),
-        InProgress::Rebase { branch, onto, step, total } => (
+        InProgress::Rebase {
+            branch,
+            onto,
+            step,
+            total,
+        } => (
             format!(
                 "Rebasing {} onto {}",
                 branch.as_deref().unwrap_or(current),
                 onto.as_deref().unwrap_or("…")
             ),
-            if *total > 0 { format!("Commit {step} of {total}. {todo}") } else { todo },
+            if *total > 0 {
+                format!("Commit {step} of {total}. {todo}")
+            } else {
+                todo
+            },
         ),
-        InProgress::CherryPick { sha, subject } => (format!("Cherry-picking {sha} {subject}"), todo),
+        InProgress::CherryPick { sha, subject } => {
+            (format!("Cherry-picking {sha} {subject}"), todo)
+        }
         InProgress::Revert { sha, subject } => (format!("Reverting {sha} {subject}"), todo),
     };
     Text { title, detail }

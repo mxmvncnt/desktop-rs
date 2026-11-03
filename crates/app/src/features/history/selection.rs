@@ -11,7 +11,8 @@ impl RepoModel {
         if self.history.multi.len() < 2 {
             return Vec::new();
         }
-        self.log.commits
+        self.log
+            .commits
             .iter()
             .enumerate()
             .filter(|(_, c)| self.history.multi.contains(&c.sha))
@@ -30,7 +31,9 @@ impl RepoModel {
 
     /// Click on a history row.
     pub fn click_commit(&mut self, ix: usize, kind: ClickKind, cx: &mut Context<Self>) {
-        let Some(sha) = self.log.commits.get(ix).map(|c| c.sha.clone()) else { return };
+        let Some(sha) = self.log.commits.get(ix).map(|c| c.sha.clone()) else {
+            return;
+        };
         match kind {
             ClickKind::Range => self.select_range(ix, cx),
             ClickKind::Toggle => self.toggle_multi(sha, cx),
@@ -48,14 +51,18 @@ impl RepoModel {
         if self.log.selected.is_none() {
             self.select_commit(ix, cx);
         }
-        self.history.multi = self.log.commits[lo..=hi].iter().map(|c| c.sha.clone()).collect();
+        self.history.multi = self.log.commits[lo..=hi]
+            .iter()
+            .map(|c| c.sha.clone())
+            .collect();
     }
 
     fn toggle_multi(&mut self, sha: String, cx: &mut Context<Self>) {
         if self.history.multi.len() < 2 {
             // Seed with the primary selection.
             self.history.multi = self
-                .log.selected
+                .log
+                .selected
                 .and_then(|i| self.log.commits.get(i))
                 .map(|c| c.sha.clone())
                 .into_iter()

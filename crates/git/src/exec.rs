@@ -70,14 +70,16 @@ impl Git {
 
     /// Set an environment variable for this invocation only.
     pub fn env(mut self, k: impl AsRef<OsStr>, v: impl AsRef<OsStr>) -> Self {
-        self.env.push((k.as_ref().to_os_string(), v.as_ref().to_os_string()));
+        self.env
+            .push((k.as_ref().to_os_string(), v.as_ref().to_os_string()));
         self
     }
 
     /// Never open an editor (merge/rebase/cherry-pick/revert `--continue`
     /// keep the prepared message).
     pub fn no_editor(self) -> Self {
-        self.env("GIT_EDITOR", "true").env("GIT_SEQUENCE_EDITOR", "true")
+        self.env("GIT_EDITOR", "true")
+            .env("GIT_SEQUENCE_EDITOR", "true")
     }
 
     /// Treat exit code 1 as success (`git diff --no-index` exits 1 when the
@@ -148,7 +150,9 @@ impl Git {
         log::debug!("git {args} ({:?})", start.elapsed());
         if out.status.success() || (self.allow_exit_one && out.status.code() == Some(1)) {
             match written {
-                Err(e) if e.kind() != std::io::ErrorKind::BrokenPipe => Err(GitError::Io(e.to_string())),
+                Err(e) if e.kind() != std::io::ErrorKind::BrokenPipe => {
+                    Err(GitError::Io(e.to_string()))
+                }
                 _ => Ok(out.stdout),
             }
         } else {

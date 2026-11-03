@@ -11,19 +11,35 @@ use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
 impl Workspace {
-    pub fn render_pr_preview(&mut self, repo: &Entity<RepoModel>, cx: &mut Context<Self>) -> AnyElement {
+    pub fn render_pr_preview(
+        &mut self,
+        repo: &Entity<RepoModel>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let theme = Theme::of(cx).clone();
         let r = repo.read(cx);
         let pr = &r.pr;
         let header = PrHeader { repo: repo.clone() };
         let body = match &pr.comparison {
-            Some(c) if !c.files.is_empty() => return self.render_file_diff_pane(header, repo, DiffPane::Pr, cx),
-            Some(_) => empty(&theme, "No changes: nothing to compare against the base branch."),
+            Some(c) if !c.files.is_empty() => {
+                return self.render_file_diff_pane(header, repo, DiffPane::Pr, cx);
+            }
+            Some(_) => empty(
+                &theme,
+                "No changes: nothing to compare against the base branch.",
+            ),
             None if pr.loading => empty(&theme, "Comparing branches…"),
             None if pr.error.is_some() => empty(&theme, "The branches can't be compared."),
             None => empty(&theme, "No base branch found: pick one above."),
         };
-        div().flex().flex_col().flex_1().min_w_0().child(header).child(body).into_any_element()
+        div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_w_0()
+            .child(header)
+            .child(body)
+            .into_any_element()
     }
 }
 
@@ -49,8 +65,16 @@ impl Workspace {
 
     /// Esc: collapse the base dropdown, else leave the preview. False if not open.
     pub(crate) fn close_pr_preview_key(&mut self, cx: &mut Context<Self>) -> bool {
-        let Some(repo) = self.repo.clone().filter(|r| r.read(cx).pr.open) else { return false };
-        repo.update(cx, |r, cx| if r.pr.base_menu { r.toggle_pr_base_menu(cx) } else { r.close_pr_preview(cx) });
+        let Some(repo) = self.repo.clone().filter(|r| r.read(cx).pr.open) else {
+            return false;
+        };
+        repo.update(cx, |r, cx| {
+            if r.pr.base_menu {
+                r.toggle_pr_base_menu(cx)
+            } else {
+                r.close_pr_preview(cx)
+            }
+        });
         true
     }
 }

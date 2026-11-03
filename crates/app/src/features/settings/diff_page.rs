@@ -17,7 +17,10 @@ impl RenderOnce for DiffPage {
             .flex_col()
             .gap(px(6.0))
             .child(div().font_weight(gpui::FontWeight::MEDIUM).child("Display"))
-            .child(div().w(px(304.0)).child(DiffDisplayOptions { sectioned: false, ws: self.ws }))
+            .child(div().w(px(304.0)).child(DiffDisplayOptions {
+                sectioned: false,
+                ws: self.ws,
+            }))
             .child(
                 div()
                     .pt(px(6.0))

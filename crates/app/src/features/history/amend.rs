@@ -9,8 +9,11 @@ use crate::workspace::Workspace;
 impl Workspace {
     /// Put the HEAD commit's message in the commit box and switch it to amend mode.
     pub fn start_amend(&mut self, commit: Commit, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(repo) = self.repo.clone() else { return };
-        self.commit_box.update(cx, |b, cx| b.start_amend(&commit, window, cx));
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
+        self.commit_box
+            .update(cx, |b, cx| b.start_amend(&commit, window, cx));
         repo.update(cx, |r, cx| r.set_tab(Tab::Changes, cx));
         cx.notify();
     }
@@ -20,7 +23,9 @@ impl Workspace {
         if !self.commit_box.read(cx).amending(cx) {
             return false;
         }
-        let Some(repo) = self.repo.clone() else { return true };
+        let Some(repo) = self.repo.clone() else {
+            return true;
+        };
         let (summary, description) = self.commit_box.read(cx).text(cx);
         if summary.trim().is_empty() || repo.read(cx).history_blocked() {
             return true;

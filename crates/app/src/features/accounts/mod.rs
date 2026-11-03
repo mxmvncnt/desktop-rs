@@ -17,16 +17,16 @@ mod repo_account;
 mod repo_account_block;
 mod repo_identity;
 mod secrets;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 mod state;
 mod status_text;
 mod token;
-#[cfg(feature = "snapshot")]
-pub mod snapshot;
 
 pub use accounts_page::AccountsPage;
-pub use repo_account_block::RepoAccountBlock;
-pub use repo_identity::RepoIdentity;
 pub use model::{Account, Provider};
 pub use repo_account::{RepoAccounts, account_for_repo};
+pub use repo_account_block::RepoAccountBlock;
+pub use repo_identity::RepoIdentity;
 pub use state::AccountsStore;
 pub use token::fresh_token;

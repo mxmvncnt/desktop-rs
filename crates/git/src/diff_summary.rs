@@ -46,18 +46,33 @@ pub(crate) fn parse_name_status(out: &str) -> Vec<FileChange> {
         } else {
             (first, None)
         };
-        files.push(FileChange { path, old_path, status });
+        files.push(FileChange {
+            path,
+            old_path,
+            status,
+        });
     }
     files
 }
 
 impl Repository {
     /// Net file changes and line totals from `from` to `to` (renames detected).
-    pub(crate) fn range_changes(&self, from: &str, to: &str) -> Result<(Vec<FileChange>, LineStats)> {
+    pub(crate) fn range_changes(
+        &self,
+        from: &str,
+        to: &str,
+    ) -> Result<(Vec<FileChange>, LineStats)> {
         let diff = |format: &[&str]| {
-            self.git().args(["diff", "-M", "--no-ext-diff"]).args(format).args([from, to]).run()
+            self.git()
+                .args(["diff", "-M", "--no-ext-diff"])
+                .args(format)
+                .args([from, to])
+                .run()
         };
-        Ok((parse_name_status(&diff(&["--name-status", "-z"])?), parse_shortstat(&diff(&["--shortstat"])?)))
+        Ok((
+            parse_name_status(&diff(&["--name-status", "-z"])?),
+            parse_shortstat(&diff(&["--shortstat"])?),
+        ))
     }
 }
 

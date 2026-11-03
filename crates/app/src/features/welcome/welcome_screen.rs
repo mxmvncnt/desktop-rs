@@ -12,14 +12,16 @@ pub struct WelcomeScreen {
 }
 
 impl WelcomeScreen {
-
     fn add_card(&self) -> SuggestionCard {
         let ws = self.ws.clone();
         SuggestionCard::new(
             "welcome-add",
             Icon::Folder,
             "Add an existing repository",
-            format!("Pick a folder on this computer ({}+O)", crate::platform::SECONDARY_LABEL),
+            format!(
+                "Pick a folder on this computer ({}+O)",
+                crate::platform::SECONDARY_LABEL
+            ),
             "Choose…",
             move |_, _, cx| ws.update(cx, |this, cx| this.prompt_add_repository(cx)),
         )
@@ -45,22 +47,32 @@ impl RenderOnce for WelcomeScreen {
             .flex()
             .flex_col()
             .gap(px(6.0))
-            .child(div().text_size(px(22.0)).font_weight(gpui::FontWeight::SEMIBOLD).child("Let's get started!"))
+            .child(
+                div()
+                    .text_size(px(22.0))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child("Let's get started!"),
+            )
             .child(
                 div()
                     .text_color(theme.text_muted)
                     .child("Add a repository to desktop-rs to start collaborating."),
             );
-        div().flex_1().flex().items_center().justify_center().child(motion::fade_in(
-            "welcome",
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(18.0))
-                .w(px(480.0))
-                .child(title)
-                .child(self.add_card())
-                .child(self.clone_card()),
-        ))
+        div()
+            .flex_1()
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(motion::fade_in(
+                "welcome",
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(18.0))
+                    .w(px(480.0))
+                    .child(title)
+                    .child(self.add_card())
+                    .child(self.clone_card()),
+            ))
     }
 }

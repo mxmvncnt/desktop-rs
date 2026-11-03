@@ -6,8 +6,8 @@ use std::rc::Rc;
 
 use gd_ui::{Callback, Icon, Theme, icon, pressable, theme::ROW_HEIGHT};
 use gpui::{
-    AnyElement, App, ColorExt as _, Hsla, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Point,
-    RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
+    AnyElement, App, ColorExt as _, Hsla, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, Pixels, Point, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::utils::text::split_path;
@@ -34,7 +34,15 @@ impl FileRow {
         selected: bool,
         on_click: impl Fn(&mut Window, &mut App) + 'static,
     ) -> Self {
-        Self { id, ix, change, selected, leading: None, on_click: Rc::new(on_click), on_right_click: None }
+        Self {
+            id,
+            ix,
+            change,
+            selected,
+            leading: None,
+            on_click: Rc::new(on_click),
+            on_right_click: None,
+        }
     }
 
     pub fn leading(mut self, el: impl IntoElement) -> Self {
@@ -42,7 +50,10 @@ impl FileRow {
         self
     }
 
-    pub fn on_right_click(mut self, f: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static) -> Self {
+    pub fn on_right_click(
+        mut self,
+        f: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static,
+    ) -> Self {
         self.on_right_click = Some(Box::new(f));
         self
     }
@@ -77,7 +88,14 @@ impl RenderOnce for FileRow {
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_size(px(12.5))
-                    .child(div().flex_shrink(1.0).min_w_0().truncate().text_color(theme.text_muted).child(dir.to_string()))
+                    .child(
+                        div()
+                            .flex_shrink(1.0)
+                            .min_w_0()
+                            .truncate()
+                            .text_color(theme.text_muted)
+                            .child(dir.to_string()),
+                    )
                     .child(
                         div()
                             .flex_none()

@@ -105,7 +105,11 @@ impl Theme {
 
     /// Translucent fill for hover/active plates: white on dark, black on light.
     pub fn ink(&self, alpha: f32) -> Hsla {
-        if self.light { hsla(0.0, 0.0, 0.0, alpha * 0.8) } else { hsla(0.0, 0.0, 1.0, alpha) }
+        if self.light {
+            hsla(0.0, 0.0, 0.0, alpha * 0.8)
+        } else {
+            hsla(0.0, 0.0, 1.0, alpha)
+        }
     }
 }
 
@@ -144,11 +148,11 @@ impl SyntaxPalette {
         match kind {
             Comment => self.comment,
             Keyword | Function | MarkupHeading | MarkupStrong => self.indigo,
-            StringSpecial | Escape | FunctionBuiltin | Macro | VariableSpecial | Tag | MarkupLink | MarkupEmphasis => {
-                self.pink
-            }
+            StringSpecial | Escape | FunctionBuiltin | Macro | VariableSpecial | Tag
+            | MarkupLink | MarkupEmphasis => self.pink,
             String | TypeBuiltin | Constant | MarkupRaw => self.emerald,
-            Number | Boolean | Type | Constructor | Property | Attribute | Label | MarkupReference => self.amber,
+            Number | Boolean | Type | Constructor | Property | Attribute | Label
+            | MarkupReference => self.amber,
             Variable | Parameter | Operator | Punctuation | Embedded => self.text,
             Invalid => self.red,
         }

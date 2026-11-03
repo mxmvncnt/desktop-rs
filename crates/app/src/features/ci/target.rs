@@ -49,19 +49,36 @@ impl Problem {
     /// Title and explanation for the empty state.
     pub fn describe(&self) -> (String, String) {
         let (title, body) = match self {
-            Self::NoRemote => ("No remote".to_string(), "This repository has no remote, so there are no pipelines to show.".to_string()),
-            Self::NoAccount(host) => (format!("No account for {host}"), format!("Add an account for {host} in Settings → Accounts.")),
+            Self::NoRemote => (
+                "No remote".to_string(),
+                "This repository has no remote, so there are no pipelines to show.".to_string(),
+            ),
+            Self::NoAccount(host) => (
+                format!("No account for {host}"),
+                format!("Add an account for {host} in Settings → Accounts."),
+            ),
             Self::Unsupported(label) => (
                 "CI is not supported for this account type".into(),
-                format!("{label} accounts can't list pipelines. Pick another account in the repository settings."),
+                format!(
+                    "{label} accounts can't list pipelines. Pick another account in the repository settings."
+                ),
             ),
-            Self::Unauthorized => ("Sign in again".into(), "The token was rejected or has expired.".into()),
-            Self::RateLimited(wait) => {
-                ("Rate limited".into(), format!("The server asked to slow down{}.", wait.map(|s| format!(", try again in {s}s")).unwrap_or_default()))
-            }
-            Self::NotFound => {
-                ("No pipelines found".into(), "CI is not enabled for this repository, or the account has no access to it.".into())
-            }
+            Self::Unauthorized => (
+                "Sign in again".into(),
+                "The token was rejected or has expired.".into(),
+            ),
+            Self::RateLimited(wait) => (
+                "Rate limited".into(),
+                format!(
+                    "The server asked to slow down{}.",
+                    wait.map(|s| format!(", try again in {s}s"))
+                        .unwrap_or_default()
+                ),
+            ),
+            Self::NotFound => (
+                "No pipelines found".into(),
+                "CI is not enabled for this repository, or the account has no access to it.".into(),
+            ),
             Self::Failed(message) => ("Couldn't load pipelines".into(), message.clone()),
         };
         (title, body)
@@ -76,10 +93,20 @@ impl Target {
     }
 
     /// Blocks on git: background threads only.
-    pub fn resolve(repo: &Repository, branch: Option<String>, accounts: &[Account], picks: &RepoAccounts) -> Result<Self, Problem> {
-        let remote = repo.tracking_remote_url().and_then(|url| RepoRef::from_remote(&url)).ok_or(Problem::NoRemote)?;
-        let account = account_for_repo(accounts, picks, repo.root(), &remote.host).ok_or_else(|| Problem::NoAccount(remote.host.clone()))?;
-        let forge = forge_of(account.provider).ok_or(Problem::Unsupported(account.provider.full_label()))?;
+    pub fn resolve(
+        repo: &Repository,
+        branch: Option<String>,
+        accounts: &[Account],
+        picks: &RepoAccounts,
+    ) -> Result<Self, Problem> {
+        let remote = repo
+            .tracking_remote_url()
+            .and_then(|url| RepoRef::from_remote(&url))
+            .ok_or(Problem::NoRemote)?;
+        let account = account_for_repo(accounts, picks, repo.root(), &remote.host)
+            .ok_or_else(|| Problem::NoAccount(remote.host.clone()))?;
+        let forge = forge_of(account.provider)
+            .ok_or(Problem::Unsupported(account.provider.full_label()))?;
         Ok(Self {
             forge,
             host: remote.host.clone(),

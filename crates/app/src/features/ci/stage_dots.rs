@@ -12,11 +12,15 @@ pub fn stage_dots(pipeline: PipelineId, detail: Option<&PipelineDetail>, cx: &Ap
     let Some(detail) = detail else {
         return div().text_color(theme.text_faint).child("—");
     };
-    div().flex().items_center().gap(px(4.0)).children(detail.stages.iter().enumerate().map(|(ix, stage)| {
-        let look = look(stage.status, false);
-        div()
-            .id(("stage-dot", pipeline.0 as usize * 32 + ix))
-            .tooltip(gd_ui::tooltip(format!("{}: {}", stage.name, look.label)))
-            .child(status_icon(look, 18.0, theme))
-    }))
+    div()
+        .flex()
+        .items_center()
+        .gap(px(4.0))
+        .children(detail.stages.iter().enumerate().map(|(ix, stage)| {
+            let look = look(stage.status, false);
+            div()
+                .id(("stage-dot", pipeline.0 as usize * 32 + ix))
+                .tooltip(gd_ui::tooltip(format!("{}: {}", stage.name, look.label)))
+                .child(status_icon(look, 18.0, theme))
+        }))
 }

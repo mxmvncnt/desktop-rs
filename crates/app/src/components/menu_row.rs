@@ -21,7 +21,13 @@ pub struct RowItem<A> {
 
 impl<A> RowItem<A> {
     pub fn new(action: A, label: impl Into<String>, icon: Icon) -> Self {
-        Self { action, label: label.into(), icon, danger: false, disabled: false }
+        Self {
+            action,
+            label: label.into(),
+            icon,
+            danger: false,
+            disabled: false,
+        }
     }
 
     pub fn danger(mut self) -> Self {

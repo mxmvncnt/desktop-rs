@@ -28,7 +28,10 @@ fn merge() {
     write_commit(&dir, "ff.txt", "ff2\n", "ff 2");
     sh(&dir, &["checkout", "-q", "main"]);
     let p = repo.merge_preview("ff").unwrap();
-    println!("preview ff: ahead={} behind={} conflicts={:?}", p.ahead, p.behind, p.conflicts);
+    println!(
+        "preview ff: ahead={} behind={} conflicts={:?}",
+        p.ahead, p.behind, p.conflicts
+    );
     assert_eq!((p.ahead, p.behind), (2, 0));
     assert_eq!(repo.merge("ff").unwrap(), OpOutcome::Done);
     assert_eq!(repo.merge("ff").unwrap(), OpOutcome::UpToDate);
@@ -63,7 +66,10 @@ fn merge() {
     sh(&dir, &["checkout", "-q", "-b", "sq3"]);
     write_commit(&dir, "sq3.txt", "3\n", "sq three");
     sh(&dir, &["checkout", "-q", "main"]);
-    assert_eq!(repo.merge_squash("sq3", Some("  My squash  ")).unwrap(), OpOutcome::Done);
+    assert_eq!(
+        repo.merge_squash("sq3", Some("  My squash  ")).unwrap(),
+        OpOutcome::Done
+    );
     assert_eq!(repo.log(0, 1).unwrap()[0].summary, "My squash");
     println!("squash custom summary OK");
 
@@ -71,7 +77,10 @@ fn merge() {
     sh(&dir, &["checkout", "-q", "-b", "topic", "ff"]);
     write_commit(&dir, "topic.txt", "t\n", "topic 1");
     let p = repo.merge_preview("main").unwrap();
-    println!("preview rebase onto main: ahead={} behind={}", p.ahead, p.behind);
+    println!(
+        "preview rebase onto main: ahead={} behind={}",
+        p.ahead, p.behind
+    );
     assert_eq!(repo.rebase("main").unwrap(), OpOutcome::Done);
     assert_eq!(repo.commits_ahead("main").unwrap(), 0);
     assert_eq!(repo.rebase("main").unwrap(), OpOutcome::UpToDate);
@@ -93,23 +102,48 @@ fn merge() {
     println!("in progress: {ip:?}");
     assert!(matches!(&ip, InProgress::Merge { branch: Some(b), .. } if b == "c1"));
     let st = repo.status().unwrap();
-    let conflicted: Vec<_> = st.files.iter().filter(|f| f.status == FileStatus::Conflicted).map(|f| f.path.as_str()).collect();
+    let conflicted: Vec<_> = st
+        .files
+        .iter()
+        .filter(|f| f.status == FileStatus::Conflicted)
+        .map(|f| f.path.as_str())
+        .collect();
     println!("conflicted: {conflicted:?}");
     assert_eq!(conflicted, ["app.txt", "other.txt"]);
-    assert_eq!(st.files[0].status, FileStatus::Conflicted, "conflicts sort first");
+    assert_eq!(
+        st.files[0].status,
+        FileStatus::Conflicted,
+        "conflicts sort first"
+    );
     let d = repo.working_diff(&st.files[0], Default::default()).unwrap();
-    assert!(d.lines.iter().any(|l| l.text.starts_with("<<<<<<<")), "conflict markers in diff");
+    assert!(
+        d.lines.iter().any(|l| l.text.starts_with("<<<<<<<")),
+        "conflict markers in diff"
+    );
     println!("prepared message: {:?}", repo.prepared_message());
-    assert_ne!(repo.continue_operation(&ip).ok(), Some(OpOutcome::Done), "continue must not finish while conflicted");
+    assert_ne!(
+        repo.continue_operation(&ip).ok(),
+        Some(OpOutcome::Done),
+        "continue must not finish while conflicted"
+    );
     assert!(repo.in_progress().is_some());
     repo.resolve_with("app.txt", false).unwrap();
     repo.resolve_with("other.txt", true).unwrap();
-    assert_eq!(std::fs::read_to_string(dir.join("app.txt")).unwrap(), "one\nFROM-MAIN\nthree\n");
-    assert_eq!(std::fs::read_to_string(dir.join("other.txt")).unwrap(), "c1 other\n");
+    assert_eq!(
+        std::fs::read_to_string(dir.join("app.txt")).unwrap(),
+        "one\nFROM-MAIN\nthree\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("other.txt")).unwrap(),
+        "c1 other\n"
+    );
     assert!(!repo.has_unmerged());
     assert_eq!(repo.continue_operation(&ip).unwrap(), OpOutcome::Done);
     assert_eq!(repo.in_progress(), None);
-    println!("use ours/theirs + merge --continue OK: {:?}", repo.log(0, 1).unwrap()[0].summary);
+    println!(
+        "use ours/theirs + merge --continue OK: {:?}",
+        repo.log(0, 1).unwrap()[0].summary
+    );
 
     // 6. Conflicting merge, abort.
     sh(&dir, &["checkout", "-q", "-b", "c2", "c1~2"]);
@@ -141,7 +175,14 @@ fn merge() {
     assert_eq!(repo.rebase("main").unwrap(), OpOutcome::Conflicts);
     let ip = repo.in_progress().unwrap();
     println!("in progress: {ip:?}");
-    assert!(matches!(ip, InProgress::Rebase { step: 1, total: 2, .. }));
+    assert!(matches!(
+        ip,
+        InProgress::Rebase {
+            step: 1,
+            total: 2,
+            ..
+        }
+    ));
     repo.abort_operation(&ip).unwrap();
     assert_eq!(repo.in_progress(), None);
     assert_eq!(repo.rebase("main").unwrap(), OpOutcome::Conflicts);
@@ -156,7 +197,12 @@ fn merge() {
     repo.create_branch("from-ff", Some("ff")).unwrap();
     sh(&dir, &["checkout", "-q", "main"]);
     repo.rename_branch("from-ff", "renamed").unwrap();
-    let names: Vec<_> = repo.branches().unwrap().into_iter().map(|b| b.name).collect();
+    let names: Vec<_> = repo
+        .branches()
+        .unwrap()
+        .into_iter()
+        .map(|b| b.name)
+        .collect();
     assert!(names.contains(&"renamed".to_string()) && !names.contains(&"from-ff".to_string()));
     repo.delete_branch("renamed", true).unwrap();
     println!("rename/create-from/delete OK");

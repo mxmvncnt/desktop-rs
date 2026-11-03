@@ -2,11 +2,13 @@
 //! (used for the global identity and the repository override).
 
 use gd_ui::{Button, Theme};
-use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px};
+use gpui::{
+    App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
+};
 use gpui_elements::editable_text::EditableTextState;
 
-use crate::components::FieldRow;
 use super::status_text::StatusText;
+use crate::components::FieldRow;
 
 #[derive(IntoElement)]
 pub struct IdentityBlock {
@@ -57,14 +59,33 @@ impl RenderOnce for IdentityBlock {
             .flex()
             .flex_col()
             .gap(px(8.0))
-            .child(div().font_weight(gpui::FontWeight::MEDIUM).child(self.title))
-            .child(div().text_size(px(12.0)).text_color(theme.text_faint).child(self.caption))
+            .child(
+                div()
+                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .child(self.title),
+            )
+            .child(
+                div()
+                    .text_size(px(12.0))
+                    .text_color(theme.text_faint)
+                    .child(self.caption),
+            )
             .child(
                 div()
                     .flex()
                     .gap(px(10.0))
-                    .child(div().flex_1().child(FieldRow::new("Name", self.name_id, &self.name, "Your Name")))
-                    .child(div().flex_1().child(FieldRow::new("Email", self.email_id, &self.email, "you@example.com"))),
+                    .child(div().flex_1().child(FieldRow::new(
+                        "Name",
+                        self.name_id,
+                        &self.name,
+                        "Your Name",
+                    )))
+                    .child(div().flex_1().child(FieldRow::new(
+                        "Email",
+                        self.email_id,
+                        &self.email,
+                        "you@example.com",
+                    ))),
             )
             .child(
                 div()

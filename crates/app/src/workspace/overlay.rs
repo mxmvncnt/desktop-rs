@@ -84,7 +84,14 @@ impl Workspace {
             Some(Overlay::Stash(_)) => self.stash_confirm(cx),
             Some(Overlay::Merge(_)) => self.merge_confirm(window, cx),
             Some(Overlay::Branch(_)) => self.branch_dialog_confirm(window, cx),
-            Some(Overlay::Popover(_) | Overlay::DiffOptions(_) | Overlay::Settings | Overlay::RepoSettings | Overlay::ForcePush) | None => {}
+            Some(
+                Overlay::Popover(_)
+                | Overlay::DiffOptions(_)
+                | Overlay::Settings
+                | Overlay::RepoSettings
+                | Overlay::ForcePush,
+            )
+            | None => {}
         }
     }
 }

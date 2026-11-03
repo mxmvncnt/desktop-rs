@@ -12,18 +12,36 @@ use crate::utils::text::sanitize_branch_name;
 use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
-    pub fn open_branch_menu(&mut self, branch: Branch, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_branch_menu(
+        &mut self,
+        branch: Branch,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let rows = branch_menu_rows(&branch, self.paused(cx));
-        let menu = Menu::new(position, rows, move |ws, action, w, cx| ws.run_branch_action(action, branch.clone(), w, cx));
+        let menu = Menu::new(position, rows, move |ws, action, w, cx| {
+            ws.run_branch_action(action, branch.clone(), w, cx)
+        });
         // Stacks over the branch picker it was opened from.
         self.stack_overlay(Overlay::Menu(menu), cx);
         self.focus(window, cx);
     }
 
-    pub(crate) fn run_branch_action(&mut self, action: BranchAction, b: Branch, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn run_branch_action(
+        &mut self,
+        action: BranchAction,
+        b: Branch,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         match action {
-            BranchAction::Merge => self.open_merge_dialog(MergeMode::Merge, Some(b.name), window, cx),
-            BranchAction::Rebase => self.open_merge_dialog(MergeMode::Rebase, Some(b.name), window, cx),
+            BranchAction::Merge => {
+                self.open_merge_dialog(MergeMode::Merge, Some(b.name), window, cx)
+            }
+            BranchAction::Rebase => {
+                self.open_merge_dialog(MergeMode::Rebase, Some(b.name), window, cx)
+            }
             BranchAction::CopyName => cx.write_to_clipboard(ClipboardItem::new_string(b.name)),
             BranchAction::CreateFrom => {
                 self.open_branch_dialog(BranchDialog::CreateFrom { base: b.name }, "", window, cx)
@@ -37,18 +55,38 @@ impl Workspace {
     }
 
     fn open_delete_dialog(&mut self, branch: Branch, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(repo) = self.repo.clone() else { return };
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
         // Offer deleting the upstream too when it still exists.
-        let remote = (branch.kind == BranchKind::Local).then(|| branch.upstream.clone()).flatten().filter(|u| {
-            repo.read(cx).branches.iter().any(|x| x.kind == BranchKind::Remote && &x.name == u)
-        });
-        let dialog = BranchDialog::Delete { branch, remote, also_remote: false };
+        let remote = (branch.kind == BranchKind::Local)
+            .then(|| branch.upstream.clone())
+            .flatten()
+            .filter(|u| {
+                repo.read(cx)
+                    .branches
+                    .iter()
+                    .any(|x| x.kind == BranchKind::Remote && &x.name == u)
+            });
+        let dialog = BranchDialog::Delete {
+            branch,
+            remote,
+            also_remote: false,
+        };
         self.open_branch_dialog(dialog, "", window, cx)
     }
 
-    fn open_branch_dialog(&mut self, dialog: BranchDialog, prefill: &str, window: &mut Window, cx: &mut Context<Self>) {
+    fn open_branch_dialog(
+        &mut self,
+        dialog: BranchDialog,
+        prefill: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let delete = matches!(dialog, BranchDialog::Delete { .. });
-        self.branch_ui.input.update(cx, |s, cx| s.emplace(prefill, cx));
+        self.branch_ui
+            .input
+            .update(cx, |s, cx| s.emplace(prefill, cx));
         self.open_overlay(Overlay::Branch(dialog), cx);
         if delete {
             self.focus(window, cx);
@@ -58,7 +96,9 @@ impl Workspace {
     }
 
     pub(super) fn toggle_also_remote(&mut self, cx: &mut Context<Self>) {
-        if let Some(Overlay::Branch(BranchDialog::Delete { also_remote, .. })) = self.overlays.last_mut() {
+        if let Some(Overlay::Branch(BranchDialog::Delete { also_remote, .. })) =
+            self.overlays.last_mut()
+        {
             *also_remote = !*also_remote;
             cx.notify();
         }
@@ -72,13 +112,20 @@ impl Workspace {
     pub(super) fn branch_dialog_valid(&self, cx: &gpui::App) -> bool {
         let name = self.typed_branch_name(cx);
         let exists = |n: &str| {
-            self.repo
-                .as_ref()
-                .is_some_and(|r| r.read(cx).branches.iter().any(|b| b.kind == BranchKind::Local && b.name == n))
+            self.repo.as_ref().is_some_and(|r| {
+                r.read(cx)
+                    .branches
+                    .iter()
+                    .any(|b| b.kind == BranchKind::Local && b.name == n)
+            })
         };
         match self.overlays.last() {
-            Some(Overlay::Branch(BranchDialog::Rename { old })) => !name.is_empty() && &name != old && !exists(&name),
-            Some(Overlay::Branch(BranchDialog::CreateFrom { .. })) => !name.is_empty() && !exists(&name),
+            Some(Overlay::Branch(BranchDialog::Rename { old })) => {
+                !name.is_empty() && &name != old && !exists(&name)
+            }
+            Some(Overlay::Branch(BranchDialog::CreateFrom { .. })) => {
+                !name.is_empty() && !exists(&name)
+            }
             Some(Overlay::Branch(BranchDialog::Delete { .. })) => true,
             _ => false,
         }
@@ -89,14 +136,24 @@ impl Workspace {
             return;
         }
         let name = self.typed_branch_name(cx);
-        let Some(Overlay::Branch(dialog)) = self.overlays.pop_if(|o| matches!(o, Overlay::Branch(_))) else { return };
+        let Some(Overlay::Branch(dialog)) =
+            self.overlays.pop_if(|o| matches!(o, Overlay::Branch(_)))
+        else {
+            return;
+        };
         self.focus(window, cx);
         cx.notify();
-        let Some(repo) = self.repo.clone() else { return };
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
         repo.update(cx, |r, cx| match dialog {
             BranchDialog::Rename { old } => r.rename_branch(old, name, cx),
             BranchDialog::CreateFrom { base } => r.create_branch_from(name, base, cx),
-            BranchDialog::Delete { branch, remote, also_remote } => {
+            BranchDialog::Delete {
+                branch,
+                remote,
+                also_remote,
+            } => {
                 let target = delete_target(&branch, remote.as_deref(), also_remote);
                 r.delete_branch(branch, target, cx)
             }
@@ -106,7 +163,11 @@ impl Workspace {
 
 /// Which server branch to delete: the branch itself when it is a remote one,
 /// else its upstream if the user ticked the box.
-fn delete_target(branch: &Branch, upstream: Option<&str>, also_remote: bool) -> Option<RemoteBranch> {
+fn delete_target(
+    branch: &Branch,
+    upstream: Option<&str>,
+    also_remote: bool,
+) -> Option<RemoteBranch> {
     if branch.kind == BranchKind::Remote {
         RemoteBranch::parse(&branch.name)
     } else if also_remote {

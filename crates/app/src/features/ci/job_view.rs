@@ -25,15 +25,30 @@ impl RenderOnce for JobView {
         let Some(job) = ci.job(self.id).cloned() else {
             return empty_state("Loading job…", cx).flex_1().into_any_element();
         };
-        let actions = ci.ready().map(|t| job_actions(&job, t.forge.capabilities())).unwrap_or_default();
+        let actions = ci
+            .ready()
+            .map(|t| job_actions(&job, t.forge.capabilities()))
+            .unwrap_or_default();
         let number = ci.details[&self.id.pipeline].pipeline.number;
-        let stage = ci.job(self.id).and_then(|_| ci.details[&self.id.pipeline].stages.iter().find(|s| s.jobs.iter().any(|j| j.id == self.id))).map(|s| s.name.clone());
+        let stage = ci
+            .job(self.id)
+            .and_then(|_| {
+                ci.details[&self.id.pipeline]
+                    .stages
+                    .iter()
+                    .find(|s| s.jobs.iter().any(|j| j.id == self.id))
+            })
+            .map(|s| s.name.clone());
         div()
             .flex_1()
             .min_h_0()
             .flex()
             .flex_col()
-            .child(Breadcrumbs { store: self.store.clone(), pipeline: number, job: Some(job.name.clone()) })
+            .child(Breadcrumbs {
+                store: self.store.clone(),
+                pipeline: number,
+                job: Some(job.name.clone()),
+            })
             .child(
                 div()
                     .flex_1()
@@ -41,8 +56,18 @@ impl RenderOnce for JobView {
                     .flex()
                     .border_t_1()
                     .border_color(theme.border)
-                    .child(LogView { store: self.store.clone(), ws: self.ws.clone(), job: self.id })
-                    .child(JobSidebar { store: self.store.clone(), actions, acting: ci.acting, job, stage: stage.unwrap_or_default() }),
+                    .child(LogView {
+                        store: self.store.clone(),
+                        ws: self.ws.clone(),
+                        job: self.id,
+                    })
+                    .child(JobSidebar {
+                        store: self.store.clone(),
+                        actions,
+                        acting: ci.acting,
+                        job,
+                        stage: stage.unwrap_or_default(),
+                    }),
             )
             .into_any_element()
     }

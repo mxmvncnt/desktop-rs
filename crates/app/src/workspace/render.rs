@@ -3,8 +3,8 @@
 
 use gd_ui::{Theme, motion};
 use gpui::{
-    AnyElement, Context, DragMoveEvent, MouseButton, NavigationDirection, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
-    div, px,
+    AnyElement, Context, DragMoveEvent, InteractiveElement, IntoElement, MouseButton,
+    NavigationDirection, ParentElement, Render, Styled, Window, div, px,
 };
 
 use super::{actions, overlay::Overlay, state::Workspace};
@@ -13,12 +13,12 @@ use crate::components::MenuView;
 use crate::features::branches::BranchDialogView;
 use crate::features::changes::{Sidebar, SidebarResize};
 use crate::features::ci::CiPage;
+use crate::features::ci::{CiMenu, Field};
 use crate::features::diff::DiffOptionsMenu;
 use crate::features::history::HistoryDialogView;
 use crate::features::menus::DiscardDialogView;
 use crate::features::merge::{InProgressBanner, MergeDialogView};
 use crate::features::notices::NoticeBanner;
-use crate::features::ci::{CiMenu, Field};
 use crate::features::pickers::PopoverLayer;
 use crate::features::repo_settings::RepoSettingsModal;
 use crate::features::settings::SettingsModal;
@@ -43,13 +43,32 @@ impl Render for Workspace {
         let root = div()
             .id("workspace")
             .on_mouse_move(|_, _, _| crate::frame_debug::on_input())
-            .on_drag_move(cx.listener(|this, e: &DragMoveEvent<SidebarResize>, _, cx| {
-                this.drag_sidebar_to(e.event.position.x.as_f32(), cx)
-            }))
-            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| this.close_ci_menu(cx)))
-            .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| { this.finish_sidebar_drag(); this.commit_msg.end_drag(); this.commit_sel.drag = false; this.ci.update(cx, |ci, _| ci.log.dragging = false); }))
-            .on_mouse_up(MouseButton::Navigate(NavigationDirection::Back), cx.listener(|this, _, w, cx| this.dismiss(w, cx)))
-            .on_mouse_up(MouseButton::Navigate(NavigationDirection::Forward), cx.listener(|this, _, _, cx| this.forward_ci(cx)))
+            .on_drag_move(
+                cx.listener(|this, e: &DragMoveEvent<SidebarResize>, _, cx| {
+                    this.drag_sidebar_to(e.event.position.x.as_f32(), cx)
+                }),
+            )
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| this.close_ci_menu(cx)),
+            )
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| {
+                    this.finish_sidebar_drag();
+                    this.commit_msg.end_drag();
+                    this.commit_sel.drag = false;
+                    this.ci.update(cx, |ci, _| ci.log.dragging = false);
+                }),
+            )
+            .on_mouse_up(
+                MouseButton::Navigate(NavigationDirection::Back),
+                cx.listener(|this, _, w, cx| this.dismiss(w, cx)),
+            )
+            .on_mouse_up(
+                MouseButton::Navigate(NavigationDirection::Forward),
+                cx.listener(|this, _, _, cx| this.forward_ci(cx)),
+            )
             .key_context(match self.overlays.last() {
                 None | Some(Overlay::Popover(_)) => WORKSPACE,
                 Some(_) => WORKSPACE_MENU,
@@ -81,7 +100,10 @@ impl Workspace {
         };
         // Opening and closing the CI page swap the body: whichever appears fades in (the one that goes is gone at once).
         if self.ci.read(cx).open {
-            let page = div().flex_1().min_h_0().flex().flex_col().child(CiPage { store: self.ci.clone(), ws: cx.entity() });
+            let page = div().flex_1().min_h_0().flex().flex_col().child(CiPage {
+                store: self.ci.clone(),
+                ws: cx.entity(),
+            });
             return motion::fade_quick("ci-page-in", page).into_any_element();
         }
         let (tab, pr_open) = {
@@ -103,29 +125,63 @@ impl Workspace {
 
     /// Notice banner, then the open overlays in stack order (last paints on top).
     fn overlays(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
-        let mut out: Vec<AnyElement> = NoticeBanner::open(self, cx).into_iter().map(IntoElement::into_any_element).collect();
+        let mut out: Vec<AnyElement> = NoticeBanner::open(self, cx)
+            .into_iter()
+            .map(IntoElement::into_any_element)
+            .collect();
         let ws = cx.entity();
-        for (field, at) in [(Field::Branch, &self.ci_inputs.branch_at), (Field::User, &self.ci_inputs.user_at)] {
+        for (field, at) in [
+            (Field::Branch, &self.ci_inputs.branch_at),
+            (Field::User, &self.ci_inputs.user_at),
+        ] {
             if let Some((entries, typed)) = self.ci_entries(field, cx) {
                 let (store, inputs, position) = (self.ci.clone(), self.ci_inputs.clone(), at.get());
-                out.push(CiMenu { ws: ws.clone(), store, inputs, field, entries, typed, position }.into_any_element());
+                out.push(
+                    CiMenu {
+                        ws: ws.clone(),
+                        store,
+                        inputs,
+                        field,
+                        entries,
+                        typed,
+                        position,
+                    }
+                    .into_any_element(),
+                );
             }
         }
         for overlay in self.overlays.clone() {
             out.extend(match overlay {
                 Overlay::Popover(p) => Some(PopoverLayer::open(self, p, cx).into_any_element()),
-                Overlay::Menu(menu) => {
-                    Some(MenuView { id: ("menu", self.overlay_gen).into(), menu, ws: ws.clone() }.into_any_element())
+                Overlay::Menu(menu) => Some(
+                    MenuView {
+                        id: ("menu", self.overlay_gen).into(),
+                        menu,
+                        ws: ws.clone(),
+                    }
+                    .into_any_element(),
+                ),
+                Overlay::DiffOptions(pos) => {
+                    Some(DiffOptionsMenu::new(self, pos, ws.clone()).into_any_element())
                 }
-                Overlay::DiffOptions(pos) => Some(DiffOptionsMenu::new(self, pos, ws.clone()).into_any_element()),
                 Overlay::Settings => Some(SettingsModal::open(self, cx).into_any_element()),
-                Overlay::RepoSettings => RepoSettingsModal::open(self, cx).map(IntoElement::into_any_element),
-                Overlay::Discard(d) => Some(DiscardDialogView::new(d, ws.clone()).into_any_element()),
+                Overlay::RepoSettings => {
+                    RepoSettingsModal::open(self, cx).map(IntoElement::into_any_element)
+                }
+                Overlay::Discard(d) => {
+                    Some(DiscardDialogView::new(d, ws.clone()).into_any_element())
+                }
                 Overlay::History(d) => Some(HistoryDialogView::new(self, d, cx).into_any_element()),
-                Overlay::Stash(d) => StashDialogView::open(self, d, cx).map(IntoElement::into_any_element),
-                Overlay::Merge(d) => MergeDialogView::open(self, d, cx).map(IntoElement::into_any_element),
+                Overlay::Stash(d) => {
+                    StashDialogView::open(self, d, cx).map(IntoElement::into_any_element)
+                }
+                Overlay::Merge(d) => {
+                    MergeDialogView::open(self, d, cx).map(IntoElement::into_any_element)
+                }
                 Overlay::ForcePush => Some(self.render_force_push(cx)),
-                Overlay::Branch(d) => BranchDialogView::open(self, d, cx).map(IntoElement::into_any_element),
+                Overlay::Branch(d) => {
+                    BranchDialogView::open(self, d, cx).map(IntoElement::into_any_element)
+                }
             });
         }
         out

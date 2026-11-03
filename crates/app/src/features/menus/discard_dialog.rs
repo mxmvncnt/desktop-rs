@@ -20,7 +20,10 @@ impl DiscardDialogView {
         let (title, body, confirm_label) = match &dialog {
             ConfirmDialog::File(c) => (
                 "Confirm discard changes".to_string(),
-                format!("Are you sure you want to discard all changes to {}?", c.path),
+                format!(
+                    "Are you sure you want to discard all changes to {}?",
+                    c.path
+                ),
                 "Discard changes",
             ),
             ConfirmDialog::All(all) => (
@@ -42,7 +45,12 @@ impl DiscardDialogView {
                 "Discard changes",
             ),
         };
-        Self { title, body, confirm_label, ws }
+        Self {
+            title,
+            body,
+            confirm_label,
+            ws,
+        }
     }
 }
 

@@ -29,21 +29,55 @@ impl RenderOnce for RemoteForm {
             .border_1()
             .border_color(theme.border)
             .bg(theme.ink(0.03))
-            .child(FieldRow::new("Name", "remote-name", &inp.remote_name, "origin"))
-            .child(FieldRow::new("Fetch URL", "remote-url", &inp.remote_url, "https://github.com/owner/repo.git"))
-            .child(FieldRow::new("Push URL (optional, defaults to the fetch URL)", "remote-push-url", &inp.remote_push_url, ""))
+            .child(FieldRow::new(
+                "Name",
+                "remote-name",
+                &inp.remote_name,
+                "origin",
+            ))
+            .child(FieldRow::new(
+                "Fetch URL",
+                "remote-url",
+                &inp.remote_url,
+                "https://github.com/owner/repo.git",
+            ))
+            .child(FieldRow::new(
+                "Push URL (optional, defaults to the fetch URL)",
+                "remote-push-url",
+                &inp.remote_push_url,
+                "",
+            ))
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .child(Button::new("remote-save").primary().compact().label(if self.editing.is_some() { "Save" } else { "Add" }).on_click(
-                        move |_, _, cx| save.update(cx, |this, cx| this.save_remote(cx)),
-                    ))
-                    .child(Button::new("remote-cancel").ghost().compact().label("Cancel").on_click(move |_, _, cx| {
-                        cancel.update(cx, |this, cx| this.close_edit(cx))
-                    }))
-                    .children(self.error.map(|e| div().text_size(px(12.0)).text_color(theme.danger).child(e))),
+                    .child(
+                        Button::new("remote-save")
+                            .primary()
+                            .compact()
+                            .label(if self.editing.is_some() {
+                                "Save"
+                            } else {
+                                "Add"
+                            })
+                            .on_click(move |_, _, cx| {
+                                save.update(cx, |this, cx| this.save_remote(cx))
+                            }),
+                    )
+                    .child(
+                        Button::new("remote-cancel")
+                            .ghost()
+                            .compact()
+                            .label("Cancel")
+                            .on_click(move |_, _, cx| {
+                                cancel.update(cx, |this, cx| this.close_edit(cx))
+                            }),
+                    )
+                    .children(
+                        self.error
+                            .map(|e| div().text_size(px(12.0)).text_color(theme.danger).child(e)),
+                    ),
             )
     }
 }

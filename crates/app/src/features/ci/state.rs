@@ -8,7 +8,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
-use gpui::{App, AppContext as _, Entity, EventEmitter, Pixels, Point, Task, UniformListScrollHandle};
+use gpui::{
+    App, AppContext as _, Entity, EventEmitter, Pixels, Point, Task, UniformListScrollHandle,
+};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::target::{Problem, Target};
@@ -97,7 +99,12 @@ pub struct CiInputs {
 impl CiInputs {
     pub fn new(cx: &mut App) -> Self {
         let mk = |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
-        Self { branch: mk(cx), user: mk(cx), branch_at: Rc::default(), user_at: Rc::default() }
+        Self {
+            branch: mk(cx),
+            user: mk(cx),
+            branch_at: Rc::default(),
+            user_at: Rc::default(),
+        }
     }
 }
 
@@ -206,16 +213,27 @@ impl CiStore {
     }
 
     pub fn job(&self, id: JobId) -> Option<&Job> {
-        self.details.get(&id.pipeline)?.stages.iter().flat_map(|s| &s.jobs).find(|j| j.id == id)
+        self.details
+            .get(&id.pipeline)?
+            .stages
+            .iter()
+            .flat_map(|s| &s.jobs)
+            .find(|j| j.id == id)
     }
 
     /// The users seen so far, for the suggestions of the user filter.
     pub fn known_users(&self) -> impl Iterator<Item = &gd_forge::User> {
-        self.pipelines.iter().filter_map(|p| p.user.as_ref()).chain(self.details.values().filter_map(|d| d.pipeline.user.as_ref()))
+        self.pipelines.iter().filter_map(|p| p.user.as_ref()).chain(
+            self.details
+                .values()
+                .filter_map(|d| d.pipeline.user.as_ref()),
+        )
     }
 
     /// A list row wants its stages and they are not loaded, loading or known to fail.
     pub fn needs_detail(&self, id: PipelineId) -> bool {
-        !self.details.contains_key(&id) && !self.inflight.contains(&id) && !self.failed.contains(&id)
+        !self.details.contains_key(&id)
+            && !self.inflight.contains(&id)
+            && !self.failed.contains(&id)
     }
 }

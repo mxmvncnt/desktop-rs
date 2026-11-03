@@ -1,11 +1,14 @@
 //! The collapsible "Stashes (N)" panel in the Changes sidebar.
 
 use gd_ui::Theme;
-use gpui::{Animation, AnimationExt, App, Entity, IntoElement, RenderOnce, Window, div, ease_out_quint, prelude::*, px};
+use gpui::{
+    Animation, AnimationExt, App, Entity, IntoElement, RenderOnce, Window, div, ease_out_quint,
+    prelude::*, px,
+};
 
 use super::stash_list::{StashList, list_height};
-use super::state::StashState;
 use super::stash_panel_header::StashPanelHeader;
+use super::state::StashState;
 use crate::repo::RepoModel;
 use crate::workspace::Workspace;
 
@@ -32,7 +35,10 @@ pub struct StashPanel {
 impl StashPanel {
     /// `None` when the repo has no stashes (the panel is hidden).
     pub fn new(repo: &Entity<RepoModel>, ws: Entity<Workspace>, cx: &App) -> Option<Self> {
-        (!repo.read(cx).stashes.list.is_empty()).then(|| Self { repo: repo.clone(), ws })
+        (!repo.read(cx).stashes.list.is_empty()).then(|| Self {
+            repo: repo.clone(),
+            ws,
+        })
     }
 }
 
@@ -58,9 +64,11 @@ impl RenderOnce for StashPanel {
         let body = div().overflow_hidden().flex_none().child(body);
         let body = match st.slide_from {
             Some(from) => body
-                .with_animation(("stash-body", st.slides), Animation::new(SLIDE).with_easing(ease_out_quint()), move |el, t| {
-                    el.h(px(from + (target - from) * t))
-                })
+                .with_animation(
+                    ("stash-body", st.slides),
+                    Animation::new(SLIDE).with_easing(ease_out_quint()),
+                    move |el, t| el.h(px(from + (target - from) * t)),
+                )
                 .into_any_element(),
             None => body.h(px(target)).into_any_element(),
         };
@@ -70,7 +78,12 @@ impl RenderOnce for StashPanel {
             .flex_none()
             .border_t_1()
             .border_color(theme.border)
-            .child(StashPanelHeader { repo: self.repo, shown, collapsed, all_branches: all })
+            .child(StashPanelHeader {
+                repo: self.repo,
+                shown,
+                collapsed,
+                all_branches: all,
+            })
             .child(body)
     }
 }

@@ -54,7 +54,12 @@ impl DiffView {
     }
 
     pub(super) fn line_text(&self, line: usize) -> Option<&str> {
-        self.extent.as_ref()?.diff.lines.get(line).map(|l| l.text.as_str())
+        self.extent
+            .as_ref()?
+            .diff
+            .lines
+            .get(line)
+            .map(|l| l.text.as_str())
     }
 
     /// The side of the text drag in progress.
@@ -63,13 +68,26 @@ impl DiffView {
     }
 
     pub fn set_extent(&mut self, diff: &Arc<Diff>, fixed: Pixels, columns: f32) {
-        self.extent = Some(HExtent { diff: diff.clone(), fixed, columns });
+        self.extent = Some(HExtent {
+            diff: diff.clone(),
+            fixed,
+            columns,
+        });
     }
 
     /// The wrapping list's state, reset when the diff or split mode changed.
     /// A reload of the same file (`!new_key`) stays at the same row.
-    pub fn wrap_list_for(&mut self, diff: &Arc<Diff>, split: bool, n: usize, new_key: bool) -> ListState {
-        let same = self.wrap_for.as_ref().is_some_and(|(d, s)| Arc::ptr_eq(d, diff) && *s == split);
+    pub fn wrap_list_for(
+        &mut self,
+        diff: &Arc<Diff>,
+        split: bool,
+        n: usize,
+        new_key: bool,
+    ) -> ListState {
+        let same = self
+            .wrap_for
+            .as_ref()
+            .is_some_and(|(d, s)| Arc::ptr_eq(d, diff) && *s == split);
         if !same || new_key {
             let top = self.wrap_list.logical_scroll_top();
             let keep = !new_key && self.wrap_for.as_ref().is_some_and(|(_, s)| *s == split);

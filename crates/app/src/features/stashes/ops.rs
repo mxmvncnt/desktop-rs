@@ -87,7 +87,11 @@ impl RepoModel {
             Op::default(),
             move |r| r.stash_push(&message, &paths),
             move |this, sha, cx| {
-                this.notice = Some(if n == 0 { "Stashed all changes".into() } else { format!("Stashed {n} path{}", plural(n as u32)) });
+                this.notice = Some(if n == 0 {
+                    "Stashed all changes".into()
+                } else {
+                    format!("Stashed {n} path{}", plural(n as u32))
+                });
                 this.stashes.expanded = true;
                 this.stashes.selected = Some(sha);
                 this.stashes.viewing = false;
@@ -145,7 +149,12 @@ impl RepoModel {
     /// Switch branches, optionally stashing the working changes first
     /// (Desktop's "Leave my changes on <branch>"). If the checkout fails after
     /// stashing, the stash is popped again so nothing is left behind.
-    pub fn checkout_with_stash(&mut self, branch: gd_git::Branch, stash: bool, cx: &mut Context<Self>) {
+    pub fn checkout_with_stash(
+        &mut self,
+        branch: gd_git::Branch,
+        stash: bool,
+        cx: &mut Context<Self>,
+    ) {
         if !stash {
             self.checkout_now(branch, cx);
             return;

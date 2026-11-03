@@ -13,7 +13,10 @@ use crate::{Repository, Result};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InProgress {
     /// `MERGE_HEAD` exists. `branch` comes from `MERGE_MSG` ("Merge branch 'x'").
-    Merge { branch: Option<String>, head: String },
+    Merge {
+        branch: Option<String>,
+        head: String,
+    },
     /// `git merge --squash` stopped on conflicts (`SQUASH_MSG` + unmerged paths).
     Squash,
     /// `rebase-merge/` or `rebase-apply/`.
@@ -61,7 +64,9 @@ pub enum OpOutcome {
 }
 
 fn read(path: std::path::PathBuf) -> Option<String> {
-    std::fs::read_to_string(path).ok().map(|s| s.trim().to_string())
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|s| s.trim().to_string())
 }
 
 /// `Merge branch 'feat' into main` / `Merge remote-tracking branch 'origin/x'` -> `feat`.
@@ -99,7 +104,10 @@ impl Repository {
         }
         if let Some(head) = read(dir.join("MERGE_HEAD")) {
             let branch = read(dir.join("MERGE_MSG")).and_then(|m| merge_branch_from_msg(&m));
-            return Some(InProgress::Merge { branch, head: head.lines().next().unwrap_or("").into() });
+            return Some(InProgress::Merge {
+                branch,
+                head: head.lines().next().unwrap_or("").into(),
+            });
         }
         for (file, revert) in [("CHERRY_PICK_HEAD", false), ("REVERT_HEAD", true)] {
             if let Some(sha) = read(dir.join(file)) {
@@ -126,7 +134,14 @@ impl Repository {
     /// Branch name for a commit if one points at it, else the short sha.
     fn describe_commit(&self, sha: &str) -> String {
         self.git()
-            .args(["name-rev", "--name-only", "--no-undefined", "--refs=refs/heads/*", "--refs=refs/remotes/*", sha])
+            .args([
+                "name-rev",
+                "--name-only",
+                "--no-undefined",
+                "--refs=refs/heads/*",
+                "--refs=refs/remotes/*",
+                sha,
+            ])
             .run()
             .ok()
             .map(|s| s.trim().to_string())
@@ -206,4 +221,3 @@ impl Repository {
         }
     }
 }
-

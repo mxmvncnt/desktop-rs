@@ -40,8 +40,13 @@ impl RenderOnce for SettingsShell {
             .bg(theme.ink(0.02))
             .children(self.nav.into_iter().map(|item| nav_item(item, &theme, cx)))
             .child(div().flex_1())
-            .children(self.nav_bottom.into_iter().map(|item| nav_item(item, &theme, cx)));
-        let (close, escape, backdrop) = (self.on_close.clone(), self.on_close.clone(), self.on_close);
+            .children(
+                self.nav_bottom
+                    .into_iter()
+                    .map(|item| nav_item(item, &theme, cx)),
+            );
+        let (close, escape, backdrop) =
+            (self.on_close.clone(), self.on_close.clone(), self.on_close);
         let title_bar = div()
             .flex()
             .flex_none()
@@ -50,8 +55,17 @@ impl RenderOnce for SettingsShell {
             .h(px(52.0))
             .pl(px(24.0))
             .pr(px(12.0))
-            .child(div().text_size(px(15.0)).font_weight(gpui::FontWeight::SEMIBOLD).child(self.title))
-            .child(icon_button("settings-close", Icon::Close).compact().on_click(move |_, w, cx| close(w, cx)));
+            .child(
+                div()
+                    .text_size(px(15.0))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child(self.title),
+            )
+            .child(
+                icon_button("settings-close", Icon::Close)
+                    .compact()
+                    .on_click(move |_, w, cx| close(w, cx)),
+            );
         let card = overlay_card(cx)
             .id("settings-card")
             .occlude()
@@ -74,7 +88,12 @@ impl RenderOnce for SettingsShell {
                     .child(divider(cx))
                     .child(
                         // The padding is inside the scroll area, so scrolled content runs up to the divider and the bottom edge.
-                        div().id("settings-scroll").flex_1().min_h_0().overflow_y_scroll().child(div().p(px(24.0)).child(self.body)),
+                        div()
+                            .id("settings-scroll")
+                            .flex_1()
+                            .min_h_0()
+                            .overflow_y_scroll()
+                            .child(div().p(px(24.0)).child(self.body)),
                     ),
             );
         modal(card, Some(backdrop), false)
@@ -82,7 +101,11 @@ impl RenderOnce for SettingsShell {
 }
 
 fn nav_item(item: NavItem, theme: &Theme, cx: &mut App) -> impl IntoElement + use<> {
-    let color = if item.active { theme.text } else { theme.text_muted };
+    let color = if item.active {
+        theme.text
+    } else {
+        theme.text_muted
+    };
     pressable(item.label, item.active, cx)
         .flex()
         .items_center()
@@ -92,7 +115,11 @@ fn nav_item(item: NavItem, theme: &Theme, cx: &mut App) -> impl IntoElement + us
         .rounded(px(gd_ui::theme::CONTROL_RADIUS))
         .text_size(px(13.0))
         .text_color(color)
-        .child(icon(item.icon).size(px(15.0)).text_color(if item.active { theme.text } else { theme.text_faint }))
+        .child(icon(item.icon).size(px(15.0)).text_color(if item.active {
+            theme.text
+        } else {
+            theme.text_faint
+        }))
         .child(item.label)
         .on_click(move |_, w, cx| (item.on_click)(w, cx))
 }

@@ -13,7 +13,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::{message, Commit, FileChange, GitError, LineStats, OpOutcome, Repository, Result};
+use crate::{Commit, FileChange, GitError, LineStats, OpOutcome, Repository, Result, message};
 
 /// How `git reset` treats the index and working tree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,9 +73,15 @@ impl Repository {
             if self.remotes()?.is_empty() {
                 return Ok(HashSet::new());
             }
-            self.git().args(["rev-list", "HEAD", "--not", "--remotes"]).run()?
+            self.git()
+                .args(["rev-list", "HEAD", "--not", "--remotes"])
+                .run()?
         };
-        Ok(out.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect())
+        Ok(out
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect())
     }
 
     /// Tags by the commit they point at (annotated tags are peeled).
@@ -95,7 +101,9 @@ impl Repository {
                 continue;
             }
             let sha = if f[1].is_empty() { f[0] } else { f[1] };
-            map.entry(sha.to_string()).or_default().push(f[2].to_string());
+            map.entry(sha.to_string())
+                .or_default()
+                .push(f[2].to_string());
         }
         Ok(map)
     }
@@ -166,7 +174,10 @@ impl Repository {
     }
 
     fn parent_count(&self, sha: &str) -> Result<usize> {
-        let out = self.git().args(["rev-list", "--parents", "-n", "1", sha]).run()?;
+        let out = self
+            .git()
+            .args(["rev-list", "--parents", "-n", "1", sha])
+            .run()?;
         Ok(out.split_whitespace().count().saturating_sub(1))
     }
 
@@ -222,11 +233,21 @@ impl Repository {
     pub fn force_push_preview(&self) -> Result<ForcePushPreview> {
         let upstream = self
             .git()
-            .args(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"])
+            .args([
+                "rev-parse",
+                "--abbrev-ref",
+                "--symbolic-full-name",
+                "@{upstream}",
+            ])
             .run()
             .map_err(|_| GitError::Invalid("the branch has no upstream to push to".into()))?;
         let remote_ref = upstream.trim().to_string();
-        let remote_tip = self.git().args(["rev-parse", "--verify", "@{upstream}"]).run()?.trim().to_string();
+        let remote_tip = self
+            .git()
+            .args(["rev-parse", "--verify", "@{upstream}"])
+            .run()?
+            .trim()
+            .to_string();
         let (files, stats) = self.range_changes(&remote_tip, "HEAD")?;
         Ok(ForcePushPreview {
             files,
@@ -272,10 +293,11 @@ impl Repository {
         let walk = self.first_parent_walk()?;
         let mut pos = Vec::with_capacity(shas.len());
         for s in shas {
-            let p = walk
-                .iter()
-                .position(|n| n.sha == *s)
-                .ok_or_else(|| GitError::Invalid(format!("commit {s} is not on the current branch (or too far back)")))?;
+            let p = walk.iter().position(|n| n.sha == *s).ok_or_else(|| {
+                GitError::Invalid(format!(
+                    "commit {s} is not on the current branch (or too far back)"
+                ))
+            })?;
             pos.push(p);
         }
         pos.sort_unstable();
@@ -306,9 +328,24 @@ impl Repository {
     /// with `rebase --autostash --onto <new> <newest>`; since the tree is
     /// unchanged they apply without conflicts, but if the rebase does stop it
     /// stays in progress.
-    fn replace_commits(&self, walk: &[Node], newest: usize, oldest: usize, message: &str, what: &str) -> Result<OpOutcome> {
+    fn replace_commits(
+        &self,
+        walk: &[Node],
+        newest: usize,
+        oldest: usize,
+        message: &str,
+        what: &str,
+    ) -> Result<OpOutcome> {
         let (old_tip, old_base) = (walk[newest].sha.as_str(), &walk[oldest]);
-        let author = self.git().args(["show", "-s", "--format=%an%x1f%ae%x1f%aI", old_base.sha.as_str()]).run()?;
+        let author = self
+            .git()
+            .args([
+                "show",
+                "-s",
+                "--format=%an%x1f%ae%x1f%aI",
+                old_base.sha.as_str(),
+            ])
+            .run()?;
         let mut author = author.trim_end().split('\u{1f}');
         let mut ct = self
             .git()
@@ -319,12 +356,30 @@ impl Repository {
         if let Some(parent) = old_base.parents.first() {
             ct = ct.args(["-p", parent.as_str()]);
         }
-        let new = ct.args(["-F", "-"]).stdin(format!("{}\n", message.trim())).run()?.trim().to_string();
+        let new = ct
+            .args(["-F", "-"])
+            .stdin(format!("{}\n", message.trim()))
+            .run()?
+            .trim()
+            .to_string();
         if newest == 0 {
-            self.git().args(["update-ref", "-m", what, "HEAD", new.as_str(), old_tip]).run()?;
+            self.git()
+                .args(["update-ref", "-m", what, "HEAD", new.as_str(), old_tip])
+                .run()?;
             return Ok(OpOutcome::Done);
         }
-        let res = self.git().args(["-c", "core.editor=true", "rebase", "--autostash", "--onto", new.as_str(), old_tip]).exec();
+        let res = self
+            .git()
+            .args([
+                "-c",
+                "core.editor=true",
+                "rebase",
+                "--autostash",
+                "--onto",
+                new.as_str(),
+                old_tip,
+            ])
+            .exec();
         self.outcome_of(res)
     }
 
@@ -333,7 +388,9 @@ impl Repository {
     /// See [`replace_commits`](Self::replace_commits) for how it is built.
     pub fn squash_commits(&self, shas: &[String], message: &str) -> Result<OpOutcome> {
         if shas.len() < 2 {
-            return Err(GitError::Invalid("select at least two commits to squash".into()));
+            return Err(GitError::Invalid(
+                "select at least two commits to squash".into(),
+            ));
         }
         if message.trim().is_empty() {
             return Err(GitError::Invalid("commit message is empty".into()));
@@ -367,20 +424,30 @@ impl Repository {
             .ok_or_else(|| GitError::Invalid("commit is not on the current branch".into()))?;
         let lo = if up {
             if p == 0 {
-                return Err(GitError::Invalid("This is already the newest commit.".into()));
+                return Err(GitError::Invalid(
+                    "This is already the newest commit.".into(),
+                ));
             }
             p - 1
         } else {
             p
         };
         if lo + 1 >= walk.len() {
-            return Err(GitError::Invalid("This is already the oldest commit.".into()));
+            return Err(GitError::Invalid(
+                "This is already the oldest commit.".into(),
+            ));
         }
         if walk[..=lo + 1].iter().any(|n| n.parents.len() > 1) {
-            return Err(GitError::Invalid("Can't reorder across a merge commit.".into()));
+            return Err(GitError::Invalid(
+                "Can't reorder across a merge commit.".into(),
+            ));
         }
         // Oldest first, with the pair swapped.
-        let mut order: Vec<&str> = walk[..=lo + 1].iter().rev().map(|n| n.sha.as_str()).collect();
+        let mut order: Vec<&str> = walk[..=lo + 1]
+            .iter()
+            .rev()
+            .map(|n| n.sha.as_str())
+            .collect();
         let len = order.len();
         order.swap(len - 1 - lo, len - 2 - lo);
         let todo: String = order.iter().map(|s| format!("pick {s}\n")).collect();
@@ -390,7 +457,12 @@ impl Repository {
         let editor = format!("cp '{}'", path.display().to_string().replace('\'', "'\\''"));
         let mut g = self
             .git()
-            .args(["-c", &format!("sequence.editor={editor}"), "-c", "core.editor=true"])
+            .args([
+                "-c",
+                &format!("sequence.editor={editor}"),
+                "-c",
+                "core.editor=true",
+            ])
             .args(["rebase", "-i", "--autostash"]);
         g = match walk[lo + 1].parents.first() {
             Some(base) => g.arg(base),

@@ -36,7 +36,11 @@ pub struct Stash {
 impl Stash {
     /// What to show as the title.
     pub fn title(&self) -> String {
-        if self.message.is_empty() { subject(self.branch.as_deref(), "") } else { self.message.clone() }
+        if self.message.is_empty() {
+            subject(self.branch.as_deref(), "")
+        } else {
+            self.message.clone()
+        }
     }
 }
 
@@ -44,7 +48,11 @@ impl Stash {
 /// a message, `On <branch>: <msg>` with one.
 fn subject(branch: Option<&str>, message: &str) -> String {
     let branch = branch.unwrap_or("(no branch)");
-    if message.is_empty() { format!("WIP on {branch}") } else { format!("On {branch}: {message}") }
+    if message.is_empty() {
+        format!("WIP on {branch}")
+    } else {
+        format!("On {branch}: {message}")
+    }
 }
 
 /// Split a reflog subject into `(branch, message)`.
@@ -85,7 +93,8 @@ impl Repository {
             .enumerate()
             .map(|(index, rec)| {
                 let bad = || GitError::Parse(rec.into());
-                let [sha, short_sha, time, date, subject] = rec.trim_start().splitn(5, SEP).collect::<Vec<_>>()[..]
+                let [sha, short_sha, time, date, subject] =
+                    rec.trim_start().splitn(5, SEP).collect::<Vec<_>>()[..]
                 else {
                     return Err(bad());
                 };
@@ -154,7 +163,10 @@ impl Repository {
     /// Apply a stash, keeping it. Conflicts leave the working tree in the
     /// conflicted state and return an error mentioning them.
     pub fn stash_apply(&self, sha: &str) -> Result<()> {
-        self.git().args(["stash", "apply", sha]).exec().map_err(tag_conflict)
+        self.git()
+            .args(["stash", "apply", sha])
+            .exec()
+            .map_err(tag_conflict)
     }
 
     /// Apply and drop. On conflicts git keeps the stash (so nothing is lost).
@@ -182,7 +194,9 @@ impl Repository {
     pub fn stash_rename(&self, sha: &str, branch: Option<&str>, message: &str) -> Result<()> {
         let subject = subject(branch, message.trim());
         let old = self.stash_index(sha)?;
-        self.git().args(["stash", "store", "-m", &subject, sha]).exec()?;
+        self.git()
+            .args(["stash", "store", "-m", &subject, sha])
+            .exec()?;
         // The old entry shifted down by one after the store.
         self.git()
             .args(["stash", "drop", "--quiet"])
@@ -233,7 +247,13 @@ impl Repository {
     /// files live in the parentless `^3` commit).
     pub fn stash_diff(&self, sha: &str, file: &FileChange) -> Result<Diff> {
         let (old, new) = if file.status == FileStatus::Untracked {
-            (Side::Empty, Side::Blob { rev: format!("{sha}^3"), path: file.path.clone() })
+            (
+                Side::Empty,
+                Side::Blob {
+                    rev: format!("{sha}^3"),
+                    path: file.path.clone(),
+                },
+            )
         } else {
             blob_sides(&format!("{sha}^1"), sha, file)
         };

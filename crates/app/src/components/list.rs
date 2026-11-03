@@ -13,5 +13,7 @@ pub fn list<R: IntoElement>(
     count: usize,
     render: impl Fn(Range<usize>, &mut Window, &mut App) -> Vec<R> + 'static,
 ) -> UniformList {
-    uniform_list(id, count, render).px(px(6.0)).py(px(LIST_INSET_Y / 2.0))
+    uniform_list(id, count, render)
+        .px(px(6.0))
+        .py(px(LIST_INSET_Y / 2.0))
 }

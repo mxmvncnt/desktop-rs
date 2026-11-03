@@ -2,14 +2,21 @@ use super::*;
 
 #[test]
 fn workflow_path_with_a_directory_is_used_as_is() {
-    assert_eq!(workflow_candidates(".github/workflows/ci.yml"), [".github/workflows/ci.yml"]);
+    assert_eq!(
+        workflow_candidates(".github/workflows/ci.yml"),
+        [".github/workflows/ci.yml"]
+    );
 }
 
 #[test]
 fn bare_workflow_name_is_looked_up_in_every_workflow_folder() {
     assert_eq!(
         workflow_candidates("ci.yaml"),
-        [".forgejo/workflows/ci.yaml", ".gitea/workflows/ci.yaml", ".github/workflows/ci.yaml"]
+        [
+            ".forgejo/workflows/ci.yaml",
+            ".gitea/workflows/ci.yaml",
+            ".github/workflows/ci.yaml"
+        ]
     );
 }
 
@@ -18,7 +25,14 @@ fn log_with(sections: Vec<(usize, usize, bool)>, lines: usize) -> Log {
         lines: vec![gd_forge::Line::default(); lines],
         sections: sections
             .into_iter()
-            .map(|(header, end, collapsed)| gd_forge::Section { name: String::new(), header, end, duration: None, collapsed, depth: 0 })
+            .map(|(header, end, collapsed)| gd_forge::Section {
+                name: String::new(),
+                header,
+                end,
+                duration: None,
+                collapsed,
+                depth: 0,
+            })
             .collect(),
     }
 }

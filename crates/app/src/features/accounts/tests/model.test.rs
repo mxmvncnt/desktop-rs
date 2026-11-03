@@ -1,21 +1,46 @@
 use super::*;
 
 fn acct(id: &str, provider: Provider, token: &str) -> Account {
-    Account { id: id.into(), provider, name: "Work".into(), host: "github.com".into(), username: "me".into(), oauth: false, token: token.into() }
+    Account {
+        id: id.into(),
+        provider,
+        name: "Work".into(),
+        host: "github.com".into(),
+        username: "me".into(),
+        oauth: false,
+        token: token.into(),
+    }
 }
 
 #[test]
 fn metadata_round_trips_without_tokens() {
-    let list = vec![acct("a1", Provider::GitHubEnterprise, "ghp_x"), acct("b2", Provider::Generic, "")];
-    let text = toml::to_string(&AccountsFile { accounts: list.clone() }).unwrap();
+    let list = vec![
+        acct("a1", Provider::GitHubEnterprise, "ghp_x"),
+        acct("b2", Provider::Generic, ""),
+    ];
+    let text = toml::to_string(&AccountsFile {
+        accounts: list.clone(),
+    })
+    .unwrap();
     assert!(!text.contains("ghp_x"));
     let back = toml::from_str::<AccountsFile>(&text).unwrap().accounts;
-    assert_eq!(back, list.iter().map(|a| Account { token: String::new(), ..a.clone() }).collect::<Vec<_>>());
+    assert_eq!(
+        back,
+        list.iter()
+            .map(|a| Account {
+                token: String::new(),
+                ..a.clone()
+            })
+            .collect::<Vec<_>>()
+    );
 }
 
 #[test]
 fn normalizes_hosts() {
-    assert_eq!(normalize_host(" https://User@Git.Corp:8443/x/y "), "git.corp:8443");
+    assert_eq!(
+        normalize_host(" https://User@Git.Corp:8443/x/y "),
+        "git.corp:8443"
+    );
     assert_eq!(normalize_host("github.com"), "github.com");
 }
 
@@ -34,13 +59,31 @@ fn credential_needs_token_and_defaults_username() {
 fn oauth_app_resolution_order() {
     let id = |p: Provider, host, custom| p.oauth_app(host, custom).map(|a| a.client_id);
     // custom > built-in > Gitea default > none (paste a token)
-    assert_eq!(id(Provider::Forgejo, "codeberg.org", " mine "), Some("mine".into()));
-    assert_eq!(id(Provider::Forgejo, "codeberg.org", ""), Some(GITEA_CLIENT_ID.into()));
-    assert_eq!(id(Provider::Gitea, "git.example.com", ""), Some(GITEA_CLIENT_ID.into()));
+    assert_eq!(
+        id(Provider::Forgejo, "codeberg.org", " mine "),
+        Some("mine".into())
+    );
+    assert_eq!(
+        id(Provider::Forgejo, "codeberg.org", ""),
+        Some(GITEA_CLIENT_ID.into())
+    );
+    assert_eq!(
+        id(Provider::Gitea, "git.example.com", ""),
+        Some(GITEA_CLIENT_ID.into())
+    );
     assert_eq!(id(Provider::GitHubEnterprise, "ghe.example.com", ""), None);
-    assert_eq!(id(Provider::GitLab, "gitlab.example.com", "x"), Some("x".into()));
-    assert_eq!(id(Provider::GitHub, "github.com", ""), Some("Ov23liWNVoyi5E8E5lb0".into()));
-    assert_eq!(id(Provider::GitLab, "gitlab.com", "").as_deref(), Some("4f94f81b48f3ee98ae4959ab9a411bca5c4a747caa2bbb8404317c3cdc122929"));
+    assert_eq!(
+        id(Provider::GitLab, "gitlab.example.com", "x"),
+        Some("x".into())
+    );
+    assert_eq!(
+        id(Provider::GitHub, "github.com", ""),
+        Some("Ov23liWNVoyi5E8E5lb0".into())
+    );
+    assert_eq!(
+        id(Provider::GitLab, "gitlab.com", "").as_deref(),
+        Some("4f94f81b48f3ee98ae4959ab9a411bca5c4a747caa2bbb8404317c3cdc122929")
+    );
     // an empty built-in id (not registered) counts as none
     assert_eq!(id(Provider::GitLab, "codeberg.org", ""), None);
 }
@@ -55,9 +98,24 @@ fn redirect_uri_depends_on_the_app() {
 
 #[test]
 fn sign_in_method_defaults_to_the_browser_when_an_app_exists() {
-    assert_eq!(SignInMethod::default_for(Provider::Gitea, "git.example.com"), SignInMethod::Browser);
-    assert_eq!(SignInMethod::default_for(Provider::GitHubEnterprise, "ghe.example.com"), SignInMethod::Token);
-    assert_eq!(SignInMethod::default_for(Provider::Bitbucket, "bitbucket.org"), SignInMethod::Token);
-    assert_eq!(SignInMethod::default_for(Provider::GitHub, "github.com"), SignInMethod::Browser);
-    assert_eq!(SignInMethod::default_for(Provider::GitLab, "gitlab.com"), SignInMethod::Browser);
+    assert_eq!(
+        SignInMethod::default_for(Provider::Gitea, "git.example.com"),
+        SignInMethod::Browser
+    );
+    assert_eq!(
+        SignInMethod::default_for(Provider::GitHubEnterprise, "ghe.example.com"),
+        SignInMethod::Token
+    );
+    assert_eq!(
+        SignInMethod::default_for(Provider::Bitbucket, "bitbucket.org"),
+        SignInMethod::Token
+    );
+    assert_eq!(
+        SignInMethod::default_for(Provider::GitHub, "github.com"),
+        SignInMethod::Browser
+    );
+    assert_eq!(
+        SignInMethod::default_for(Provider::GitLab, "gitlab.com"),
+        SignInMethod::Browser
+    );
 }

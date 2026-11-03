@@ -2,9 +2,17 @@ use super::*;
 
 #[test]
 fn from_remote() {
-    for url in ["git@github.com:o/r.git", "https://github.com/o/r", "ssh://git@github.com:22/o/r.git"] {
+    for url in [
+        "git@github.com:o/r.git",
+        "https://github.com/o/r",
+        "ssh://git@github.com:22/o/r.git",
+    ] {
         let r = RepoRef::from_remote(url).unwrap();
-        assert_eq!((r.host.as_str(), r.owner.as_str(), r.name.as_str()), ("github.com", "o", "r"), "{url}");
+        assert_eq!(
+            (r.host.as_str(), r.owner.as_str(), r.name.as_str()),
+            ("github.com", "o", "r"),
+            "{url}"
+        );
     }
     assert!(RepoRef::from_remote("https://github.com/only").is_none());
 }

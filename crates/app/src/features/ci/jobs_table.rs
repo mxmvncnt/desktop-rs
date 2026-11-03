@@ -2,7 +2,10 @@
 
 use gd_forge::PipelineDetail;
 use gd_ui::{Theme, pressable};
-use gpui::{App, Div, Entity, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px};
+use gpui::{
+    App, Div, Entity, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
+    Window, div, px,
+};
 
 use super::duration::duration_text;
 use super::state::CiStore;
@@ -45,23 +48,52 @@ impl RenderOnce for JobsTable {
             .child(cell(Some(RUNNER_W)).child("Runner"))
             .child(cell(Some(DURATION_W)).child("Duration"))
             .child(cell(Some(FINISHED_W)).child("Finished"));
-        let jobs = self.detail.stages.iter().flat_map(|stage| stage.jobs.iter().map(move |job| (stage, job)));
-        div().flex().flex_col().child(header).children(jobs.map(|(stage, job)| {
-            let finished = job.finished_at.map_or("—".into(), |t| relative_time(t.timestamp()));
-            let (store, id) = (self.store.clone(), job.id);
-            pressable(("jobs-row", job.id.id as usize), false, cx)
-                .rounded(px(6.0))
-                .on_click(move |_, _, cx| store.update(cx, |s, cx| s.open_job(id, cx)))
-                .child(
-                    row()
-                        .h(px(40.0))
-                        .child(cell(Some(STATUS_W)).child(status_badge(job.status, false, theme)))
-                        .child(cell(None).child(div().truncate().child(job.name.clone())))
-                        .child(cell(Some(STAGE_W)).text_color(theme.text_muted).child(div().truncate().child(stage.name.clone())))
-                        .child(cell(Some(RUNNER_W)).text_color(theme.text_muted).child(div().truncate().child(job.runner.clone().unwrap_or_else(|| "—".into()))))
-                        .child(cell(Some(DURATION_W)).child(duration_text(job.duration, job.started_at)))
-                        .child(cell(Some(FINISHED_W)).text_color(theme.text_muted).child(finished)),
-                )
-        }))
+        let jobs = self
+            .detail
+            .stages
+            .iter()
+            .flat_map(|stage| stage.jobs.iter().map(move |job| (stage, job)));
+        div()
+            .flex()
+            .flex_col()
+            .child(header)
+            .children(jobs.map(|(stage, job)| {
+                let finished = job
+                    .finished_at
+                    .map_or("—".into(), |t| relative_time(t.timestamp()));
+                let (store, id) = (self.store.clone(), job.id);
+                pressable(("jobs-row", job.id.id as usize), false, cx)
+                    .rounded(px(6.0))
+                    .on_click(move |_, _, cx| store.update(cx, |s, cx| s.open_job(id, cx)))
+                    .child(
+                        row()
+                            .h(px(40.0))
+                            .child(
+                                cell(Some(STATUS_W)).child(status_badge(job.status, false, theme)),
+                            )
+                            .child(cell(None).child(div().truncate().child(job.name.clone())))
+                            .child(
+                                cell(Some(STAGE_W))
+                                    .text_color(theme.text_muted)
+                                    .child(div().truncate().child(stage.name.clone())),
+                            )
+                            .child(
+                                cell(Some(RUNNER_W)).text_color(theme.text_muted).child(
+                                    div()
+                                        .truncate()
+                                        .child(job.runner.clone().unwrap_or_else(|| "—".into())),
+                                ),
+                            )
+                            .child(
+                                cell(Some(DURATION_W))
+                                    .child(duration_text(job.duration, job.started_at)),
+                            )
+                            .child(
+                                cell(Some(FINISHED_W))
+                                    .text_color(theme.text_muted)
+                                    .child(finished),
+                            ),
+                    )
+            }))
     }
 }

@@ -57,7 +57,10 @@ impl DiffHighlight {
 /// punctuation mark only adds noise (zeron's palette maps them to `text`).
 fn is_plain(kind: HighlightKind) -> bool {
     use HighlightKind::*;
-    matches!(kind, Variable | Parameter | Operator | Punctuation | Embedded)
+    matches!(
+        kind,
+        Variable | Parameter | Operator | Punctuation | Embedded
+    )
 }
 
 /// Build text runs for one row. Called only for visible rows.
@@ -121,11 +124,29 @@ pub fn line_text(
     if text.is_empty() || (spans.is_empty() && emphasis.is_empty() && selected.is_none()) {
         let styled = gpui::StyledText::new(text.to_string());
         let layout = styled.layout().clone();
-        return (gpui::div().flex().flex_col().text_color(fg).child(styled).into_any_element(), layout);
+        return (
+            gpui::div()
+                .flex()
+                .flex_col()
+                .text_color(fg)
+                .child(styled)
+                .into_any_element(),
+            layout,
+        );
     }
-    let mut runs = runs_for(text, spans, fg, &gpui::font(theme.font_mono.clone()), &theme.syntax);
+    let mut runs = runs_for(
+        text,
+        spans,
+        fg,
+        &gpui::font(theme.font_mono.clone()),
+        &theme.syntax,
+    );
     if !emphasis.is_empty() {
-        let emph_bg = if line.kind == DiffLineKind::Add { theme.diff_add_emph } else { theme.diff_del_emph };
+        let emph_bg = if line.kind == DiffLineKind::Add {
+            theme.diff_add_emph
+        } else {
+            theme.diff_del_emph
+        };
         runs = overlay_background(text, runs, emphasis, emph_bg, Some(theme.text));
     }
     if let Some((r, bg)) = selected {
@@ -133,7 +154,14 @@ pub fn line_text(
     }
     let styled = gpui::StyledText::new(text.to_string()).with_runs(runs);
     let layout = styled.layout().clone();
-    (gpui::div().flex().flex_col().child(styled).into_any_element(), layout)
+    (
+        gpui::div()
+            .flex()
+            .flex_col()
+            .child(styled)
+            .into_any_element(),
+        layout,
+    )
 }
 
 /// Split `runs` at range edges and set `background_color` (and `fg`, when given) inside them.
@@ -215,7 +243,11 @@ fn cache_key(diff: &Diff, path: &str) -> u64 {
 
 /// Highlight `diff` (blocking; call from a background executor). Returns
 /// `None` when the file type is unknown or the diff is over the caps.
-pub fn highlight_diff(diff: &Diff, path: &str, cache: &HighlightCache) -> Option<Arc<DiffHighlight>> {
+pub fn highlight_diff(
+    diff: &Diff,
+    path: &str,
+    cache: &HighlightCache,
+) -> Option<Arc<DiffHighlight>> {
     if diff.is_binary || diff.lines.is_empty() || diff.lines.len() > MAX_LINES {
         return None;
     }
@@ -280,12 +312,19 @@ pub fn highlight_diff(diff: &Diff, path: &str, cache: &HighlightCache) -> Option
             if let Some(row) = *row {
                 per_row[row] = line_spans
                     .iter()
-                    .map(|s| Span { start: s.range.start as u32, end: s.range.end as u32, kind: s.kind })
+                    .map(|s| Span {
+                        start: s.range.start as u32,
+                        end: s.range.end as u32,
+                        kind: s.kind,
+                    })
                     .collect();
             }
         }
     }
-    let mut out = DiffHighlight { spans: Vec::new(), offsets: Vec::with_capacity(n + 1) };
+    let mut out = DiffHighlight {
+        spans: Vec::new(),
+        offsets: Vec::with_capacity(n + 1),
+    };
     for row in per_row {
         out.offsets.push(out.spans.len() as u32);
         out.spans.extend(row);

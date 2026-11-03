@@ -2,7 +2,8 @@
 
 use gd_ui::{Button, Icon, Theme, icon, icon_button, motion};
 use gpui::{
-    App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+    App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
+    px,
 };
 
 use crate::repo::LastCommit;
@@ -50,11 +51,19 @@ impl RenderOnce for UndoStrip {
                                 .child(icon(Icon::Check).size(px(14.0)).text_color(theme.success)),
                         )
                         .child(
-                            div().absolute().size_full().invisible().group_hover_style("undo-strip", |s| s.visible()).child(
-                                icon_button("dismiss-undo-strip", Icon::Close).compact().on_click(move |_, _, cx| {
-                                    dismiss.update(cx, |this, cx| this.dismiss_undo_strip(cx))
-                                }),
-                            ),
+                            div()
+                                .absolute()
+                                .size_full()
+                                .invisible()
+                                .group_hover_style("undo-strip", |s| s.visible())
+                                .child(
+                                    icon_button("dismiss-undo-strip", Icon::Close)
+                                        .compact()
+                                        .on_click(move |_, _, cx| {
+                                            dismiss
+                                                .update(cx, |this, cx| this.dismiss_undo_strip(cx))
+                                        }),
+                                ),
                         ),
                 )
                 .child(

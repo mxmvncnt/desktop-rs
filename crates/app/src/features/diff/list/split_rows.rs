@@ -3,7 +3,7 @@
 //! frame (hot-row exception, see docs/CONVENTIONS.md).
 
 use gd_git::DiffLineKind;
-use gd_ui::{Theme};
+use gd_ui::Theme;
 use gpui::{AnyElement, Div, IntoElement, ParentElement, Pixels, Styled, div, prelude::*, px};
 
 use super::split_model::{NONE, SplitDiff, SplitRow};
@@ -64,7 +64,11 @@ impl SplitRows<'_> {
             .italic()
             .text_color(theme.text_faint)
             .when(ix > 0, |d| d.border_t_1().border_color(theme.border))
-            .child(Expander::gutter(self.exp, diff, h, self.exp_w, theme).border_r_1().border_color(theme.border))
+            .child(
+                Expander::gutter(self.exp, diff, h, self.exp_w, theme)
+                    .border_r_1()
+                    .border_color(theme.border),
+            )
             .child(div().pl(px(8.0)).child(line.text.clone()))
             .into_any_element()
     }
@@ -83,14 +87,45 @@ impl SplitRows<'_> {
             .border_l_1()
             .border_r_1()
             .border_color(theme.border)
-            .child(number_cell(sel, diff, left, &[old_no], ("old-no", ix), self.num_w, theme))
+            .child(number_cell(
+                sel,
+                diff,
+                left,
+                &[old_no],
+                ("old-no", ix),
+                self.num_w,
+                theme,
+            ))
             .when_some(sel, |d, (s, r)| {
                 // A paired row belongs to the block of its changed side(s).
-                let block = [left, right].into_iter().flatten().find_map(|i| RepoModel::change_block(diff, i));
-                let first = block.as_ref().is_some_and(|b| left == Some(b.start) || right == Some(b.start));
-                d.child(s.handle_cell(block, if first { BlockRow::First } else { BlockRow::Rest }, ix, r, theme))
+                let block = [left, right]
+                    .into_iter()
+                    .flatten()
+                    .find_map(|i| RepoModel::change_block(diff, i));
+                let first = block
+                    .as_ref()
+                    .is_some_and(|b| left == Some(b.start) || right == Some(b.start));
+                d.child(s.handle_cell(
+                    block,
+                    if first {
+                        BlockRow::First
+                    } else {
+                        BlockRow::Rest
+                    },
+                    ix,
+                    r,
+                    theme,
+                ))
             })
-            .child(number_cell(sel, diff, right, &[new_no], ("new-no", ix), self.num_w, theme))
+            .child(number_cell(
+                sel,
+                diff,
+                right,
+                &[new_no],
+                ("new-no", ix),
+                self.num_w,
+                theme,
+            ))
     }
 
     /// One text side: change marker + line text, and its hit-test target.
@@ -101,12 +136,31 @@ impl SplitRows<'_> {
             return (cell.bg(theme.diff_empty_bg), None);
         }
         let line = &self.split.diff.lines[ix as usize];
-        let LineLook { bg, fg, marker, marker_color } = line_look(line.kind, theme);
+        let LineLook {
+            bg,
+            fg,
+            marker,
+            marker_color,
+        } = line_look(line.kind, theme);
         let spans = self.hl.map(|h| h.row(ix as usize)).unwrap_or(&[]);
-        let selected = self.tsel.cols(ix as usize, side, line.text.len()).map(|r| (r, self.tsel.color));
+        let selected = self
+            .tsel
+            .cols(ix as usize, side, line.text.len())
+            .map(|r| (r, self.tsel.color));
         let (text, layout) = line_text(line, spans, selected, fg, theme);
-        let target = TextTarget { line: ix as usize, side, layout };
-        let text = self.tsel.bind_text(text_cell(text, self.flow), target.clone());
-        (cell.bg(bg).child(marker_cell(marker, marker_color)).child(text), Some(target))
+        let target = TextTarget {
+            line: ix as usize,
+            side,
+            layout,
+        };
+        let text = self
+            .tsel
+            .bind_text(text_cell(text, self.flow), target.clone());
+        (
+            cell.bg(bg)
+                .child(marker_cell(marker, marker_color))
+                .child(text),
+            Some(target),
+        )
     }
 }

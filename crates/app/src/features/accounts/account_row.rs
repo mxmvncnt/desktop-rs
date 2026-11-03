@@ -18,11 +18,20 @@ impl RenderOnce for AccountRow {
         let a = self.account;
         let id = a.id.clone();
         let store = self.store;
-        let token = if a.token.is_empty() { "no token" } else { "token saved" };
+        let token = if a.token.is_empty() {
+            "no token"
+        } else {
+            "token saved"
+        };
         let detail = if a.username.is_empty() {
             format!("{} · {} · {token}", a.provider.full_label(), a.host)
         } else {
-            format!("{} · {}@{} · {token}", a.provider.full_label(), a.username, a.host)
+            format!(
+                "{} · {}@{} · {token}",
+                a.provider.full_label(),
+                a.username,
+                a.host
+            )
         };
         div()
             .flex()
@@ -33,13 +42,22 @@ impl RenderOnce for AccountRow {
             .rounded(px(CONTROL_RADIUS))
             .border_1()
             .border_color(theme.border)
-            .child(icon(Icon::Globe).size(px(16.0)).text_color(theme.text_faint))
+            .child(
+                icon(Icon::Globe)
+                    .size(px(16.0))
+                    .text_color(theme.text_faint),
+            )
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .child(div().text_size(px(13.0)).child(a.name))
-                    .child(div().text_size(px(12.0)).text_color(theme.text_faint).child(detail)),
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(theme.text_faint)
+                            .child(detail),
+                    ),
             )
             .child(
                 Button::new(format!("account-edit-{id}"))
@@ -47,7 +65,9 @@ impl RenderOnce for AccountRow {
                     .compact()
                     .icon(Icon::Pen)
                     .label("Edit")
-                    .on_click(move |_, _, cx| store.update(cx, |this, cx| this.open_account_form(Some(id.clone()), cx))),
+                    .on_click(move |_, _, cx| {
+                        store.update(cx, |this, cx| this.open_account_form(Some(id.clone()), cx))
+                    }),
             )
     }
 }

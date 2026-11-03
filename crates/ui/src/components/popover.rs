@@ -5,8 +5,8 @@
 use std::rc::Rc;
 
 use gpui::{
-    AnyElement, App, ElementId, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement, Pixels,
-    Point, RenderOnce, Styled, Window, deferred, div, px,
+    AnyElement, App, ElementId, InteractiveElement, IntoElement, MouseButton, MouseDownEvent,
+    ParentElement, Pixels, Point, RenderOnce, Styled, Window, deferred, div, px,
 };
 
 use super::overlay_card;
@@ -27,8 +27,20 @@ pub struct Popover {
 
 impl Popover {
     /// `id` must change per open so the entrance animation restarts.
-    pub fn new(id: impl Into<ElementId>, pos: Point<Pixels>, width: f32, content: impl IntoElement) -> Self {
-        Self { id: id.into(), pos, width, content: content.into_any_element(), scrim: None, on_dismiss: None }
+    pub fn new(
+        id: impl Into<ElementId>,
+        pos: Point<Pixels>,
+        width: f32,
+        content: impl IntoElement,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            pos,
+            width,
+            content: content.into_any_element(),
+            scrim: None,
+            on_dismiss: None,
+        }
     }
 
     /// Dim the window behind the card with this opacity.
@@ -38,7 +50,10 @@ impl Popover {
     }
 
     /// Called for a left or right click on the backdrop.
-    pub fn on_dismiss(mut self, f: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static) -> Self {
+    pub fn on_dismiss(
+        mut self,
+        f: impl Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
         self.on_dismiss = Some(Rc::new(f));
         self
     }
@@ -57,12 +72,22 @@ impl RenderOnce for Popover {
                 .on_mouse_down(MouseButton::Left, move |e, w, cx| f(e, w, cx))
                 .on_mouse_down(MouseButton::Right, move |e, w, cx| g(e, w, cx));
         }
-        deferred(div().absolute().inset_0().child(backdrop).child(
-            div().absolute().left(self.pos.x).top(self.pos.y).w(px(self.width)).child(motion::menu_in(
-                self.id,
-                overlay_card(cx).id("popover-card").occlude().child(self.content),
-                instant,
-            )),
-        ))
+        deferred(
+            div().absolute().inset_0().child(backdrop).child(
+                div()
+                    .absolute()
+                    .left(self.pos.x)
+                    .top(self.pos.y)
+                    .w(px(self.width))
+                    .child(motion::menu_in(
+                        self.id,
+                        overlay_card(cx)
+                            .id("popover-card")
+                            .occlude()
+                            .child(self.content),
+                        instant,
+                    )),
+            ),
+        )
     }
 }

@@ -14,14 +14,19 @@ use crate::workspace::{Popover, Workspace};
 impl Workspace {
     pub fn repo_picker(&mut self, cx: &mut Context<Self>) -> RepoPicker {
         let items = self.filtered_repos(cx);
-        let (selected, filter, scroll) = self.pickers.update(cx, |p, _| (p.clamp(items.len()), p.filter.clone(), p.scroll.clone()));
+        let (selected, filter, scroll) = self.pickers.update(cx, |p, _| {
+            (p.clamp(items.len()), p.filter.clone(), p.scroll.clone())
+        });
         let entries = items
             .into_iter()
             .filter_map(|ix| {
                 let path = self.settings.repositories.get(ix)?;
                 Some(RepoEntry {
                     ix,
-                    name: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+                    name: path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
                     current: self.settings.selected == Some(ix),
                 })
             })
@@ -40,7 +45,9 @@ impl Workspace {
     pub fn branch_picker(&mut self, cx: &mut Context<Self>) -> Option<BranchPicker> {
         let repo = self.repo.clone()?;
         let items = self.filtered_branches(cx);
-        let (selected, filter, scroll) = self.pickers.update(cx, |p, _| (p.clamp(items.len()), p.filter.clone(), p.scroll.clone()));
+        let (selected, filter, scroll) = self.pickers.update(cx, |p, _| {
+            (p.clamp(items.len()), p.filter.clone(), p.scroll.clone())
+        });
         Some(BranchPicker {
             items,
             selected,
@@ -87,8 +94,15 @@ impl Workspace {
 
     /// Enter in the branch picker: check out the highlighted branch.
     pub(super) fn enter_branch_picker(&mut self, w: &mut Window, cx: &mut Context<Self>) {
-        let Some(repo) = self.repo.clone() else { return };
-        let Some(&ix) = self.filtered_branches(cx).get(self.pickers.read(cx).selected) else { return };
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
+        let Some(&ix) = self
+            .filtered_branches(cx)
+            .get(self.pickers.read(cx).selected)
+        else {
+            return;
+        };
         let b = repo.read(cx).branches[ix].clone();
         if !b.is_head {
             repo.update(cx, |r, cx| r.checkout(b, cx));
@@ -97,7 +111,12 @@ impl Workspace {
     }
 
     /// Click on a branch row.
-    pub(super) fn pick_branch(&mut self, b: gd_git::Branch, w: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn pick_branch(
+        &mut self,
+        b: gd_git::Branch,
+        w: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let (false, Some(repo)) = (b.is_head, &self.repo) {
             repo.update(cx, |r, cx| r.checkout(b, cx));
         }
@@ -108,7 +127,11 @@ impl Workspace {
     pub(super) fn open_new_branch_from_filter(&mut self, w: &mut Window, cx: &mut Context<Self>) {
         let prefill = self.pickers.read(cx).filter.read(cx).as_str().to_string();
         self.toggle_popover(Popover::NewBranch, w, cx);
-        self.pickers.read(cx).name_input.clone().update(cx, |s, cx| s.emplace(&prefill, cx));
+        self.pickers
+            .read(cx)
+            .name_input
+            .clone()
+            .update(cx, |s, cx| s.emplace(&prefill, cx));
     }
 
     pub(super) fn submit_new_branch(&mut self, w: &mut Window, cx: &mut Context<Self>) {
@@ -128,7 +151,13 @@ impl Workspace {
     }
 
     pub(super) fn submit_clone(&mut self, cx: &mut Context<Self>) {
-        let url = self.pickers.read(cx).url_input.read(cx).as_str().to_string();
+        let url = self
+            .pickers
+            .read(cx)
+            .url_input
+            .read(cx)
+            .as_str()
+            .to_string();
         self.clone_repository(url, cx)
     }
 }

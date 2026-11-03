@@ -2,15 +2,22 @@
 
 use gd_forge::Status;
 use gd_ui::{Button, Icon, Tabs, Theme};
-use gpui::{App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, prelude::*, px};
+use gpui::{
+    App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce,
+    StatefulInteractiveElement, Styled, Window, div, prelude::*, px,
+};
 
 use super::filter_field::FilterField;
 use super::state::{CiStore, Field};
 use crate::workspace::Workspace;
 
 /// The status tabs, in order.
-const STATUS_TABS: [(&str, Option<Status>); 4] =
-    [("All", None), ("Running", Some(Status::Running)), ("Failed", Some(Status::Failed)), ("Success", Some(Status::Success))];
+const STATUS_TABS: [(&str, Option<Status>); 4] = [
+    ("All", None),
+    ("Running", Some(Status::Running)),
+    ("Failed", Some(Status::Failed)),
+    ("Success", Some(Status::Success)),
+];
 
 #[derive(IntoElement)]
 pub struct PipelinesHeader {
@@ -23,13 +30,23 @@ impl RenderOnce for PipelinesHeader {
         let theme = Theme::of(cx);
         let ci = self.store.read(cx);
         let target = ci.ready();
-        let selected = STATUS_TABS.iter().position(|(_, s)| *s == ci.status).unwrap_or(0);
+        let selected = STATUS_TABS
+            .iter()
+            .position(|(_, s)| *s == ci.status)
+            .unwrap_or(0);
         let refreshing = ci.refreshing;
         let account = target.map(|t| format!("via {} · {}", t.account_name, t.host));
         let can_filter_user = target.is_some_and(|t| t.forge.capabilities().filter_user);
         let inputs = self.ws.read(cx).ci_inputs.clone();
         let (ws, store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.ws.clone());
-        let labeled = |label: &'static str| div().flex().items_center().gap(px(8.0)).child(div().text_size(px(12.0)).text_color(theme.text_muted).child(label));
+        let labeled = |label: &'static str| {
+            div().flex().items_center().gap(px(8.0)).child(
+                div()
+                    .text_size(px(12.0))
+                    .text_color(theme.text_muted)
+                    .child(label),
+            )
+        };
 
         div()
             .flex()
@@ -49,7 +66,12 @@ impl RenderOnce for PipelinesHeader {
                             .flex()
                             .flex_col()
                             .gap(px(2.0))
-                            .child(div().text_size(px(18.0)).font_weight(gpui::FontWeight::MEDIUM).child("Pipelines"))
+                            .child(
+                                div()
+                                    .text_size(px(18.0))
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .child("Pipelines"),
+                            )
                             .children(account.map(|account| {
                                 div()
                                     .flex()
@@ -65,14 +87,22 @@ impl RenderOnce for PipelinesHeader {
                                             .text_color(theme.accent)
                                             .hover_style(|s| s.underline())
                                             .child("Change")
-                                            .on_click(move |_, _, cx| ws.update(cx, |ws, cx| ws.open_repo_account_settings(cx))),
+                                            .on_click(move |_, _, cx| {
+                                                ws.update(cx, |ws, cx| {
+                                                    ws.open_repo_account_settings(cx)
+                                                })
+                                            }),
                                     )
                             })),
                     )
                     .child(
-                        Button::new("ci-refresh").icon(Icon::Refresh).label("Refresh").disabled(refreshing).on_click(move |_, _, cx| {
-                            refresh_ws.update(cx, |ws, cx| ws.sync_ci(cx))
-                        }),
+                        Button::new("ci-refresh")
+                            .icon(Icon::Refresh)
+                            .label("Refresh")
+                            .disabled(refreshing)
+                            .on_click(move |_, _, cx| {
+                                refresh_ws.update(cx, |ws, cx| ws.sync_ci(cx))
+                            }),
                     ),
             )
             .when(target.is_some(), |d| {
@@ -85,29 +115,47 @@ impl RenderOnce for PipelinesHeader {
                             div().w(px(340.0)).child(
                                 STATUS_TABS
                                     .iter()
-                                    .fold(Tabs::new("ci-status-tabs", selected), |tabs, (label, _)| tabs.tab(*label, None))
-                                    .on_select(move |ix, _, cx| store.update(cx, |s, cx| s.set_status(STATUS_TABS[ix].1, cx))),
+                                    .fold(
+                                        Tabs::new("ci-status-tabs", selected),
+                                        |tabs, (label, _)| tabs.tab(*label, None),
+                                    )
+                                    .on_select(move |ix, _, cx| {
+                                        store
+                                            .update(cx, |s, cx| s.set_status(STATUS_TABS[ix].1, cx))
+                                    }),
                             ),
                         )
-                        .child(labeled("Branch").child(FilterField {
-                            store: self.store.clone(),
-                            field: Field::Branch,
-                            input: inputs.branch.clone(),
-                            placeholder: "All branches",
-                            width: 180.0,
-                            entries: self.ws.read(cx).ci_entries(Field::Branch, cx).map(|(entries, _)| entries),
-                            anchor: inputs.branch_at.clone(),
-                        }))
-                        .when(can_filter_user, |d| {
-                            d.child(labeled("User").child(FilterField {
+                        .child(
+                            labeled("Branch").child(FilterField {
                                 store: self.store.clone(),
-                                field: Field::User,
-                                input: inputs.user.clone(),
-                                placeholder: "Anyone",
-                                width: 150.0,
-                                entries: self.ws.read(cx).ci_entries(Field::User, cx).map(|(entries, _)| entries),
-                                anchor: inputs.user_at.clone(),
-                            }))
+                                field: Field::Branch,
+                                input: inputs.branch.clone(),
+                                placeholder: "All branches",
+                                width: 180.0,
+                                entries: self
+                                    .ws
+                                    .read(cx)
+                                    .ci_entries(Field::Branch, cx)
+                                    .map(|(entries, _)| entries),
+                                anchor: inputs.branch_at.clone(),
+                            }),
+                        )
+                        .when(can_filter_user, |d| {
+                            d.child(
+                                labeled("User").child(FilterField {
+                                    store: self.store.clone(),
+                                    field: Field::User,
+                                    input: inputs.user.clone(),
+                                    placeholder: "Anyone",
+                                    width: 150.0,
+                                    entries: self
+                                        .ws
+                                        .read(cx)
+                                        .ci_entries(Field::User, cx)
+                                        .map(|(entries, _)| entries),
+                                    anchor: inputs.user_at.clone(),
+                                }),
+                            )
                         }),
                 )
             })

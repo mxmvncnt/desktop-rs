@@ -6,7 +6,10 @@ use crate::snapshot::View;
 use crate::workspace::Workspace;
 
 pub fn views() -> &'static [View] {
-    &[View { name: "pr-preview*", steps: &[open_preview] }]
+    &[View {
+        name: "pr-preview*",
+        steps: &[open_preview],
+    }]
 }
 
 fn open_preview(ws: &mut Workspace, view: &str, _: &mut Window, cx: &mut Context<Workspace>) {

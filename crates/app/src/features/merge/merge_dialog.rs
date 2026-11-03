@@ -5,8 +5,8 @@
 use gd_git::{Branch, MergePreview};
 use gd_ui::{Dialog, Tabs, Theme};
 use gpui::{
-    App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, prelude::*,
-    UniformListScrollHandle, Window, div, px,
+    App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled,
+    UniformListScrollHandle, Window, div, prelude::*, px,
 };
 use gpui_elements::editable_text::{
     EditableTextState,
@@ -91,7 +91,12 @@ impl MergeDialogView {
             .gap(px(10.0))
             .mt(px(6.0))
             .child(self.tabs())
-            .child(text_field("merge-filter", &self.filter, "Filter branches", cx))
+            .child(text_field(
+                "merge-filter",
+                &self.filter,
+                "Filter branches",
+                cx,
+            ))
             .child(
                 div()
                     .h(px(ROW_HEIGHT * LIST_ROWS as f32 + 8.0))
@@ -103,7 +108,9 @@ impl MergeDialogView {
                     .child(list),
             )
             .child(div().min_h(px(36.0)).child(status))
-            .when(self.mode == MergeMode::Squash, |d| d.child(self.summary_field(cx)))
+            .when(self.mode == MergeMode::Squash, |d| {
+                d.child(self.summary_field(cx))
+            })
     }
 
     /// Commit summary of the squash commit.
@@ -113,8 +120,18 @@ impl MergeDialogView {
             .flex()
             .flex_col()
             .gap(px(4.0))
-            .child(div().text_size(px(12.0)).text_color(theme.text_muted).child("Squash commit summary"))
-            .child(text_field("merge-summary", &self.summary, "Commit summary", cx))
+            .child(
+                div()
+                    .text_size(px(12.0))
+                    .text_color(theme.text_muted)
+                    .child("Squash commit summary"),
+            )
+            .child(text_field(
+                "merge-summary",
+                &self.summary,
+                "Commit summary",
+                cx,
+            ))
     }
 
     fn tabs(&self) -> Tabs {

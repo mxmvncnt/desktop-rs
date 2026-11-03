@@ -36,7 +36,10 @@ impl CiAction {
 
 /// The buttons of a job (card and sidebar): what the platform can do with its status.
 pub fn job_actions(job: &Job, caps: Capabilities) -> Vec<(CiAction, Icon, &'static str)> {
-    let running = matches!(job.status, Status::Running | Status::Pending | Status::Preparing | Status::WaitingForResource);
+    let running = matches!(
+        job.status,
+        Status::Running | Status::Pending | Status::Preparing | Status::WaitingForResource
+    );
     let mut actions = Vec::new();
     if caps.play_job && job.status == Status::Manual {
         actions.push((CiAction::PlayJob(job.id), Icon::Play, "Play"));
@@ -53,7 +56,9 @@ pub fn job_actions(job: &Job, caps: Capabilities) -> Vec<(CiAction, Icon, &'stat
 impl CiStore {
     /// Send the request, tell the user how it went, then reload what it changed.
     pub fn run_action(&mut self, action: CiAction, cx: &mut Context<Self>) {
-        let Some(target) = self.ready().cloned() else { return };
+        let Some(target) = self.ready().cloned() else {
+            return;
+        };
         if self.acting {
             return;
         }

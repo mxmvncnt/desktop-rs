@@ -1,7 +1,10 @@
 //! Backdrop + positioned card hosting whichever popover is open.
 
 use gd_ui::theme::TOOLBAR_HEIGHT;
-use gpui::{AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, Window, div, point, px};
+use gpui::{
+    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce,
+    Window, div, point, px,
+};
 use gpui_elements::editable_text::actions::Escape;
 
 use crate::workspace::{Popover, Workspace};
@@ -25,7 +28,12 @@ impl PopoverLayer {
             Popover::NewBranch => ws.new_branch_form(cx).into_any_element(),
             Popover::Clone => ws.clone_form(cx).into_any_element(),
         };
-        Self { ws: cx.entity(), popover, generation: ws.overlay_gen, content }
+        Self {
+            ws: cx.entity(),
+            popover,
+            generation: ws.overlay_gen,
+            content,
+        }
     }
 }
 
@@ -42,14 +50,19 @@ impl RenderOnce for PopoverLayer {
             cx.stop_propagation();
             esc_ws.update(cx, |this, cx| this.close_overlay(w, cx))
         });
-        gd_ui::Popover::new(("popover", self.generation), point(px(left), px(TOOLBAR_HEIGHT - 2.0)), width, content.child(self.content))
-            .scrim(0.18)
-            .on_dismiss(move |ev, window, cx| {
-                ws.update(cx, |this, cx| {
-                    let dismissed = this.popover().map(|p| (p, ev.position));
-                    this.pickers.update(cx, |p, _| p.dismissed = dismissed);
-                    this.close_overlay(window, cx)
-                })
+        gd_ui::Popover::new(
+            ("popover", self.generation),
+            point(px(left), px(TOOLBAR_HEIGHT - 2.0)),
+            width,
+            content.child(self.content),
+        )
+        .scrim(0.18)
+        .on_dismiss(move |ev, window, cx| {
+            ws.update(cx, |this, cx| {
+                let dismissed = this.popover().map(|p| (p, ev.position));
+                this.pickers.update(cx, |p, _| p.dismissed = dismissed);
+                this.close_overlay(window, cx)
             })
+        })
     }
 }

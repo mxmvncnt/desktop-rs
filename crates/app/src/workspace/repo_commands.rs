@@ -7,7 +7,11 @@ use crate::repo::{RemoteOp, RepoModel, Tab};
 
 impl Workspace {
     /// Run `f` on the open repository, if any.
-    pub(crate) fn with_repo(&self, cx: &mut Context<Self>, f: impl FnOnce(&mut RepoModel, &mut Context<RepoModel>)) {
+    pub(crate) fn with_repo(
+        &self,
+        cx: &mut Context<Self>,
+        f: impl FnOnce(&mut RepoModel, &mut Context<RepoModel>),
+    ) {
         if let Some(repo) = &self.repo {
             repo.update(cx, f);
         }
@@ -21,7 +25,9 @@ impl Workspace {
         if self.try_amend(window, cx) {
             return;
         }
-        let Some(repo) = self.repo.clone() else { return };
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
         let (mut summary, description) = self.commit_box.read(cx).text(cx);
         if !repo.read(cx).has_included() {
             return;
@@ -49,7 +55,10 @@ impl Workspace {
     }
 
     pub(crate) fn remote_action(&mut self, op: RemoteOp, cx: &mut Context<Self>) {
-        let rewritten = self.repo.as_ref().is_some_and(|r| r.read(cx).work.status.as_ref().is_some_and(|s| s.rewritten));
+        let rewritten = self
+            .repo
+            .as_ref()
+            .is_some_and(|r| r.read(cx).work.status.as_ref().is_some_and(|s| s.rewritten));
         if op == RemoteOp::ForcePush || (op == RemoteOp::Push && rewritten) {
             return self.open_force_push(cx);
         }

@@ -11,15 +11,27 @@ use crate::repo::RepoModel;
 use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
-    pub fn open_commit_menu(&mut self, ix: usize, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(repo) = self.repo.clone() else { return };
+    pub fn open_commit_menu(
+        &mut self,
+        ix: usize,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
         // Right-clicking outside the multi-selection selects that row alone.
         if !repo.read(cx).commit_selected(ix) {
             repo.update(cx, |r, cx| r.click_commit(ix, ClickKind::Plain, cx));
         }
-        let Some(ctx) = menu_ctx(repo.read(cx), ix) else { return };
+        let Some(ctx) = menu_ctx(repo.read(cx), ix) else {
+            return;
+        };
         let rows = commit_menu_rows(&ctx);
-        let menu = Menu::new(position, rows, move |ws, action, w, cx| ws.run_hist_action(action, ctx.clone(), w, cx));
+        let menu = Menu::new(position, rows, move |ws, action, w, cx| {
+            ws.run_hist_action(action, ctx.clone(), w, cx)
+        });
         self.open_menu(menu, window, cx);
     }
 }
@@ -28,7 +40,10 @@ impl Workspace {
 pub(crate) fn menu_ctx(r: &RepoModel, ix: usize) -> Option<MenuCtx> {
     let commit = r.log.commits.get(ix).cloned()?;
     let multi_ix = r.multi_indices();
-    let multi = multi_ix.iter().filter_map(|&i| r.log.commits.get(i).cloned()).collect();
+    let multi = multi_ix
+        .iter()
+        .filter_map(|&i| r.log.commits.get(i).cloned())
+        .collect();
     let squashable = multi_ix.len() >= 2
         && multi_ix.windows(2).all(|w| w[1] == w[0] + 1)
         && linear_through(&r.log.commits, *multi_ix.last().unwrap());
@@ -55,7 +70,8 @@ fn linear_through(commits: &[Commit], last: usize) -> bool {
 impl Workspace {
     /// Reset dialog: the Keep-staged / Keep-unstaged tabs.
     pub(super) fn set_reset_mode(&mut self, new_mode: gd_git::ResetMode, cx: &mut Context<Self>) {
-        if let Some(Overlay::History(HistoryDialog::Reset { mode, .. })) = self.overlays.last_mut() {
+        if let Some(Overlay::History(HistoryDialog::Reset { mode, .. })) = self.overlays.last_mut()
+        {
             *mode = new_mode;
         }
         cx.notify();
@@ -63,7 +79,9 @@ impl Workspace {
 
     /// Cherry-pick dialog: choose the target branch row.
     pub(super) fn set_cherry_pick_branch(&mut self, ix: usize, cx: &mut Context<Self>) {
-        if let Some(Overlay::History(HistoryDialog::CherryPick { target, .. })) = self.overlays.last_mut() {
+        if let Some(Overlay::History(HistoryDialog::CherryPick { target, .. })) =
+            self.overlays.last_mut()
+        {
             target.selected = ix;
         }
         cx.notify();

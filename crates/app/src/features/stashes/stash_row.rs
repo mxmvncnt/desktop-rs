@@ -41,7 +41,11 @@ impl RenderOnce for StashRow {
                     .tooltip(gd_ui::tooltip(stash.title()))
                     .truncate()
                     .text_size(px(13.0))
-                    .text_color(if here || selected { theme.text } else { theme.text_muted })
+                    .text_color(if here || selected {
+                        theme.text
+                    } else {
+                        theme.text_muted
+                    })
                     .child(stash.title()),
             )
             .child(meta_line(&stash, here, &theme))
@@ -64,14 +68,26 @@ fn meta_line(s: &Stash, here: bool, theme: &Theme) -> impl IntoElement + use<> {
         .gap(px(5.0))
         .text_size(px(11.5))
         .text_color(theme.text_faint)
-        .child(icon(Icon::GitBranch).size(px(11.0)).text_color(if here { theme.accent } else { theme.text_faint }))
+        .child(icon(Icon::GitBranch).size(px(11.0)).text_color(if here {
+            theme.accent
+        } else {
+            theme.text_faint
+        }))
         .child(
             div()
                 .flex_shrink(1.0)
                 .min_w_0()
                 .truncate()
-                .text_color(if here { theme.text_muted } else { theme.text_faint })
+                .text_color(if here {
+                    theme.text_muted
+                } else {
+                    theme.text_faint
+                })
                 .child(s.branch.clone().unwrap_or_else(|| "(no branch)".into())),
         )
-        .child(div().flex_none().child(format!("• {}", relative_time(s.time))))
+        .child(
+            div()
+                .flex_none()
+                .child(format!("• {}", relative_time(s.time))),
+        )
 }

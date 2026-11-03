@@ -46,26 +46,43 @@ impl RenderOnce for RepoSettingsModal {
                 label: p.label(),
                 icon: p.icon(),
                 active: p == page,
-                on_click: Rc::new(move |_, cx| ws.update(cx, |this, cx| this.set_repo_settings_page(p, cx))),
+                on_click: Rc::new(move |_, cx| {
+                    ws.update(cx, |this, cx| this.set_repo_settings_page(p, cx))
+                }),
             }
         });
         let a = self.accounts.read(cx);
         let title = format!("{} · {}", page.label(), self.repo.name());
         let body = match page {
-            RepoSettingsPage::Info => {
-                InfoPage { repo: self.repo, branch: self.branch, info: s.info.clone(), error: s.error.clone() }.into_any_element()
+            RepoSettingsPage::Info => InfoPage {
+                repo: self.repo,
+                branch: self.branch,
+                info: s.info.clone(),
+                error: s.error.clone(),
             }
-            RepoSettingsPage::Remotes => {
-                RemotesPage { remotes: s.remotes.clone(), edit: s.edit.clone(), error: s.error.clone(), inputs: s.inputs.clone(), store: self.store }
-                    .into_any_element()
+            .into_any_element(),
+            RepoSettingsPage::Remotes => RemotesPage {
+                remotes: s.remotes.clone(),
+                edit: s.edit.clone(),
+                error: s.error.clone(),
+                inputs: s.inputs.clone(),
+                store: self.store,
             }
-            RepoSettingsPage::Identity => {
-                RepoIdentity { identity: a.identity.clone(), inputs: a.inputs.clone(), repo: self.repo, store: self.accounts }
-                    .into_any_element()
+            .into_any_element(),
+            RepoSettingsPage::Identity => RepoIdentity {
+                identity: a.identity.clone(),
+                inputs: a.inputs.clone(),
+                repo: self.repo,
+                store: self.accounts,
             }
-            RepoSettingsPage::Ignore => {
-                IgnorePage { inputs: s.inputs.clone(), error: s.error.clone(), notice: s.notice, store: self.store }.into_any_element()
+            .into_any_element(),
+            RepoSettingsPage::Ignore => IgnorePage {
+                inputs: s.inputs.clone(),
+                error: s.error.clone(),
+                notice: s.notice,
+                store: self.store,
             }
+            .into_any_element(),
             RepoSettingsPage::Config => ConfigPage {
                 entries: s.config.clone(),
                 edit: s.edit.clone(),

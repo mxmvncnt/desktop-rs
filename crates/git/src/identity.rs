@@ -55,7 +55,13 @@ impl Scope {
 fn read(cwd: &Path, scope: Scope) -> Result<Identity> {
     // One process for both keys; exit code 1 means neither is set.
     let out = Git::new(cwd)
-        .args(["config", scope.flag(), "-z", "--get-regexp", r"^user\.(name|email)$"])
+        .args([
+            "config",
+            scope.flag(),
+            "-z",
+            "--get-regexp",
+            r"^user\.(name|email)$",
+        ])
         .allow_exit_one()
         .run()?;
     let mut id = Identity::default();
@@ -76,9 +82,13 @@ fn write(cwd: &Path, scope: Scope, id: &Identity) -> Result<()> {
         let value = value.trim();
         if value.is_empty() {
             // Fails (exit 5) when the key isn't present: nothing to unset.
-            let _ = Git::new(cwd).args(["config", scope.flag(), "--unset-all", key]).run();
+            let _ = Git::new(cwd)
+                .args(["config", scope.flag(), "--unset-all", key])
+                .run();
         } else {
-            Git::new(cwd).args(["config", scope.flag(), key, value]).run()?;
+            Git::new(cwd)
+                .args(["config", scope.flag(), key, value])
+                .run()?;
         }
     }
     Ok(())
@@ -107,8 +117,17 @@ impl Repository {
     pub fn effective_identity(&self) -> Result<EffectiveIdentity> {
         let local = self.local_identity()?;
         let global = global_identity()?;
-        let pick = |l: &str, g: &str| if l.is_empty() { g.to_string() } else { l.to_string() };
-        let identity = Identity { name: pick(&local.name, &global.name), email: pick(&local.email, &global.email) };
+        let pick = |l: &str, g: &str| {
+            if l.is_empty() {
+                g.to_string()
+            } else {
+                l.to_string()
+            }
+        };
+        let identity = Identity {
+            name: pick(&local.name, &global.name),
+            email: pick(&local.email, &global.email),
+        };
         let source = if !local.is_empty() {
             IdentitySource::Repository
         } else if !global.is_empty() {

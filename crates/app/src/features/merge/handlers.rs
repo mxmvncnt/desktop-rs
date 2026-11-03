@@ -25,15 +25,24 @@ impl Workspace {
 
     /// A merge-like operation is paused (merge is not allowed then).
     pub(crate) fn paused(&self, cx: &gpui::App) -> bool {
-        self.repo.as_ref().is_some_and(|r| r.read(cx).merge.in_progress.is_some())
+        self.repo
+            .as_ref()
+            .is_some_and(|r| r.read(cx).merge.in_progress.is_some())
     }
 
     /// Branches that can be merged: everything but the current branch and
     /// `origin/HEAD`; remote branches with a local twin are hidden.
     pub(super) fn merge_candidates(&self, cx: &gpui::App) -> Vec<Branch> {
-        let Some(repo) = &self.repo else { return Vec::new() };
+        let Some(repo) = &self.repo else {
+            return Vec::new();
+        };
         let f = self.merge_ui.filter.read(cx).as_str().trim().to_lowercase();
-        repo.read(cx).matching_branches(&f).map(|(_, b)| b).filter(|b| !b.is_head).cloned().collect()
+        repo.read(cx)
+            .matching_branches(&f)
+            .map(|(_, b)| b)
+            .filter(|b| !b.is_head)
+            .cloned()
+            .collect()
     }
 
     pub fn open_merge_dialog(
@@ -50,10 +59,16 @@ impl Workspace {
         self.merge_ui.summary_for = None;
         self.open_overlay(Overlay::Merge(MergeDialog::new(mode)), cx);
         let ix = preselect
-            .and_then(|name| self.merge_candidates(cx).iter().position(|b| b.name == name))
+            .and_then(|name| {
+                self.merge_candidates(cx)
+                    .iter()
+                    .position(|b| b.name == name)
+            })
             .unwrap_or(0);
         self.merge_select(ix, cx);
-        self.merge_ui.scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+        self.merge_ui
+            .scroll
+            .scroll_to_item(ix, ScrollStrategy::Nearest);
         window.focus(&self.merge_ui.filter.focus_handle(cx), cx);
         cx.notify();
     }
@@ -64,13 +79,17 @@ impl Workspace {
         let ix = ix.min(cands.len().saturating_sub(1));
         let branch = cands.get(ix).map(|b| b.name.clone());
         self.reset_squash_summary(branch.as_deref(), cx);
-        let Some(d) = self.merge_dialog_mut() else { return };
+        let Some(d) = self.merge_dialog_mut() else {
+            return;
+        };
         d.ix = ix;
         d.preview = None;
         d.loading = branch.is_some();
         self.merge_ui.preview_load.cancel();
         cx.notify();
-        let (Some(branch), Some(repo)) = (branch, self.repo.clone()) else { return };
+        let (Some(branch), Some(repo)) = (branch, self.repo.clone()) else {
+            return;
+        };
         let git = repo.read(cx).repo.clone();
         spawn_load(
             self,
@@ -91,11 +110,15 @@ impl Workspace {
             (Some(b), Some(r)) => gd_git::default_squash_summary(b, &r.read(cx).branch_name()),
             _ => String::new(),
         };
-        self.merge_ui.summary.update(cx, |s, cx| s.emplace(&text, cx));
+        self.merge_ui
+            .summary
+            .update(cx, |s, cx| s.emplace(&text, cx));
     }
 
     fn preview_loaded(&mut self, res: gd_git::Result<MergePreview>, cx: &mut Context<Self>) {
-        let Some(d) = self.merge_dialog_mut() else { return };
+        let Some(d) = self.merge_dialog_mut() else {
+            return;
+        };
         d.loading = false;
         match res {
             Ok(p) => d.preview = Some(p),
@@ -118,7 +141,9 @@ impl Workspace {
             return;
         }
         let ix = (d.ix as isize + delta).clamp(0, n as isize - 1) as usize;
-        self.merge_ui.scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+        self.merge_ui
+            .scroll
+            .scroll_to_item(ix, ScrollStrategy::Nearest);
         self.merge_select(ix, cx);
     }
 
@@ -131,15 +156,22 @@ impl Workspace {
 
     /// Whether the dialog's primary action can run (branch has commits to bring in).
     pub(super) fn merge_ready(&self) -> bool {
-        self.merge_dialog().and_then(|d| d.preview.as_ref()).is_some_and(|p| p.ahead > 0)
+        self.merge_dialog()
+            .and_then(|d| d.preview.as_ref())
+            .is_some_and(|p| p.ahead > 0)
     }
 
     pub fn merge_confirm(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.merge_ready() {
             return;
         }
-        let Some(Overlay::Merge(d)) = self.overlays.pop_if(|o| matches!(o, Overlay::Merge(_))) else { return };
-        let (Some(p), Some(repo)) = (d.preview, self.repo.clone()) else { return };
+        let Some(Overlay::Merge(d)) = self.overlays.pop_if(|o| matches!(o, Overlay::Merge(_)))
+        else {
+            return;
+        };
+        let (Some(p), Some(repo)) = (d.preview, self.repo.clone()) else {
+            return;
+        };
         self.focus(window, cx);
         let summary = self.merge_ui.summary.read(cx).as_str().to_string();
         repo.update(cx, |r, cx| r.start_merge(d.mode, p.branch, summary, cx));

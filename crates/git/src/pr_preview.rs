@@ -25,17 +25,39 @@ impl Repository {
     /// Branch a PR most likely targets: the remote's default (`origin/HEAD`),
     /// else the first of main / master / develop that exists.
     pub fn default_base_branch(&self) -> Option<String> {
-        if let Ok(out) = self.git().args(["symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD"]).run() {
+        if let Ok(out) = self
+            .git()
+            .args(["symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD"])
+            .run()
+        {
             let name = out.trim();
             if !name.is_empty() {
                 return Some(name.to_string());
             }
         }
-        ["origin/main", "origin/master", "main", "master", "origin/develop", "develop"]
-            .into_iter()
-            .find(|n| self.git().args(["rev-parse", "--verify", "-q"]).arg(format!("refs/remotes/{n}")).run().is_ok()
-                || self.git().args(["rev-parse", "--verify", "-q"]).arg(format!("refs/heads/{n}")).run().is_ok())
-            .map(String::from)
+        [
+            "origin/main",
+            "origin/master",
+            "main",
+            "master",
+            "origin/develop",
+            "develop",
+        ]
+        .into_iter()
+        .find(|n| {
+            self.git()
+                .args(["rev-parse", "--verify", "-q"])
+                .arg(format!("refs/remotes/{n}"))
+                .run()
+                .is_ok()
+                || self
+                    .git()
+                    .args(["rev-parse", "--verify", "-q"])
+                    .arg(format!("refs/heads/{n}"))
+                    .run()
+                    .is_ok()
+        })
+        .map(String::from)
     }
 
     /// Commits, behind count and file list of `base...head`.
@@ -50,11 +72,23 @@ impl Repository {
         let ahead = self.count(&format!("{base}..{head}"))?;
         let behind = self.count(&format!("{head}..{base}"))?;
         let (files, stats) = self.range_changes(&merge_base, head)?;
-        Ok(Comparison { merge_base, ahead, behind, files, stats })
+        Ok(Comparison {
+            merge_base,
+            ahead,
+            behind,
+            files,
+            stats,
+        })
     }
 
     /// Diff of one file of a [`Comparison`] (`merge_base` -> `head`).
-    pub fn compare_file_diff(&self, merge_base: &str, head: &str, file: &FileChange, opts: DiffOptions) -> Result<Diff> {
+    pub fn compare_file_diff(
+        &self,
+        merge_base: &str,
+        head: &str,
+        file: &FileChange,
+        opts: DiffOptions,
+    ) -> Result<Diff> {
         let (old, new) = blob_sides(merge_base, head, file);
         self.diff_sides(&old, &new, opts)
     }
@@ -65,20 +99,32 @@ impl Repository {
 pub fn compare_url(remote: &str, base: &str, head: &str) -> Option<String> {
     let (host, path) = split_remote(remote)?;
     Some(match host_of(remote)? {
-        Host::GitHub => format!("https://{host}/{path}/compare/{}...{}?expand=1", enc(base, PATH), enc(head, PATH)),
+        Host::GitHub => format!(
+            "https://{host}/{path}/compare/{}...{}?expand=1",
+            enc(base, PATH),
+            enc(head, PATH)
+        ),
         Host::GitLab => format!(
             "https://{host}/{path}/-/merge_requests/new?merge_request%5Bsource_branch%5D={}&merge_request%5Btarget_branch%5D={}",
             enc(head, COMPONENT),
             enc(base, COMPONENT)
         ),
         Host::Bitbucket => {
-            format!("https://{host}/{path}/pull-requests/new?source={}&dest={}", enc(head, COMPONENT), enc(base, COMPONENT))
+            format!(
+                "https://{host}/{path}/pull-requests/new?source={}&dest={}",
+                enc(head, COMPONENT),
+                enc(base, COMPONENT)
+            )
         }
     })
 }
 
 /// Unreserved characters stay as they are.
-const COMPONENT: &AsciiSet = &NON_ALPHANUMERIC.remove(b'-').remove(b'.').remove(b'_').remove(b'~');
+const COMPONENT: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'.')
+    .remove(b'_')
+    .remove(b'~');
 /// Like [`COMPONENT`], but keeps `/` for use in a URL path.
 const PATH: &AsciiSet = &COMPONENT.remove(b'/');
 

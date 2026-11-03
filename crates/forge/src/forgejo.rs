@@ -64,10 +64,22 @@ fn status(status: &str) -> Status {
     }
 }
 
-pub(crate) fn pipelines(c: &Client, repo: &RepoRef, filter: &PipelineFilter, page: u32) -> Result<Vec<Pipeline>> {
+pub(crate) fn pipelines(
+    c: &Client,
+    repo: &RepoRef,
+    filter: &PipelineFilter,
+    page: u32,
+) -> Result<Vec<Pipeline>> {
     let mut query = vec![("limit", PAGE_SIZE.to_string()), ("page", page.to_string())];
     if let Some(name) = &filter.ref_name {
-        query.push(("ref", if name.starts_with("refs/") { name.clone() } else { format!("refs/heads/{name}") }));
+        query.push((
+            "ref",
+            if name.starts_with("refs/") {
+                name.clone()
+            } else {
+                format!("refs/heads/{name}")
+            },
+        ));
     }
     if let Some(s) = filter.status {
         query.push(("status", s.query(false).to_string()));
@@ -83,7 +95,10 @@ pub(crate) fn pipeline(c: &Client, repo: &RepoRef, id: &PipelineId) -> Result<Pi
     let jobs = jobs
         .into_iter()
         .map(|j| Job {
-            id: JobId { pipeline: *id, id: j.id },
+            id: JobId {
+                pipeline: *id,
+                id: j.id,
+            },
             name: j.name,
             stage: None,
             status: status(&j.status),
@@ -97,11 +112,18 @@ pub(crate) fn pipeline(c: &Client, repo: &RepoRef, id: &PipelineId) -> Result<Pi
             steps: Vec::new(),
         })
         .collect();
-    Ok(PipelineDetail { stages: group_by_needs(jobs), pipeline })
+    Ok(PipelineDetail {
+        stages: group_by_needs(jobs),
+        pipeline,
+    })
 }
 
 fn pipeline_from(run: Run) -> Pipeline {
-    let user = run.trigger_user.map(|u| User { name: u.full_name.filter(|n| !n.is_empty()), username: u.login, avatar_url: u.avatar_url });
+    let user = run.trigger_user.map(|u| User {
+        name: u.full_name.filter(|n| !n.is_empty()),
+        username: u.login,
+        avatar_url: u.avatar_url,
+    });
     Pipeline {
         id: PipelineId(run.id),
         number: run.index_in_repo,

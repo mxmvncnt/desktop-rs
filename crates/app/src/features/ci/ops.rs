@@ -5,11 +5,15 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use gd_forge::{JobId, Log, PipelineDetail, PipelineFilter, PipelineId, parse_log, stages_from_workflow};
+use gd_forge::{
+    JobId, Log, PipelineDetail, PipelineFilter, PipelineId, parse_log, stages_from_workflow,
+};
 use gd_git::Repository;
 use gpui::{AppContext, Context, ScrollStrategy};
 
-use super::state::{CiStore, CiView, Field, LOG_ANIM, LogAnim, LogState, MAX_ANIM_ROWS, PipelineTab};
+use super::state::{
+    CiStore, CiView, Field, LOG_ANIM, LogAnim, LogState, MAX_ANIM_ROWS, PipelineTab,
+};
 use super::target::Target;
 use crate::features::accounts::{Account, RepoAccounts};
 use crate::repo::spawn_load;
@@ -22,7 +26,11 @@ const DETAIL_CONCURRENCY: usize = 4;
 /// How long typing in a filter pauses before the list reloads.
 const FILTER_DEBOUNCE: Duration = Duration::from_millis(350);
 /// Where Gitea, Forgejo and GitHub keep workflow files; Forgejo reports a bare file name.
-const WORKFLOW_DIRS: [&str; 3] = [".forgejo/workflows", ".gitea/workflows", ".github/workflows"];
+const WORKFLOW_DIRS: [&str; 3] = [
+    ".forgejo/workflows",
+    ".gitea/workflows",
+    ".github/workflows",
+];
 
 impl CiStore {
     pub fn close(&mut self, cx: &mut Context<Self>) {
@@ -88,14 +96,19 @@ impl CiStore {
 
     fn show_job(&mut self, id: JobId, cx: &mut Context<Self>) {
         self.view = CiView::Job(id);
-        self.log = LogState { follow: self.job(id).is_some_and(|j| !j.status.is_finished()), ..LogState::default() };
+        self.log = LogState {
+            follow: self.job(id).is_some_and(|j| !j.status.is_finished()),
+            ..LogState::default()
+        };
         self.load_log(id, cx);
         cx.notify();
     }
 
     /// Fetch and parse the log of `id` (again, while the job runs).
     pub(super) fn load_log(&mut self, id: JobId, cx: &mut Context<Self>) {
-        let Some(target) = self.ready().cloned() else { return };
+        let Some(target) = self.ready().cloned() else {
+            return;
+        };
         self.log.loading = self.log.log.is_none();
         spawn_load(
             self,
@@ -112,7 +125,9 @@ impl CiStore {
                         this.log.visible = visible_lines(&log, &this.log.toggled);
                         this.log.log = Some(log);
                         if this.log.follow {
-                            this.log.scroll.scroll_to_item(this.log.rows() - 1, ScrollStrategy::Bottom);
+                            this.log
+                                .scroll
+                                .scroll_to_item(this.log.rows() - 1, ScrollStrategy::Bottom);
                         }
                     }
                     Err(e) => this.log.error = Some(e.into()),
@@ -126,7 +141,9 @@ impl CiStore {
 
     /// Collapse or expand the section whose header is line `section`'s header.
     pub fn toggle_section(&mut self, section: usize, cx: &mut Context<Self>) {
-        let Some(log) = self.log.log.clone() else { return };
+        let Some(log) = self.log.log.clone() else {
+            return;
+        };
         let opening = log.sections[section].collapsed != self.log.toggled.contains(&section);
         let before = visible_lines(&log, &self.log.toggled);
         if !self.log.toggled.remove(&section) {
@@ -135,7 +152,11 @@ impl CiStore {
         let after = visible_lines(&log, &self.log.toggled);
         // The rows of the body as they show when the section is open.
         let s = &log.sections[section];
-        let body: Vec<usize> = (if opening { &after } else { &before }).iter().copied().filter(|l| (s.header + 1..s.end).contains(l)).collect();
+        let body: Vec<usize> = (if opening { &after } else { &before })
+            .iter()
+            .copied()
+            .filter(|l| (s.header + 1..s.end).contains(l))
+            .collect();
         self.log.toggles += 1;
         let id = self.log.toggles;
         if body.is_empty() || body.len() > MAX_ANIM_ROWS {
@@ -144,10 +165,18 @@ impl CiStore {
         } else if opening {
             // The list keeps its body hidden while the container grows, and gets it when the animation is over.
             self.log.visible = before;
-            self.log.anim = Some(LogAnim { section, opening, id, at: Instant::now(), body });
+            self.log.anim = Some(LogAnim {
+                section,
+                opening,
+                id,
+                at: Instant::now(),
+                body,
+            });
             // The animation starts at the first paint, a frame after the toggle.
             cx.spawn(async move |this, cx| {
-                cx.background_executor().timer(LOG_ANIM + Duration::from_millis(50)).await;
+                cx.background_executor()
+                    .timer(LOG_ANIM + Duration::from_millis(50))
+                    .await;
                 this.update(cx, |s, cx| {
                     if s.log.anim.as_ref().is_some_and(|a| a.id == id)
                         && let Some(log) = &s.log.log
@@ -163,13 +192,26 @@ impl CiStore {
         } else {
             // The list loses the body at once; the container of its rows shrinks over where they were.
             self.log.visible = after;
-            self.log.anim = Some(LogAnim { section, opening, id, at: Instant::now(), body });
+            self.log.anim = Some(LogAnim {
+                section,
+                opening,
+                id,
+                at: Instant::now(),
+                body,
+            });
         }
         cx.notify();
     }
 
     /// Open the page for `repo` (or refresh it): another repository starts from scratch, the same one keeps its cache.
-    pub fn show(&mut self, repo: Repository, branch: Option<String>, accounts: Vec<Account>, picks: RepoAccounts, cx: &mut Context<Self>) {
+    pub fn show(
+        &mut self,
+        repo: Repository,
+        branch: Option<String>,
+        accounts: Vec<Account>,
+        picks: RepoAccounts,
+        cx: &mut Context<Self>,
+    ) {
         if self.root.as_deref() != Some(repo.root()) {
             *self = Self {
                 epoch: self.epoch + 1,
@@ -203,12 +245,18 @@ impl CiStore {
 
     /// Page 1 merged into what is loaded (polling), or the next page (`more`).
     pub fn load_list(&mut self, more: bool, cx: &mut Context<Self>) {
-        let Some(target) = self.ready().cloned() else { return };
+        let Some(target) = self.ready().cloned() else {
+            return;
+        };
         if self.loading {
             return;
         }
         let non_empty = |text: &String| (!text.is_empty()).then(|| text.clone());
-        let filter = PipelineFilter { ref_name: non_empty(&self.branch), user: non_empty(&self.user), status: self.status };
+        let filter = PipelineFilter {
+            ref_name: non_empty(&self.branch),
+            user: non_empty(&self.user),
+            status: self.status,
+        };
         let page = if more { self.page + 1 } else { 1 };
         self.loading = true;
         spawn_load(
@@ -223,7 +271,8 @@ impl CiStore {
                         this.more = items.len() >= PAGE_SIZE;
                         this.page = page;
                         let known: HashSet<_> = this.pipelines.iter().map(|p| p.id).collect();
-                        this.pipelines.extend(items.into_iter().filter(|p| !known.contains(&p.id)));
+                        this.pipelines
+                            .extend(items.into_iter().filter(|p| !known.contains(&p.id)));
                         this.list_error = None;
                     }
                     Ok(items) => {
@@ -232,10 +281,21 @@ impl CiStore {
                             this.more = items.len() >= PAGE_SIZE;
                         }
                         // Older pages stay, minus what the new page covers (those may have changed status or vanished from a filter).
-                        let covered = if items.len() < PAGE_SIZE { u64::MAX } else { items.iter().map(|p| p.id.0).min().unwrap_or(0) };
+                        let covered = if items.len() < PAGE_SIZE {
+                            u64::MAX
+                        } else {
+                            items.iter().map(|p| p.id.0).min().unwrap_or(0)
+                        };
                         let fresh: HashSet<_> = items.iter().map(|p| p.id).collect();
-                        let tail = this.pipelines.drain(..).filter(|p| p.id.0 < covered && !fresh.contains(&p.id));
-                        this.pipelines = items.iter().cloned().chain(tail.collect::<Vec<_>>()).collect();
+                        let tail = this
+                            .pipelines
+                            .drain(..)
+                            .filter(|p| p.id.0 < covered && !fresh.contains(&p.id));
+                        this.pipelines = items
+                            .iter()
+                            .cloned()
+                            .chain(tail.collect::<Vec<_>>())
+                            .collect();
                     }
                     Err(e) => this.list_error = Some(e.into()),
                 }
@@ -337,7 +397,10 @@ impl CiStore {
 
     /// The list rows on screen want their stages: load the missing ones, a few at a time.
     pub fn request_details(&mut self, visible: Vec<PipelineId>, cx: &mut Context<Self>) {
-        self.queue = visible.into_iter().filter(|id| self.needs_detail(*id)).collect();
+        self.queue = visible
+            .into_iter()
+            .filter(|id| self.needs_detail(*id))
+            .collect();
         self.pump_details(cx);
     }
 
@@ -350,13 +413,17 @@ impl CiStore {
 
     /// Load (or reload) the stages and jobs of a pipeline into the cache.
     pub fn fetch_detail(&mut self, id: PipelineId, cx: &mut Context<Self>) {
-        let Some(target) = self.ready().cloned() else { return };
+        let Some(target) = self.ready().cloned() else {
+            return;
+        };
         if !self.inflight.insert(id) {
             return;
         }
         let epoch = self.epoch;
         cx.spawn(async move |this, cx| {
-            let res = cx.background_spawn(async move { load_detail(&target, id) }).await;
+            let res = cx
+                .background_spawn(async move { load_detail(&target, id) })
+                .await;
             this.update(cx, |this, cx| {
                 if this.epoch != epoch {
                     return;
@@ -387,7 +454,9 @@ fn load_detail(target: &Target, id: PipelineId) -> gd_forge::Result<PipelineDeta
     let mut detail = client.pipeline(&target.repo, &id)?;
     if !client.capabilities().stages {
         let yaml = detail.pipeline.workflow_path.as_deref().and_then(|path| {
-            workflow_candidates(path).into_iter().find_map(|candidate| std::fs::read_to_string(target.root.join(candidate)).ok())
+            workflow_candidates(path)
+                .into_iter()
+                .find_map(|candidate| std::fs::read_to_string(target.root.join(candidate)).ok())
         });
         if let Some(yaml) = yaml {
             let jobs = detail.stages.drain(..).flat_map(|s| s.jobs).collect();
@@ -404,7 +473,11 @@ pub fn visible_lines(log: &Log, toggled: &HashSet<usize>) -> Vec<usize> {
     let mut line = 0;
     while line < log.lines.len() {
         visible.push(line);
-        let collapsed = log.sections.iter().enumerate().find(|(ix, s)| s.header == line && s.collapsed != toggled.contains(ix));
+        let collapsed = log
+            .sections
+            .iter()
+            .enumerate()
+            .find(|(ix, s)| s.header == line && s.collapsed != toggled.contains(ix));
         line = collapsed.map_or(line + 1, |(_, s)| s.end.max(line + 1));
     }
     visible
@@ -415,7 +488,10 @@ fn workflow_candidates(path: &str) -> Vec<String> {
     if path.contains('/') {
         vec![path.to_string()]
     } else {
-        WORKFLOW_DIRS.iter().map(|dir| format!("{dir}/{path}")).collect()
+        WORKFLOW_DIRS
+            .iter()
+            .map(|dir| format!("{dir}/{path}"))
+            .collect()
     }
 }
 

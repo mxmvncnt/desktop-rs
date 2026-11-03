@@ -4,7 +4,10 @@
 
 use std::rc::Rc;
 
-use gpui::{App, ElementId, IntoElement, ParentElement, Pixels, Point, RenderOnce, SharedString, Styled, Window, div, prelude::*, px};
+use gpui::{
+    App, ElementId, IntoElement, ParentElement, Pixels, Point, RenderOnce, SharedString, Styled,
+    Window, div, prelude::*, px,
+};
 
 use super::{Callback, Popover, icon, pressable};
 use crate::assets::Icon;
@@ -23,7 +26,14 @@ pub struct MenuItem {
 
 impl MenuItem {
     pub fn new(label: impl Into<SharedString>) -> Self {
-        Self { label: label.into(), detail: None, icon: None, danger: false, disabled: false, on_select: None }
+        Self {
+            label: label.into(),
+            detail: None,
+            icon: None,
+            danger: false,
+            disabled: false,
+            on_select: None,
+        }
     }
     pub fn detail(mut self, d: impl Into<SharedString>) -> Self {
         self.detail = Some(d.into());
@@ -73,7 +83,15 @@ pub struct ContextMenu {
 
 impl ContextMenu {
     pub fn new(id: impl Into<ElementId>, position: Point<Pixels>) -> Self {
-        Self { id: id.into(), position, entries: Vec::new(), selected: None, on_dismiss: None, max_height: None, icon_column: true }
+        Self {
+            id: id.into(),
+            position,
+            entries: Vec::new(),
+            selected: None,
+            on_dismiss: None,
+            max_height: None,
+            icon_column: true,
+        }
     }
     pub fn item(mut self, item: MenuItem) -> Self {
         self.entries.push(MenuEntry::Item(item));
@@ -129,7 +147,10 @@ impl RenderOnce for ContextMenu {
                 })
                 .sum::<f32>();
         let height = self.max_height.map_or(height, |max| height.min(max));
-        let x = position.x.min(view.width - px(MENU_WIDTH + 8.0)).max(px(8.0));
+        let x = position
+            .x
+            .min(view.width - px(MENU_WIDTH + 8.0))
+            .max(px(8.0));
         let y = if position.y + px(height + 8.0) > view.height {
             (position.y - px(height)).max(px(8.0))
         } else {
@@ -147,8 +168,16 @@ impl RenderOnce for ContextMenu {
                     .child(div().h(px(1.0)).w_full().bg(theme.border))
                     .into_any_element(),
                 MenuEntry::Item(item) => {
-                    let fg = if item.danger { theme.danger } else { theme.text };
-                    let icon_fg = if item.danger { theme.danger } else { theme.text_muted };
+                    let fg = if item.danger {
+                        theme.danger
+                    } else {
+                        theme.text
+                    };
+                    let icon_fg = if item.danger {
+                        theme.danger
+                    } else {
+                        theme.text_muted
+                    };
                     let selected = self.selected == Some(ix) && !item.disabled;
                     let mut row = pressable(("menu-item", ix), selected, cx)
                         .flex()
@@ -160,12 +189,21 @@ impl RenderOnce for ContextMenu {
                         .text_size(px(13.0))
                         .text_color(fg)
                         .children(icon_column.then(|| {
-                            div().flex_none().w(px(15.0)).children(item.icon.map(|i| icon(i).size(px(15.0)).text_color(icon_fg)))
+                            div().flex_none().w(px(15.0)).children(
+                                item.icon
+                                    .map(|i| icon(i).size(px(15.0)).text_color(icon_fg)),
+                            )
                         }));
                     row = match item.detail {
                         None => row.child(div().flex_1().min_w_0().truncate().child(item.label)),
                         Some(d) => row.child(div().flex_none().child(item.label)).child(
-                            div().flex_1().min_w_0().truncate().text_size(px(12.0)).text_color(theme.text_faint).child(d),
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .truncate()
+                                .text_size(px(12.0))
+                                .text_color(theme.text_faint)
+                                .child(d),
                         ),
                     };
                     if item.disabled {
@@ -179,7 +217,12 @@ impl RenderOnce for ContextMenu {
         }
 
         let card = match max_height {
-            Some(max) => div().id("menu-scroll").max_h(px(max)).overflow_y_scroll().child(card).into_any_element(),
+            Some(max) => div()
+                .id("menu-scroll")
+                .max_h(px(max))
+                .overflow_y_scroll()
+                .child(card)
+                .into_any_element(),
             None => card.into_any_element(),
         };
         let mut menu = Popover::new(self.id, gpui::point(x, y), MENU_WIDTH, card);

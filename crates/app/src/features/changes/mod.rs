@@ -12,14 +12,14 @@ mod commit_box;
 mod file_header;
 mod no_changes;
 mod ops;
-mod sidebar;
 mod resize;
+mod sidebar;
 mod sidebar_tabs;
-mod state;
-mod undo_strip;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
+mod state;
+mod undo_strip;
 
 pub use commit_box::CommitBox;
-pub use sidebar::Sidebar;
 pub use resize::SidebarResize;
+pub use sidebar::Sidebar;

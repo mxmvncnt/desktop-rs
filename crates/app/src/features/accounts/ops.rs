@@ -19,7 +19,11 @@ use super::token::TokenSecret;
 use crate::repo::spawn_load;
 
 /// Global identity, the open repository's (local, effective) identity, and its remote host.
-type IdentityLoad = (Identity, Option<(Identity, gd_git::EffectiveIdentity)>, Option<String>);
+type IdentityLoad = (
+    Identity,
+    Option<(Identity, gd_git::EffectiveIdentity)>,
+    Option<String>,
+);
 
 fn input_text(input: &Entity<EditableTextState>, cx: &Context<AccountsStore>) -> String {
     input.read(cx).as_str().trim().to_string()
@@ -81,18 +85,36 @@ impl AccountsStore {
 
     pub(super) fn save_global_identity(&mut self, cx: &mut Context<Self>) {
         let inp = &self.inputs;
-        let id = Identity { name: input_text(&inp.global_name, cx), email: input_text(&inp.global_email, cx) };
+        let id = Identity {
+            name: input_text(&inp.global_name, cx),
+            email: input_text(&inp.global_email, cx),
+        };
         self.write_identity(None, None, id, "Saved to your global git config", cx);
     }
 
     pub(super) fn save_local_identity(&mut self, repo: Repository, cx: &mut Context<Self>) {
         let inp = &self.inputs;
-        let id = Identity { name: input_text(&inp.local_name, cx), email: input_text(&inp.local_email, cx) };
-        self.write_identity(Some(repo.clone()), Some(repo), id, "Saved to this repository's config", cx);
+        let id = Identity {
+            name: input_text(&inp.local_name, cx),
+            email: input_text(&inp.local_email, cx),
+        };
+        self.write_identity(
+            Some(repo.clone()),
+            Some(repo),
+            id,
+            "Saved to this repository's config",
+            cx,
+        );
     }
 
     pub(super) fn clear_local_identity(&mut self, repo: Repository, cx: &mut Context<Self>) {
-        self.write_identity(Some(repo.clone()), Some(repo), Identity::default(), "Override removed", cx);
+        self.write_identity(
+            Some(repo.clone()),
+            Some(repo),
+            Identity::default(),
+            "Override removed",
+            cx,
+        );
     }
 
     /// Write `id` to `target` (or the global config when `None`), then reload for the `open` repository.
@@ -129,7 +151,12 @@ impl AccountsStore {
     }
 
     /// Pick the account of a repository (`None` = automatic) and save the pick.
-    pub(super) fn set_repo_account(&mut self, repo_path: &Path, id: Option<String>, cx: &mut Context<Self>) {
+    pub(super) fn set_repo_account(
+        &mut self,
+        repo_path: &Path,
+        id: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
         let key = repo_path.to_string_lossy().into_owned();
         match id {
             Some(id) => self.repo_accounts.insert(key, id),
@@ -142,7 +169,10 @@ impl AccountsStore {
     // ---- accounts ----------------------------------------------------------
 
     pub(super) fn open_account_form(&mut self, editing: Option<String>, cx: &mut Context<Self>) {
-        let acct = editing.as_ref().and_then(|id| self.accounts.iter().find(|a| &a.id == id)).cloned();
+        let acct = editing
+            .as_ref()
+            .and_then(|id| self.accounts.iter().find(|a| &a.id == id))
+            .cloned();
         let provider = acct.as_ref().map_or(Provider::GitHub, |a| a.provider);
         let a = acct.clone().unwrap_or(Account {
             id: String::new(),
@@ -154,15 +184,29 @@ impl AccountsStore {
             token: String::new(),
         });
         let inp = &self.inputs;
-        for (input, text) in [(&inp.display_name, &a.name), (&inp.host, &a.host), (&inp.username, &a.username), (&inp.token, &String::new()), (&inp.client_id, &String::new()), (&inp.copyable, &oauth::REDIRECT_URI.into())] {
+        for (input, text) in [
+            (&inp.display_name, &a.name),
+            (&inp.host, &a.host),
+            (&inp.username, &a.username),
+            (&inp.token, &String::new()),
+            (&inp.client_id, &String::new()),
+            (&inp.copyable, &oauth::REDIRECT_URI.into()),
+        ] {
             set_input(input, text, cx);
         }
         // The method the account used: a pasted token, or the OAuth app it signed in with.
-        let client_id = acct.as_ref().filter(|a| a.oauth).and_then(|a| secrets::get(&a.id)).map(|raw| TokenSecret::parse(&raw).client_id).unwrap_or_default();
+        let client_id = acct
+            .as_ref()
+            .filter(|a| a.oauth)
+            .and_then(|a| secrets::get(&a.id))
+            .map(|raw| TokenSecret::parse(&raw).client_id)
+            .unwrap_or_default();
         let builtin = provider.oauth_app(&a.host, "").map(|app| app.client_id);
         let method = match &acct {
             Some(a) if !a.oauth && !a.token.is_empty() => SignInMethod::Token,
-            Some(_) if !client_id.is_empty() && builtin.as_ref() != Some(&client_id) => SignInMethod::OwnApp,
+            Some(_) if !client_id.is_empty() && builtin.as_ref() != Some(&client_id) => {
+                SignInMethod::OwnApp
+            }
             _ => SignInMethod::default_for(provider, &a.host),
         };
         if method == SignInMethod::OwnApp {
@@ -194,7 +238,9 @@ impl AccountsStore {
         // Hosted providers have a fixed host; custom ones keep what was typed
         // unless it was a fixed host of the previous choice.
         let typed = input_text(&host_input, cx);
-        let was_fixed = Provider::ALL.iter().any(|p| p.fixed_host() == Some(typed.as_str()));
+        let was_fixed = Provider::ALL
+            .iter()
+            .any(|p| p.fixed_host() == Some(typed.as_str()));
         match provider.fixed_host() {
             Some(h) => set_input(&host_input, h, cx),
             None if was_fixed => set_input(&host_input, "", cx),
@@ -233,7 +279,9 @@ impl AccountsStore {
     }
 
     pub(super) fn save_account(&mut self, cx: &mut Context<Self>) {
-        let Some(form) = self.form.clone() else { return };
+        let Some(form) = self.form.clone() else {
+            return;
+        };
         let inp = &self.inputs;
         let host = normalize_host(&input_text(&inp.host, cx));
         let typed_token = input_text(&inp.token, cx);
@@ -251,7 +299,11 @@ impl AccountsStore {
                 (form.checking, form.error) = (true, None);
             }
             cx.spawn(async move |this, cx| {
-                let res = cx.background_spawn(async move { oauth::username(provider, &host, &token).map(|name| (token, name)) }).await;
+                let res = cx
+                    .background_spawn(async move {
+                        oauth::username(provider, &host, &token).map(|name| (token, name))
+                    })
+                    .await;
                 this.update(cx, |this, cx| {
                     if let Some(form) = &mut this.form {
                         form.checking = false;
@@ -259,7 +311,10 @@ impl AccountsStore {
                     match res {
                         Ok((token, name)) => {
                             if let Some(form) = &mut this.form {
-                                form.signed_in = Some(TokenSecret { access_token: token, ..TokenSecret::default() });
+                                form.signed_in = Some(TokenSecret {
+                                    access_token: token,
+                                    ..TokenSecret::default()
+                                });
                             }
                             set_input(&this.inputs.username, &name, cx);
                             this.save_account(cx);
@@ -276,14 +331,24 @@ impl AccountsStore {
         let username = input_text(&inp.username, cx);
         let mut name = input_text(&inp.display_name, cx);
         if name.is_empty() {
-            name = if username.is_empty() { host.clone() } else { username.clone() };
+            name = if username.is_empty() {
+                host.clone()
+            } else {
+                username.clone()
+            };
         }
         self.stop_signin();
-        let secret = form
-            .signed_in
-            .or_else(|| (!typed_token.is_empty()).then(|| TokenSecret { access_token: typed_token, ..TokenSecret::default() }));
+        let secret = form.signed_in.or_else(|| {
+            (!typed_token.is_empty()).then(|| TokenSecret {
+                access_token: typed_token,
+                ..TokenSecret::default()
+            })
+        });
         let list = &mut self.accounts;
-        let existing = form.editing.as_ref().and_then(|id| list.iter_mut().find(|a| &a.id == id));
+        let existing = form
+            .editing
+            .as_ref()
+            .and_then(|id| list.iter_mut().find(|a| &a.id == id));
         let id = match existing {
             Some(a) => {
                 a.provider = form.provider;
@@ -295,8 +360,18 @@ impl AccountsStore {
             }
             None => {
                 let id = model::new_id();
-                let (token, oauth) = secret.as_ref().map_or_else(Default::default, |s| (s.access_token.clone(), !s.client_id.is_empty()));
-                list.push(Account { id: id.clone(), provider: form.provider, name, host, username, oauth, token });
+                let (token, oauth) = secret.as_ref().map_or_else(Default::default, |s| {
+                    (s.access_token.clone(), !s.client_id.is_empty())
+                });
+                list.push(Account {
+                    id: id.clone(),
+                    provider: form.provider,
+                    name,
+                    host,
+                    username,
+                    oauth,
+                    token,
+                });
                 id
             }
         };
@@ -309,7 +384,9 @@ impl AccountsStore {
     }
 
     pub(super) fn remove_account(&mut self, cx: &mut Context<Self>) {
-        let Some(id) = self.form.as_ref().and_then(|f| f.editing.clone()) else { return };
+        let Some(id) = self.form.as_ref().and_then(|f| f.editing.clone()) else {
+            return;
+        };
         self.accounts.retain(|a| a.id != id);
         secrets::delete(&id);
         self.stop_signin();
@@ -327,7 +404,11 @@ impl AccountsStore {
         if host.is_empty() {
             return self.account_form_error("Enter a host, e.g. github.com", cx);
         }
-        let custom = if form.method == SignInMethod::OwnApp { input_text(&self.inputs.client_id, cx) } else { String::new() };
+        let custom = if form.method == SignInMethod::OwnApp {
+            input_text(&self.inputs.client_id, cx)
+        } else {
+            String::new()
+        };
         let Some(app) = provider.oauth_app(&host, &custom) else {
             return self.account_form_error("Enter the OAuth client ID of your app", cx);
         };
@@ -336,7 +417,10 @@ impl AccountsStore {
         oauth::sign_in(provider, host.clone(), app, cancel.clone(), tx);
         if let Some(form) = &mut self.form {
             (form.error, form.signed_in) = (None, None);
-            form.waiting = Some(Waiting { cancel: cancel.clone(), url: None });
+            form.waiting = Some(Waiting {
+                cancel: cancel.clone(),
+                url: None,
+            });
         }
         cx.spawn(async move |this, cx| {
             while let Ok(progress) = rx.recv().await {
@@ -351,10 +435,23 @@ impl AccountsStore {
     }
 
     /// Apply a sign-in update to the form; `false` when it is stale or finished.
-    fn apply_progress(&mut self, cancel: &Arc<AtomicBool>, progress: Progress, cx: &mut Context<Self>) -> bool {
+    fn apply_progress(
+        &mut self,
+        cancel: &Arc<AtomicBool>,
+        progress: Progress,
+        cx: &mut Context<Self>,
+    ) -> bool {
         let inp = self.inputs.clone();
-        let Some(form) = self.form.as_mut() else { return false };
-        let Some(waiting) = form.waiting.as_mut().filter(|w| Arc::ptr_eq(&w.cancel, cancel)) else { return false };
+        let Some(form) = self.form.as_mut() else {
+            return false;
+        };
+        let Some(waiting) = form
+            .waiting
+            .as_mut()
+            .filter(|w| Arc::ptr_eq(&w.cancel, cancel))
+        else {
+            return false;
+        };
         let more = match progress {
             Progress::Open { url, user_code } => {
                 if let Some(code) = user_code {

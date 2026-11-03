@@ -7,9 +7,9 @@ mod diff_page;
 mod handlers;
 mod model;
 mod settings_modal;
-mod state;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
+mod state;
 
 pub use model::{Settings, ThemeMode, config_dir, themes_dir};
 pub use settings_modal::SettingsModal;

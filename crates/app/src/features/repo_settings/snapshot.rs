@@ -9,11 +9,26 @@ use crate::workspace::Workspace;
 
 pub fn views() -> &'static [View] {
     &[
-        View { name: "repo-settings-remotes-edit", steps: &[open, edit_remote] },
-        View { name: "repo-settings-remotes-remove", steps: &[open, remove_remote] },
-        View { name: "repo-settings-config-edit", steps: &[open, edit_config] },
-        View { name: "repo-settings*", steps: &[open] },
-        View { name: "repo-menu-context", steps: &[menu] },
+        View {
+            name: "repo-settings-remotes-edit",
+            steps: &[open, edit_remote],
+        },
+        View {
+            name: "repo-settings-remotes-remove",
+            steps: &[open, remove_remote],
+        },
+        View {
+            name: "repo-settings-config-edit",
+            steps: &[open, edit_config],
+        },
+        View {
+            name: "repo-settings*",
+            steps: &[open],
+        },
+        View {
+            name: "repo-menu-context",
+            steps: &[menu],
+        },
     ]
 }
 
@@ -34,16 +49,25 @@ fn open(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Wo
 
 /// Second step (the remotes are loaded by now): the edit form / remove confirmation of `upstream`.
 fn edit_remote(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
-    ws.repo_settings.update(cx, |s, cx| s.open_remote_form(Some("upstream".into()), cx));
+    ws.repo_settings
+        .update(cx, |s, cx| s.open_remote_form(Some("upstream".into()), cx));
 }
 
 fn remove_remote(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
-    ws.repo_settings.update(cx, |s, cx| s.confirm_remove_remote("upstream".into(), cx));
+    ws.repo_settings
+        .update(cx, |s, cx| s.confirm_remove_remote("upstream".into(), cx));
 }
 
 fn edit_config(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
-    let entry = ws.repo_settings.read(cx).config.iter().find(|e| e.key == "remote.origin.fetch").cloned();
-    ws.repo_settings.update(cx, |s, cx| s.open_config_form(entry, cx));
+    let entry = ws
+        .repo_settings
+        .read(cx)
+        .config
+        .iter()
+        .find(|e| e.key == "remote.origin.fetch")
+        .cloned();
+    ws.repo_settings
+        .update(cx, |s, cx| s.open_config_form(entry, cx));
 }
 
 fn menu(ws: &mut Workspace, _: &str, window: &mut Window, cx: &mut Context<Workspace>) {

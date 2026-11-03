@@ -19,14 +19,26 @@ impl RenderOnce for AccountsPage {
         let (store, inputs) = (self.store.clone(), s.inputs.clone());
         // The form replaces the whole page so it is fully visible.
         match s.form.clone() {
-            Some(form) => AccountForm { form, inputs, store }.into_any_element(),
+            Some(form) => AccountForm {
+                form,
+                inputs,
+                store,
+            }
+            .into_any_element(),
             None => div()
                 .flex()
                 .flex_col()
                 .gap(px(22.0))
-                .child(IdentitySection { identity: s.identity.clone(), inputs, store: store.clone() })
+                .child(IdentitySection {
+                    identity: s.identity.clone(),
+                    inputs,
+                    store: store.clone(),
+                })
                 .child(div().h(px(1.0)).bg(gd_ui::Theme::of(cx).border))
-                .child(AccountList { accounts: s.accounts.clone(), store })
+                .child(AccountList {
+                    accounts: s.accounts.clone(),
+                    store,
+                })
                 .into_any_element(),
         }
     }

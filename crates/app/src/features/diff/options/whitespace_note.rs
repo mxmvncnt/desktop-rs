@@ -28,7 +28,11 @@ impl RenderOnce for WhitespaceNote {
             .bg(theme.ink(0.02))
             .text_size(px(12.0))
             .text_color(theme.text_faint)
-            .child(icon(Icon::EyeClosed).size(px(13.0)).text_color(theme.text_faint))
+            .child(
+                icon(Icon::EyeClosed)
+                    .size(px(13.0))
+                    .text_color(theme.text_faint),
+            )
             .child("Whitespace changes are hidden")
     }
 }

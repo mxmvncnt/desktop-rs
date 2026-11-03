@@ -6,9 +6,9 @@ use gpui::{App, Context, Entity, IntoElement, RenderOnce, Window, div, prelude::
 use gpui_elements::editable_text::EditableTextState;
 
 use super::state::StashDialog;
+use crate::components::text_field;
 use crate::repo::RepoModel;
 use crate::utils::text::plural;
-use crate::components::text_field;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -51,14 +51,28 @@ impl StashDialogView {
         let r = self.repo.read(cx);
         let n = r.changes().len();
         // Stashing works on whole files, partially selected ones included.
-        let m = r.changes().iter().filter(|c| !r.work.excluded.contains(&c.path)).count();
+        let m = r
+            .changes()
+            .iter()
+            .filter(|c| !r.work.excluded.contains(&c.path))
+            .count();
         let count = if selected_only { m } else { n };
         let current = r.branch_name();
         let mut content = div().flex().flex_col().gap(px(10.0)).pt(px(4.0));
         if m > 0 && m < n {
             content = content
-                .child(self.scope_row("stash-scope-all", false, selected_only, format!("All changes ({n} file{})", plural(n as u32))))
-                .child(self.scope_row("stash-scope-selected", true, selected_only, format!("Only the checked files ({m})")));
+                .child(self.scope_row(
+                    "stash-scope-all",
+                    false,
+                    selected_only,
+                    format!("All changes ({n} file{})", plural(n as u32)),
+                ))
+                .child(self.scope_row(
+                    "stash-scope-selected",
+                    true,
+                    selected_only,
+                    format!("Only the checked files ({m})"),
+                ));
         }
         content = content.child(self.message_field("Message (optional)", cx));
         Dialog::new("stash-dialog", if selected_only { "Stash selected files" } else { "Stash all changes" })
@@ -96,24 +110,44 @@ impl StashDialogView {
                     .detail("Your in-progress work will follow you to the new branch."),
             );
         Dialog::new("switch-branch-dialog", format!("Switch to {target}"))
-            .body(format!("You have changes on {current}. What would you like to do with them?"))
+            .body(format!(
+                "You have changes on {current}. What would you like to do with them?"
+            ))
             .content(content)
             .confirm_label("Switch branch")
     }
 
     /// Radio row choosing the scope of a new stash.
-    fn scope_row(&self, id: &'static str, selected_only: bool, current: bool, title: String) -> OptionRow {
+    fn scope_row(
+        &self,
+        id: &'static str,
+        selected_only: bool,
+        current: bool,
+        title: String,
+    ) -> OptionRow {
         let ws = self.ws.clone();
         OptionRow::new(id, selected_only == current, title, move |_, cx| {
-            ws.update(cx, |t, cx| t.update_stash_dialog(StashDialog::Create { selected_only }, cx))
+            ws.update(cx, |t, cx| {
+                t.update_stash_dialog(StashDialog::Create { selected_only }, cx)
+            })
         })
     }
 
     /// Radio row choosing whether to stash (`choice`) or bring the changes along.
-    fn switch_row(&self, id: &'static str, branch: &Branch, choice: bool, current: bool, title: String) -> OptionRow {
+    fn switch_row(
+        &self,
+        id: &'static str,
+        branch: &Branch,
+        choice: bool,
+        current: bool,
+        title: String,
+    ) -> OptionRow {
         let (ws, branch) = (self.ws.clone(), branch.clone());
         OptionRow::new(id, choice == current, title, move |_, cx| {
-            let d = StashDialog::Switch { branch: branch.clone(), stash: choice };
+            let d = StashDialog::Switch {
+                branch: branch.clone(),
+                stash: choice,
+            };
             ws.update(cx, |t, cx| t.update_stash_dialog(d, cx))
         })
     }

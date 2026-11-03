@@ -13,7 +13,9 @@ impl RepoModel {
     pub fn included_paths(&self) -> Vec<String> {
         self.changes()
             .iter()
-            .filter(|c| !self.work.excluded.contains(&c.path) && !self.work.partial.contains_key(&c.path))
+            .filter(|c| {
+                !self.work.excluded.contains(&c.path) && !self.work.partial.contains_key(&c.path)
+            })
             .map(|c| c.path.clone())
             .collect()
     }
@@ -25,7 +27,10 @@ impl RepoModel {
         if amending || self.merging() {
             return None;
         }
-        let mut selected = self.changes().iter().filter(|c| !self.work.excluded.contains(&c.path));
+        let mut selected = self
+            .changes()
+            .iter()
+            .filter(|c| !self.work.excluded.contains(&c.path));
         let c = selected.next()?;
         if selected.next().is_some() {
             return None;
@@ -34,7 +39,9 @@ impl RepoModel {
         Some(match (c.status, &c.old_path) {
             (FileStatus::New | FileStatus::Untracked, _) => format!("Create {}", name(&c.path)),
             (FileStatus::Deleted, _) => format!("Delete {}", name(&c.path)),
-            (FileStatus::Renamed, Some(old)) => format!("Rename {} to {}", name(old), name(&c.path)),
+            (FileStatus::Renamed, Some(old)) => {
+                format!("Rename {} to {}", name(old), name(&c.path))
+            }
             _ => format!("Update {}", name(&c.path)),
         })
     }
@@ -69,7 +76,10 @@ impl RepoModel {
         }
         let message = (summary.clone(), description.clone());
         self.run(
-            Op { committing: true, ..Op::default() },
+            Op {
+                committing: true,
+                ..Op::default()
+            },
             move |r| r.commit_partial(&summary, &description, &paths, &partial),
             move |this, _sha, _| {
                 this.last_commit = Some(LastCommit {
@@ -81,10 +91,7 @@ impl RepoModel {
                         .map(|d| d.as_secs() as i64)
                         .unwrap_or(0),
                 });
-                this.notice = Some(format!(
-                    "Committed {n} file{}",
-                    plural(n as u32)
-                ));
+                this.notice = Some(format!("Committed {n} file{}", plural(n as u32)));
                 // Keep the selection: the status refresh moves it to the next
                 // file and the old diff stays up until the new one is loaded,
                 // so there is no empty frame in between.
@@ -106,12 +113,28 @@ impl RepoModel {
     }
 
     pub fn discard(&mut self, changes: Vec<FileChange>, cx: &mut Context<Self>) {
-        self.run(Op::default(), move |r| r.discard(&changes), |_, _, _| {}, cx);
+        self.run(
+            Op::default(),
+            move |r| r.discard(&changes),
+            |_, _, _| {},
+            cx,
+        );
     }
 
     /// Revert the changed `rows` of `diff` in the working-tree file `path`.
-    pub fn discard_rows(&mut self, path: String, diff: Arc<Diff>, rows: Vec<usize>, cx: &mut Context<Self>) {
-        self.run(Op::default(), move |r| r.discard_rows(&path, &diff, &rows), |_, _, _| {}, cx);
+    pub fn discard_rows(
+        &mut self,
+        path: String,
+        diff: Arc<Diff>,
+        rows: Vec<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        self.run(
+            Op::default(),
+            move |r| r.discard_rows(&path, &diff, &rows),
+            |_, _, _| {},
+            cx,
+        );
     }
 
     /// Soft-reset HEAD~1 and hand the message back via [`RepoEvent::CommitUndone`].

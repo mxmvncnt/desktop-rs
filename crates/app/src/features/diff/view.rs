@@ -6,8 +6,8 @@ use std::sync::Arc;
 use gd_git::Diff;
 use gd_ui::{Theme, motion};
 use gpui::{
-    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString, Styled,
-    Window, div, point, prelude::*, px,
+    AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce,
+    SharedString, Styled, Window, div, point, prelude::*, px,
 };
 
 use super::expand::Expander;
@@ -48,28 +48,70 @@ impl Workspace {
         let note = WhitespaceNote::new(self.settings.diff_ignore_whitespace);
         let (select, exp) = self.pane_parts(pane, repo, &diff, cx);
         let wrap = self.settings.diff_wrap;
-        let flow = if wrap { TextFlow::Wrap } else { TextFlow::Scroll(self.diff_view.hscroll) };
+        let flow = if wrap {
+            TextFlow::Wrap
+        } else {
+            TextFlow::Scroll(self.diff_view.hscroll)
+        };
         let split = self.settings.diff_split.then(|| self.split_for(&diff));
         let trailing = usize::from(exp.is_some() && Expander::has_trailing(&diff));
         let n = split.as_ref().map_or(diff.lines.len(), |s| s.rows.len()) + trailing;
-        let wrap_list = wrap.then(|| self.diff_view.wrap_list_for(&diff, split.is_some(), n, new_key));
+        let wrap_list = wrap.then(|| {
+            self.diff_view
+                .wrap_list_for(&diff, split.is_some(), n, new_key)
+        });
         let truncated = diff.truncated;
         let mono = theme.font_mono.clone();
         let scroll = self.diff_scroll.clone();
-        let tsel = TextSelect { ws: cx.entity(), sel: self.diff_view.text_sel, color: theme.selection };
+        let tsel = TextSelect {
+            ws: cx.entity(),
+            sel: self.diff_view.text_sel,
+            color: theme.selection,
+        };
         let list = match split {
             Some(split) => {
                 self.set_split_extent(&diff, split.gutter_digits, select.is_some());
-                SplitList { split, hl: highlight, select, exp, trailing: trailing == 1, scroll, wrap: wrap_list, flow, tsel, mono }
-                    .into_any_element()
+                SplitList {
+                    split,
+                    hl: highlight,
+                    select,
+                    exp,
+                    trailing: trailing == 1,
+                    scroll,
+                    wrap: wrap_list,
+                    flow,
+                    tsel,
+                    mono,
+                }
+                .into_any_element()
             }
             None => {
                 let num_w = self.set_unified_extent(&diff, select.is_some());
-                UnifiedList { diff, hl: highlight, select, exp, rows: n, num_w, scroll, wrap: wrap_list, flow, tsel, mono }
-                    .into_any_element()
+                UnifiedList {
+                    diff,
+                    hl: highlight,
+                    select,
+                    exp,
+                    rows: n,
+                    num_w,
+                    scroll,
+                    wrap: wrap_list,
+                    flow,
+                    tsel,
+                    mono,
+                }
+                .into_any_element()
             }
         };
-        DiffFrame { key, list, truncated, flow, note: note.map(IntoElement::into_any_element), ws: cx.entity() }.into_any_element()
+        DiffFrame {
+            key,
+            list,
+            truncated,
+            flow,
+            note: note.map(IntoElement::into_any_element),
+            ws: cx.entity(),
+        }
+        .into_any_element()
     }
 
     /// New file/commit selected: start at the top-left. A reload of the same
@@ -78,7 +120,11 @@ impl Workspace {
         let new_key = self.diff_key.as_ref() != Some(key);
         if new_key {
             self.diff_key = Some(key.clone());
-            self.diff_scroll.0.borrow().base_handle.set_offset(point(px(0.0), px(0.0)));
+            self.diff_scroll
+                .0
+                .borrow()
+                .base_handle
+                .set_offset(point(px(0.0), px(0.0)));
             self.diff_view.hscroll = px(0.0);
             self.diff_select = DiffSelectUi::default();
             self.diff_view.text_sel = None;
@@ -107,13 +153,21 @@ impl Workspace {
         diff: &Diff,
         cx: &Context<Self>,
     ) -> (Option<RowSelect>, Option<Expander>) {
-        let select = (pane == DiffPane::Changes && repo.read(cx).can_select_lines()).then(|| RowSelect {
-            repo: repo.clone(),
-            ws: cx.entity(),
-            hovered_block: self.diff_select.hovered_handle.map(|h| h.block),
-        });
-        let expandable = matches!(pane, DiffPane::Changes | DiffPane::Commit) && gd_git::expandable(diff);
-        (select, expandable.then(|| Expander { repo: repo.clone(), pane }))
+        let select =
+            (pane == DiffPane::Changes && repo.read(cx).can_select_lines()).then(|| RowSelect {
+                repo: repo.clone(),
+                ws: cx.entity(),
+                hovered_block: self.diff_select.hovered_handle.map(|h| h.block),
+            });
+        let expandable =
+            matches!(pane, DiffPane::Changes | DiffPane::Commit) && gd_git::expandable(diff);
+        (
+            select,
+            expandable.then(|| Expander {
+                repo: repo.clone(),
+                pane,
+            }),
+        )
     }
 
     /// Records the horizontal layout of a split diff for `scroll_diff_x`.

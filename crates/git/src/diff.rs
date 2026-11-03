@@ -40,24 +40,45 @@ pub struct DiffLine {
 impl DiffLine {
     /// A numbered row (0-based line indexes); tabs are expanded once here
     /// instead of at every paint.
-    pub(crate) fn new(kind: DiffLineKind, old_ix: Option<usize>, new_ix: Option<usize>, text: &str) -> Self {
+    pub(crate) fn new(
+        kind: DiffLineKind,
+        old_ix: Option<usize>,
+        new_ix: Option<usize>,
+        text: &str,
+    ) -> Self {
         DiffLine {
             kind,
             old_line: old_ix.map(|i| i as u32 + 1),
             new_line: new_ix.map(|i| i as u32 + 1),
-            text: if text.contains('\t') { text.replace('\t', "    ") } else { text.to_string() },
+            text: if text.contains('\t') {
+                text.replace('\t', "    ")
+            } else {
+                text.to_string()
+            },
             emphasis: Vec::new(),
         }
     }
 
     pub(crate) fn hunk(h: &DiffHunk) -> Self {
         let text = hunk_header(h.old_start, h.old_len, h.new_start, h.new_len);
-        DiffLine { kind: DiffLineKind::Hunk, old_line: None, new_line: None, text, emphasis: Vec::new() }
+        DiffLine {
+            kind: DiffLineKind::Hunk,
+            old_line: None,
+            new_line: None,
+            text,
+            emphasis: Vec::new(),
+        }
     }
 
     pub(crate) fn no_newline() -> Self {
         let text = "\\ No newline at end of file".into();
-        DiffLine { kind: DiffLineKind::NoNewline, old_line: None, new_line: None, text, emphasis: Vec::new() }
+        DiffLine {
+            kind: DiffLineKind::NoNewline,
+            old_line: None,
+            new_line: None,
+            text,
+            emphasis: Vec::new(),
+        }
     }
 }
 
@@ -116,7 +137,10 @@ pub(crate) fn blob_sides(old_rev: &str, new_rev: &str, file: &FileChange) -> (Si
     let new = if file.status == FileStatus::Deleted {
         Side::Empty
     } else {
-        Side::Blob { rev: new_rev.to_string(), path: file.path.clone() }
+        Side::Blob {
+            rev: new_rev.to_string(),
+            path: file.path.clone(),
+        }
     };
     (old, new)
 }
@@ -130,7 +154,10 @@ impl Repository {
             _ if !self.has_head() => Side::Empty,
             _ => Side::Blob {
                 rev: "HEAD".into(),
-                path: change.old_path.clone().unwrap_or_else(|| change.path.clone()),
+                path: change
+                    .old_path
+                    .clone()
+                    .unwrap_or_else(|| change.path.clone()),
             },
         };
         let new = match change.status {
@@ -160,11 +187,17 @@ impl Repository {
         match side {
             Side::Empty => Ok(Vec::new()),
             Side::Blob { rev, path } => {
-                match self.git().args(["cat-file", "blob"]).arg(format!("{rev}:{path}")).run_bytes() {
+                match self
+                    .git()
+                    .args(["cat-file", "blob"])
+                    .arg(format!("{rev}:{path}"))
+                    .run_bytes()
+                {
                     Ok(b) => Ok(b),
                     // Path absent at that revision (e.g. staged-new file vs HEAD).
                     Err(crate::GitError::Failed { stderr, .. })
-                        if stderr.contains("does not exist") || stderr.contains("Not a valid object") =>
+                        if stderr.contains("does not exist")
+                            || stderr.contains("Not a valid object") =>
                     {
                         Ok(Vec::new())
                     }
@@ -173,9 +206,11 @@ impl Repository {
             }
             Side::Worktree(path) => {
                 let p = self.root().join(path);
-                let meta = std::fs::symlink_metadata(&p).map_err(|e| crate::GitError::Io(format!("{path}: {e}")))?;
+                let meta = std::fs::symlink_metadata(&p)
+                    .map_err(|e| crate::GitError::Io(format!("{path}: {e}")))?;
                 if meta.file_type().is_symlink() {
-                    let target = std::fs::read_link(&p).map_err(|e| crate::GitError::Io(e.to_string()))?;
+                    let target =
+                        std::fs::read_link(&p).map_err(|e| crate::GitError::Io(e.to_string()))?;
                     Ok(target.to_string_lossy().into_owned().into_bytes())
                 } else if meta.is_dir() {
                     // Submodule / nested repo: no textual content.
@@ -192,11 +227,15 @@ impl Repository {
         let old_b = self.read_side(old)?;
         let new_b = self.read_side(new)?;
         if crate::engine::looks_binary(&old_b) || crate::engine::looks_binary(&new_b) {
-            return Ok(Diff { is_binary: true, ..Default::default() });
+            return Ok(Diff {
+                is_binary: true,
+                ..Default::default()
+            });
         }
         let old_s = String::from_utf8_lossy(&old_b);
         let new_s = String::from_utf8_lossy(&new_b);
-        let lossy = matches!(old_s, std::borrow::Cow::Owned(_)) || matches!(new_s, std::borrow::Cow::Owned(_));
+        let lossy = matches!(old_s, std::borrow::Cow::Owned(_))
+            || matches!(new_s, std::borrow::Cow::Owned(_));
         let mut diff = crate::engine::diff_texts(&old_s, &new_s, opts);
         if lossy {
             // Not valid UTF-8: viewable, but partial staging would corrupt

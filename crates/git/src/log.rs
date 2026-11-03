@@ -28,7 +28,9 @@ pub struct CoAuthor {
 pub fn parse_co_authors(body: &str) -> Vec<CoAuthor> {
     let mut out: Vec<CoAuthor> = Vec::new();
     for line in body.lines() {
-        let Some((key, value)) = line.split_once(':') else { continue };
+        let Some((key, value)) = line.split_once(':') else {
+            continue;
+        };
         if !key.trim().eq_ignore_ascii_case("co-authored-by") {
             continue;
         }
@@ -41,7 +43,10 @@ pub fn parse_co_authors(body: &str) -> Vec<CoAuthor> {
         if name.is_empty() || out.iter().any(|c| c.email == email && c.name == name) {
             continue;
         }
-        out.push(CoAuthor { name: name.into(), email: email.into() });
+        out.push(CoAuthor {
+            name: name.into(),
+            email: email.into(),
+        });
     }
     out
 }
@@ -53,15 +58,27 @@ impl Repository {
     pub(crate) fn log_commits(&self, args: &[&str]) -> Result<Vec<Commit>> {
         let out = self
             .git()
-            .args(["log", "-z", "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%s%x1f%b"])
+            .args([
+                "log",
+                "-z",
+                "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%s%x1f%b",
+            ])
             .args(args)
             .run()?;
         Ok(out
             .split('\0')
             .filter(|r| !r.is_empty())
             .filter_map(|record| {
-                let [sha, short_sha, author_name, author_email, time, parents, summary, body] =
-                    <[&str; 8]>::try_from(record.splitn(8, SEP).collect::<Vec<_>>()).ok()?;
+                let [
+                    sha,
+                    short_sha,
+                    author_name,
+                    author_email,
+                    time,
+                    parents,
+                    summary,
+                    body,
+                ] = <[&str; 8]>::try_from(record.splitn(8, SEP).collect::<Vec<_>>()).ok()?;
                 let body = body.trim_end();
                 Some(Commit {
                     co_authors: parse_co_authors(body),
@@ -84,7 +101,11 @@ impl Repository {
         if !self.has_head() {
             return Ok(Vec::new());
         }
-        self.log_commits(&[&format!("--skip={skip}"), &format!("--max-count={limit}"), "HEAD"])
+        self.log_commits(&[
+            &format!("--skip={skip}"),
+            &format!("--max-count={limit}"),
+            "HEAD",
+        ])
     }
 
     /// Files changed by `sha` (against its first parent; root commits against
@@ -109,7 +130,14 @@ impl Repository {
     pub fn commit_stats(&self, sha: &str) -> Result<LineStats> {
         let out = self
             .git()
-            .args(["show", "--format=", "--shortstat", "-M", "--diff-merges=first-parent", sha])
+            .args([
+                "show",
+                "--format=",
+                "--shortstat",
+                "-M",
+                "--diff-merges=first-parent",
+                sha,
+            ])
             .run()?;
         Ok(parse_shortstat(&out))
     }

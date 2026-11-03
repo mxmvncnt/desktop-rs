@@ -13,7 +13,11 @@ use crate::workspace::Workspace;
 use gd_git::FileStatus;
 
 impl Workspace {
-    pub fn render_changes_main(&mut self, repo: &Entity<RepoModel>, cx: &mut Context<Self>) -> AnyElement {
+    pub fn render_changes_main(
+        &mut self,
+        repo: &Entity<RepoModel>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let r = repo.read(cx);
         if r.stashes.viewing {
             return self.render_stash_detail(repo, cx);
@@ -28,7 +32,11 @@ impl Workspace {
         let header = FileHeader::new(&change, self.commit_sel.clone(), cx.entity());
         // Key on the loaded diff's path (not the clicked one) so the fade runs
         // when the content swaps, not on the previous file's diff.
-        let shown = r.work.diff_key.as_ref().map_or(change.path.as_str(), |(p, _)| p.as_str());
+        let shown = r
+            .work
+            .diff_key
+            .as_ref()
+            .map_or(change.path.as_str(), |(p, _)| p.as_str());
         let diff_id = SharedString::from(format!("change-diff-{shown}"));
         div()
             .flex()

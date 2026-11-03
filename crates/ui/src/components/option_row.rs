@@ -22,7 +22,13 @@ impl OptionRow {
         title: impl Into<String>,
         on_select: impl Fn(&mut Window, &mut App) + 'static,
     ) -> Self {
-        Self { id: id.into(), selected, title: title.into(), detail: None, on_select: Rc::new(on_select) }
+        Self {
+            id: id.into(),
+            selected,
+            title: title.into(),
+            detail: None,
+            on_select: Rc::new(on_select),
+        }
     }
 
     pub fn detail(mut self, detail: impl Into<String>) -> Self {
@@ -44,7 +50,11 @@ impl RenderOnce for OptionRow {
             .py(px(9.0))
             .rounded(px(8.0))
             .border_1()
-            .border_color(if selected { theme.border_strong } else { theme.border })
+            .border_color(if selected {
+                theme.border_strong
+            } else {
+                theme.border
+            })
             .child(radio_dot(selected, &theme))
             .child(
                 div()
@@ -59,7 +69,12 @@ impl RenderOnce for OptionRow {
                             .text_color(theme.text)
                             .child(self.title),
                     )
-                    .children(self.detail.map(|d| div().text_size(px(12.0)).text_color(theme.text_faint).child(d))),
+                    .children(self.detail.map(|d| {
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(theme.text_faint)
+                            .child(d)
+                    })),
             )
             .on_click(move |_, w, cx| on_select(w, cx))
     }
@@ -72,9 +87,15 @@ fn radio_dot(selected: bool, theme: &Theme) -> impl IntoElement {
         .size(px(14.0))
         .rounded_full()
         .border_1()
-        .border_color(if selected { theme.solid } else { theme.border_strong })
+        .border_color(if selected {
+            theme.solid
+        } else {
+            theme.border_strong
+        })
         .flex()
         .items_center()
         .justify_center()
-        .when(selected, |d| d.child(div().size(px(8.0)).rounded_full().bg(theme.solid)))
+        .when(selected, |d| {
+            d.child(div().size(px(8.0)).rounded_full().bg(theme.solid))
+        })
 }

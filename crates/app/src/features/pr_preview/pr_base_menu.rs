@@ -18,7 +18,10 @@ pub struct PrBaseMenu {
 impl PrBaseMenu {
     /// `None` while the dropdown is closed.
     pub fn new(repo: &Entity<RepoModel>, cx: &App) -> Option<Self> {
-        repo.read(cx).pr.base_menu.then(|| Self { repo: repo.clone() })
+        repo.read(cx)
+            .pr
+            .base_menu
+            .then(|| Self { repo: repo.clone() })
     }
 }
 
@@ -56,6 +59,14 @@ impl RenderOnce for PrBaseMenu {
         })
         .track_scroll(&scroll)
         .h(px(height));
-        deferred(div().absolute().top(px(32.0)).left_0().w(px(300.0)).child(overlay_card(cx).child(list))).priority(2)
+        deferred(
+            div()
+                .absolute()
+                .top(px(32.0))
+                .left_0()
+                .w(px(300.0))
+                .child(overlay_card(cx).child(list)),
+        )
+        .priority(2)
     }
 }

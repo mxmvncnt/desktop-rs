@@ -45,7 +45,10 @@ impl RenderOnce for RepoIdentity {
             .gap(px(14.0))
             .child(block)
             .children(self.identity.effective.map(|e| {
-                div().text_size(px(12.0)).text_color(theme.text_muted).child(effective_line(&e))
+                div()
+                    .text_size(px(12.0))
+                    .text_color(theme.text_muted)
+                    .child(effective_line(&e))
             }))
     }
 }

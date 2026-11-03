@@ -34,7 +34,9 @@ impl StashState {
         self.list
             .iter()
             .enumerate()
-            .filter(|(_, s)| self.all_branches || (s.branch.is_some() && s.branch.as_deref() == current_branch))
+            .filter(|(_, s)| {
+                self.all_branches || (s.branch.is_some() && s.branch.as_deref() == current_branch)
+            })
             .map(|(i, _)| i)
             .collect()
     }
@@ -57,11 +59,16 @@ pub enum StashAction {
 #[derive(Clone)]
 pub enum StashDialog {
     /// New stash. `selected_only` stashes just the checked files.
-    Create { selected_only: bool },
+    Create {
+        selected_only: bool,
+    },
     Rename(Stash),
     Drop(Stash),
     /// Checkout with uncommitted changes: `stash` = leave them behind.
-    Switch { branch: Branch, stash: bool },
+    Switch {
+        branch: Branch,
+        stash: bool,
+    },
 }
 
 /// The Workspace field for stash UI: the input of the create / rename dialogs
@@ -72,6 +79,8 @@ pub struct StashUi {
 
 impl StashUi {
     pub fn new(cx: &mut App) -> Self {
-        Self { input: cx.new(|cx| EditableTextState::new(StringStorage::default(), cx)) }
+        Self {
+            input: cx.new(|cx| EditableTextState::new(StringStorage::default(), cx)),
+        }
     }
 }

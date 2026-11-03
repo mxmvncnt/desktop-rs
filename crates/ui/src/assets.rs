@@ -88,12 +88,19 @@ impl AssetSource for Assets {
 
     /// GPUI-CE builds its `AssetRegistry` by enumerating `list("")` once at startup.
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
-        Ok(Self::iter().filter(|p| p.starts_with(path)).map(|p| SharedString::from(p.into_owned())).collect())
+        Ok(Self::iter()
+            .filter(|p| p.starts_with(path))
+            .map(|p| SharedString::from(p.into_owned()))
+            .collect())
     }
 }
 
 pub fn load_fonts(cx: &App) {
-    let fonts = Assets::iter().filter(|p| p.starts_with("fonts/")).filter_map(|p| Assets::get(&p)).map(|f| f.data).collect();
+    let fonts = Assets::iter()
+        .filter(|p| p.starts_with("fonts/"))
+        .filter_map(|p| Assets::get(&p))
+        .map(|f| f.data)
+        .collect();
     if let Err(e) = cx.text_system().add_fonts(fonts) {
         log::error!("failed to load embedded fonts: {e:#}");
     }

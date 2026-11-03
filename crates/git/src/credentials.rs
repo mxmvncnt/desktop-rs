@@ -23,7 +23,11 @@ pub struct HostCredential {
 
 impl std::fmt::Debug for HostCredential {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HostCredential({}, {}, <redacted>)", self.host, self.username)
+        write!(
+            f,
+            "HostCredential({}, {}, <redacted>)",
+            self.host, self.username
+        )
     }
 }
 
@@ -31,7 +35,10 @@ static CREDENTIALS: RwLock<Vec<HostCredential>> = RwLock::new(Vec::new());
 
 /// Replace the registered credentials (entries with an empty host or token are dropped).
 pub fn set_credentials(list: Vec<HostCredential>) {
-    let list = list.into_iter().filter(|c| !c.host.trim().is_empty() && !c.token.is_empty()).collect();
+    let list = list
+        .into_iter()
+        .filter(|c| !c.host.trim().is_empty() && !c.token.is_empty())
+        .collect();
     *CREDENTIALS.write().unwrap_or_else(|e| e.into_inner()) = list;
 }
 
@@ -44,20 +51,29 @@ pub fn set_token_source(source: fn(&str) -> Option<String>) {
 }
 
 /// Shell snippet git runs as `<snippet> get`; `U`/`T` are replaced by the env var names.
-const HELPER: &str = r#"!f() { test "$1" = get && printf 'username=%s\npassword=%s\n' "$U" "$T"; }; f"#;
+const HELPER: &str =
+    r#"!f() { test "$1" = get && printf 'username=%s\npassword=%s\n' "$U" "$T"; }; f"#;
 
 /// Environment for a network command. Each credential gets its own helper
 /// reading `GD_CRED_USER_<i>`/`GD_CRED_TOKEN_<i>`.
 pub(crate) fn env() -> Vec<(OsString, OsString)> {
-    let creds = CREDENTIALS.read().unwrap_or_else(|e| e.into_inner()).clone();
+    let creds = CREDENTIALS
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
     if creds.is_empty() {
         return Vec::new();
     }
-    let mut n: usize = std::env::var("GIT_CONFIG_COUNT").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+    let mut n: usize = std::env::var("GIT_CONFIG_COUNT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
     let mut out: Vec<(OsString, OsString)> = Vec::new();
     for (i, c) in creds.iter().enumerate() {
         let key = format!("credential.https://{}.helper", c.host.trim());
-        let helper = HELPER.replace("$U", &format!("${{GD_CRED_USER_{i}}}")).replace("$T", &format!("${{GD_CRED_TOKEN_{i}}}"));
+        let helper = HELPER
+            .replace("$U", &format!("${{GD_CRED_USER_{i}}}"))
+            .replace("$T", &format!("${{GD_CRED_TOKEN_{i}}}"));
         // The empty value resets the helper list, so the account wins over
         // other helpers for this host.
         for value in [String::new(), helper] {
@@ -65,9 +81,18 @@ pub(crate) fn env() -> Vec<(OsString, OsString)> {
             out.push((format!("GIT_CONFIG_VALUE_{n}").into(), value.into()));
             n += 1;
         }
-        out.push((format!("GD_CRED_USER_{i}").into(), c.username.clone().into()));
-        let token = TOKEN_SOURCE.get().filter(|_| !c.id.is_empty()).and_then(|source| source(&c.id));
-        out.push((format!("GD_CRED_TOKEN_{i}").into(), token.unwrap_or_else(|| c.token.clone()).into()));
+        out.push((
+            format!("GD_CRED_USER_{i}").into(),
+            c.username.clone().into(),
+        ));
+        let token = TOKEN_SOURCE
+            .get()
+            .filter(|_| !c.id.is_empty())
+            .and_then(|source| source(&c.id));
+        out.push((
+            format!("GD_CRED_TOKEN_{i}").into(),
+            token.unwrap_or_else(|| c.token.clone()).into(),
+        ));
     }
     out.push(("GIT_CONFIG_COUNT".into(), n.to_string().into()));
     out

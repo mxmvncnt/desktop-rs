@@ -50,7 +50,12 @@ pub struct MergeDialog {
 
 impl MergeDialog {
     pub fn new(mode: MergeMode) -> Self {
-        Self { mode, ix: 0, preview: None, loading: false }
+        Self {
+            mode,
+            ix: 0,
+            preview: None,
+            loading: false,
+        }
     }
 }
 
@@ -81,11 +86,13 @@ impl MergeUi {
     pub fn new(cx: &mut Context<Workspace>) -> Self {
         let filter = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
         let summary = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
-        let subs = vec![cx.subscribe(&filter, |this: &mut Workspace, _, _: &TextChanged, cx| {
-            if this.merge_dialog().is_some() {
-                this.merge_select(0, cx);
-            }
-        })];
+        let subs = vec![
+            cx.subscribe(&filter, |this: &mut Workspace, _, _: &TextChanged, cx| {
+                if this.merge_dialog().is_some() {
+                    this.merge_select(0, cx);
+                }
+            }),
+        ];
         Self {
             filter,
             summary,

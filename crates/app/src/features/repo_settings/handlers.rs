@@ -8,7 +8,9 @@ use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
     pub fn open_repo_settings(&mut self, cx: &mut Context<Self>) {
-        let Some(model) = self.repo.clone() else { return };
+        let Some(model) = self.repo.clone() else {
+            return;
+        };
         self.open_overlay(Overlay::RepoSettings, cx);
         self.repo_settings.update(cx, |s, cx| s.open(model, cx));
         self.load_repo_identity(cx);
@@ -20,8 +22,14 @@ impl Workspace {
         self.set_repo_settings_page(RepoSettingsPage::Account, cx);
     }
 
-    pub(crate) fn set_repo_settings_page(&mut self, page: RepoSettingsPage, cx: &mut Context<Self>) {
-        self.repo_settings.update(cx, |s, _| (s.page, s.edit, s.error, s.notice) = (page, None, None, None));
+    pub(crate) fn set_repo_settings_page(
+        &mut self,
+        page: RepoSettingsPage,
+        cx: &mut Context<Self>,
+    ) {
+        self.repo_settings.update(cx, |s, _| {
+            (s.page, s.edit, s.error, s.notice) = (page, None, None, None)
+        });
         self.load_repo_identity(cx);
         cx.notify();
     }
@@ -33,11 +41,20 @@ impl Workspace {
     }
 
     /// Right-click on the repository button.
-    pub fn open_repo_menu(&mut self, position: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn open_repo_menu(
+        &mut self,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.repo.is_none() {
             return;
         }
-        let rows = vec![MenuRow::item((), "Repository settings…", gd_ui::Icon::Settings)];
+        let rows = vec![MenuRow::item(
+            (),
+            "Repository settings…",
+            gd_ui::Icon::Settings,
+        )];
         let menu = Menu::new(position, rows, |ws, (), _, cx| ws.open_repo_settings(cx));
         self.open_menu(menu, window, cx);
     }

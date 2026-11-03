@@ -55,7 +55,12 @@ impl Workspace {
         self.apply_theme(window, cx);
     }
 
-    pub(super) fn set_theme_mode(&mut self, mode: ThemeMode, window: &Window, cx: &mut Context<Self>) {
+    pub(super) fn set_theme_mode(
+        &mut self,
+        mode: ThemeMode,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) {
         self.settings.theme = mode;
         self.settings.save();
         self.apply_theme(window, cx);

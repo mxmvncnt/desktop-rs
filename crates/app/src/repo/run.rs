@@ -16,7 +16,10 @@ pub struct Op {
 
 impl Op {
     pub fn labeled(label: &'static str) -> Self {
-        Self { label: Some(label), ..Self::default() }
+        Self {
+            label: Some(label),
+            ..Self::default()
+        }
     }
 }
 
@@ -81,7 +84,10 @@ impl LoadSlot {
     /// still applies unless a newer one already did. Holding an arrow key then
     /// shows each commit as it lands instead of only the last one.
     pub fn late() -> Self {
-        Self { late: true, ..Self::default() }
+        Self {
+            late: true,
+            ..Self::default()
+        }
     }
 
     /// Drop the load in flight (and its result).
@@ -109,7 +115,11 @@ pub fn spawn_load<E: 'static, T: Send + 'static>(
         let res = cx.background_spawn(async move { work() }).await;
         this.update(cx, |this, cx| {
             let slot = slot_in_task(this);
-            let fresh = if slot.late { generation >= slot.applied } else { generation == slot.generation };
+            let fresh = if slot.late {
+                generation >= slot.applied
+            } else {
+                generation == slot.generation
+            };
             if fresh {
                 slot.applied = generation;
                 apply(this, res, cx);
@@ -134,12 +144,18 @@ impl RepoModel {
         cx: &mut Context<Self>,
     ) {
         let repo = self.repo.clone();
-        spawn_load(self, slot, move || work(&repo), |this, res, cx| {
-            match res {
-                Ok(v) => apply(this, v, cx),
-                Err(e) => this.error = Some(e.to_string()),
-            }
-            cx.notify();
-        }, cx);
+        spawn_load(
+            self,
+            slot,
+            move || work(&repo),
+            |this, res, cx| {
+                match res {
+                    Ok(v) => apply(this, v, cx),
+                    Err(e) => this.error = Some(e.to_string()),
+                }
+                cx.notify();
+            },
+            cx,
+        );
     }
 }

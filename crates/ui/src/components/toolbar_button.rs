@@ -1,7 +1,10 @@
 //! Toolbar dropdown button (caption over title, optional chevron and busy pulse).
 
-use gpui::{AnyElement, App, ClickEvent, ElementId, IntoElement, MouseButton, ParentElement, Pixels, Point, RenderOnce, SharedString, Styled, Window, div, prelude::*, px};
 use gpui::AnimationExt as _;
+use gpui::{
+    AnyElement, App, ClickEvent, ElementId, IntoElement, MouseButton, ParentElement, Pixels, Point,
+    RenderOnce, SharedString, Styled, Window, div, prelude::*, px,
+};
 
 use super::{ClickHandler, icon, pressable};
 use crate::assets::Icon;
@@ -66,7 +69,10 @@ impl ToolbarButton {
         self
     }
     /// Called with the pointer position on a right click.
-    pub fn on_right_click(mut self, f: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static) -> Self {
+    pub fn on_right_click(
+        mut self,
+        f: impl Fn(Point<Pixels>, &mut Window, &mut App) + 'static,
+    ) -> Self {
         self.on_right_click = Some(Box::new(f));
         self
     }

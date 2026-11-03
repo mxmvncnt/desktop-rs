@@ -59,7 +59,9 @@ impl SplitDiff {
         }
         for (ix, line) in diff.lines.iter().enumerate() {
             let ix = ix as u32;
-            max_no = max_no.max(line.old_line.unwrap_or(0)).max(line.new_line.unwrap_or(0));
+            max_no = max_no
+                .max(line.old_line.unwrap_or(0))
+                .max(line.new_line.unwrap_or(0));
             match line.kind {
                 DiffLineKind::Delete => {
                     if !adds.is_empty() {
@@ -73,12 +75,18 @@ impl SplitDiff {
                     DiffLineKind::Add => adds.push(ix),
                     _ => {
                         flush(&mut rows, &mut dels, &mut adds);
-                        rows.push(SplitRow { left: ix, right: ix });
+                        rows.push(SplitRow {
+                            left: ix,
+                            right: ix,
+                        });
                     }
                 },
                 DiffLineKind::Context | DiffLineKind::Hunk => {
                     flush(&mut rows, &mut dels, &mut adds);
-                    rows.push(SplitRow { left: ix, right: ix });
+                    rows.push(SplitRow {
+                        left: ix,
+                        right: ix,
+                    });
                 }
             }
             last = line.kind;
@@ -90,6 +98,10 @@ impl SplitDiff {
             diff.lines.len(),
             started.elapsed()
         );
-        Self { diff: diff.clone(), rows, gutter_digits: max_no.to_string().len().max(3) }
+        Self {
+            diff: diff.clone(),
+            rows,
+            gutter_digits: max_no.to_string().len().max(3),
+        }
     }
 }

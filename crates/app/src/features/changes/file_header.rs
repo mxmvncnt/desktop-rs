@@ -3,7 +3,10 @@
 
 use gd_git::FileChange;
 use gd_ui::{Icon, Theme, icon};
-use gpui::{App, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
+use gpui::{
+    App, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled,
+    Window, div, px,
+};
 
 use crate::components::{drag_selection, selectable_line};
 use crate::features::diff::DiffOptionsButton;
@@ -32,7 +35,15 @@ impl RenderOnce for FileHeader {
         let theme = Theme::of(cx).clone();
         let texts = [self.title, String::new()];
         let sel = self.sel.on(&texts);
-        let (title, layout) = selectable_line(&self.ws, &texts, 0, sel, theme.text_muted, FontWeight::NORMAL, &theme);
+        let (title, layout) = selectable_line(
+            &self.ws,
+            &texts,
+            0,
+            sel,
+            theme.text_muted,
+            FontWeight::NORMAL,
+            &theme,
+        );
         div()
             .flex()
             .flex_none()
@@ -43,7 +54,11 @@ impl RenderOnce for FileHeader {
             .border_b_1()
             .border_color(theme.border)
             .on_mouse_move(drag_selection(self.ws.clone(), vec![layout]))
-            .child(icon(Icon::Document).size(px(14.0)).text_color(theme.text_faint))
+            .child(
+                icon(Icon::Document)
+                    .size(px(14.0))
+                    .text_color(theme.text_faint),
+            )
             .child(
                 div()
                     .flex_1()

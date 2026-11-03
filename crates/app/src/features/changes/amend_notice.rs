@@ -3,8 +3,8 @@
 
 use gd_ui::{Icon, Theme, icon, motion};
 use gpui::{
-    App, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div,
-    prelude::*, px,
+    App, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement,
+    Styled, Window, div, prelude::*, px,
 };
 
 use super::commit_box::CommitBox;
@@ -21,7 +21,11 @@ impl RenderOnce for AmendNotice {
         let pushed = self.pushed;
         let commit_box = self.commit_box;
         let glyph = if pushed { Icon::Warning } else { Icon::Info };
-        let glyph_color = if pushed { theme.warning } else { theme.text_muted };
+        let glyph_color = if pushed {
+            theme.warning
+        } else {
+            theme.text_muted
+        };
         motion::fade_quick(
             "amend-notice",
             div()
@@ -45,11 +49,9 @@ impl RenderOnce for AmendNotice {
                         .text_color(theme.text_muted)
                         .child("Your changes will modify your most recent commit.")
                         .when(pushed, |d| {
-                            d.child(
-                                div()
-                                    .text_color(theme.warning)
-                                    .child("It was already pushed: you'll need to force push afterwards."),
-                            )
+                            d.child(div().text_color(theme.warning).child(
+                                "It was already pushed: you'll need to force push afterwards.",
+                            ))
                         })
                         .child(
                             div()
@@ -58,7 +60,9 @@ impl RenderOnce for AmendNotice {
                                 .text_color(theme.text)
                                 .underline()
                                 .child("Stop amending")
-                                .on_click(move |_, _, cx| commit_box.update(cx, |b, cx| b.stop_amend(cx))),
+                                .on_click(move |_, _, cx| {
+                                    commit_box.update(cx, |b, cx| b.stop_amend(cx))
+                                }),
                         ),
                 ),
         )

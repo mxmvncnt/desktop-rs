@@ -38,7 +38,11 @@ fn main() {
             } else {
                 FileStatus::Modified
             };
-            let fc = FileChange { path: path.clone(), old_path: None, status };
+            let fc = FileChange {
+                path: path.clone(),
+                old_path: None,
+                status,
+            };
             let d = match repo.commit_diff(&c.sha, &fc, DiffOptions::default()) {
                 Ok(d) => d,
                 Err(e) => {
@@ -57,7 +61,15 @@ fn main() {
             } else if delta <= 4 {
                 close += 1;
             } else {
-                worst.push((delta, format!("{} {path}: engine +{} -{} vs git +{ga} -{gd}", &c.sha[..8], d.added, d.deleted)));
+                worst.push((
+                    delta,
+                    format!(
+                        "{} {path}: engine +{} -{} vs git +{ga} -{gd}",
+                        &c.sha[..8],
+                        d.added,
+                        d.deleted
+                    ),
+                ));
             }
         }
     }

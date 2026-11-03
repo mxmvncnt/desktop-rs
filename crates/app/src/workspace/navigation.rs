@@ -59,14 +59,17 @@ impl Workspace {
             Some(_) => return,
             None => {}
         }
-        let Some(repo) = self.repo.clone() else { return };
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
         let list = self.effective_nav_list(repo.read(cx));
         let query = self.history_ui.search.read(cx).as_str().to_string();
         repo.update(cx, |r, cx| match list {
             NavList::Changes => {
                 if let Some(ix) = target(r.work.selected, r.changes().len(), mv) {
                     r.select_change(ix, cx);
-                    self.changes_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+                    self.changes_scroll
+                        .scroll_to_item(ix, ScrollStrategy::Nearest);
                 }
             }
             NavList::Commits => {
@@ -79,7 +82,8 @@ impl Workspace {
                 if let Some(pos) = target(cur, n, mv) {
                     let ix = visible.as_ref().map_or(pos, |v| v[pos]);
                     r.select_commit(ix, cx);
-                    self.history_scroll.scroll_to_item(pos, ScrollStrategy::Nearest);
+                    self.history_scroll
+                        .scroll_to_item(pos, ScrollStrategy::Nearest);
                     if ix + 20 >= r.log.commits.len() {
                         r.load_more_history(cx);
                     }
@@ -96,13 +100,17 @@ impl Workspace {
                 if let Some(pos) = target(cur, visible.len(), mv) {
                     let sha = r.stashes.list[visible[pos]].sha.clone();
                     r.select_stash(sha, cx);
-                    r.stashes.list_scroll.scroll_to_item(pos, ScrollStrategy::Nearest);
+                    r.stashes
+                        .list_scroll
+                        .scroll_to_item(pos, ScrollStrategy::Nearest);
                 }
             }
             NavList::Files(pane) => {
                 let detail = r.detail(pane);
                 if let Some(ix) = target(detail.selected, detail.files.len(), mv) {
-                    detail.files_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+                    detail
+                        .files_scroll
+                        .scroll_to_item(ix, ScrollStrategy::Nearest);
                     r.select_file(pane, ix, cx);
                 }
             }
@@ -114,13 +122,19 @@ impl Workspace {
         if r.pr.open {
             return NavList::Files(DiffPane::Pr);
         }
-        if self.overlays.iter().any(|o| matches!(o, Overlay::ForcePush)) {
+        if self
+            .overlays
+            .iter()
+            .any(|o| matches!(o, Overlay::ForcePush))
+        {
             return NavList::Files(DiffPane::ForcePush);
         }
         match (r.tab, self.nav_list) {
             (Tab::Changes, Some(NavList::Stashes)) if r.stashes.list.is_empty() => NavList::Changes,
             (Tab::Changes, Some(l @ (NavList::Changes | NavList::Stashes))) => l,
-            (Tab::Changes, Some(NavList::Files(DiffPane::Stash))) if r.stashes.viewing => NavList::Files(DiffPane::Stash),
+            (Tab::Changes, Some(NavList::Files(DiffPane::Stash))) if r.stashes.viewing => {
+                NavList::Files(DiffPane::Stash)
+            }
             (Tab::History, Some(l @ (NavList::Commits | NavList::Files(DiffPane::Commit)))) => l,
             (Tab::Changes, _) => NavList::Changes,
             (Tab::History, _) => NavList::Commits,

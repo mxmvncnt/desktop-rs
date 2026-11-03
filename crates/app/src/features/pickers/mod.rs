@@ -11,12 +11,12 @@ mod new_branch_base;
 mod new_branch_base_list;
 mod new_branch_form;
 mod picker_shell;
-mod repo_picker;
 mod popover_handlers;
 mod popover_layer;
-mod store;
+mod repo_picker;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
+mod store;
 
 pub use popover_layer::PopoverLayer;
 pub use store::PopoverStore;

@@ -6,8 +6,8 @@ use gpui::{App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 use super::state::StashDialog;
 use crate::repo::RepoModel;
-use crate::utils::text::relative_time;
 use crate::utils::text::plural;
+use crate::utils::text::relative_time;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -40,7 +40,14 @@ impl RenderOnce for StashHeader {
 impl StashHeader {
     fn summary(&self, theme: &Theme, cx: &App) -> impl IntoElement + use<> {
         let s = &self.stash;
-        let (here, accent) = (self.here, if self.here { theme.accent } else { theme.text_faint });
+        let (here, accent) = (
+            self.here,
+            if self.here {
+                theme.accent
+            } else {
+                theme.text_faint
+            },
+        );
         div()
             .flex()
             .flex_col()
@@ -76,14 +83,31 @@ impl StashHeader {
                             .text_color(if here { theme.accent } else { theme.text_muted }),
                     )
                     .child(format!("{} • {}", s.date, relative_time(s.time)))
-                    .child(format!("{} file{}", self.n_files, plural(self.n_files as u32)))
-                    .child(div().font_family(theme.font_mono.clone()).child(s.short_sha.clone())),
+                    .child(format!(
+                        "{} file{}",
+                        self.n_files,
+                        plural(self.n_files as u32)
+                    ))
+                    .child(
+                        div()
+                            .font_family(theme.font_mono.clone())
+                            .child(s.short_sha.clone()),
+                    ),
             )
     }
 
     fn buttons(&self) -> impl IntoElement + use<> {
-        let (repo_a, repo_b, repo_c, ws) = (self.repo.clone(), self.repo.clone(), self.repo.clone(), self.ws.clone());
-        let (sha_a, sha_b, stash) = (self.stash.sha.clone(), self.stash.sha.clone(), self.stash.clone());
+        let (repo_a, repo_b, repo_c, ws) = (
+            self.repo.clone(),
+            self.repo.clone(),
+            self.repo.clone(),
+            self.ws.clone(),
+        );
+        let (sha_a, sha_b, stash) = (
+            self.stash.sha.clone(),
+            self.stash.sha.clone(),
+            self.stash.clone(),
+        );
         div()
             .flex()
             .flex_none()
@@ -99,14 +123,18 @@ impl StashHeader {
                 Button::new("stash-apply")
                     .icon(Icon::ArchiveUp)
                     .label("Apply")
-                    .on_click(move |_, _, cx| repo_a.update(cx, |r, cx| r.stash_apply(sha_a.clone(), cx))),
+                    .on_click(move |_, _, cx| {
+                        repo_a.update(cx, |r, cx| r.stash_apply(sha_a.clone(), cx))
+                    }),
             )
             .child(
                 Button::new("stash-pop")
                     .primary()
                     .icon(Icon::Restart)
                     .label("Restore")
-                    .on_click(move |_, _, cx| repo_b.update(cx, |r, cx| r.stash_pop(sha_b.clone(), cx))),
+                    .on_click(move |_, _, cx| {
+                        repo_b.update(cx, |r, cx| r.stash_pop(sha_b.clone(), cx))
+                    }),
             )
             .child(
                 Button::new("stash-drop")
@@ -115,7 +143,9 @@ impl StashHeader {
                     .label("Discard")
                     .on_click(move |_, w, cx| {
                         let s = stash.clone();
-                        ws.update(cx, |this, cx| this.open_stash_dialog(StashDialog::Drop(s), w, cx))
+                        ws.update(cx, |this, cx| {
+                            this.open_stash_dialog(StashDialog::Drop(s), w, cx)
+                        })
                     }),
             )
     }

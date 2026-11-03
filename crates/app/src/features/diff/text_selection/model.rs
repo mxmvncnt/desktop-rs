@@ -32,18 +32,41 @@ pub struct TextSel {
 impl TextSel {
     /// The selection after a mouse press at `pos` in `text`: a click starts one (with shift extends
     /// `prev`), a double-click selects the word, a triple-click the line.
-    pub fn press(prev: Option<Self>, pos: TextPos, side: TextSide, clicks: usize, shift: bool, text: &str) -> Self {
+    pub fn press(
+        prev: Option<Self>,
+        pos: TextPos,
+        side: TextSide,
+        clicks: usize,
+        shift: bool,
+        text: &str,
+    ) -> Self {
         let prev = prev.filter(|s| s.side == side);
         match (clicks, prev) {
             (1, Some(prev)) if shift => Self { head: pos, ..prev },
             (2, _) => {
                 let w = word_at(text, pos.col);
-                Self { anchor: TextPos { col: w.start, ..pos }, head: TextPos { col: w.end, ..pos }, side }
+                Self {
+                    anchor: TextPos {
+                        col: w.start,
+                        ..pos
+                    },
+                    head: TextPos { col: w.end, ..pos },
+                    side,
+                }
             }
-            (n, _) if n >= 3 => {
-                Self { anchor: TextPos { col: 0, ..pos }, head: TextPos { col: text.len(), ..pos }, side }
-            }
-            _ => Self { anchor: pos, head: pos, side },
+            (n, _) if n >= 3 => Self {
+                anchor: TextPos { col: 0, ..pos },
+                head: TextPos {
+                    col: text.len(),
+                    ..pos
+                },
+                side,
+            },
+            _ => Self {
+                anchor: pos,
+                head: pos,
+                side,
+            },
         }
     }
 
@@ -74,8 +97,18 @@ impl TextSel {
     pub fn all(diff: &Diff, side: TextSide) -> Option<Self> {
         let first = diff.lines.iter().position(is_code)?;
         let last = diff.lines.iter().rposition(is_code)?;
-        let head = TextPos { line: last, col: diff.lines[last].text.len() };
-        Some(Self { anchor: TextPos { line: first, col: 0 }, head, side })
+        let head = TextPos {
+            line: last,
+            col: diff.lines[last].text.len(),
+        };
+        Some(Self {
+            anchor: TextPos {
+                line: first,
+                col: 0,
+            },
+            head,
+            side,
+        })
     }
 
     /// The selected text: code lines only, joined with newlines.
@@ -97,9 +130,16 @@ impl TextSel {
             }
             (side, Some(split)) => {
                 for row in &split.rows {
-                    let ix = if side == TextSide::Left { row.left } else { row.right };
+                    let ix = if side == TextSide::Left {
+                        row.left
+                    } else {
+                        row.right
+                    };
                     let ix = ix as usize;
-                    if ix != NONE as usize && (a.line..=b.line).contains(&ix) && is_code(&diff.lines[ix]) {
+                    if ix != NONE as usize
+                        && (a.line..=b.line).contains(&ix)
+                        && is_code(&diff.lines[ix])
+                    {
                         push(ix);
                     }
                 }
@@ -120,10 +160,23 @@ pub fn word_at(text: &str, col: usize) -> Range<usize> {
     let col = col.min(text.len());
     let before = text[..col].chars().next_back();
     let after = text[col..].chars().next();
-    let Some(pivot) = after.or(before) else { return col..col };
+    let Some(pivot) = after.or(before) else {
+        return col..col;
+    };
     let k = class(pivot);
-    let start = col - text[..col].chars().rev().take_while(|&c| class(c) == k).map(char::len_utf8).sum::<usize>();
-    let end = col + text[col..].chars().take_while(|&c| class(c) == k).map(char::len_utf8).sum::<usize>();
+    let start = col
+        - text[..col]
+            .chars()
+            .rev()
+            .take_while(|&c| class(c) == k)
+            .map(char::len_utf8)
+            .sum::<usize>();
+    let end = col
+        + text[col..]
+            .chars()
+            .take_while(|&c| class(c) == k)
+            .map(char::len_utf8)
+            .sum::<usize>();
     start..end
 }
 

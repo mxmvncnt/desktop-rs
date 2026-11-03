@@ -2,7 +2,8 @@
 
 use gd_ui::{Button, Theme};
 use gpui::{
-    App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
+    App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString, Styled,
+    Window, div, px,
 };
 use gpui_elements::editable_text::{EditableTextState, actions::Enter};
 
@@ -20,12 +21,16 @@ pub struct NewBranchForm {
 }
 
 impl NewBranchForm {
-
     fn hint(&self) -> SharedString {
         if self.name.is_empty() {
             SharedString::from("New branches start from the base above")
         } else {
-            format!("Creates {} from {} and switches to it", self.name, self.base.effective()).into()
+            format!(
+                "Creates {} from {} and switches to it",
+                self.name,
+                self.base.effective()
+            )
+            .into()
         }
     }
 }
@@ -53,14 +58,21 @@ impl RenderOnce for NewBranchForm {
             )
             .child(text_field("branch-name", &self.input, "Branch name", cx))
             .child(self.base)
-            .child(div().text_size(px(12.0)).text_color(theme.text_faint).child(hint))
+            .child(
+                div()
+                    .text_size(px(12.0))
+                    .text_color(theme.text_faint)
+                    .child(hint),
+            )
             .child(
                 Button::new("create-branch")
                     .primary()
                     .full_width()
                     .label("Create branch")
                     .disabled(self.name.is_empty())
-                    .on_click(move |_, w, cx| click_ws.update(cx, |this, cx| this.submit_new_branch(w, cx))),
+                    .on_click(move |_, w, cx| {
+                        click_ws.update(cx, |this, cx| this.submit_new_branch(w, cx))
+                    }),
             )
     }
 }

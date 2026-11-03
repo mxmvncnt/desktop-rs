@@ -5,8 +5,8 @@ use std::path::Path;
 use gd_ui::{Icon, Theme, motion};
 use gpui::{App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
-use crate::repo::RepoModel;
 use crate::components::SuggestionCard;
+use crate::repo::RepoModel;
 use crate::utils::paths::file_url;
 use crate::utils::text::plural;
 
@@ -21,11 +21,16 @@ pub struct NoChanges {
 impl NoChanges {
     pub fn new(r: &RepoModel) -> Self {
         let ahead_behind = r
-            .work.status
+            .work
+            .status
             .as_ref()
             .filter(|s| s.upstream.is_some())
             .map(|s| (s.ahead_behind.ahead, s.ahead_behind.behind));
-        Self { name: r.repo.name(), root: r.repo.root().display().to_string(), ahead_behind }
+        Self {
+            name: r.repo.name(),
+            root: r.repo.root().display().to_string(),
+            ahead_behind,
+        }
     }
 
     fn suggestions(&self) -> impl IntoElement {
@@ -91,11 +96,30 @@ impl RenderOnce for NoChanges {
             .flex_col()
             .items_center()
             .gap(px(6.0))
-            .child(div().text_size(px(20.0)).font_weight(gpui::FontWeight::SEMIBOLD).child("No local changes"))
-            .child(div().text_color(theme.text_muted).child(format!("There are no uncommitted changes in {}.", self.name)));
-        div().flex_1().flex().items_center().justify_center().child(motion::fade_in(
-            ("no-changes", self.name.len()),
-            div().flex().flex_col().items_center().gap(px(20.0)).child(heading).child(self.suggestions()),
-        ))
+            .child(
+                div()
+                    .text_size(px(20.0))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child("No local changes"),
+            )
+            .child(div().text_color(theme.text_muted).child(format!(
+                "There are no uncommitted changes in {}.",
+                self.name
+            )));
+        div()
+            .flex_1()
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(motion::fade_in(
+                ("no-changes", self.name.len()),
+                div()
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap(px(20.0))
+                    .child(heading)
+                    .child(self.suggestions()),
+            ))
     }
 }

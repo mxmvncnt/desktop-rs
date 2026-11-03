@@ -1,8 +1,4 @@
-use gd_ui::{
-    Icon, Theme, ToolbarButton, icon_button,
-    theme::TOOLBAR_HEIGHT,
-    vdivider,
-};
+use gd_ui::{Icon, Theme, ToolbarButton, icon_button, theme::TOOLBAR_HEIGHT, vdivider};
 use gpui::{
     App, ClickEvent, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce,
     SharedString, StatefulInteractiveElement, Styled, Window, div, px,
@@ -31,8 +27,12 @@ impl Toolbar {
         Self {
             ws: ws_entity,
             chrome,
-            repo_name: repo.map(|r| r.repo.name().into()).unwrap_or_else(|| "Select a repository".into()),
-            branch: repo.map(|r| r.branch_name().into()).unwrap_or_else(|| "—".into()),
+            repo_name: repo
+                .map(|r| r.repo.name().into())
+                .unwrap_or_else(|| "Select a repository".into()),
+            branch: repo
+                .map(|r| r.branch_name().into())
+                .unwrap_or_else(|| "—".into()),
             remote: RemoteButton::for_repo(repo),
             popover: ws.popover(),
             ci_open: ws.ci.read(cx).open,
@@ -60,7 +60,9 @@ impl RenderOnce for Toolbar {
             .rounded_t(px(chrome.radius()))
             .border_b_1()
             .border_color(theme.border)
-            .children(captions.and_then(|c| crate::platform::caption_buttons(&c.left, maximized, cx)))
+            .children(
+                captions.and_then(|c| crate::platform::caption_buttons(&c.left, maximized, cx)),
+            )
             .child(self.repo_button())
             .child(div().h(px(24.0)).child(vdivider(cx)))
             .child(self.branch_button())
@@ -73,48 +75,71 @@ impl RenderOnce for Toolbar {
             ))
             .child(self.ci_button())
             .child(self.settings_button())
-            .children(captions.and_then(|c| crate::platform::caption_buttons(&c.right, maximized, cx)))
+            .children(
+                captions.and_then(|c| crate::platform::caption_buttons(&c.right, maximized, cx)),
+            )
     }
 }
 
 impl Toolbar {
     fn repo_button(&self) -> impl IntoElement + use<> {
         let ws = self.ws.clone();
-        ToolbarButton::new("toolbar-repo", Icon::FolderWithFiles, "Current repository", self.repo_name.clone())
-            .chevron()
-            .width(280.0)
-            .open(self.popover == Some(Popover::Repositories))
-            .on_click(trigger_click(ws.clone(), Popover::Repositories))
-            .on_right_click(move |pos, w, cx| ws.update(cx, |this, cx| this.open_repo_menu(pos, w, cx)))
+        ToolbarButton::new(
+            "toolbar-repo",
+            Icon::FolderWithFiles,
+            "Current repository",
+            self.repo_name.clone(),
+        )
+        .chevron()
+        .width(280.0)
+        .open(self.popover == Some(Popover::Repositories))
+        .on_click(trigger_click(ws.clone(), Popover::Repositories))
+        .on_right_click(move |pos, w, cx| ws.update(cx, |this, cx| this.open_repo_menu(pos, w, cx)))
     }
 
     fn branch_button(&self) -> impl IntoElement + use<> {
         let ws = self.ws.clone();
-        ToolbarButton::new("toolbar-branch", Icon::GitBranch, "Current branch", self.branch.clone())
-            .chevron()
-            .width(260.0)
-            .open(matches!(self.popover, Some(Popover::Branches | Popover::NewBranch)))
-            .on_click(trigger_click(ws, Popover::Branches))
+        ToolbarButton::new(
+            "toolbar-branch",
+            Icon::GitBranch,
+            "Current branch",
+            self.branch.clone(),
+        )
+        .chevron()
+        .width(260.0)
+        .open(matches!(
+            self.popover,
+            Some(Popover::Branches | Popover::NewBranch)
+        ))
+        .on_click(trigger_click(ws, Popover::Branches))
     }
 
     fn remote_button(&self) -> impl IntoElement + use<> {
         let ws = self.ws.clone();
         let op = self.remote.op;
-        ToolbarButton::new("toolbar-remote", self.remote.icon, self.remote.caption.clone(), self.remote.title.clone())
-            .width(240.0)
-            .busy(self.remote.busy)
-            .on_click(move |_, _, cx| {
-                if let Some(op) = op {
-                    ws.update(cx, |this, cx| this.remote_action(op, cx))
-                }
-            })
+        ToolbarButton::new(
+            "toolbar-remote",
+            self.remote.icon,
+            self.remote.caption.clone(),
+            self.remote.title.clone(),
+        )
+        .width(240.0)
+        .busy(self.remote.busy)
+        .on_click(move |_, _, cx| {
+            if let Some(op) = op {
+                ws.update(cx, |this, cx| this.remote_action(op, cx))
+            }
+        })
     }
 
     fn ci_button(&self) -> impl IntoElement + use<> {
         let ws = self.ws.clone();
         div()
             .id("toolbar-ci-wrap")
-            .tooltip(gd_ui::tooltip(format!("CI pipelines ({}+Shift+I)", crate::platform::SECONDARY_LABEL)))
+            .tooltip(gd_ui::tooltip(format!(
+                "CI pipelines ({}+Shift+I)",
+                crate::platform::SECONDARY_LABEL
+            )))
             .child(
                 icon_button("toolbar-ci", Icon::Pipeline)
                     .selected(self.ci_open)
@@ -126,7 +151,10 @@ impl Toolbar {
         let ws = self.ws.clone();
         div()
             .id("toolbar-settings-wrap")
-            .tooltip(gd_ui::tooltip(format!("Settings ({}+,)", crate::platform::SECONDARY_LABEL)))
+            .tooltip(gd_ui::tooltip(format!(
+                "Settings ({}+,)",
+                crate::platform::SECONDARY_LABEL
+            )))
             .child(
                 icon_button("toolbar-settings", Icon::Settings)
                     .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.toggle_settings(cx))),
@@ -134,6 +162,9 @@ impl Toolbar {
     }
 }
 
-fn trigger_click(ws: Entity<Workspace>, p: Popover) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
+fn trigger_click(
+    ws: Entity<Workspace>,
+    p: Popover,
+) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
     move |ev, window, cx| ws.update(cx, |this, cx| this.click_popover_trigger(p, ev, window, cx))
 }

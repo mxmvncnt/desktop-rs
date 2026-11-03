@@ -19,7 +19,14 @@ pub enum RepoSettingsPage {
 }
 
 impl RepoSettingsPage {
-    pub const ALL: [RepoSettingsPage; 6] = [Self::Info, Self::Remotes, Self::Identity, Self::Account, Self::Ignore, Self::Config];
+    pub const ALL: [RepoSettingsPage; 6] = [
+        Self::Info,
+        Self::Remotes,
+        Self::Identity,
+        Self::Account,
+        Self::Ignore,
+        Self::Config,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -114,7 +121,15 @@ impl RepoSettingsStore {
             edit: None,
             error: None,
             notice: None,
-            inputs: RepoSettingsInputs { config_key: mk(cx), config_value: mk(cx), gitignore: mk(cx), exclude: mk(cx), remote_name: mk(cx), remote_url: mk(cx), remote_push_url: mk(cx) },
+            inputs: RepoSettingsInputs {
+                config_key: mk(cx),
+                config_value: mk(cx),
+                gitignore: mk(cx),
+                exclude: mk(cx),
+                remote_name: mk(cx),
+                remote_url: mk(cx),
+                remote_push_url: mk(cx),
+            },
             load: LoadSlot::default(),
             ignore_load: LoadSlot::default(),
         }

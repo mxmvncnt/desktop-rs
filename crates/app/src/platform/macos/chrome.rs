@@ -17,7 +17,9 @@ pub struct Chrome {
 
 impl Chrome {
     pub fn detect(window: &Window) -> Self {
-        Self { maximized: window.is_maximized() }
+        Self {
+            maximized: window.is_maximized(),
+        }
     }
 
     pub fn radius(&self) -> f32 {

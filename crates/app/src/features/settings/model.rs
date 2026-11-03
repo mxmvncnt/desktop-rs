@@ -70,8 +70,12 @@ pub struct Settings {
 
 impl Settings {
     pub fn load() -> Self {
-        let Some(path) = config_dir().map(|d| d.join("settings.toml")) else { return Self::default() };
-        let Ok(text) = std::fs::read_to_string(&path) else { return Self::default() };
+        let Some(path) = config_dir().map(|d| d.join("settings.toml")) else {
+            return Self::default();
+        };
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            return Self::default();
+        };
         toml::from_str(&text).unwrap_or_else(|e| {
             log::error!("cannot parse {}: {e}", path.display());
             Self::default()
@@ -85,8 +89,12 @@ impl Settings {
 
     pub fn save(&self) {
         let Some(dir) = config_dir() else { return };
-        let result = std::fs::create_dir_all(&dir)
-            .and_then(|()| std::fs::write(dir.join("settings.toml"), toml::to_string(self).unwrap_or_default()));
+        let result = std::fs::create_dir_all(&dir).and_then(|()| {
+            std::fs::write(
+                dir.join("settings.toml"),
+                toml::to_string(self).unwrap_or_default(),
+            )
+        });
         if let Err(e) = result {
             log::error!("cannot save settings: {e}");
         }

@@ -27,7 +27,10 @@ pub struct PartialFile {
 
 /// Whether row `ix` of a diff can be (de)selected for commit.
 pub fn selectable(diff: &Diff, ix: usize) -> bool {
-    matches!(diff.lines.get(ix).map(|l| l.kind), Some(DiffLineKind::Add | DiffLineKind::Delete))
+    matches!(
+        diff.lines.get(ix).map(|l| l.kind),
+        Some(DiffLineKind::Add | DiffLineKind::Delete)
+    )
 }
 
 /// Content of the file with only the rows for which `include(row)` is true
@@ -60,7 +63,9 @@ pub fn staged_text(diff: &Diff, include: impl Fn(usize) -> bool) -> Option<Strin
     let mut next_old = 0usize;
     for (ix, line) in diff.lines.iter().enumerate() {
         match line.kind {
-            DiffLineKind::Context => copy_old(&mut out, &old, &mut next_old, line.old_line? as usize),
+            DiffLineKind::Context => {
+                copy_old(&mut out, &old, &mut next_old, line.old_line? as usize)
+            }
             DiffLineKind::Delete => {
                 let o = line.old_line? as usize - 1;
                 copy_old(&mut out, &old, &mut next_old, o);
@@ -87,7 +92,9 @@ impl Repository {
     /// lines were selected.
     pub fn stage_partial(&self, files: &[PartialFile]) -> Result<()> {
         for f in files {
-            let current = self.read_side(&Side::Worktree(f.path.clone())).unwrap_or_default();
+            let current = self
+                .read_side(&Side::Worktree(f.path.clone()))
+                .unwrap_or_default();
             if current != f.source.new.as_bytes() {
                 return Err(GitError::Invalid(format!(
                     "{} changed on disk after you selected lines; review the selection and try again",
@@ -106,7 +113,10 @@ impl Repository {
                 .to_string();
             let mode = self.index_mode(f)?;
             if let Some(old) = &f.old_path {
-                self.git().args(["update-index", "--force-remove", "--"]).arg(old).run()?;
+                self.git()
+                    .args(["update-index", "--force-remove", "--"])
+                    .arg(old)
+                    .run()?;
             }
             self.git()
                 .args(["update-index", "--add", "--cacheinfo"])
@@ -120,13 +130,23 @@ impl Repository {
     /// keeping every other change. Refuses if the file changed on disk since
     /// the diff was made.
     pub fn discard_rows(&self, path: &str, diff: &Diff, rows: &[usize]) -> Result<()> {
-        let src = diff.source.as_ref().ok_or_else(|| GitError::Invalid(format!("{path} has no text diff")))?;
-        if self.read_side(&Side::Worktree(path.to_string())).unwrap_or_default() != src.new.as_bytes() {
-            return Err(GitError::Invalid(format!("{path} changed on disk; reopen it and try again")));
+        let src = diff
+            .source
+            .as_ref()
+            .ok_or_else(|| GitError::Invalid(format!("{path} has no text diff")))?;
+        if self
+            .read_side(&Side::Worktree(path.to_string()))
+            .unwrap_or_default()
+            != src.new.as_bytes()
+        {
+            return Err(GitError::Invalid(format!(
+                "{path} changed on disk; reopen it and try again"
+            )));
         }
         let content = staged_text(diff, |ix| !rows.contains(&ix))
             .ok_or_else(|| GitError::Invalid(format!("{path} is too large to discard lines")))?;
-        std::fs::write(self.root().join(path), content).map_err(|e| GitError::Io(format!("{path}: {e}")))
+        std::fs::write(self.root().join(path), content)
+            .map_err(|e| GitError::Io(format!("{path}: {e}")))
     }
 
     /// File mode for the staged entry: the working-tree executable bit on
@@ -136,7 +156,11 @@ impl Repository {
         {
             use std::os::unix::fs::PermissionsExt;
             if let Ok(meta) = std::fs::metadata(self.root().join(&f.path)) {
-                return Ok(if meta.permissions().mode() & 0o111 != 0 { "100755" } else { "100644" });
+                return Ok(if meta.permissions().mode() & 0o111 != 0 {
+                    "100755"
+                } else {
+                    "100644"
+                });
             }
         }
         if self.has_head() {

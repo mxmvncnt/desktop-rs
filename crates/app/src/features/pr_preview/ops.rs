@@ -53,7 +53,9 @@ impl RepoModel {
     /// `base` as the remote knows it (`origin/main` -> `main`).
     pub fn pr_base_on_remote(&self, base: &str) -> String {
         match self.branches.iter().find(|b| b.name == base) {
-            Some(b) if b.kind == BranchKind::Remote => base.split_once('/').map_or(base, |(_, n)| n).to_string(),
+            Some(b) if b.kind == BranchKind::Remote => {
+                base.split_once('/').map_or(base, |(_, n)| n).to_string()
+            }
             _ => base.to_string(),
         }
     }
@@ -70,14 +72,27 @@ impl RepoModel {
                 let base = chosen.or_else(|| repo.default_base_branch());
                 let remote_url = repo.tracking_remote_url();
                 let Some(b) = base.clone() else {
-                    return Ok(Loaded { base, comparison: None, remote_url, first: None });
+                    return Ok(Loaded {
+                        base,
+                        comparison: None,
+                        remote_url,
+                        first: None,
+                    });
                 };
                 let cmp = repo.compare(&b, "HEAD")?;
                 let first = match cmp.files.first() {
-                    Some(f) => Some((DiffPane::Pr.file_diff(&repo, &cmp.merge_base, f, opts)?, f.path.clone())),
+                    Some(f) => Some((
+                        DiffPane::Pr.file_diff(&repo, &cmp.merge_base, f, opts)?,
+                        f.path.clone(),
+                    )),
                     None => None,
                 };
-                Ok::<_, gd_git::GitError>(Loaded { base, comparison: Some(cmp), remote_url, first })
+                Ok::<_, gd_git::GitError>(Loaded {
+                    base,
+                    comparison: Some(cmp),
+                    remote_url,
+                    first,
+                })
             },
             |this, res, cx| {
                 this.pr.loading = false;

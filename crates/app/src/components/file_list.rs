@@ -30,9 +30,13 @@ impl RenderOnce for FileList {
                 .filter_map(|ix| {
                     let repo = repo.clone();
                     let file = detail.files.get(ix)?.clone();
-                    Some(FileRow::new(id, ix, file, detail.selected == Some(ix), move |_, cx| {
-                        repo.update(cx, |r, cx| r.select_file(pane, ix, cx))
-                    }))
+                    Some(FileRow::new(
+                        id,
+                        ix,
+                        file,
+                        detail.selected == Some(ix),
+                        move |_, cx| repo.update(cx, |r, cx| r.select_file(pane, ix, cx)),
+                    ))
                 })
                 .collect()
         })

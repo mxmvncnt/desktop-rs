@@ -2,7 +2,8 @@
 
 use gd_ui::{ResizeHandle, Theme, divider};
 use gpui::{
-    AnyElement, App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
+    AnyElement, App, Context, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
+    px,
 };
 
 use super::changes_panel::ChangesPanel;
@@ -35,7 +36,14 @@ impl Sidebar {
             }
             .into_any_element(),
         };
-        Self { tabs: SidebarTabs { tab, change_count: count, repo: repo.clone() }, body, corner_radius: ws.corner_radius,
+        Self {
+            tabs: SidebarTabs {
+                tab,
+                change_count: count,
+                repo: repo.clone(),
+            },
+            body,
+            corner_radius: ws.corner_radius,
             width: ws.sidebar_width(),
             handle: ResizeHandle::right_edge("sidebar-handle", SidebarResize).on_reset({
                 let ws = cx.entity();
@@ -65,4 +73,3 @@ impl RenderOnce for Sidebar {
             .child(self.body)
     }
 }
-

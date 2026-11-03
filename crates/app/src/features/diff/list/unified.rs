@@ -3,7 +3,9 @@
 use std::sync::Arc;
 
 use gd_git::Diff;
-use gpui::{App, IntoElement, ListState, Pixels, RenderOnce, SharedString, UniformListScrollHandle, Window};
+use gpui::{
+    App, IntoElement, ListState, Pixels, RenderOnce, SharedString, UniformListScrollHandle, Window,
+};
 
 use super::rows::rows_list;
 use super::text_flow::TextFlow;
@@ -31,10 +33,39 @@ pub struct UnifiedList {
 
 impl RenderOnce for UnifiedList {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let Self { diff, hl, select, exp, rows, num_w, scroll, wrap, flow, tsel, mono } = self;
-        rows_list("diff-lines", rows, wrap, &scroll, mono, move |ix, theme, cx| {
-            let sel = select.as_ref().map(|s| (s, s.repo.read(cx)));
-            UnifiedRows { diff: &diff, hl: hl.as_deref(), sel, exp: exp.as_ref(), num_w, flow, tsel: &tsel, theme }.row(ix)
-        })
+        let Self {
+            diff,
+            hl,
+            select,
+            exp,
+            rows,
+            num_w,
+            scroll,
+            wrap,
+            flow,
+            tsel,
+            mono,
+        } = self;
+        rows_list(
+            "diff-lines",
+            rows,
+            wrap,
+            &scroll,
+            mono,
+            move |ix, theme, cx| {
+                let sel = select.as_ref().map(|s| (s, s.repo.read(cx)));
+                UnifiedRows {
+                    diff: &diff,
+                    hl: hl.as_deref(),
+                    sel,
+                    exp: exp.as_ref(),
+                    num_w,
+                    flow,
+                    tsel: &tsel,
+                    theme,
+                }
+                .row(ix)
+            },
+        )
     }
 }

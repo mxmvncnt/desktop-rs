@@ -12,7 +12,10 @@
 
 use std::{collections::HashSet, time::Duration};
 
-use gpui::{Animation, AnimationExt, AnyElement, App, ElementId, Global, IntoElement, Styled, ease_out_quint, px};
+use gpui::{
+    Animation, AnimationExt, AnyElement, App, ElementId, Global, IntoElement, Styled,
+    ease_out_quint, px,
+};
 
 pub const HOVER_MS: u64 = 120;
 pub const FADE_IN: Duration = Duration::from_millis(500);

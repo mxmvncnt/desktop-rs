@@ -13,22 +13,40 @@ fn identity() {
     let repo = Repository::init(dir.join("repo")).unwrap();
 
     assert_eq!(gd_git::global_identity().unwrap(), Identity::default());
-    assert_eq!(repo.effective_identity().unwrap().source, IdentitySource::Unset);
+    assert_eq!(
+        repo.effective_identity().unwrap().source,
+        IdentitySource::Unset
+    );
 
-    let g = Identity { name: "Global Gal".into(), email: "gal@example.com".into() };
+    let g = Identity {
+        name: "Global Gal".into(),
+        email: "gal@example.com".into(),
+    };
     gd_git::set_global_identity(&g).unwrap();
     assert_eq!(gd_git::global_identity().unwrap(), g);
     let eff = repo.effective_identity().unwrap();
-    assert_eq!((eff.identity.clone(), eff.source), (g.clone(), IdentitySource::Global));
+    assert_eq!(
+        (eff.identity.clone(), eff.source),
+        (g.clone(), IdentitySource::Global)
+    );
 
-    let l = Identity { name: "Local Lou".into(), email: String::new() };
+    let l = Identity {
+        name: "Local Lou".into(),
+        email: String::new(),
+    };
     repo.set_local_identity(&l).unwrap();
     let eff = repo.effective_identity().unwrap();
     assert_eq!(eff.source, IdentitySource::Repository);
-    assert_eq!((eff.identity.name.as_str(), eff.identity.email.as_str()), ("Local Lou", "gal@example.com"));
+    assert_eq!(
+        (eff.identity.name.as_str(), eff.identity.email.as_str()),
+        ("Local Lou", "gal@example.com")
+    );
 
     repo.set_local_identity(&Identity::default()).unwrap();
-    assert_eq!(repo.effective_identity().unwrap().source, IdentitySource::Global);
+    assert_eq!(
+        repo.effective_identity().unwrap().source,
+        IdentitySource::Global
+    );
     gd_git::set_global_identity(&Identity::default()).unwrap();
     assert_eq!(gd_git::global_identity().unwrap(), Identity::default());
 }

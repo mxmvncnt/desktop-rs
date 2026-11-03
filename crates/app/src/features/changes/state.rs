@@ -19,13 +19,21 @@ pub struct SelectionSummary {
 impl SelectionSummary {
     pub fn of(r: &RepoModel) -> Self {
         let total = r.changes().len();
-        let included = total - r.changes().iter().filter(|c| r.work.excluded.contains(&c.path)).count();
+        let included = total
+            - r.changes()
+                .iter()
+                .filter(|c| r.work.excluded.contains(&c.path))
+                .count();
         let all = match included {
             0 => CheckState::Unchecked,
             i if i == total && r.work.partial.is_empty() => CheckState::Checked,
             _ => CheckState::Mixed,
         };
-        Self { total, included, all }
+        Self {
+            total,
+            included,
+            all,
+        }
     }
 }
 
@@ -47,19 +55,40 @@ impl CommitButton {
         let committing = r.committing;
         let conflicts = r.conflict_count();
         // Amending may change only the message, so no files are needed.
-        let enabled = (included > 0 || amending) && summary_ok && !committing && conflicts == 0 && r.merge.busy.is_none();
+        let enabled = (included > 0 || amending)
+            && summary_ok
+            && !committing
+            && conflicts == 0
+            && r.merge.busy.is_none();
         let label: SharedString = if amending {
-            if committing { "Amending…".into() } else { "Amend last commit".into() }
+            if committing {
+                "Amending…".into()
+            } else {
+                "Amend last commit".into()
+            }
         } else if committing {
             "Committing…".into()
         } else if conflicts > 0 {
-            format!("Resolve {conflicts} conflict{} to commit", plural(conflicts as u32)).into()
+            format!(
+                "Resolve {conflicts} conflict{} to commit",
+                plural(conflicts as u32)
+            )
+            .into()
         } else if merging {
             "Commit merge".into()
         } else {
             format!("Commit to {}", r.branch_name()).into()
         };
-        let head_pushed = r.history.push_state_loaded && r.log.commits.first().is_some_and(|c| !r.is_unpushed(&c.sha));
-        Self { label, enabled, head_pushed, default_summary }
+        let head_pushed = r.history.push_state_loaded
+            && r.log
+                .commits
+                .first()
+                .is_some_and(|c| !r.is_unpushed(&c.sha));
+        Self {
+            label,
+            enabled,
+            head_pushed,
+            default_summary,
+        }
     }
 }

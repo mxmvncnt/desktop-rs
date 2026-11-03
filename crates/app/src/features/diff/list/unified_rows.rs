@@ -4,7 +4,9 @@
 
 use gd_git::{Diff, DiffLineKind};
 use gd_ui::Theme;
-use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, div, prelude::*, px};
+use gpui::{
+    AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, div, prelude::*, px,
+};
 
 use super::text_flow::{TextFlow, marker_cell, row_box, text_cell};
 use crate::features::diff::expand::{Expander, header_hunk, trailing_row};
@@ -49,12 +51,22 @@ pub(super) fn line_look(kind: DiffLineKind, theme: &Theme) -> LineLook {
         DiffLineKind::Delete => theme.diff_del,
         _ => theme.text_faint,
     };
-    LineLook { bg, fg, marker, marker_color }
+    LineLook {
+        bg,
+        fg,
+        marker,
+        marker_color,
+    }
 }
 
 impl UnifiedRows<'_> {
     fn gutter_w(&self) -> Pixels {
-        number_cell_w(self.num_w, 2.0, self.sel.is_some()) + if self.sel.is_some() { px(HANDLE_W) } else { px(0.0) }
+        number_cell_w(self.num_w, 2.0, self.sel.is_some())
+            + if self.sel.is_some() {
+                px(HANDLE_W)
+            } else {
+                px(0.0)
+            }
     }
 
     pub fn row(&self, ix: usize) -> AnyElement {
@@ -66,7 +78,9 @@ impl UnifiedRows<'_> {
         let hunk = line.kind == DiffLineKind::Hunk;
         let row = row_box(self.flow)
             .bg(look.bg)
-            .when(hunk && ix > 0, |d| d.border_t_1().border_color(self.theme.border))
+            .when(hunk && ix > 0, |d| {
+                d.border_t_1().border_color(self.theme.border)
+            })
             .when(hunk, |d| d.text_color(self.theme.text_faint).italic());
         let (text, layout) = self.text(ix, look.fg);
         match header_hunk(self.diff, ix) {
@@ -74,8 +88,18 @@ impl UnifiedRows<'_> {
             Some(h) => self.header_row(row, h, text, look.marker_color),
             None if hunk => self.line_row(row, ix, text, &look, None),
             None => {
-                let target = TextTarget { line: ix, side: TextSide::Unified, layout };
-                self.line_row(self.tsel.bind_drag(row, vec![target.clone()]), ix, text, &look, Some(target))
+                let target = TextTarget {
+                    line: ix,
+                    side: TextSide::Unified,
+                    layout,
+                };
+                self.line_row(
+                    self.tsel.bind_drag(row, vec![target.clone()]),
+                    ix,
+                    text,
+                    &look,
+                    Some(target),
+                )
             }
         }
     }
@@ -84,18 +108,38 @@ impl UnifiedRows<'_> {
         let theme = self.theme;
         let line = &self.diff.lines[ix];
         let spans = self.hl.map(|h| h.row(ix)).unwrap_or(&[]);
-        let selected = self.tsel.cols(ix, TextSide::Unified, line.text.len()).filter(|_| line.kind != DiffLineKind::Hunk);
-        line_text(line, spans, selected.map(|r| (r, self.tsel.color)), fg, theme)
+        let selected = self
+            .tsel
+            .cols(ix, TextSide::Unified, line.text.len())
+            .filter(|_| line.kind != DiffLineKind::Hunk);
+        line_text(
+            line,
+            spans,
+            selected.map(|r| (r, self.tsel.color)),
+            fg,
+            theme,
+        )
     }
 
     fn header_row(&self, row: Div, h: usize, text: AnyElement, marker_color: Hsla) -> AnyElement {
-        row.child(Expander::gutter(self.exp, self.diff, h, self.gutter_w(), self.theme).border_r_1().border_color(self.theme.border))
-            .child(marker_cell("", marker_color))
-            .child(text_cell(text, self.flow))
-            .into_any_element()
+        row.child(
+            Expander::gutter(self.exp, self.diff, h, self.gutter_w(), self.theme)
+                .border_r_1()
+                .border_color(self.theme.border),
+        )
+        .child(marker_cell("", marker_color))
+        .child(text_cell(text, self.flow))
+        .into_any_element()
     }
 
-    fn line_row(&self, row: Div, ix: usize, text: AnyElement, look: &LineLook, target: Option<TextTarget>) -> AnyElement {
+    fn line_row(
+        &self,
+        row: Div,
+        ix: usize,
+        text: AnyElement,
+        look: &LineLook,
+        target: Option<TextTarget>,
+    ) -> AnyElement {
         let (diff, theme) = (self.diff, self.theme);
         let line = &diff.lines[ix];
         row
@@ -103,17 +147,34 @@ impl UnifiedRows<'_> {
             .when_some(self.sel, |d, (s, r)| {
                 let block = RepoModel::change_block(diff, ix);
                 let first = block.as_ref().is_some_and(|b| b.start == ix);
-                d.child(s.handle_cell(block, if first { BlockRow::First } else { BlockRow::Rest }, ix, r, theme))
+                d.child(s.handle_cell(
+                    block,
+                    if first {
+                        BlockRow::First
+                    } else {
+                        BlockRow::Rest
+                    },
+                    ix,
+                    r,
+                    theme,
+                ))
             })
-            .child(div().flex().flex_none().border_r_1().border_color(theme.border).child(number_cell(
-                self.sel,
-                diff,
-                Some(ix),
-                &[line.old_line, line.new_line],
-                ("line-no", ix),
-                self.num_w,
-                theme,
-            )))
+            .child(
+                div()
+                    .flex()
+                    .flex_none()
+                    .border_r_1()
+                    .border_color(theme.border)
+                    .child(number_cell(
+                        self.sel,
+                        diff,
+                        Some(ix),
+                        &[line.old_line, line.new_line],
+                        ("line-no", ix),
+                        self.num_w,
+                        theme,
+                    )),
+            )
             .child(marker_cell(look.marker, look.marker_color))
             .child(match target {
                 Some(t) => self.tsel.bind_text(text_cell(text, self.flow), t),

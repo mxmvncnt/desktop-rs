@@ -4,8 +4,8 @@
 use gd_git::{Diff, Expansion};
 use gd_ui::{Icon, Theme, icon, theme::DIFF_ROW_HEIGHT};
 use gpui::{
-    AnyElement, App, Div, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, RenderOnce,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+    AnyElement, App, Div, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    Pixels, RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::features::diff::list::{TextFlow, row_box};
@@ -21,7 +21,10 @@ pub struct Expander {
 impl Expander {
     /// Whether a trailing "expand down" row follows the last hunk.
     pub fn has_trailing(diff: &Diff) -> bool {
-        diff.hunks.len().checked_sub(1).is_some_and(|last| gd_git::gap_below(diff, last) > 0)
+        diff.hunks
+            .len()
+            .checked_sub(1)
+            .is_some_and(|last| gd_git::gap_below(diff, last) > 0)
     }
 
     /// Buttons for hunk header `h`, or for the trailing row (`h == hunks.len()`):
@@ -69,18 +72,30 @@ impl Expander {
 }
 
 /// The trailing row after the last hunk: an "expand down" gutter.
-pub fn trailing_row(exp: Option<&Expander>, diff: &Diff, width: Pixels, flow: TextFlow, theme: &Theme) -> AnyElement {
+pub fn trailing_row(
+    exp: Option<&Expander>,
+    diff: &Diff,
+    width: Pixels,
+    flow: TextFlow,
+    theme: &Theme,
+) -> AnyElement {
     row_box(flow)
         .bg(theme.diff_hunk_bg)
         .border_t_1()
         .border_color(theme.border)
-        .child(Expander::gutter(exp, diff, diff.hunks.len(), width, theme).border_r_1().border_color(theme.border))
+        .child(
+            Expander::gutter(exp, diff, diff.hunks.len(), width, theme)
+                .border_r_1()
+                .border_color(theme.border),
+        )
         .into_any_element()
 }
 
 /// Hunk index of header row `ix`.
 pub fn header_hunk(diff: &Diff, ix: usize) -> Option<usize> {
-    diff.hunks.binary_search_by_key(&ix, |h| h.header_index).ok()
+    diff.hunks
+        .binary_search_by_key(&ix, |h| h.header_index)
+        .ok()
 }
 
 #[derive(IntoElement)]

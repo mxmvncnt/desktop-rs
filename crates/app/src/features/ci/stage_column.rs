@@ -10,7 +10,12 @@ use super::status_badge::{look, status_icon};
 
 pub const COLUMN_WIDTH: f32 = 240.0;
 
-pub fn stage_column(stage: &Stage, caps: Capabilities, store: &Entity<CiStore>, cx: &App) -> impl IntoElement + use<> {
+pub fn stage_column(
+    stage: &Stage,
+    caps: Capabilities,
+    store: &Entity<CiStore>,
+    cx: &App,
+) -> impl IntoElement + use<> {
     let theme = Theme::of(cx);
     div()
         .flex()
@@ -28,8 +33,24 @@ pub fn stage_column(stage: &Stage, caps: Capabilities, store: &Entity<CiStore>, 
                 .rounded(px(8.0))
                 .bg(theme.ink(0.05))
                 .child(status_icon(look(stage.status, false), 16.0, theme))
-                .child(div().flex_1().truncate().font_weight(gpui::FontWeight::MEDIUM).child(stage.name.clone()))
-                .child(div().text_size(px(11.0)).text_color(theme.text_faint).child(stage.jobs.len().to_string())),
+                .child(
+                    div()
+                        .flex_1()
+                        .truncate()
+                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .child(stage.name.clone()),
+                )
+                .child(
+                    div()
+                        .text_size(px(11.0))
+                        .text_color(theme.text_faint)
+                        .child(stage.jobs.len().to_string()),
+                ),
         )
-        .children(stage.jobs.iter().map(|job| job_card(job, caps, store.clone(), cx)))
+        .children(
+            stage
+                .jobs
+                .iter()
+                .map(|job| job_card(job, caps, store.clone(), cx)),
+        )
 }

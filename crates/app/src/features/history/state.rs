@@ -54,13 +54,21 @@ pub struct HistoryUi {
 
 impl HistoryUi {
     pub fn new(cx: &mut Context<Workspace>) -> Self {
-        let mk = |cx: &mut Context<Workspace>| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
+        let mk = |cx: &mut Context<Workspace>| {
+            cx.new(|cx| EditableTextState::new(StringStorage::default(), cx))
+        };
         let (msg_summary, msg_desc, name, search) = (mk(cx), mk(cx), mk(cx), mk(cx));
         let subs = [&msg_summary, &msg_desc, &name, &search]
             .into_iter()
             .map(|i| cx.subscribe(i, |_: &mut Workspace, _, _: &TextChanged, cx| cx.notify()))
             .collect();
-        Self { msg_summary, msg_desc, name, search, _subs: subs }
+        Self {
+            msg_summary,
+            msg_desc,
+            name,
+            search,
+            _subs: subs,
+        }
     }
 }
 
@@ -103,7 +111,10 @@ pub enum HistoryAction {
 impl HistoryAction {
     /// Rewrites history, so it warns first when the commit is already pushed.
     pub fn rewrites_history(&self) -> bool {
-        matches!(self, Self::Reword | Self::Undo | Self::Reset | Self::MoveUp | Self::MoveDown)
+        matches!(
+            self,
+            Self::Reword | Self::Undo | Self::Reset | Self::MoveUp | Self::MoveDown
+        )
     }
 }
 
@@ -117,16 +128,28 @@ pub struct CherryPickTarget {
 
 #[derive(Clone)]
 pub enum HistoryDialog {
-    Reset { commit: Commit, mode: ResetMode },
+    Reset {
+        commit: Commit,
+        mode: ResetMode,
+    },
     Checkout(Commit),
     AmendPushed(Commit),
     Reword(Commit),
     /// Undo / reset / move on a commit that's already on the remote: allowed,
     /// but warn that the branch will need a force push. Confirm runs `action`.
-    PushedRewrite { action: HistoryAction, commit: Commit },
+    PushedRewrite {
+        action: HistoryAction,
+        commit: Commit,
+    },
     CreateBranch(Commit),
     CreateTag(Commit),
     DeleteTag(String),
-    CherryPick { commits: Vec<Commit>, target: CherryPickTarget },
-    Squash { commits: Vec<Commit>, any_pushed: bool },
+    CherryPick {
+        commits: Vec<Commit>,
+        target: CherryPickTarget,
+    },
+    Squash {
+        commits: Vec<Commit>,
+        any_pushed: bool,
+    },
 }

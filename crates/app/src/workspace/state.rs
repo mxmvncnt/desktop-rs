@@ -2,14 +2,14 @@ use gpui::{Entity, FocusHandle, SharedString, Subscription, Task, UniformListScr
 
 use super::overlay::Overlay;
 use crate::features::accounts::AccountsStore;
-use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::branches::BranchUi;
-use crate::features::ci::{CiInputs, CiStore};
 use crate::features::changes::CommitBox;
+use crate::features::ci::{CiInputs, CiStore};
 use crate::features::diff::{DiffSelectUi, DiffView};
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
 use crate::features::pickers::PopoverStore;
+use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::settings::{Settings, SettingsPage};
 use crate::features::stashes::StashUi;
 use crate::repo::RepoModel;

@@ -1,6 +1,9 @@
 //! Checkbox with checked / unchecked / mixed states.
 
-use gpui::{App, ClickEvent, ElementId, IntoElement, ParentElement, RenderOnce, Styled, Window, div, millis, prelude::*, px};
+use gpui::{
+    App, ClickEvent, ElementId, IntoElement, ParentElement, RenderOnce, Styled, Window, div,
+    millis, prelude::*, px,
+};
 
 use super::{ClickHandler, icon, mixed_mark};
 use crate::assets::Icon;

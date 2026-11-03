@@ -11,24 +11,63 @@ use crate::workspace::Workspace;
 
 pub fn views() -> &'static [View] {
     &[
-        View { name: "split", steps: &[options] },
-        View { name: "split-history", steps: &[options] },
-        View { name: "hide-ws", steps: &[options] },
-        View { name: "split-ws", steps: &[options] },
-        View { name: "diff-options-menu", steps: &[options] },
+        View {
+            name: "split",
+            steps: &[options],
+        },
+        View {
+            name: "split-history",
+            steps: &[options],
+        },
+        View {
+            name: "hide-ws",
+            steps: &[options],
+        },
+        View {
+            name: "split-ws",
+            steps: &[options],
+        },
+        View {
+            name: "diff-options-menu",
+            steps: &[options],
+        },
         // Long lines: wrapped, or scrolled 160px right (both columns in split).
-        View { name: "wrap", steps: &[long_lines] },
-        View { name: "split-wrap", steps: &[long_lines] },
-        View { name: "hscroll", steps: &[long_lines] },
-        View { name: "split-hscroll", steps: &[long_lines] },
-        View { name: "select*", steps: &[select_mode, select_text] },
-        View { name: "partial*", steps: &[partial_file, partial_rows] },
-        View { name: "expanded*", steps: &[expanded_mode, expand_hunks] },
+        View {
+            name: "wrap",
+            steps: &[long_lines],
+        },
+        View {
+            name: "split-wrap",
+            steps: &[long_lines],
+        },
+        View {
+            name: "hscroll",
+            steps: &[long_lines],
+        },
+        View {
+            name: "split-hscroll",
+            steps: &[long_lines],
+        },
+        View {
+            name: "select*",
+            steps: &[select_mode, select_text],
+        },
+        View {
+            name: "partial*",
+            steps: &[partial_file, partial_rows],
+        },
+        View {
+            name: "expanded*",
+            steps: &[expanded_mode, expand_hunks],
+        },
     ]
 }
 
 fn options(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Workspace>) {
-    ws.settings.diff_split = matches!(view, "split" | "split-history" | "split-ws" | "diff-options-menu");
+    ws.settings.diff_split = matches!(
+        view,
+        "split" | "split-history" | "split-ws" | "diff-options-menu"
+    );
     ws.settings.diff_ignore_whitespace = matches!(view, "hide-ws" | "split-ws");
     ws.apply_diff_options(cx);
     if let (true, Some(r)) = (view == "split-history", &ws.repo) {
@@ -61,21 +100,41 @@ fn select_mode(ws: &mut Workspace, view: &str, _: &mut Window, cx: &mut Context<
 
 /// ...then a preset selection across several lines.
 fn select_text(ws: &mut Workspace, view: &str, _: &mut Window, cx: &mut Context<Workspace>) {
-    let Some(diff) = ws.diff_view.shown_diff() else { return };
-    let side = if view.contains("split") { TextSide::Right } else { TextSide::Unified };
+    let Some(diff) = ws.diff_view.shown_diff() else {
+        return;
+    };
+    let side = if view.contains("split") {
+        TextSide::Right
+    } else {
+        TextSide::Unified
+    };
     let lines: Vec<usize> = (0..diff.lines.len())
-        .filter(|&i| diff.lines[i].kind != gd_git::DiffLineKind::Hunk && !diff.lines[i].text.is_empty())
+        .filter(|&i| {
+            diff.lines[i].kind != gd_git::DiffLineKind::Hunk && !diff.lines[i].text.is_empty()
+        })
         .filter(|&i| side != TextSide::Right || diff.lines[i].kind != gd_git::DiffLineKind::Delete)
         .collect();
-    let (Some(&a), Some(&b)) = (lines.get(3), lines.get(9)) else { return };
-    let head = TextPos { line: b, col: diff.lines[b].text.len().min(14) };
-    ws.diff_view.text_sel = Some(TextSel { anchor: TextPos { line: a, col: 6 }, head, side });
+    let (Some(&a), Some(&b)) = (lines.get(3), lines.get(9)) else {
+        return;
+    };
+    let head = TextPos {
+        line: b,
+        col: diff.lines[b].text.len().min(14),
+    };
+    ws.diff_view.text_sel = Some(TextSel {
+        anchor: TextPos { line: a, col: 6 },
+        head,
+        side,
+    });
     cx.notify();
 }
 
 /// `partial[-split][@N]`: file N, ...
 fn partial_file(ws: &mut Workspace, view: &str, _: &mut Window, cx: &mut Context<Workspace>) {
-    let n = view.split_once('@').and_then(|(_, n)| n.parse().ok()).unwrap_or(0);
+    let n = view
+        .split_once('@')
+        .and_then(|(_, n)| n.parse().ok())
+        .unwrap_or(0);
     ws.settings.diff_split = view.starts_with("partial-split");
     ws.apply_diff_options(cx);
     if let Some(r) = &ws.repo {
@@ -87,13 +146,20 @@ fn partial_file(ws: &mut Workspace, view: &str, _: &mut Window, cx: &mut Context
 fn partial_rows(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
     if let Some(r) = &ws.repo {
         r.update(cx, |r, cx| {
-            let Some(diff) = r.work.detail.diff.clone() else { return };
-            let rows: Vec<usize> = (0..diff.lines.len()).filter(|&i| gd_git::selectable(&diff, i)).collect();
+            let Some(diff) = r.work.detail.diff.clone() else {
+                return;
+            };
+            let rows: Vec<usize> = (0..diff.lines.len())
+                .filter(|&i| gd_git::selectable(&diff, i))
+                .collect();
             // Deselect the 2nd selectable row and the last change block.
             if let Some(&ix) = rows.get(1) {
                 r.toggle_row(ix, cx);
             }
-            if let Some(b) = rows.last().and_then(|&ix| crate::repo::RepoModel::change_block(&diff, ix)) {
+            if let Some(b) = rows
+                .last()
+                .and_then(|&ix| crate::repo::RepoModel::change_block(&diff, ix))
+            {
                 r.toggle_block(b, cx);
             }
         });
@@ -110,7 +176,12 @@ fn expanded_mode(ws: &mut Workspace, view: &str, _: &mut Window, cx: &mut Contex
 fn expand_hunks(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
     if let Some(r) = &ws.repo {
         r.update(cx, |r, cx| {
-            let last = r.work.detail.diff.as_ref().map_or(0, |d| d.hunks.len().saturating_sub(1));
+            let last = r
+                .work
+                .detail
+                .diff
+                .as_ref()
+                .map_or(0, |d| d.hunks.len().saturating_sub(1));
             r.expand_diff(DiffPane::Changes, gd_git::Expansion::Down(0), cx);
             r.expand_diff(DiffPane::Changes, gd_git::Expansion::All(last), cx);
         });

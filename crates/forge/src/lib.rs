@@ -15,8 +15,8 @@ mod repo_ref;
 mod workflow;
 
 pub use client::{Client, Forge};
-pub use log::{Color, Line, Log, Section, Span, Style, parse_log};
 pub use error::{Error, Result};
+pub use log::{Color, Line, Log, Section, Span, Style, parse_log};
 pub use model::*;
 pub use repo_ref::RepoRef;
 pub use workflow::stages_from_workflow;

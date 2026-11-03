@@ -15,7 +15,12 @@ impl RenderOnce for SearchBox {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         div()
             .flex_none()
-            .child(div().p(px(8.0)).child(text_field("history-search", &self.input, "Search commits", cx)))
+            .child(div().p(px(8.0)).child(text_field(
+                "history-search",
+                &self.input,
+                "Search commits",
+                cx,
+            )))
             .child(divider(cx))
     }
 }

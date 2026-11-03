@@ -3,7 +3,9 @@
 
 use gd_git::MergePreview;
 use gd_ui::{Icon, Theme, icon};
-use gpui::{App, Hsla, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px};
+use gpui::{
+    App, Hsla, IntoElement, ParentElement, RenderOnce, Styled, Window, div, prelude::*, px,
+};
 
 use super::state::MergeMode;
 use crate::utils::text::plural;
@@ -26,11 +28,18 @@ enum Part {
 impl RenderOnce for MergePreviewLine {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
-        let line = div().flex().flex_wrap().items_center().gap_x(px(4.0)).text_size(px(12.5));
+        let line = div()
+            .flex()
+            .flex_wrap()
+            .items_center()
+            .gap_x(px(4.0))
+            .text_size(px(12.5));
         let Some(p) = &self.preview else {
             return self.placeholder(line, &theme).into_any_element();
         };
-        let sentence = sentence(self.mode, &self.current, p).into_iter().fold(line, |l, part| l.child(part_el(part, &theme)));
+        let sentence = sentence(self.mode, &self.current, p)
+            .into_iter()
+            .fold(line, |l, part| l.child(part_el(part, &theme)));
         div()
             .flex()
             .flex_col()
@@ -62,11 +71,17 @@ impl MergePreviewLine {
             Some(c) if !c.is_empty() => Some(note(
                 Icon::Warning,
                 theme.warning,
-                format!("{} conflicted file{} expected. You'll resolve them next.", c.len(), plural(c.len() as u32)),
+                format!(
+                    "{} conflicted file{} expected. You'll resolve them next.",
+                    c.len(),
+                    plural(c.len() as u32)
+                ),
             )),
-            Some(_) if p.behind > 0 && self.mode != MergeMode::Rebase => {
-                Some(note(Icon::Check, theme.success, "No conflicts expected.".to_string()))
-            }
+            Some(_) if p.behind > 0 && self.mode != MergeMode::Rebase => Some(note(
+                Icon::Check,
+                theme.success,
+                "No conflicts expected.".to_string(),
+            )),
             _ => None,
         }
     }
@@ -99,8 +114,15 @@ fn sentence(mode: MergeMode, current: &str, p: &MergePreview) -> Vec<Part> {
     let b = |t: String| Part::Bold(t);
     let commits = |n: u32| format!("{n} commit{}", plural(n));
     match (mode, p.ahead) {
-        (MergeMode::Rebase, 0) => vec![b(current.to_string()), s("is already based on"), b(format!("{}.", p.branch))],
-        (_, 0) => vec![s("This branch is up to date with"), b(format!("{current}."))],
+        (MergeMode::Rebase, 0) => vec![
+            b(current.to_string()),
+            s("is already based on"),
+            b(format!("{}.", p.branch)),
+        ],
+        (_, 0) => vec![
+            s("This branch is up to date with"),
+            b(format!("{current}.")),
+        ],
         (MergeMode::Merge, n) => vec![
             s("This will merge"),
             b(commits(n)),
@@ -118,7 +140,12 @@ fn sentence(mode: MergeMode, current: &str, p: &MergePreview) -> Vec<Part> {
             b(format!("{current}.")),
         ],
         (MergeMode::Rebase, _) if p.behind == 0 => {
-            vec![s("This will fast-forward"), b(current.to_string()), s("to"), b(format!("{}.", p.branch))]
+            vec![
+                s("This will fast-forward"),
+                b(current.to_string()),
+                s("to"),
+                b(format!("{}.", p.branch)),
+            ]
         }
         (MergeMode::Rebase, _) => vec![
             s("This will replay"),

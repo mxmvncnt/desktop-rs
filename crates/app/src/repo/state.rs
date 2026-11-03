@@ -47,12 +47,18 @@ pub struct LastCommit {
 /// Emitted for the workspace, which owns the commit text inputs.
 pub enum RepoEvent {
     /// The last commit was undone: put the message back in the commit box.
-    CommitUndone { summary: String, description: String },
+    CommitUndone {
+        summary: String,
+        description: String,
+    },
     /// Checkout requested while the working tree has changes: the workspace
     /// asks the user whether to stash them or bring them along.
     SwitchBranchWithChanges(Branch),
     /// A merge-like operation paused; git prepared this commit message.
-    PreparedMessage { summary: String, description: String },
+    PreparedMessage {
+        summary: String,
+        description: String,
+    },
 }
 
 impl gpui::EventEmitter<RepoEvent> for RepoModel {}
@@ -158,7 +164,13 @@ impl RepoModel {
             diff_options: DiffOptions::default(),
             work: Default::default(),
             sync: Default::default(),
-            log: HistoryLog { detail: DiffDetail { load: LoadSlot::late(), ..Default::default() }, ..Default::default() },
+            log: HistoryLog {
+                detail: DiffDetail {
+                    load: LoadSlot::late(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
             hl_cache: HighlightCache::default(),
             history: Default::default(),
             branches: Vec::new(),
@@ -187,7 +199,10 @@ impl RepoModel {
 
     /// A merge-like operation is paused and the next commit finishes it.
     pub fn merging(&self) -> bool {
-        self.merge.in_progress.as_ref().is_some_and(|p| p.commit_finishes())
+        self.merge
+            .in_progress
+            .as_ref()
+            .is_some_and(|p| p.commit_finishes())
     }
 
     pub fn selected_change_file(&self) -> Option<&FileChange> {
@@ -208,6 +223,10 @@ impl RepoModel {
     }
 
     pub fn changes(&self) -> &[FileChange] {
-        self.work.status.as_ref().map(|s| s.files.as_slice()).unwrap_or(&[])
+        self.work
+            .status
+            .as_ref()
+            .map(|s| s.files.as_slice())
+            .unwrap_or(&[])
     }
 }

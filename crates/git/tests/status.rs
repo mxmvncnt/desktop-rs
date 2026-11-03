@@ -12,7 +12,10 @@ fn status_kinds_branch_and_upstream() {
     sh(&dir, &["config", "user.name", "T"]);
     sh(&dir, &["checkout", "-q", "-b", "main"]);
     let unborn = repo.status().unwrap();
-    assert_eq!((unborn.branch.as_deref(), unborn.head_oid), (Some("main"), None));
+    assert_eq!(
+        (unborn.branch.as_deref(), unborn.head_oid),
+        (Some("main"), None)
+    );
 
     for f in ["keep", "gone", "old"] {
         std::fs::write(dir.join(f), format!("{f} content\nline\nline\nline\n")).unwrap();
@@ -28,7 +31,11 @@ fn status_kinds_branch_and_upstream() {
     sh(&dir, &["add", "added"]);
 
     let st = repo.status().unwrap();
-    let got: Vec<_> = st.files.iter().map(|f| (f.path.as_str(), f.old_path.as_deref(), f.status)).collect();
+    let got: Vec<_> = st
+        .files
+        .iter()
+        .map(|f| (f.path.as_str(), f.old_path.as_deref(), f.status))
+        .collect();
     assert_eq!(
         got,
         [
@@ -42,12 +49,21 @@ fn status_kinds_branch_and_upstream() {
     assert!(st.head_oid.is_some() && st.upstream.is_none());
 
     sh(&dir, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
-    sh(&dir, &["remote", "add", "origin", "https://example.com/o/r.git"]);
+    sh(
+        &dir,
+        &["remote", "add", "origin", "https://example.com/o/r.git"],
+    );
     sh(&dir, &["config", "branch.main.remote", "origin"]);
     sh(&dir, &["config", "branch.main.merge", "refs/heads/main"]);
     sh(&dir, &["add", "-A"]);
     sh(&dir, &["commit", "-qm", "two"]);
     let st = repo.status().unwrap();
     assert_eq!(st.upstream.as_deref(), Some("origin/main"));
-    assert_eq!(st.ahead_behind, AheadBehind { ahead: 1, behind: 0 });
+    assert_eq!(
+        st.ahead_behind,
+        AheadBehind {
+            ahead: 1,
+            behind: 0
+        }
+    );
 }

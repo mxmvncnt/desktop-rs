@@ -17,20 +17,29 @@ impl RenderOnce for DiffDisplayOptions {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx);
         let settings = &self.ws.read(cx).settings;
-        let (split, wrap, hidden) = (settings.diff_split, settings.diff_wrap, settings.diff_ignore_whitespace);
+        let (split, wrap, hidden) = (
+            settings.diff_split,
+            settings.diff_wrap,
+            settings.diff_ignore_whitespace,
+        );
         let (ws_tabs, ws_wrap, ws_hide) = (self.ws.clone(), self.ws.clone(), self.ws);
         let tabs = div().px(px(2.0)).pb(px(6.0)).child(
             Tabs::new("diff-display", usize::from(split))
                 .tab("Unified", None)
                 .tab("Split", None)
-                .on_select(move |ix, _, cx| ws_tabs.update(cx, |this, cx| this.set_diff_split(ix == 1, cx))),
+                .on_select(move |ix, _, cx| {
+                    ws_tabs.update(cx, |this, cx| this.set_diff_split(ix == 1, cx))
+                }),
         );
         let wrap_row = CheckRow::new("diff-opt-wrap", "Wrap long lines", wrap, move |_, cx| {
             ws_wrap.update(cx, |this, cx| this.set_diff_wrap(!wrap, cx))
         });
-        let hide_row = CheckRow::new("diff-opt-ws", "Hide whitespace changes", hidden, move |_, cx| {
-            ws_hide.update(cx, |this, cx| this.set_ignore_whitespace(!hidden, cx))
-        });
+        let hide_row = CheckRow::new(
+            "diff-opt-ws",
+            "Hide whitespace changes",
+            hidden,
+            move |_, cx| ws_hide.update(cx, |this, cx| this.set_ignore_whitespace(!hidden, cx)),
+        );
         if self.sectioned {
             div()
                 .flex()
@@ -42,7 +51,13 @@ impl RenderOnce for DiffDisplayOptions {
                 .child(section_label("Whitespace", theme))
                 .child(hide_row)
         } else {
-            div().flex().flex_col().gap(px(6.0)).child(tabs).child(wrap_row).child(hide_row)
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(6.0))
+                .child(tabs)
+                .child(wrap_row)
+                .child(hide_row)
         }
     }
 }

@@ -52,7 +52,9 @@ impl Workspace {
         });
         self.repo_sub = Some(cx.observe(&model, observe_notices));
         self.commit_box.update(cx, |b, cx| b.attach(&model, cx));
-        self.repo_event_sub = Some(cx.subscribe(&model, |this, _, ev: &RepoEvent, cx| this.on_repo_event(ev, cx)));
+        self.repo_event_sub = Some(cx.subscribe(&model, |this, _, ev: &RepoEvent, cx| {
+            this.on_repo_event(ev, cx)
+        }));
         self.repo = Some(model);
         self.overlays.clear();
         self.clear_ci_filters(cx);
@@ -63,9 +65,19 @@ impl Workspace {
 
     fn on_repo_event(&mut self, ev: &RepoEvent, cx: &mut Context<Self>) {
         match ev {
-            RepoEvent::CommitUndone { summary, description } => self.commit_box.update(cx, |b, cx| b.set_text(summary, description, cx)),
-            RepoEvent::SwitchBranchWithChanges(branch) => self.open_switch_dialog(branch.clone(), cx),
-            RepoEvent::PreparedMessage { summary, description } => {
+            RepoEvent::CommitUndone {
+                summary,
+                description,
+            } => self
+                .commit_box
+                .update(cx, |b, cx| b.set_text(summary, description, cx)),
+            RepoEvent::SwitchBranchWithChanges(branch) => {
+                self.open_switch_dialog(branch.clone(), cx)
+            }
+            RepoEvent::PreparedMessage {
+                summary,
+                description,
+            } => {
                 // A merge paused: show git's prepared message unless the user typed one.
                 self.commit_box.update(cx, |b, cx| {
                     if b.message.read(cx).as_str().trim().is_empty() {
@@ -100,7 +112,8 @@ impl Workspace {
             if let Ok(Ok(Some(paths))) = paths.await
                 && let Some(path) = paths.into_iter().next()
             {
-                this.update(cx, |this, cx| this.add_repository(path, cx)).ok();
+                this.update(cx, |this, cx| this.add_repository(path, cx))
+                    .ok();
             }
         })
         .detach();
@@ -115,9 +128,17 @@ impl Workspace {
         let dest = cx.prompt_for_new_path(&home, Some(&clone_dir_name(&url)));
         self.overlays.clear();
         cx.spawn(async move |this, cx| {
-            let Ok(Ok(Some(dest))) = dest.await else { return };
-            let name = dest.file_name().unwrap_or_default().to_string_lossy().into_owned();
-            this.update(cx, |this, cx| this.show_notice(format!("Cloning {name}…"), cx))
+            let Ok(Ok(Some(dest))) = dest.await else {
+                return;
+            };
+            let name = dest
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            this.update(cx, |this, cx| {
+                this.show_notice(format!("Cloning {name}…"), cx)
+            })
             .ok();
             let res = cx
                 .background_spawn({
@@ -136,7 +157,12 @@ impl Workspace {
 }
 
 fn directory_prompt(prompt: &'static str) -> PathPromptOptions {
-    PathPromptOptions { files: false, directories: true, multiple: false, prompt: Some(prompt.into()) }
+    PathPromptOptions {
+        files: false,
+        directories: true,
+        multiple: false,
+        prompt: Some(prompt.into()),
+    }
 }
 
 /// Folder name `git clone` would pick: last path segment without `.git`.

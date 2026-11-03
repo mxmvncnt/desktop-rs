@@ -1,6 +1,8 @@
 //! State of the toolbar popovers: keyboard cursor, inputs and the new-branch base.
 
-use gpui::{App, AppContext, Context, Entity, Pixels, Point, ScrollStrategy, UniformListScrollHandle};
+use gpui::{
+    App, AppContext, Context, Entity, Pixels, Point, ScrollStrategy, UniformListScrollHandle,
+};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use crate::workspace::Popover;
@@ -24,7 +26,8 @@ pub struct PopoverStore {
 
 impl PopoverStore {
     pub fn new(cx: &mut App) -> Self {
-        let input = |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
+        let input =
+            |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
         Self {
             selected: 0,
             scroll: UniformListScrollHandle::new(),

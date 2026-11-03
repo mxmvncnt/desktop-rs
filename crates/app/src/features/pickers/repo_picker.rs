@@ -2,14 +2,14 @@
 
 use gd_ui::{Button, Icon, Theme, icon, icon_button, pressable};
 use gpui::{
-    AnyElement, App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement,
-    Styled, UniformListScrollHandle, Window, div, px,
+    AnyElement, App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce,
+    StatefulInteractiveElement, Styled, UniformListScrollHandle, Window, div, px,
 };
 use gpui_elements::editable_text::EditableTextState;
 
-use crate::components::list;
 use super::picker_shell::{PICKER_ROW, PickerShell};
 use super::store::PopoverStore;
+use crate::components::list;
 use crate::workspace::{Popover, Workspace};
 
 /// One repository row of the list.
@@ -32,8 +32,12 @@ pub struct RepoPicker {
 }
 
 impl RepoPicker {
-
-    fn list(entries: Vec<RepoEntry>, selected: usize, scroll: &UniformListScrollHandle, ws: &Entity<Workspace>) -> AnyElement {
+    fn list(
+        entries: Vec<RepoEntry>,
+        selected: usize,
+        scroll: &UniformListScrollHandle,
+        ws: &Entity<Workspace>,
+    ) -> AnyElement {
         let n = entries.len();
         let ws = ws.clone();
         list("repo-list", n, move |range, _w, cx| {
@@ -57,7 +61,9 @@ impl RepoPicker {
                     .icon(Icon::Plus)
                     .label("Add existing…")
                     .compact()
-                    .on_click(move |_, _, cx| add.update(cx, |this, cx| this.prompt_add_repository(cx))),
+                    .on_click(move |_, _, cx| {
+                        add.update(cx, |this, cx| this.prompt_add_repository(cx))
+                    }),
             )
             .child(
                 Button::new("clone-repo")
@@ -77,8 +83,16 @@ impl RenderOnce for RepoPicker {
         let footer = Self::footer(&self.ws);
         let list = Self::list(self.entries, self.selected, &self.scroll, &self.ws);
         let ws = self.ws;
-        PickerShell::new("Repositories", "Filter repositories", self.filter, n, list, footer, self.pickers)
-            .on_enter(move |_w, cx| ws.update(cx, |this, cx| this.enter_repo_picker(cx)))
+        PickerShell::new(
+            "Repositories",
+            "Filter repositories",
+            self.filter,
+            n,
+            list,
+            footer,
+            self.pickers,
+        )
+        .on_enter(move |_w, cx| ws.update(cx, |this, cx| this.enter_repo_picker(cx)))
     }
 }
 
@@ -99,17 +113,31 @@ fn repo_row(e: &RepoEntry, selected: bool, ws: &Entity<Workspace>, cx: &mut App)
         .child(
             icon(if e.current { Icon::Check } else { Icon::Folder })
                 .size(px(14.0))
-                .text_color(if e.current { theme.text } else { theme.text_faint }),
+                .text_color(if e.current {
+                    theme.text
+                } else {
+                    theme.text_faint
+                }),
         )
-        .child(div().flex_none().text_color(theme.text).child(e.name.clone()))
+        .child(
+            div()
+                .flex_none()
+                .text_color(theme.text)
+                .child(e.name.clone()),
+        )
         .child(div().flex_1())
         .child(
-            div().invisible().group_hover_style("repo-row", |s| s.visible()).child(
-                icon_button(("remove-repo", ix), Icon::Close).compact().on_click(move |_, _, cx| {
-                    cx.stop_propagation();
-                    remove.update(cx, |ws, cx| ws.remove_repository(ix, cx))
-                }),
-            ),
+            div()
+                .invisible()
+                .group_hover_style("repo-row", |s| s.visible())
+                .child(
+                    icon_button(("remove-repo", ix), Icon::Close)
+                        .compact()
+                        .on_click(move |_, _, cx| {
+                            cx.stop_propagation();
+                            remove.update(cx, |ws, cx| ws.remove_repository(ix, cx))
+                        }),
+                ),
         )
         .on_click(move |_, _, cx| open.update(cx, |ws, cx| ws.open_repository(ix, cx)))
         .into_any_element()

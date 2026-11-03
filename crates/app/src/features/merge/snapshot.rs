@@ -8,9 +8,18 @@ use crate::workspace::Workspace;
 
 pub fn views() -> &'static [View] {
     &[
-        View { name: "merge-dialog", steps: &[merge_dialog] },
-        View { name: "squash-dialog", steps: &[merge_dialog] },
-        View { name: "rebase-dialog", steps: &[merge_dialog] },
+        View {
+            name: "merge-dialog",
+            steps: &[merge_dialog],
+        },
+        View {
+            name: "squash-dialog",
+            steps: &[merge_dialog],
+        },
+        View {
+            name: "rebase-dialog",
+            steps: &[merge_dialog],
+        },
     ]
 }
 

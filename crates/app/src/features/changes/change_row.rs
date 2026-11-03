@@ -20,10 +20,15 @@ pub(super) fn change_row(
     let check = r.file_check_state(&change.path);
     let (repo_click, repo_check, ws_row) = (repo.clone(), repo.clone(), ws.clone());
     let path = change.path.clone();
-    FileRow::new("change", ix, change, selected, move |_, cx| repo_click.update(cx, |r, cx| r.select_change(ix, cx)))
-        .leading(Checkbox::new(("check", ix), check).on_click(move |_, _, cx| {
-            repo_check.update(cx, |r, cx| r.toggle_included(&path, cx))
-        }))
-        .on_right_click(move |pos, w, cx| ws_row.update(cx, |this, cx| this.open_file_menu(ix, pos, w, cx)))
-        .into_any_element()
+    FileRow::new("change", ix, change, selected, move |_, cx| {
+        repo_click.update(cx, |r, cx| r.select_change(ix, cx))
+    })
+    .leading(
+        Checkbox::new(("check", ix), check)
+            .on_click(move |_, _, cx| repo_check.update(cx, |r, cx| r.toggle_included(&path, cx))),
+    )
+    .on_right_click(move |pos, w, cx| {
+        ws_row.update(cx, |this, cx| this.open_file_menu(ix, pos, w, cx))
+    })
+    .into_any_element()
 }

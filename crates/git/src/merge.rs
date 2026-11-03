@@ -1,7 +1,7 @@
 //! Merge / squash / rebase into the current branch, and conflict resolution.
 
 use crate::progress::OpOutcome;
-use crate::{message, GitError, Repository, Result};
+use crate::{GitError, Repository, Result, message};
 
 /// What merging (or rebasing onto) `branch` would do, computed without
 /// touching the working tree.
@@ -24,7 +24,10 @@ pub fn default_squash_summary(branch: &str, current: &str) -> String {
 
 impl Repository {
     pub(crate) fn count(&self, range: &str) -> Result<u32> {
-        let out = self.git().args(["rev-list", "--count", range, "--"]).run()?;
+        let out = self
+            .git()
+            .args(["rev-list", "--count", range, "--"])
+            .run()?;
         out.trim().parse().map_err(|_| GitError::Parse(out))
     }
 
@@ -38,7 +41,14 @@ impl Repository {
         let behind = self.count(&format!("{branch}..HEAD"))?;
         let conflicts = if ahead > 0 && behind > 0 {
             self.git()
-                .args(["merge-tree", "--write-tree", "--name-only", "--no-messages", "HEAD", branch])
+                .args([
+                    "merge-tree",
+                    "--write-tree",
+                    "--name-only",
+                    "--no-messages",
+                    "HEAD",
+                    branch,
+                ])
                 .allow_exit_one()
                 .run()
                 .ok()
@@ -52,7 +62,12 @@ impl Repository {
         } else {
             Some(Vec::new())
         };
-        Ok(MergePreview { branch: branch.to_string(), ahead, behind, conflicts })
+        Ok(MergePreview {
+            branch: branch.to_string(),
+            ahead,
+            behind,
+            conflicts,
+        })
     }
 
     fn current_branch_name(&self) -> String {
@@ -68,7 +83,11 @@ impl Repository {
         if self.commits_ahead(branch)? == 0 {
             return Ok(OpOutcome::UpToDate);
         }
-        let res = self.git().no_editor().args(["merge", "--no-edit", branch]).run();
+        let res = self
+            .git()
+            .no_editor()
+            .args(["merge", "--no-edit", branch])
+            .run();
         self.outcome_of(res)
     }
 
@@ -80,24 +99,41 @@ impl Repository {
         if self.commits_ahead(branch)? == 0 {
             return Ok(OpOutcome::UpToDate);
         }
-        let res = self.git().no_editor().args(["merge", "--squash", branch]).run();
+        let res = self
+            .git()
+            .no_editor()
+            .args(["merge", "--squash", branch])
+            .run();
         if self.outcome_of(res)? == OpOutcome::Conflicts {
             return Ok(OpOutcome::Conflicts);
         }
         // Nothing staged (e.g. the branch only reverted its own changes).
-        if self.git().args(["diff", "--cached", "--quiet"]).run().is_ok() {
+        if self
+            .git()
+            .args(["diff", "--cached", "--quiet"])
+            .run()
+            .is_ok()
+        {
             return Ok(OpOutcome::UpToDate);
         }
         let subjects = self
             .git()
-            .args(["log", "--reverse", "--format=* %s", &format!("HEAD..{branch}")])
+            .args([
+                "log",
+                "--reverse",
+                "--format=* %s",
+                &format!("HEAD..{branch}"),
+            ])
             .run()
             .unwrap_or_default();
         let subject = match summary.map(str::trim) {
             Some(s) if !s.is_empty() => s.to_string(),
             _ => default_squash_summary(branch, &self.current_branch_name()),
         };
-        self.git().args(["commit", "-q", "-F", "-"]).stdin(message(&subject, &subjects)).exec()?;
+        self.git()
+            .args(["commit", "-q", "-F", "-"])
+            .stdin(message(&subject, &subjects))
+            .exec()?;
         Ok(OpOutcome::Done)
     }
 

@@ -3,16 +3,16 @@
 use gd_git::BranchKind;
 use gd_ui::{Button, Icon};
 use gpui::{
-    AnyElement, App, Entity, IntoElement, ParentElement, RenderOnce,
-    Styled, UniformListScrollHandle, Window, div, px,
+    AnyElement, App, Entity, IntoElement, ParentElement, RenderOnce, Styled,
+    UniformListScrollHandle, Window, div, px,
 };
 use gpui_elements::editable_text::EditableTextState;
 
 use super::picker_shell::{PICKER_ROW, PickerShell};
 use super::store::PopoverStore;
+use crate::components::{BranchRow, list};
 use crate::features::merge::MergeMode;
 use crate::repo::RepoModel;
-use crate::components::{BranchRow, list};
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -28,7 +28,6 @@ pub struct BranchPicker {
 }
 
 impl BranchPicker {
-
     fn list(&self) -> AnyElement {
         let (items, selected) = (self.items.clone(), self.selected);
         let (repo, ws) = (self.repo.clone(), self.ws.clone());
@@ -37,7 +36,9 @@ impl BranchPicker {
             let rows: Vec<_> = range
                 .filter_map(|i| Some((i, r.branches.get(*items.get(i)?)?.clone())))
                 .collect();
-            rows.into_iter().map(|(i, b)| branch_row(i, b, i == selected, &ws, cx)).collect()
+            rows.into_iter()
+                .map(|(i, b)| branch_row(i, b, i == selected, &ws, cx))
+                .collect()
         })
         .track_scroll(&self.scroll)
         .size_full()
@@ -55,7 +56,9 @@ impl BranchPicker {
                     .icon(Icon::Plus)
                     .label("New branch")
                     .compact()
-                    .on_click(move |_, w, cx| new.update(cx, |this, cx| this.open_new_branch_from_filter(w, cx))),
+                    .on_click(move |_, w, cx| {
+                        new.update(cx, |this, cx| this.open_new_branch_from_filter(w, cx))
+                    }),
             )
             .child(
                 Button::new("merge-into-current")
@@ -63,7 +66,9 @@ impl BranchPicker {
                     .label("Merge into current branch…")
                     .compact()
                     .on_click(move |_, w, cx| {
-                        merge.update(cx, |this, cx| this.open_merge_dialog(MergeMode::Merge, None, w, cx))
+                        merge.update(cx, |this, cx| {
+                            this.open_merge_dialog(MergeMode::Merge, None, w, cx)
+                        })
                     }),
             )
     }
@@ -74,8 +79,16 @@ impl RenderOnce for BranchPicker {
         let (list, footer) = (self.list(), self.footer());
         let n = self.items.len();
         let ws = self.ws;
-        PickerShell::new("Branches", "Filter branches", self.filter, n, list, footer, self.pickers)
-            .on_enter(move |w, cx| ws.update(cx, |this, cx| this.enter_branch_picker(w, cx)))
+        PickerShell::new(
+            "Branches",
+            "Filter branches",
+            self.filter,
+            n,
+            list,
+            footer,
+            self.pickers,
+        )
+        .on_enter(move |w, cx| ws.update(cx, |this, cx| this.enter_branch_picker(w, cx)))
     }
 }
 
@@ -90,7 +103,13 @@ fn branch_icon(b: &gd_git::Branch) -> Icon {
 }
 
 /// Hot row (virtualized): a plain fn, not a component.
-fn branch_row(i: usize, b: gd_git::Branch, selected: bool, ws: &Entity<Workspace>, cx: &mut App) -> AnyElement {
+fn branch_row(
+    i: usize,
+    b: gd_git::Branch,
+    selected: bool,
+    ws: &Entity<Workspace>,
+    cx: &mut App,
+) -> AnyElement {
     let (ws_menu, ws_pick) = (ws.clone(), ws.clone());
     let (b_menu, b_pick) = (b.clone(), b.clone());
     BranchRow::new("branch", i, b.name.clone(), move |w, cx| {

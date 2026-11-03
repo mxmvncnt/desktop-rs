@@ -17,7 +17,9 @@ impl RepoModel {
     /// only logged. Wakes once a minute (also to refresh "Last fetched Nm ago").
     pub(super) fn start_background_fetch(&mut self, cx: &mut Context<Self>) {
         self.sync._background_fetch_task = Some(cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(BACKGROUND_FETCH_FIRST_CHECK).await;
+            cx.background_executor()
+                .timer(BACKGROUND_FETCH_FIRST_CHECK)
+                .await;
             loop {
                 if this
                     .update(cx, |this, cx| {
@@ -48,10 +50,13 @@ impl RepoModel {
         let repo = self.repo.clone();
         cx.spawn(async move |this, cx| {
             let has_remote = cx
-                .background_spawn(async move { repo.remotes().map(|r| !r.is_empty()).unwrap_or(false) })
+                .background_spawn(
+                    async move { repo.remotes().map(|r| !r.is_empty()).unwrap_or(false) },
+                )
                 .await;
             if has_remote {
-                this.update(cx, |this, cx| this.fetch_in_background(cx)).ok();
+                this.update(cx, |this, cx| this.fetch_in_background(cx))
+                    .ok();
             }
         })
         .detach();

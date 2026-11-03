@@ -22,8 +22,15 @@ impl Workspace {
         self.open_menu(menu, window, cx);
     }
 
-    fn run_conflict_action(&mut self, action: ConflictAction, path: String, cx: &mut Context<Self>) {
-        let Some(repo) = self.repo.clone() else { return };
+    fn run_conflict_action(
+        &mut self,
+        action: ConflictAction,
+        path: String,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(repo) = self.repo.clone() else {
+            return;
+        };
         let root = repo.read(cx).repo.root().to_path_buf();
         let resolve = match action {
             ConflictAction::Ours => Some(Resolve::Ours),

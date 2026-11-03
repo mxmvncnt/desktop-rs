@@ -34,7 +34,11 @@ impl Workspace {
         }
         self.open_overlay(Overlay::Popover(p), cx);
         let store = self.pickers.read(cx);
-        let inputs = [store.filter.clone(), store.name_input.clone(), store.url_input.clone()];
+        let inputs = [
+            store.filter.clone(),
+            store.name_input.clone(),
+            store.url_input.clone(),
+        ];
         let target = match p {
             Popover::Repositories | Popover::Branches => &inputs[0],
             Popover::NewBranch => &inputs[1],
@@ -54,7 +58,14 @@ impl Workspace {
     /// the first row.
     /// Runs on open and on every input change, including the clear on open.
     pub(crate) fn reset_popover_selection(&mut self, cx: &mut Context<Self>) {
-        let unfiltered = self.pickers.read(cx).filter.read(cx).as_str().trim().is_empty();
+        let unfiltered = self
+            .pickers
+            .read(cx)
+            .filter
+            .read(cx)
+            .as_str()
+            .trim()
+            .is_empty();
         let row = match self.popover() {
             Some(Popover::Repositories) if unfiltered => self.settings.selected.unwrap_or(0),
             Some(Popover::Branches) if unfiltered => self.head_branch_row(cx),

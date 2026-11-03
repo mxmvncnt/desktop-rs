@@ -2,8 +2,8 @@
 
 use gpui::{App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
-use crate::components::{LIST_INSET_Y, list};
 use super::stash_row::{STASH_ROW_HEIGHT, StashRow};
+use crate::components::{LIST_INSET_Y, list};
 use crate::repo::RepoModel;
 use crate::workspace::{NavList, Workspace, nav_focus};
 
@@ -33,7 +33,12 @@ impl RenderOnce for StashList {
         let st = &self.repo.read(cx).stashes;
         let (scroll, viewing, selected) = (st.list_scroll.clone(), st.viewing, st.selected.clone());
         let nav_ws = self.ws.clone();
-        let Self { repo, ws, visible, current_branch } = self;
+        let Self {
+            repo,
+            ws,
+            visible,
+            current_branch,
+        } = self;
         let list = list("stashes", n, move |range, _w, cx| {
             let r = repo.read(cx);
             range

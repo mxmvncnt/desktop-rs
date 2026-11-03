@@ -32,7 +32,10 @@ impl RefreshData {
             status: repo.status(),
             branches: (scope == RefreshScope::Full).then(|| repo.branches()),
             paused: repo.in_progress().map(|op| {
-                let message = op.commit_finishes().then(|| repo.prepared_message()).flatten();
+                let message = op
+                    .commit_finishes()
+                    .then(|| repo.prepared_message())
+                    .flatten();
                 PausedOp { op, message }
             }),
             last_fetch: repo.last_fetch_time(),
@@ -51,7 +54,11 @@ impl RepoModel {
                 while let Ok(more) = rx.try_recv() {
                     metadata_changed |= more;
                 }
-                let scope = if metadata_changed { RefreshScope::Full } else { RefreshScope::Status };
+                let scope = if metadata_changed {
+                    RefreshScope::Full
+                } else {
+                    RefreshScope::Status
+                };
                 let alive = this
                     .update(cx, |this, cx| {
                         this.sync.last_watch_refresh = Some(Instant::now());
@@ -81,11 +88,19 @@ impl RepoModel {
         }
         self.sync.refreshing = true;
         self.sync.refresh_count += 1;
-        log::debug!("refresh #{} ({:?}) {}", self.sync.refresh_count, scope, self.repo.name());
+        log::debug!(
+            "refresh #{} ({:?}) {}",
+            self.sync.refresh_count,
+            scope,
+            self.repo.name()
+        );
         let repo = self.repo.clone();
         cx.spawn(async move |this, cx| {
-            let data = cx.background_spawn(async move { RefreshData::read(&repo, scope) }).await;
-            this.update(cx, |this, cx| this.finish_refresh(data, scope, cx)).ok();
+            let data = cx
+                .background_spawn(async move { RefreshData::read(&repo, scope) })
+                .await;
+            this.update(cx, |this, cx| this.finish_refresh(data, scope, cx))
+                .ok();
         })
         .detach();
     }
@@ -129,17 +144,23 @@ impl RepoModel {
             None => (None, None),
         };
         let newly = new.is_some()
-            && self.merge.in_progress.as_ref().map(std::mem::discriminant) != new.as_ref().map(std::mem::discriminant);
+            && self.merge.in_progress.as_ref().map(std::mem::discriminant)
+                != new.as_ref().map(std::mem::discriminant);
         self.merge.in_progress = new;
         if let (true, Some((summary, description))) = (newly, msg) {
-            cx.emit(RepoEvent::PreparedMessage { summary, description });
+            cx.emit(RepoEvent::PreparedMessage {
+                summary,
+                description,
+            });
         }
     }
 
     fn apply_status(&mut self, status: WorkingStatus, cx: &mut Context<Self>) {
         // Keep the selection on the same path across refreshes.
         let old_ix = self.work.selected;
-        let selected_path = old_ix.and_then(|ix| self.changes().get(ix)).map(|c| c.path.clone());
+        let selected_path = old_ix
+            .and_then(|ix| self.changes().get(ix))
+            .map(|c| c.path.clone());
         let paths: HashSet<&str> = status.files.iter().map(|f| f.path.as_str()).collect();
         self.work.excluded.retain(|p| paths.contains(p.as_str()));
         self.work.partial.retain(|p, _| paths.contains(p.as_str()));

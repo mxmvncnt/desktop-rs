@@ -51,7 +51,10 @@ impl MergeMode {
 
 impl RepoModel {
     pub fn conflict_count(&self) -> usize {
-        self.changes().iter().filter(|c| c.status == FileStatus::Conflicted).count()
+        self.changes()
+            .iter()
+            .filter(|c| c.status == FileStatus::Conflicted)
+            .count()
     }
 
     /// Toast text for an operation that can pause on conflicts.
@@ -63,7 +66,13 @@ impl RepoModel {
         });
     }
 
-    pub fn start_merge(&mut self, mode: MergeMode, branch: String, summary: String, cx: &mut Context<Self>) {
+    pub fn start_merge(
+        &mut self,
+        mode: MergeMode,
+        branch: String,
+        summary: String,
+        cx: &mut Context<Self>,
+    ) {
         let (done, up_to_date) = mode.notices(&self.branch_name(), &branch);
         self.run(
             Op::labeled(mode.busy_label()),
@@ -78,13 +87,19 @@ impl RepoModel {
 
     /// Banner "Continue".
     pub fn continue_operation(&mut self, cx: &mut Context<Self>) {
-        let Some(op) = self.merge.in_progress.clone() else { return };
+        let Some(op) = self.merge.in_progress.clone() else {
+            return;
+        };
         let verb = op.verb();
         self.run(
             Op::labeled("Continuing…"),
             move |r| r.continue_operation(&op),
             move |this, outcome, _| {
-                this.notice_for_outcome(outcome, format!("{verb} finished"), format!("{verb} finished"));
+                this.notice_for_outcome(
+                    outcome,
+                    format!("{verb} finished"),
+                    format!("{verb} finished"),
+                );
                 this.reset_history_selection();
             },
             cx,
@@ -93,7 +108,9 @@ impl RepoModel {
 
     /// Banner "Abort".
     pub fn abort_operation(&mut self, cx: &mut Context<Self>) {
-        let Some(op) = self.merge.in_progress.clone() else { return };
+        let Some(op) = self.merge.in_progress.clone() else {
+            return;
+        };
         self.run(
             Op::labeled("Aborting…"),
             move |r| r.abort_operation(&op),
@@ -122,7 +139,11 @@ impl RepoModel {
     pub fn commit_merge(&mut self, summary: String, description: String, cx: &mut Context<Self>) {
         let paths: Vec<String> = self.changes().iter().map(|c| c.path.clone()).collect();
         self.run(
-            Op { label: Some("Committing…"), committing: true, ..Op::default() },
+            Op {
+                label: Some("Committing…"),
+                committing: true,
+                ..Op::default()
+            },
             move |r| r.commit_merge(&summary, &description, &paths),
             |this, _, _| {
                 this.notice = Some("Merge committed".into());

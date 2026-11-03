@@ -89,9 +89,18 @@ pub(crate) fn status(status: &str, conclusion: Option<&str>) -> Status {
     }
 }
 
-pub(crate) fn pipelines(c: &Client, repo: &RepoRef, filter: &PipelineFilter, page: u32) -> Result<Vec<Pipeline>> {
+pub(crate) fn pipelines(
+    c: &Client,
+    repo: &RepoRef,
+    filter: &PipelineFilter,
+    page: u32,
+) -> Result<Vec<Pipeline>> {
     // GitHub reads `per_page`, Gitea `limit`.
-    let mut query = vec![("per_page", PAGE_SIZE.to_string()), ("limit", PAGE_SIZE.to_string()), ("page", page.to_string())];
+    let mut query = vec![
+        ("per_page", PAGE_SIZE.to_string()),
+        ("limit", PAGE_SIZE.to_string()),
+        ("page", page.to_string()),
+    ];
     if let Some(branch) = &filter.ref_name {
         query.push(("branch", branch.clone()));
     }
@@ -109,27 +118,64 @@ pub(crate) fn pipeline(c: &Client, repo: &RepoRef, id: &PipelineId) -> Result<Pi
     let base = format!("/repos/{}/actions/runs/{}", repo.full_path(), id.0);
     let pipeline = pipeline_from(c.get(&base, &[])?);
     let size = PAGE_SIZE.max(100).to_string();
-    let jobs: Jobs = c.get(&format!("{base}/jobs"), &[("per_page", size.clone()), ("limit", size), ("filter", "latest".into())])?;
+    let jobs: Jobs = c.get(
+        &format!("{base}/jobs"),
+        &[
+            ("per_page", size.clone()),
+            ("limit", size),
+            ("filter", "latest".into()),
+        ],
+    )?;
     let jobs: Vec<Job> = jobs.jobs.into_iter().map(|j| job_from(j, *id)).collect();
     let name = pipeline.workflow.clone().unwrap_or_else(|| "Jobs".into());
-    Ok(PipelineDetail { stages: vec![Stage { name, status: stage_status(&jobs), jobs }], pipeline })
+    Ok(PipelineDetail {
+        stages: vec![Stage {
+            name,
+            status: stage_status(&jobs),
+            jobs,
+        }],
+        pipeline,
+    })
 }
 
 pub(crate) fn job_log(c: &Client, repo: &RepoRef, job: &JobId) -> Result<String> {
-    c.text(&format!("/repos/{}/actions/jobs/{}/logs", repo.full_path(), job.id))
+    c.text(&format!(
+        "/repos/{}/actions/jobs/{}/logs",
+        repo.full_path(),
+        job.id
+    ))
 }
 
 pub(crate) fn retry_pipeline(c: &Client, repo: &RepoRef, id: &PipelineId) -> Result<()> {
-    c.call("POST", &format!("/repos/{}/actions/runs/{}/rerun-failed-jobs", repo.full_path(), id.0), &[]).map(drop)
+    c.call(
+        "POST",
+        &format!(
+            "/repos/{}/actions/runs/{}/rerun-failed-jobs",
+            repo.full_path(),
+            id.0
+        ),
+        &[],
+    )
+    .map(drop)
 }
 
 pub(crate) fn cancel_pipeline(c: &Client, repo: &RepoRef, id: &PipelineId) -> Result<()> {
-    c.call("POST", &format!("/repos/{}/actions/runs/{}/cancel", repo.full_path(), id.0), &[]).map(drop)
+    c.call(
+        "POST",
+        &format!("/repos/{}/actions/runs/{}/cancel", repo.full_path(), id.0),
+        &[],
+    )
+    .map(drop)
 }
 
 pub(crate) fn retry_job(c: &Client, repo: &RepoRef, job: &JobId) -> Result<()> {
     let path = match c.forge {
-        Forge::Gitea => format!("/repos/{}/actions/runs/{}/jobs/{}/rerun", repo.full_path(), job.pipeline.0, job.id),
+        Forge::Gitea => format!(
+            "/repos/{}/actions/runs/{}/jobs/{}/rerun",
+            repo.full_path(),
+            job.pipeline.0,
+            job.id
+        ),
         _ => format!("/repos/{}/actions/jobs/{}/rerun", repo.full_path(), job.id),
     };
     c.call("POST", &path, &[]).map(drop)
@@ -138,11 +184,24 @@ pub(crate) fn retry_job(c: &Client, repo: &RepoRef, job: &JobId) -> Result<()> {
 fn pipeline_from(run: Run) -> Pipeline {
     let status = status(&run.status, run.conclusion.as_deref());
     let started_at = known(run.run_started_at.or(run.started_at));
-    let finished_at = known(run.completed_at).or(if status.is_finished() { known(run.updated_at) } else { None });
+    let finished_at = known(run.completed_at).or(if status.is_finished() {
+        known(run.updated_at)
+    } else {
+        None
+    });
     // GitHub appends `@ref` to the path of some runs.
-    let workflow_path = run.path.map(|p| p.split('@').next().unwrap_or_default().to_string());
-    let file = workflow_path.as_deref().and_then(|p| p.rsplit('/').next()).map(str::to_string);
-    let user = run.trigger_actor.or(run.actor).map(|a| User { name: a.full_name.filter(|n| !n.is_empty()), username: a.login, avatar_url: a.avatar_url });
+    let workflow_path = run
+        .path
+        .map(|p| p.split('@').next().unwrap_or_default().to_string());
+    let file = workflow_path
+        .as_deref()
+        .and_then(|p| p.rsplit('/').next())
+        .map(str::to_string);
+    let user = run.trigger_actor.or(run.actor).map(|a| User {
+        name: a.full_name.filter(|n| !n.is_empty()),
+        username: a.login,
+        avatar_url: a.avatar_url,
+    });
     Pipeline {
         id: PipelineId(run.id),
         number: run.run_number,
@@ -168,10 +227,18 @@ fn job_from(job: JobJson, pipeline: PipelineId) -> Job {
     let steps = job
         .steps
         .into_iter()
-        .map(|s| Step { name: s.name, status: status(&s.status, s.conclusion.as_deref()), number: s.number, duration: seconds(known(s.started_at), known(s.completed_at)) })
+        .map(|s| Step {
+            name: s.name,
+            status: status(&s.status, s.conclusion.as_deref()),
+            number: s.number,
+            duration: seconds(known(s.started_at), known(s.completed_at)),
+        })
         .collect();
     Job {
-        id: JobId { pipeline, id: job.id },
+        id: JobId {
+            pipeline,
+            id: job.id,
+        },
         name: job.name,
         stage: None,
         status: status(&job.status, job.conclusion.as_deref()),

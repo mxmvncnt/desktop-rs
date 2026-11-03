@@ -78,12 +78,25 @@ impl Provider {
     pub fn oauth_app(self, host: &str, custom: &str) -> Option<OAuthApp> {
         let custom = custom.trim();
         if !custom.is_empty() {
-            return Some(OAuthApp { client_id: custom.into(), redirect_uri: REDIRECT_URI });
+            return Some(OAuthApp {
+                client_id: custom.into(),
+                redirect_uri: REDIRECT_URI,
+            });
         }
         let gitea = matches!(self, Self::Gitea | Self::Forgejo);
-        let builtin = BUILTIN_CLIENT_IDS.iter().find(|(h, id)| *h == host && !id.is_empty()).map(|(_, id)| *id);
+        let builtin = BUILTIN_CLIENT_IDS
+            .iter()
+            .find(|(h, id)| *h == host && !id.is_empty())
+            .map(|(_, id)| *id);
         let client_id = builtin.or(gitea.then_some(GITEA_CLIENT_ID))?;
-        Some(OAuthApp { client_id: client_id.into(), redirect_uri: if gitea { GITEA_REDIRECT_URI } else { REDIRECT_URI } })
+        Some(OAuthApp {
+            client_id: client_id.into(),
+            redirect_uri: if gitea {
+                GITEA_REDIRECT_URI
+            } else {
+                REDIRECT_URI
+            },
+        })
     }
 }
 
@@ -98,7 +111,11 @@ pub enum SignInMethod {
 impl SignInMethod {
     /// The browser when the host has an OAuth app, else a pasted token.
     pub fn default_for(provider: Provider, host: &str) -> Self {
-        if provider.oauth_app(host, "").is_some() { Self::Browser } else { Self::Token }
+        if provider.oauth_app(host, "").is_some() {
+            Self::Browser
+        } else {
+            Self::Token
+        }
     }
 }
 
@@ -114,7 +131,10 @@ const BUILTIN_CLIENT_IDS: [(&str, &str); 4] = [
     // OAuth App "desktop-rs" (device flow enabled) of github.com/mxmvncnt.
     ("github.com", "Ov23liWNVoyi5E8E5lb0"),
     // Application "desktop-rs" of gitlab.com (confidential unchecked, scope `api`, redirect URI `http://127.0.0.1:47123/callback`).
-    ("gitlab.com", "4f94f81b48f3ee98ae4959ab9a411bca5c4a747caa2bbb8404317c3cdc122929"),
+    (
+        "gitlab.com",
+        "4f94f81b48f3ee98ae4959ab9a411bca5c4a747caa2bbb8404317c3cdc122929",
+    ),
     // Optional (until then the Gitea/Forgejo default app below is used): register an OAuth2 app on the
     // host, confidential unchecked, redirect URI `http://127.0.0.1:47123` (no path).
     ("codeberg.org", ""),
@@ -145,7 +165,11 @@ impl Account {
     /// Credential for git network ops (`None` without a token or host).
     pub fn credential(&self) -> Option<HostCredential> {
         (!self.token.is_empty() && !self.host.is_empty()).then(|| HostCredential {
-            id: if self.oauth { self.id.clone() } else { String::new() },
+            id: if self.oauth {
+                self.id.clone()
+            } else {
+                String::new()
+            },
             host: self.host.clone(),
             // GitLab wants `oauth2` as the user of OAuth tokens (any user works for its personal tokens).
             username: match (self.provider, self.username.as_str()) {
@@ -177,14 +201,20 @@ struct AccountsFile {
 }
 
 pub fn load() -> Vec<Account> {
-    let Some(path) = config_dir().map(|d| d.join("accounts.toml")) else { return Vec::new() };
-    let Ok(text) = std::fs::read_to_string(&path) else { return Vec::new() };
+    let Some(path) = config_dir().map(|d| d.join("accounts.toml")) else {
+        return Vec::new();
+    };
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Vec::new();
+    };
     let mut file: AccountsFile = toml::from_str(&text).unwrap_or_else(|e| {
         log::error!("cannot parse {}: {e}", path.display());
         AccountsFile::default()
     });
     for a in &mut file.accounts {
-        a.token = secrets::get(&a.id).map(|raw| TokenSecret::parse(&raw).access_token).unwrap_or_default();
+        a.token = secrets::get(&a.id)
+            .map(|raw| TokenSecret::parse(&raw).access_token)
+            .unwrap_or_default();
     }
     file.accounts
 }
@@ -192,8 +222,13 @@ pub fn load() -> Vec<Account> {
 /// Write the metadata; secrets are stored when an account is saved or signed in.
 pub fn save(list: &[Account]) {
     let Some(dir) = config_dir() else { return };
-    let text = toml::to_string(&AccountsFile { accounts: list.to_vec() }).unwrap_or_default();
-    if let Err(e) = std::fs::create_dir_all(&dir).and_then(|()| std::fs::write(dir.join("accounts.toml"), text)) {
+    let text = toml::to_string(&AccountsFile {
+        accounts: list.to_vec(),
+    })
+    .unwrap_or_default();
+    if let Err(e) =
+        std::fs::create_dir_all(&dir).and_then(|()| std::fs::write(dir.join("accounts.toml"), text))
+    {
         log::error!("cannot save accounts: {e}");
     }
 }

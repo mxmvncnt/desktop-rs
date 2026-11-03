@@ -38,7 +38,13 @@ impl RepoModel {
         );
     }
 
-    fn apply_change_diff(&mut self, d: Diff, path: String, opts: DiffOptions, cx: &mut Context<Self>) {
+    fn apply_change_diff(
+        &mut self,
+        d: Diff,
+        path: String,
+        opts: DiffOptions,
+        cx: &mut Context<Self>,
+    ) {
         let key = (path.clone(), opts);
         let unchanged = self.work.diff_key.as_ref() == Some(&key)
             && self.work.detail.diff.as_ref().is_some_and(|c| **c == d);

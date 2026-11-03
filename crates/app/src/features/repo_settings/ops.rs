@@ -34,10 +34,14 @@ impl RepoSettingsStore {
         spawn_load(
             self,
             |this| &mut this.load,
-            move || Ok::<_, gd_git::GitError>((repo.info()?, repo.remote_list()?, repo.local_config()?)),
+            move || {
+                Ok::<_, gd_git::GitError>((repo.info()?, repo.remote_list()?, repo.local_config()?))
+            },
             |this, res, cx| {
                 match res {
-                    Ok((info, remotes, config)) => (this.info, this.remotes, this.config) = (Some(info), remotes, config),
+                    Ok((info, remotes, config)) => {
+                        (this.info, this.remotes, this.config) = (Some(info), remotes, config)
+                    }
                     Err(e) => this.error = Some(e.to_string()),
                 }
                 cx.notify();
@@ -48,7 +52,12 @@ impl RepoSettingsStore {
 
     /// Run a git write off the UI thread. On success the form closes, the page reloads and the
     /// toolbar refreshes (remotes change the push/pull button); on failure the error stays on the page.
-    fn write(&mut self, done: &'static str, work: impl FnOnce(&Repository) -> gd_git::Result<()> + Send + 'static, cx: &mut Context<Self>) {
+    fn write(
+        &mut self,
+        done: &'static str,
+        work: impl FnOnce(&Repository) -> gd_git::Result<()> + Send + 'static,
+        cx: &mut Context<Self>,
+    ) {
         let Some(repo) = self.repo(cx) else { return };
         (self.error, self.notice) = (None, None);
         cx.spawn(async move |this, cx| {
@@ -81,11 +90,25 @@ impl RepoSettingsStore {
 
     /// Open the form to add a remote, or to edit the remote called `editing`.
     pub fn open_remote_form(&mut self, editing: Option<String>, cx: &mut Context<Self>) {
-        let remote = editing.as_ref().and_then(|n| self.remotes.iter().find(|r| &r.name == n)).cloned();
+        let remote = editing
+            .as_ref()
+            .and_then(|n| self.remotes.iter().find(|r| &r.name == n))
+            .cloned();
         let inp = self.inputs.clone();
-        let push = remote.as_ref().filter(|r| r.has_push_url()).map(|r| r.push_url.clone());
-        set_text(&inp.remote_name, remote.as_ref().map_or("", |r| &r.name), cx);
-        set_text(&inp.remote_url, remote.as_ref().map_or("", |r| &r.fetch_url), cx);
+        let push = remote
+            .as_ref()
+            .filter(|r| r.has_push_url())
+            .map(|r| r.push_url.clone());
+        set_text(
+            &inp.remote_name,
+            remote.as_ref().map_or("", |r| &r.name),
+            cx,
+        );
+        set_text(
+            &inp.remote_url,
+            remote.as_ref().map_or("", |r| &r.fetch_url),
+            cx,
+        );
         set_text(&inp.remote_push_url, push.as_deref().unwrap_or(""), cx);
         self.edit = Some(editing.map_or(Edit::AddRemote, Edit::Remote));
         self.error = None;
@@ -94,7 +117,11 @@ impl RepoSettingsStore {
 
     pub fn save_remote(&mut self, cx: &mut Context<Self>) {
         let inp = self.inputs.clone();
-        let (name, url, push) = (text(&inp.remote_name, cx), text(&inp.remote_url, cx), text(&inp.remote_push_url, cx));
+        let (name, url, push) = (
+            text(&inp.remote_name, cx),
+            text(&inp.remote_url, cx),
+            text(&inp.remote_push_url, cx),
+        );
         if name.is_empty() || url.is_empty() {
             self.error = Some("A remote needs a name and a URL.".into());
             return cx.notify();
@@ -140,7 +167,10 @@ impl RepoSettingsStore {
         spawn_load(
             self,
             |this| &mut this.ignore_load,
-            move || [IgnoreFile::Gitignore, IgnoreFile::Exclude].map(|f| std::fs::read_to_string(f.path(&repo)).unwrap_or_default()),
+            move || {
+                [IgnoreFile::Gitignore, IgnoreFile::Exclude]
+                    .map(|f| std::fs::read_to_string(f.path(&repo)).unwrap_or_default())
+            },
             |this, [gitignore, exclude], cx| {
                 set_text(&this.inputs.gitignore, &gitignore, cx);
                 set_text(&this.inputs.exclude, &exclude, cx);
@@ -166,7 +196,8 @@ impl RepoSettingsStore {
                 if text.is_empty() && !path.exists() {
                     return Ok(());
                 }
-                let io = |e: std::io::Error| gd_git::GitError::Io(format!("{}: {e}", path.display()));
+                let io =
+                    |e: std::io::Error| gd_git::GitError::Io(format!("{}: {e}", path.display()));
                 std::fs::create_dir_all(path.parent().unwrap_or(repo.root())).map_err(io)?;
                 std::fs::write(&path, text).map_err(io)
             },
@@ -180,7 +211,11 @@ impl RepoSettingsStore {
     pub fn open_config_form(&mut self, editing: Option<ConfigEntry>, cx: &mut Context<Self>) {
         let inp = self.inputs.clone();
         set_text(&inp.config_key, editing.as_ref().map_or("", |e| &e.key), cx);
-        set_text(&inp.config_value, editing.as_ref().map_or("", |e| &e.value), cx);
+        set_text(
+            &inp.config_value,
+            editing.as_ref().map_or("", |e| &e.value),
+            cx,
+        );
         self.edit = Some(editing.map_or(Edit::AddConfig, Edit::Config));
         (self.error, self.notice) = (None, None);
         cx.notify();
@@ -188,7 +223,10 @@ impl RepoSettingsStore {
 
     pub fn save_config(&mut self, cx: &mut Context<Self>) {
         let inp = self.inputs.clone();
-        let (key, value) = (text(&inp.config_key, cx), inp.config_value.read(cx).as_str().to_string());
+        let (key, value) = (
+            text(&inp.config_key, cx),
+            inp.config_value.read(cx).as_str().to_string(),
+        );
         let old = match &self.edit {
             Some(Edit::Config(old)) => Some(old.value.clone()),
             _ => None,
@@ -204,6 +242,10 @@ impl RepoSettingsStore {
     }
 
     pub fn remove_config(&mut self, entry: ConfigEntry, cx: &mut Context<Self>) {
-        self.write("Removed", move |repo| repo.remove_config(&entry.key, &entry.value), cx);
+        self.write(
+            "Removed",
+            move |repo| repo.remove_config(&entry.key, &entry.value),
+            cx,
+        );
     }
 }
