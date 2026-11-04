@@ -5,6 +5,7 @@ fn headers_and_entries() {
     let out =
         b"# branch.oid abc\0# branch.head main\0# branch.upstream origin/main\0# branch.ab +2 -1\0\
 1 .M N... 100644 100644 100644 h h src/b.rs\0\
+1 .A N... 000000 000000 100644 h h added.rs\0\
 2 R. N... 100644 100644 100644 h h R100 new name.rs\0old.rs\0\
 u UU N... 1 2 3 4 h h h conflict.rs\0\
 ? a.txt\0";
@@ -21,11 +22,12 @@ u UU N... 1 2 3 4 h h h conflict.rs\0\
         [
             ("conflict.rs", FileStatus::Conflicted),
             ("a.txt", FileStatus::Untracked),
+            ("added.rs", FileStatus::New),
             ("new name.rs", FileStatus::Renamed),
             ("src/b.rs", FileStatus::Modified),
         ]
     );
-    assert_eq!(st.files[2].old_path.as_deref(), Some("old.rs"));
+    assert_eq!(st.files[3].old_path.as_deref(), Some("old.rs"));
 }
 
 #[test]

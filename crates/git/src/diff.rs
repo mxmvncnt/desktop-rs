@@ -150,7 +150,7 @@ impl Repository {
     /// computed in-process with `similar` (see `engine.rs`).
     pub fn working_diff(&self, change: &FileChange, opts: DiffOptions) -> Result<Diff> {
         let old = match change.status {
-            FileStatus::Untracked => Side::Empty,
+            FileStatus::Untracked | FileStatus::New => Side::Empty,
             _ if !self.has_head() => Side::Empty,
             _ => Side::Blob {
                 rev: "HEAD".into(),

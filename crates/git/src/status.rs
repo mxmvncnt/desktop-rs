@@ -96,7 +96,8 @@ impl Repository {
 fn status_from_xy(xy: &str) -> FileStatus {
     // Desktop shows the combined (index + worktree) state relative to HEAD.
     match xy.as_bytes() {
-        [b'A', _] => FileStatus::New,
+        // `.A` is an intent-to-add file (`git add -N`): not in HEAD either.
+        [b'A', _] | [b'.', b'A'] => FileStatus::New,
         [b'D', _] | [_, b'D'] => FileStatus::Deleted,
         [b'R', _] => FileStatus::Renamed,
         [b'C', _] => FileStatus::Copied,
