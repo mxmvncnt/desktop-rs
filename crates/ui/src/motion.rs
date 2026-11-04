@@ -3,6 +3,7 @@
 //! - `fade-in`    500ms ease-out-quint, translateY 4→0 (entrances)
 //! - `fade-quick` 150ms
 //! - `menu-in`    140ms translateY −2→0 + fade (popovers)
+//! - `slide-down` 140ms translateY −10→0 + fade (toolbar popovers)
 //! - `dialog-in`  180ms fade + translateY 6→0
 //! - hover washes: 120ms bg transition (via GPUI-CE `.transitions(..)`)
 //!
@@ -93,6 +94,23 @@ pub fn menu_in<E: IntoElement + Styled + 'static>(
         id,
         Animation::new(MENU_IN).with_easing(ease_out_quint()),
         |el, t| el.opacity(t).relative().top(px(-2.0 * (1.0 - t))),
+    )
+    .into_any_element()
+}
+
+/// Toolbar popover entrance: fade + slide down from −10px over 140ms.
+pub fn slide_down<E: IntoElement + Styled + 'static>(
+    id: impl Into<ElementId>,
+    el: E,
+    instant: bool,
+) -> AnyElement {
+    if instant {
+        return el.into_any_element();
+    }
+    el.with_animation(
+        id,
+        Animation::new(MENU_IN).with_easing(ease_out_quint()),
+        |el, t| el.opacity(t).relative().top(px(-10.0 * (1.0 - t))),
     )
     .into_any_element()
 }

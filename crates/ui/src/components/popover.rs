@@ -22,6 +22,7 @@ pub struct Popover {
     width: f32,
     content: AnyElement,
     scrim: Option<f32>,
+    slide_down: bool,
     on_dismiss: Option<DismissHandler>,
 }
 
@@ -39,8 +40,15 @@ impl Popover {
             width,
             content: content.into_any_element(),
             scrim: None,
+            slide_down: false,
             on_dismiss: None,
         }
+    }
+
+    /// Enter with the slide-down of the toolbar popovers.
+    pub fn slide_down(mut self) -> Self {
+        self.slide_down = true;
+        self
     }
 
     /// Dim the window behind the card with this opacity.
@@ -72,6 +80,15 @@ impl RenderOnce for Popover {
                 .on_mouse_down(MouseButton::Left, move |e, w, cx| f(e, w, cx))
                 .on_mouse_down(MouseButton::Right, move |e, w, cx| g(e, w, cx));
         }
+        let card = overlay_card(cx)
+            .id("popover-card")
+            .occlude()
+            .child(self.content);
+        let card = if self.slide_down {
+            motion::slide_down(self.id, card, instant)
+        } else {
+            motion::menu_in(self.id, card, instant)
+        };
         deferred(
             div().absolute().inset_0().child(backdrop).child(
                 div()
@@ -79,14 +96,7 @@ impl RenderOnce for Popover {
                     .left(self.pos.x)
                     .top(self.pos.y)
                     .w(px(self.width))
-                    .child(motion::menu_in(
-                        self.id,
-                        overlay_card(cx)
-                            .id("popover-card")
-                            .occlude()
-                            .child(self.content),
-                        instant,
-                    )),
+                    .child(card),
             ),
         )
     }

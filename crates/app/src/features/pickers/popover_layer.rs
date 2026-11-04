@@ -57,6 +57,7 @@ impl RenderOnce for PopoverLayer {
             content.child(self.content),
         )
         .scrim(0.18)
+        .slide_down()
         .on_dismiss(move |_, window, cx| ws.update(cx, |this, cx| this.close_overlay(window, cx)))
     }
 }
