@@ -27,11 +27,17 @@ const RECENT_WATCH_REFRESH: Duration = Duration::from_secs(1);
 impl Workspace {
     pub fn new(open_path: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let ws = cx.weak_entity();
-        let commit_box = cx.new(|cx| CommitBox::new(ws, cx));
-        let pickers = cx.new(|cx| PopoverStore::new(cx));
+        let commit_box = cx.new(|cx| CommitBox::new(ws.clone(), cx));
+        let pickers = cx.new(|cx| PopoverStore::new(ws, cx));
         let p = pickers.read(cx);
         let inputs = [p.filter.clone(), p.name_input.clone(), p.url_input.clone()];
+        let base = p.base.clone();
         let mut subs = input_subscriptions(&inputs, cx);
+        subs.push(
+            cx.subscribe(&base, |this, _, ComboPicked(value): &ComboPicked, cx| {
+                this.pick_new_branch_base(value, cx)
+            }),
+        );
         subs.push(cx.observe(&pickers, |_, _, cx| cx.notify()));
         let accounts = cx.new(|cx| AccountsStore::new(cx));
         subs.push(cx.observe(&accounts, |_, _, cx| cx.notify()));

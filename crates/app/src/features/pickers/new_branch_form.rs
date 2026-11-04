@@ -47,10 +47,6 @@ impl RenderOnce for NewBranchForm {
             .flex_col()
             .gap(px(10.0))
             .p(px(14.0))
-            .capture_action(move |_: &Enter, w, cx| {
-                cx.stop_propagation();
-                enter_ws.update(cx, |this, cx| this.submit_new_branch(w, cx))
-            })
             .child(
                 div()
                     .text_size(px(12.0))
@@ -58,7 +54,15 @@ impl RenderOnce for NewBranchForm {
                     .text_color(theme.text_muted)
                     .child("Create a branch"),
             )
-            .child(text_field("branch-name", &self.input, "Branch name", cx))
+            // Only here: Enter in the "Based on" field applies its dropdown.
+            .child(
+                div()
+                    .capture_action(move |_: &Enter, w, cx| {
+                        cx.stop_propagation();
+                        enter_ws.update(cx, |this, cx| this.submit_new_branch(w, cx))
+                    })
+                    .child(text_field("branch-name", &self.input, "Branch name", cx)),
+            )
             .child(self.base)
             .children(stale)
             .child(

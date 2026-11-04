@@ -67,13 +67,27 @@ impl Workspace {
             base: NewBranchBase {
                 current: repo.map(|r| r.branch_name()).unwrap_or_default(),
                 chosen: p.new_branch_base.clone(),
-                open: p.new_branch_base_open,
                 branches: repo.map(|r| r.branches.clone()).unwrap_or_default(),
+                combo: p.base.clone(),
                 pickers: self.pickers.clone(),
             },
             input: p.name_input.clone(),
             ws: cx.entity(),
         }
+    }
+
+    /// A branch was picked in the "Based on" field; empty or the current one starts from the current branch.
+    pub(crate) fn pick_new_branch_base(&mut self, value: &str, cx: &mut Context<Self>) {
+        let current = self
+            .repo
+            .as_ref()
+            .map(|r| r.read(cx).branch_name())
+            .unwrap_or_default();
+        let base = (!value.is_empty() && value != current).then(|| value.to_string());
+        self.pickers.update(cx, |p, cx| {
+            p.new_branch_base = base;
+            cx.notify()
+        });
     }
 
     pub fn clone_form(&self, cx: &mut Context<Self>) -> CloneForm {

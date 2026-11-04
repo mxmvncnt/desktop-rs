@@ -32,9 +32,9 @@ pub fn views() -> &'static [View] {
 
 fn new_branch_base(ws: &mut Workspace, _: &str, window: &mut Window, cx: &mut Context<Workspace>) {
     ws.toggle_popover(Popover::NewBranch, window, cx);
-    ws.pickers.update(cx, |p, _| {
-        p.new_branch_base = Some("staging".into());
-        p.new_branch_base_open = true;
+    ws.pickers.update(cx, |p, cx| {
+        p.set_base(Some("staging".into()), cx);
+        p.base.update(cx, |c, cx| c.open(cx));
     });
     ws.pickers
         .read(cx)

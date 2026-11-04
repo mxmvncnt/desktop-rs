@@ -45,8 +45,12 @@ impl RenderOnce for PopoverLayer {
         };
         let ws = self.ws;
         let esc_ws = ws.clone();
-        // The filter input turns Esc into its own action (blur), so capture it to close the picker.
+        // The filter input turns Esc into its own action (blur), so capture it to close the picker, unless an open dropdown of the
+        // "Based on" field closes first.
         let content = div().capture_action(move |_: &Escape, w, cx| {
+            if esc_ws.read(cx).pickers.read(cx).base.read(cx).is_open() {
+                return;
+            }
             cx.stop_propagation();
             esc_ws.update(cx, |this, cx| this.close_overlay(w, cx))
         });

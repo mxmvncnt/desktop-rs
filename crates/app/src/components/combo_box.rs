@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use gpui::{
     AppContext as _, Bounds, Context, Entity, EventEmitter, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, Styled, Subscription, Window, canvas, div,
+    ParentElement, Pixels, Render, SharedString, Styled, Subscription, Window, canvas, div,
 };
 use gpui_elements::editable_text::{
     EditableTextState, StringStorage, TextChanged,
@@ -32,7 +32,7 @@ pub struct ComboPicked(pub String);
 
 pub struct ComboBox {
     id: &'static str,
-    placeholder: &'static str,
+    placeholder: SharedString,
     text: Entity<EditableTextState>,
     /// What is applied: shown while the dropdown is closed.
     value: String,
@@ -50,7 +50,7 @@ impl EventEmitter<ComboPicked> for ComboBox {}
 impl ComboBox {
     pub fn new(
         id: &'static str,
-        placeholder: &'static str,
+        placeholder: impl Into<SharedString>,
         entries: impl Fn(&str, &gpui::App) -> Vec<ComboEntry> + 'static,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -58,7 +58,7 @@ impl ComboBox {
         let _edits = cx.subscribe(&text, |this, _, _: &TextChanged, cx| this.edited(cx));
         Self {
             id,
-            placeholder,
+            placeholder: placeholder.into(),
             text,
             value: String::new(),
             open: false,
@@ -76,6 +76,19 @@ impl ComboBox {
         self.typed = false;
         self.text.update(cx, |s, cx| s.emplace(value, cx));
         cx.notify();
+    }
+
+    pub fn set_placeholder(
+        &mut self,
+        placeholder: impl Into<SharedString>,
+        cx: &mut Context<Self>,
+    ) {
+        self.placeholder = placeholder.into();
+        cx.notify();
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.open
     }
 
     /// List all the choices.
@@ -171,7 +184,7 @@ impl Render for ComboBox {
                             .absolute()
                             .size_full(),
                     )
-                    .child(text_field(self.id, &self.text, self.placeholder, cx))
+                    .child(text_field(self.id, &self.text, &self.placeholder, cx))
                     .children(menu),
             )
     }

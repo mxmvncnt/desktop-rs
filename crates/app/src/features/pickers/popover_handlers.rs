@@ -25,7 +25,17 @@ impl Workspace {
             Popover::NewBranch => &inputs[1],
             Popover::Clone => &inputs[2],
         };
-        self.pickers.update(cx, |p, cx| p.set_base(None, cx));
+        let current = self
+            .repo
+            .as_ref()
+            .map(|r| r.read(cx).branch_name())
+            .unwrap_or_default();
+        self.pickers.update(cx, |p, cx| {
+            p.set_base(None, cx);
+            p.base.update(cx, |c, cx| {
+                c.set_placeholder(format!("{current} (current)"), cx)
+            });
+        });
         self.reset_popover_selection(cx);
         for input in &inputs {
             input.update(cx, |s, cx| s.emplace("", cx));
