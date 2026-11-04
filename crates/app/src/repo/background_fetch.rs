@@ -11,6 +11,9 @@ const BACKGROUND_FETCH_INTERVAL: Duration = Duration::from_secs(30 * 60);
 const BACKGROUND_FETCH_FIRST_CHECK: Duration = Duration::from_secs(10);
 /// How often the background task wakes up (also re-renders "Last fetched").
 const BACKGROUND_TICK: Duration = Duration::from_secs(60);
+/// Dialogs that compare with the remote (new branch, merge) fetch on open unless the
+/// last fetch is younger than this.
+pub const ON_OPEN_FETCH_AGE: Duration = Duration::from_secs(60);
 
 impl RepoModel {
     /// Fetch every 30 minutes, first check shortly after opening. Errors are
@@ -77,8 +80,9 @@ impl RepoModel {
             let res = cx.background_spawn(async move { repo.fetch() }).await;
             this.update(cx, |this, cx| {
                 this.remote_op = None;
-                if let Err(e) = res {
-                    log::warn!("background fetch failed: {e}");
+                match res {
+                    Ok(_) => this.sync.fetched = true,
+                    Err(e) => log::warn!("background fetch failed: {e}"),
                 }
                 this.refresh(cx);
                 cx.notify();

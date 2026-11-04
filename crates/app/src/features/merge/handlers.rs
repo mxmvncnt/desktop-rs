@@ -5,7 +5,7 @@ use gd_git::{Branch, MergePreview};
 use gpui::{Context, Focusable, ScrollStrategy, Window};
 
 use super::state::{MergeDialog, MergeMode};
-use crate::repo::spawn_load;
+use crate::repo::{ON_OPEN_FETCH_AGE, spawn_load};
 use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
@@ -58,6 +58,10 @@ impl Workspace {
         self.merge_ui.filter.update(cx, |s, cx| s.emplace("", cx));
         self.merge_ui.summary_for = None;
         self.open_overlay(Overlay::Merge(MergeDialog::new(mode)), cx);
+        // Fetch so the candidates and the preview match the remote as it is now.
+        if let Some(repo) = &self.repo {
+            repo.update(cx, |r, cx| r.fetch_if_older_than(ON_OPEN_FETCH_AGE, cx));
+        }
         let ix = preselect
             .and_then(|name| {
                 self.merge_candidates(cx)
@@ -71,6 +75,13 @@ impl Workspace {
             .scroll_to_item(ix, ScrollStrategy::Nearest);
         window.focus(&self.merge_ui.filter.focus_handle(cx), cx);
         cx.notify();
+    }
+
+    /// Recompute the open dialog's preview (remote branches moved after a fetch).
+    pub(crate) fn reload_merge_preview(&mut self, cx: &mut Context<Self>) {
+        if let Some(ix) = self.merge_dialog().map(|d| d.ix) {
+            self.merge_select(ix, cx);
+        }
     }
 
     /// Highlight candidate `ix` and (re)compute its preview in the background.

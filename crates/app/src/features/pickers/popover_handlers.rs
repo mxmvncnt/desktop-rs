@@ -1,13 +1,9 @@
 //! `impl Workspace`: opening, toggling and closing the toolbar popovers.
 
-use std::time::Duration;
-
 use gpui::{Context, Focusable, Window};
 
+use crate::repo::ON_OPEN_FETCH_AGE;
 use crate::workspace::{Overlay, Popover, Workspace};
-
-/// Opening the new-branch popover fetches unless the last fetch is younger than this.
-const NEW_BRANCH_FETCH_AGE: Duration = Duration::from_secs(60);
 
 impl Workspace {
     pub fn toggle_popover(&mut self, p: Popover, window: &mut Window, cx: &mut Context<Self>) {
@@ -21,7 +17,7 @@ impl Workspace {
         self.open_overlay(Overlay::Popover(p), cx);
         // Fetch so the stale-base notice compares against the remote as it is now.
         if let (Popover::NewBranch, Some(repo)) = (p, &self.repo) {
-            repo.update(cx, |r, cx| r.fetch_if_older_than(NEW_BRANCH_FETCH_AGE, cx));
+            repo.update(cx, |r, cx| r.fetch_if_older_than(ON_OPEN_FETCH_AGE, cx));
         }
         let store = self.pickers.read(cx);
         let inputs = [

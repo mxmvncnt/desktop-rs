@@ -88,6 +88,7 @@ impl RepoModel {
         }
         self.sync.refreshing = true;
         self.sync.refresh_count += 1;
+        let fetched = std::mem::take(&mut self.sync.fetched);
         log::debug!(
             "refresh #{} ({:?}) {}",
             self.sync.refresh_count,
@@ -99,8 +100,13 @@ impl RepoModel {
             let data = cx
                 .background_spawn(async move { RefreshData::read(&repo, scope) })
                 .await;
-            this.update(cx, |this, cx| this.finish_refresh(data, scope, cx))
-                .ok();
+            this.update(cx, |this, cx| {
+                this.finish_refresh(data, scope, cx);
+                if fetched {
+                    cx.emit(RepoEvent::Fetched);
+                }
+            })
+            .ok();
         })
         .detach();
     }

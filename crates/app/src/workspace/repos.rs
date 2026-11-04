@@ -74,6 +74,7 @@ impl Workspace {
             RepoEvent::SwitchBranchWithChanges(branch) => {
                 self.open_switch_dialog(branch.clone(), cx)
             }
+            RepoEvent::Fetched => self.reload_merge_preview(cx),
             RepoEvent::PreparedMessage {
                 summary,
                 description,

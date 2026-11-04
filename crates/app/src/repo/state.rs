@@ -54,6 +54,8 @@ pub enum RepoEvent {
     /// Checkout requested while the working tree has changes: the workspace
     /// asks the user whether to stash them or bring them along.
     SwitchBranchWithChanges(Branch),
+    /// A background fetch finished and `branches` were reloaded: remote branches may have moved.
+    Fetched,
     /// A merge-like operation paused; git prepared this commit message.
     PreparedMessage {
         summary: String,
@@ -77,6 +79,8 @@ pub struct RefreshState {
     /// mtime of `.git/FETCH_HEAD`.
     pub last_fetch: Option<SystemTime>,
     pub(super) last_background_fetch: Option<Instant>,
+    /// A background fetch finished: the next refresh to start emits `RepoEvent::Fetched` once it lands.
+    pub(super) fetched: bool,
     pub(super) _watcher: Option<RepoWatcher>,
     pub(super) _watch_task: Option<Task<()>>,
     pub(super) _background_fetch_task: Option<Task<()>>,

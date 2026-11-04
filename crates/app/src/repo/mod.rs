@@ -23,6 +23,7 @@ mod refresh;
 mod run;
 mod state;
 
+pub use background_fetch::ON_OPEN_FETCH_AGE;
 pub use diff_detail::DiffDetail;
 pub use run::{LoadSlot, Op, spawn_load};
 pub use state::{LastCommit, RemoteOp, RepoEvent, RepoModel, Tab};

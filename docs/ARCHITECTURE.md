@@ -293,7 +293,10 @@ needs `&mut Workspace` today). Not done.
   Background fetch task: first check at 10s, then wakes every 60s (also re-renders
   the relative-time caption); fetches when both last fetch and last attempt are >=30 min old.
   Failures are only logged. `RepoModel::fetch_if_older_than(max_age)` is the same fetch on demand: the
-  new-branch popover calls it on open with 60s.
+  new-branch popover and the merge dialog call it on open with `ON_OPEN_FETCH_AGE` (60s). A successful
+  background fetch emits `RepoEvent::Fetched` once the refresh it triggers has landed (`RefreshState::fetched`
+  is taken by the next refresh to start, so `branches` is already reloaded); the workspace then recomputes the
+  open merge dialog's preview. Emitting right after `git fetch` would recompute against the old branch list.
 - Every `Branch` in `RepoModel.branches` carries `ahead_behind` vs its upstream (`%(upstream:track)` in the same
   `for-each-ref`, `None` without upstream or when gone). It is as fresh as the last fetch: the background fetch
   updates the remote refs, the watcher sees it and the Full refresh reloads `branches`. Read it from there
