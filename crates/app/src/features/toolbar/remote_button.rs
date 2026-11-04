@@ -15,6 +15,8 @@ pub(super) struct RemoteButton {
     /// Op to run on click; `None` while one is in flight or no repo is open.
     pub op: Option<RemoteOp>,
     pub busy: bool,
+    /// Title of the dropdown's fetch item, when the button does something else.
+    pub fetch_title: Option<SharedString>,
 }
 
 impl RemoteButton {
@@ -37,6 +39,7 @@ impl RemoteButton {
             title: title.into(),
             op,
             busy: false,
+            fetch_title: None,
         }
     }
 
@@ -58,7 +61,11 @@ impl RemoteButton {
             return Self::in_flight(op, &remote);
         }
         let has_branch = st.and_then(|s| s.branch.as_ref()).is_some();
-        Self::idle(r, upstream.is_some(), has_branch, ab, &remote)
+        let mut button = Self::idle(r, upstream.is_some(), has_branch, ab, &remote);
+        if button.op != Some(RemoteOp::Fetch) {
+            button.fetch_title = Some(format!("Fetch {remote}").into());
+        }
+        button
     }
 
     fn in_flight(op: RemoteOp, remote: &str) -> Self {

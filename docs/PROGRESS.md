@@ -1,5 +1,11 @@
 # Progress
 
+## Remote button dropdown (2026-11-03)
+
+- [x] When the toolbar remote button offers push / pull / force push / publish, a chevron beside it opens a menu with "Fetch <remote>",
+      like Desktop (`features/toolbar/handlers.rs`, `Workspace::open_remote_menu`). The menu drops from the toolbar's bottom edge
+      under the pointer. Snapshot view `remote-menu` (needs a repo ahead of or behind its upstream). Click untested by hand.
+
 ## CI pipelines page (branch `rust/ci-page`)
 
 - [x] Toolbar button + full page (`features/ci/`), account resolution with empty states, pipelines list (status tabs, current-branch toggle,

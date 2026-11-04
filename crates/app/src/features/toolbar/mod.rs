@@ -1,9 +1,12 @@
 //! Top toolbar: repository / branch popover triggers, the contextual remote
 //! (fetch / pull / push / publish) button, settings, and CSD caption buttons.
 
+mod handlers;
 mod last_fetched;
 mod ops;
 mod remote_button;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 mod toolbar_bar;
 
 pub use toolbar_bar::Toolbar;

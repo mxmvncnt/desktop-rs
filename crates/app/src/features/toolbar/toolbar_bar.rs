@@ -68,6 +68,7 @@ impl RenderOnce for Toolbar {
             .child(self.branch_button())
             .child(div().h(px(24.0)).child(vdivider(cx)))
             .child(self.remote_button())
+            .children(self.remote_menu_button())
             // Empty toolbar space is the titlebar: drag / double-click / menu.
             .child(crate::platform::titlebar_drag(
                 div().id("titlebar-drag").flex_1().h_full(),
@@ -130,6 +131,18 @@ impl Toolbar {
                 ws.update(cx, |this, cx| this.remote_action(op, cx))
             }
         })
+    }
+
+    /// Chevron beside the remote button: fetch while it offers push / pull.
+    fn remote_menu_button(&self) -> Option<impl IntoElement + use<>> {
+        self.remote.fetch_title.as_ref()?;
+        let ws = self.ws.clone();
+        Some(
+            icon_button("toolbar-remote-menu", Icon::ChevronDown).on_click(move |e, w, cx| {
+                let x = e.position().x;
+                ws.update(cx, |this, cx| this.open_remote_menu(x, w, cx))
+            }),
+        )
     }
 
     fn ci_button(&self) -> impl IntoElement + use<> {
