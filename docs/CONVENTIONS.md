@@ -35,7 +35,7 @@ features/stashes/
   only sees what `mod.rs` re-exports.
 - A component used by two or more features goes in `crates/app/src/components/`
   (`FileRow`, `FileList`, `FileDiffPane`, `BranchRow`, `DiffDisplayOptions`, `MenuRow`,
-  `SuggestionCard`, `text_field`/`text_area`); a primitive with no app types goes in
+  `SuggestionCard`, `ComboBox`, `text_field`/`text_area`); a primitive with no app types goes in
   `gd-ui` (`ResizeHandle`, `OptionRow`, `CheckRow`, `Popover`, `modal`, `empty_state`,
   `Callback`). Non-UI helpers go in `crates/app/src/utils/` (`text.rs`, `paths.rs`). No `utils.rs`/`helpers.rs` grab bags:
   name a file after what it does (`relative_time.rs`).

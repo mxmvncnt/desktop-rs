@@ -655,18 +655,19 @@ plays again each time its element comes back); the one that goes is gone at once
   raise `LOG_ANIM` (to 20 s) for the run, with the `ci-job-slide` / `ci-job-slide-close` views.
 - Job cards do not use `pressable`: its hover is a translucent wash, which over an opaque card fades through the page behind it (a dark flash). They use
   the opaque `surface_raised` / `surface_raised_hover` pair.
-- List filters: status tabs, a branch field and (where `Capabilities::filter_user`) a user field. The text lives in `CiInputs` (two `EditableTextState`s on
-  `Workspace::ci_inputs`, since an `Entity` needs an `App`). Both fields are one component, `FilterField` (`filter_field.rs`), a combobox:
-  - Clicking the field (a capture-phase mouse down: the input handles and stops its own clicks) or its chevron opens the dropdown (`CiStore::menu`),
-    listing everything. Typing opens it too and narrows it (`menu_typed`): `Workspace::ci_text_edited` (on `TextChanged`, via `subscribe_in`) tells
-    `CiStore::text_edited` whether the input has the focus, so changes made by the app (`clear_ci_filters`, a revert) never open it.
+- List filters: status tabs, a branch field and (where `Capabilities::filter_user`) a user field. Both are `components::ComboBox` entities in `CiInputs`
+  (on `Workspace::ci_inputs`, since an `Entity` needs an `App`), created with a closure that lists the entries for a text. The combo box manages
+  itself: open, typed, the applied value, Enter/Esc, and its dropdown (`ComboMenu`, drawn from inside the field: a `deferred` context menu in a
+  window-sized container placed at `client_inset - field origin`; `anchored` would round that offset). The CI page only listens to `ComboPicked`
+  (`CiStore::apply`) and calls `set_value` when the filter changes elsewhere:
+  - Clicking the field (a capture-phase mouse down: the input handles and stops its own clicks) opens the dropdown, listing everything. Typing opens
+    it too and narrows it. The app only ever puts the applied value in the field (`set_value`), so any other text was typed.
   - What is listed (`filter_entries.rs`, tested): branches = local ones, then the remote ones that are not local, the current branch first and marked;
     users = the ones seen in the loaded pipelines and details (`CiStore::known_users`), prefix matches first. Typed text keeps the entries that contain it.
-  - The forges filter on exact names, so typed text is never applied by itself (part of a name would match nothing). A pick, or Enter (`on_enter`: the
+  - The forges filter on exact names, so typed text is never applied by itself (part of a name would match nothing). A pick, or Enter (`components::combo_box::enter_choice`: the
     entry that is the text, else the first one, else the text as typed: a tag, a login not seen yet), applies it (`CiStore::apply` -> `set_filters`, which
     reloads the list 350ms later, or only clears it while the page is closed). Emptying the field clears the filter.
-  - Closing without a pick (a click anywhere else, `Workspace::close_ci_menu` on the root's mouse down; Esc; the chevron again) puts the applied value
-    back in the field. A click inside the field, the chevron or the list stops its propagation so the root does not close it.
+  - Closing without a pick (a click outside the dropdown, Esc) puts the applied value back in the field.
   - GitLab's list has no users until a pipeline's detail is loaded, so its user entries grow as rows come into view. The user field is hidden for Forgejo:
     filtering client-side would break paging. Opening another repository clears both inputs (`clear_ci_filters` in `attach_model`).
 - "Load more" is the last row of the pipelines list (`count + 1` rows while `CiStore::more`, same `ROW_HEIGHT`), so it scrolls with the list and sits under the last pipeline.

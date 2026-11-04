@@ -1,23 +1,20 @@
 //! CI page state: what is shown, the pipelines loaded so far and the per-pipeline detail cache.
 
-use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
-use gpui::{
-    App, AppContext as _, Entity, EventEmitter, Pixels, Point, Task, UniformListScrollHandle,
-};
-use gpui_elements::editable_text::{EditableTextState, StringStorage};
+use gpui::{App, AppContext as _, Entity, EventEmitter, Task, UniformListScrollHandle, WeakEntity};
 
+use super::filter_entries::{branch_entries, user_entries};
 use super::target::{Problem, Target};
+use crate::components::ComboBox;
 use crate::features::diff::text_selection::model::TextSel;
 use crate::repo::LoadSlot;
+use crate::workspace::Workspace;
 
-/// Which screen of the page is shown.
 /// A text filter of the pipelines list.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Field {
@@ -25,6 +22,16 @@ pub enum Field {
     User,
 }
 
+impl Field {
+    pub fn id(self) -> &'static str {
+        match self {
+            Field::Branch => "ci-branch-filter",
+            Field::User => "ci-user-filter",
+        }
+    }
+}
+
+/// Which screen of the page is shown.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CiView {
     List,
@@ -86,24 +93,46 @@ impl LogState {
     }
 }
 
-/// The text inputs of the list filters. They live on the `Workspace`: an `Entity` is made from an `App`, a `CiStore` default has none.
+/// The list filters. They live on the `Workspace`: an `Entity` is made from an `App`, a `CiStore` default has none.
 #[derive(Clone)]
 pub struct CiInputs {
-    pub branch: Entity<EditableTextState>,
-    pub user: Entity<EditableTextState>,
-    /// Where the dropdown of each opens: below the field, in window coordinates. Set while painting it.
-    pub branch_at: Rc<Cell<Point<Pixels>>>,
-    pub user_at: Rc<Cell<Point<Pixels>>>,
+    pub branch: Entity<ComboBox>,
+    pub user: Entity<ComboBox>,
 }
 
 impl CiInputs {
-    pub fn new(cx: &mut App) -> Self {
-        let mk = |cx: &mut App| cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
-        Self {
-            branch: mk(cx),
-            user: mk(cx),
-            branch_at: Rc::default(),
-            user_at: Rc::default(),
+    pub fn new(ci: &Entity<CiStore>, ws: WeakEntity<Workspace>, cx: &mut App) -> Self {
+        let store = ci.clone();
+        let branch = cx.new(|cx| {
+            ComboBox::new(
+                Field::Branch.id(),
+                "All branches",
+                move |typed, cx| {
+                    let current = store.read(cx).ready().and_then(|t| t.branch.clone());
+                    ws.upgrade()
+                        .and_then(|ws| ws.read(cx).repo.clone())
+                        .map(|r| branch_entries(&r.read(cx).branches, current.as_deref(), typed))
+                        .unwrap_or_default()
+                },
+                cx,
+            )
+        });
+        let store = ci.clone();
+        let user = cx.new(|cx| {
+            ComboBox::new(
+                Field::User.id(),
+                "Anyone",
+                move |typed, cx| user_entries(store.read(cx).known_users(), typed),
+                cx,
+            )
+        });
+        Self { branch, user }
+    }
+
+    pub fn get(&self, field: Field) -> &Entity<ComboBox> {
+        match field {
+            Field::Branch => &self.branch,
+            Field::User => &self.user,
         }
     }
 }
@@ -131,10 +160,6 @@ pub struct CiStore {
     /// The list filters, empty = none. They follow `CiInputs` (see `set_filters`); `user` only where the account's forge can filter on it.
     pub branch: String,
     pub user: String,
-    /// The filter whose dropdown is open.
-    pub menu: Option<Field>,
-    /// Text was typed in it since it opened: the dropdown lists what contains it.
-    pub menu_typed: bool,
     pub pipelines: Vec<Pipeline>,
     /// Last page loaded; a full page means there may be another.
     pub page: u32,
@@ -180,8 +205,6 @@ impl Default for CiStore {
             status: None,
             branch: String::new(),
             user: String::new(),
-            menu: None,
-            menu_typed: false,
             filter_task: None,
             pipelines: Vec::new(),
             page: 1,

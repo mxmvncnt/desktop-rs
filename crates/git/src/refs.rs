@@ -50,7 +50,8 @@ impl Repository {
             .run()?;
         let mut branches = Vec::new();
         for line in out.lines() {
-            let [refname, name, head, upstream, track, time] = line.split('\0').collect::<Vec<_>>()[..]
+            let [refname, name, head, upstream, track, time] =
+                line.split('\0').collect::<Vec<_>>()[..]
             else {
                 return Err(GitError::Parse(line.into()));
             };

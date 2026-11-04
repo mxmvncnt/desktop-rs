@@ -13,7 +13,6 @@ use crate::components::MenuView;
 use crate::features::branches::BranchDialogView;
 use crate::features::changes::{Sidebar, SidebarResize};
 use crate::features::ci::CiPage;
-use crate::features::ci::{CiMenu, Field};
 use crate::features::diff::DiffOptionsMenu;
 use crate::features::history::HistoryDialogView;
 use crate::features::menus::DiscardDialogView;
@@ -47,10 +46,6 @@ impl Render for Workspace {
                 cx.listener(|this, e: &DragMoveEvent<SidebarResize>, _, cx| {
                     this.drag_sidebar_to(e.event.position.x.as_f32(), cx)
                 }),
-            )
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|this, _, _, cx| this.close_ci_menu(cx)),
             )
             .on_mouse_up(
                 MouseButton::Left,
@@ -130,26 +125,6 @@ impl Workspace {
             .map(IntoElement::into_any_element)
             .collect();
         let ws = cx.entity();
-        for (field, at) in [
-            (Field::Branch, &self.ci_inputs.branch_at),
-            (Field::User, &self.ci_inputs.user_at),
-        ] {
-            if let Some((entries, typed)) = self.ci_entries(field, cx) {
-                let (store, inputs, position) = (self.ci.clone(), self.ci_inputs.clone(), at.get());
-                out.push(
-                    CiMenu {
-                        ws: ws.clone(),
-                        store,
-                        inputs,
-                        field,
-                        entries,
-                        typed,
-                        position,
-                    }
-                    .into_any_element(),
-                );
-            }
-        }
         for overlay in self.overlays.clone() {
             out.extend(match overlay {
                 Overlay::Popover(p) => Some(PopoverLayer::open(self, p, cx).into_any_element()),

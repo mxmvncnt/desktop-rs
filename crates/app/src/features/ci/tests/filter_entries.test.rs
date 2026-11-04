@@ -11,7 +11,7 @@ fn branch(name: &str, kind: BranchKind) -> Branch {
     }
 }
 
-fn values(entries: &[Entry]) -> Vec<&str> {
+fn values(entries: &[ComboEntry]) -> Vec<&str> {
     entries.iter().map(|e| e.value.as_str()).collect()
 }
 
@@ -112,13 +112,4 @@ fn prefix_matches_come_first_and_each_login_is_listed_once() {
         values(&user_entries(&users, "ada")),
         ["ada", "adam", "bob-ada"]
     );
-}
-
-#[test]
-fn enter_applies_the_exact_entry_then_the_first_then_the_text_and_nothing_for_an_empty_text() {
-    let values = ["adam".to_string(), "ada".to_string()];
-    assert_eq!(on_enter(&values, "ADA"), "ada");
-    assert_eq!(on_enter(&values, "ad"), "adam");
-    assert_eq!(on_enter(&[], " v1.0 "), "v1.0");
-    assert_eq!(on_enter(&values, "  "), "");
 }

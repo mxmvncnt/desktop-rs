@@ -10,7 +10,7 @@ use gd_forge::{
 use gpui::{Context, ScrollStrategy, Window};
 
 use super::ops::visible_lines;
-use super::state::{CiStore, CiView, Field, PipelineTab};
+use super::state::{CiStore, CiView, PipelineTab};
 use super::target::{Problem, Target};
 use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
 use crate::features::settings::ThemeMode;
@@ -67,15 +67,6 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
             if view.contains("filters") {
                 (ci.branch, ci.user) = ("release/1.5".into(), "ada".into());
             }
-            // `ci-pipelines-branches`: the branch dropdown open; `-typed`: "rel" typed in it. `ci-pipelines-users-typed`: "ad" in the user one.
-            ci.menu = if view.contains("branches") {
-                Some(Field::Branch)
-            } else if view.contains("users") {
-                Some(Field::User)
-            } else {
-                None
-            };
-            ci.menu_typed = view.contains("typed");
             if let (true, Some(Ok(target))) = (view.contains("forgejo"), &mut ci.target) {
                 target.forge = Forge::Forgejo;
             }
@@ -90,16 +81,27 @@ fn ci_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Conte
         cx.notify();
     });
     if view.contains("filters") {
-        ws.ci_inputs
-            .branch
-            .update(cx, |s, cx| s.emplace("release/1.5", cx));
-        ws.ci_inputs.user.update(cx, |s, cx| s.emplace("ada", cx));
+        for (combo, value) in [
+            (&ws.ci_inputs.branch, "release/1.5"),
+            (&ws.ci_inputs.user, "ada"),
+        ] {
+            combo.update(cx, |c, cx| c.set_value(value, cx));
+        }
     }
-    if view.contains("branches-typed") {
-        ws.ci_inputs.branch.update(cx, |s, cx| s.emplace("rel", cx));
-    }
-    if view.contains("users-typed") {
-        ws.ci_inputs.user.update(cx, |s, cx| s.emplace("ad", cx));
+    // `ci-pipelines-branches`: the branch dropdown open; `-typed`: "rel" typed in it. `ci-pipelines-users-typed`: "ad" in the user one.
+    for (name, combo, typed) in [
+        ("branches", &ws.ci_inputs.branch, "rel"),
+        ("users", &ws.ci_inputs.user, "ad"),
+    ] {
+        if view.contains(name) {
+            combo.update(cx, |c, cx| {
+                if view.contains("typed") {
+                    c.type_text(typed, cx)
+                } else {
+                    c.open(cx)
+                }
+            });
+        }
     }
 }
 

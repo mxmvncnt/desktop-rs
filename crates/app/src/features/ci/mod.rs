@@ -4,11 +4,9 @@
 mod actions;
 mod ansi;
 mod breadcrumbs;
-mod ci_menu;
 mod ci_page;
 mod duration;
 mod filter_entries;
-mod filter_field;
 mod handlers;
 mod job_card;
 mod job_sidebar;
@@ -30,6 +28,5 @@ mod state;
 mod status_badge;
 mod target;
 
-pub use ci_menu::CiMenu;
 pub use ci_page::CiPage;
 pub use state::{CiEvent, CiInputs, CiStore, Field};

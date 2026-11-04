@@ -7,8 +7,7 @@ use gpui::{
     StatefulInteractiveElement, Styled, Window, div, prelude::*, px,
 };
 
-use super::filter_field::FilterField;
-use super::state::{CiStore, Field};
+use super::state::CiStore;
 use crate::workspace::Workspace;
 
 /// The status tabs, in order.
@@ -37,8 +36,8 @@ impl RenderOnce for PipelinesHeader {
         let refreshing = ci.refreshing;
         let account = target.map(|t| format!("via {} · {}", t.account_name, t.host));
         let can_filter_user = target.is_some_and(|t| t.forge.capabilities().filter_user);
-        let inputs = self.ws.read(cx).ci_inputs.clone();
         let (ws, store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.ws.clone());
+        let inputs = self.ws.read(cx).ci_inputs.clone();
         let labeled = |label: &'static str| {
             div().flex().items_center().gap(px(8.0)).child(
                 div()
@@ -125,37 +124,9 @@ impl RenderOnce for PipelinesHeader {
                                     }),
                             ),
                         )
-                        .child(
-                            labeled("Branch").child(FilterField {
-                                store: self.store.clone(),
-                                field: Field::Branch,
-                                input: inputs.branch.clone(),
-                                placeholder: "All branches",
-                                width: 180.0,
-                                entries: self
-                                    .ws
-                                    .read(cx)
-                                    .ci_entries(Field::Branch, cx)
-                                    .map(|(entries, _)| entries),
-                                anchor: inputs.branch_at.clone(),
-                            }),
-                        )
+                        .child(labeled("Branch").child(div().w(px(180.0)).child(inputs.branch)))
                         .when(can_filter_user, |d| {
-                            d.child(
-                                labeled("User").child(FilterField {
-                                    store: self.store.clone(),
-                                    field: Field::User,
-                                    input: inputs.user.clone(),
-                                    placeholder: "Anyone",
-                                    width: 150.0,
-                                    entries: self
-                                        .ws
-                                        .read(cx)
-                                        .ci_entries(Field::User, cx)
-                                        .map(|(entries, _)| entries),
-                                    anchor: inputs.user_at.clone(),
-                                }),
-                            )
+                            d.child(labeled("User").child(div().w(px(150.0)).child(inputs.user)))
                         }),
                 )
             })

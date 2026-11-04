@@ -9,6 +9,7 @@ use gpui::{
 use gpui_elements::editable_text::{EditableTextState, TextChanged};
 
 use super::state::Workspace;
+use crate::components::ComboPicked;
 use crate::features::accounts::AccountsStore;
 use crate::features::branches::BranchUi;
 use crate::features::changes::CommitBox;
@@ -39,16 +40,13 @@ impl Workspace {
         let ci = cx.new(|_| CiStore::default());
         subs.push(cx.observe(&ci, |_, _, cx| cx.notify()));
         subs.push(cx.subscribe(&ci, |this, _, ev: &CiEvent, cx| this.on_ci_event(ev, cx)));
-        let ci_inputs = CiInputs::new(cx);
-        for (field, input) in [
-            (Field::Branch, &ci_inputs.branch),
-            (Field::User, &ci_inputs.user),
-        ] {
-            subs.push(cx.subscribe_in(
-                input,
-                window,
-                move |this: &mut Workspace, input, _: &TextChanged, window, cx| {
-                    this.ci_text_edited(field, input, window, cx)
+        let ci_inputs = CiInputs::new(&ci, cx.weak_entity(), cx);
+        for field in [Field::Branch, Field::User] {
+            subs.push(cx.subscribe(
+                ci_inputs.get(field),
+                move |this, _, ComboPicked(value): &ComboPicked, cx| {
+                    this.ci
+                        .update(cx, |ci, cx| ci.apply(field, value.clone(), cx))
                 },
             ));
         }

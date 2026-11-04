@@ -1,20 +1,15 @@
-//! What the dropdowns of the branch and user filters list, and what Enter applies in them.
+//! What the dropdowns of the branch and user filters list.
 
 use std::collections::HashSet;
 
 use gd_forge::User;
 use gd_git::{Branch, BranchKind};
 
-/// A line of a dropdown: the value that goes in the field and a faint note next to it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Entry {
-    pub value: String,
-    pub detail: Option<String>,
-}
+use crate::components::ComboEntry;
 
 /// The branches a pipeline can be filtered on that contain `typed` (ignoring case): the local ones, then the remote ones that are not local
 /// (without their remote), the current branch first.
-pub fn branch_entries(branches: &[Branch], current: Option<&str>, typed: &str) -> Vec<Entry> {
+pub fn branch_entries(branches: &[Branch], current: Option<&str>, typed: &str) -> Vec<ComboEntry> {
     let typed = typed.trim().to_lowercase();
     let mut seen = HashSet::new();
     let mut names: Vec<String> = branches
@@ -31,7 +26,7 @@ pub fn branch_entries(branches: &[Branch], current: Option<&str>, typed: &str) -
     }
     names
         .into_iter()
-        .map(|name| Entry {
+        .map(|name| ComboEntry {
             detail: (Some(name.as_str()) == current).then(|| "current".to_string()),
             value: name,
         })
@@ -40,10 +35,10 @@ pub fn branch_entries(branches: &[Branch], current: Option<&str>, typed: &str) -
 
 /// The users that contain `typed` (ignoring case) in their login or name, those that start with it first; all of them when nothing was typed.
 /// Each login once.
-pub fn user_entries<'a>(users: impl IntoIterator<Item = &'a User>, typed: &str) -> Vec<Entry> {
+pub fn user_entries<'a>(users: impl IntoIterator<Item = &'a User>, typed: &str) -> Vec<ComboEntry> {
     let typed = typed.trim().to_lowercase();
     let mut seen = HashSet::new();
-    let mut found: Vec<(bool, Entry)> = users
+    let mut found: Vec<(bool, ComboEntry)> = users
         .into_iter()
         .filter(|u| seen.insert(u.username.to_lowercase()))
         .filter_map(|u| {
@@ -54,7 +49,7 @@ pub fn user_entries<'a>(users: impl IntoIterator<Item = &'a User>, typed: &str) 
             (login.contains(&typed) || name.contains(&typed)).then(|| {
                 (
                     login.starts_with(&typed) || name.starts_with(&typed),
-                    Entry {
+                    ComboEntry {
                         value: u.username.clone(),
                         detail: u.name.clone(),
                     },
@@ -64,21 +59,6 @@ pub fn user_entries<'a>(users: impl IntoIterator<Item = &'a User>, typed: &str) 
         .collect();
     found.sort_by_key(|(prefix, e)| (!prefix, e.value.to_lowercase()));
     found.into_iter().map(|(_, e)| e).collect()
-}
-
-/// What Enter applies: nothing for an empty text (it clears the filter), the entry that is the text, else the first entry, else the text as
-/// typed (a tag, a login not seen yet).
-pub fn on_enter(values: &[String], typed: &str) -> String {
-    let typed = typed.trim();
-    if typed.is_empty() {
-        return String::new();
-    }
-    values
-        .iter()
-        .find(|v| v.eq_ignore_ascii_case(typed))
-        .or(values.first())
-        .cloned()
-        .unwrap_or_else(|| typed.to_string())
 }
 
 #[cfg(test)]

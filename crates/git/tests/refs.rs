@@ -65,14 +65,24 @@ fn branches_ahead_behind_upstream() {
     sh(&dir, &["commit", "-q", "--allow-empty", "-m", "one"]);
     sh(&dir, &["branch", "old"]);
     sh(&dir, &["commit", "-q", "--allow-empty", "-m", "two"]);
-    sh(&dir, &["remote", "add", "origin", "https://example.com/o/r.git"]);
+    sh(
+        &dir,
+        &["remote", "add", "origin", "https://example.com/o/r.git"],
+    );
     sh(&dir, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
     sh(&dir, &["update-ref", "refs/remotes/origin/gone", "HEAD"]);
     for (branch, merge) in [("main", "main"), ("old", "main"), ("gone", "gone")] {
-        sh(&dir, &["config", &format!("branch.{branch}.remote"), "origin"]);
         sh(
             &dir,
-            &["config", &format!("branch.{branch}.merge"), &format!("refs/heads/{merge}")],
+            &["config", &format!("branch.{branch}.remote"), "origin"],
+        );
+        sh(
+            &dir,
+            &[
+                "config",
+                &format!("branch.{branch}.merge"),
+                &format!("refs/heads/{merge}"),
+            ],
         );
     }
     sh(&dir, &["branch", "gone"]);
@@ -87,8 +97,20 @@ fn branches_ahead_behind_upstream() {
             .unwrap()
             .ahead_behind
     };
-    assert_eq!(ab("main"), Some(AheadBehind { ahead: 1, behind: 0 }));
-    assert_eq!(ab("old"), Some(AheadBehind { ahead: 0, behind: 1 }));
+    assert_eq!(
+        ab("main"),
+        Some(AheadBehind {
+            ahead: 1,
+            behind: 0
+        })
+    );
+    assert_eq!(
+        ab("old"),
+        Some(AheadBehind {
+            ahead: 0,
+            behind: 1
+        })
+    );
     assert_eq!(ab("gone"), None);
     assert_eq!(ab("origin/main"), None);
 }

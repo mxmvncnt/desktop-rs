@@ -1,6 +1,8 @@
 //! App-aware components used by two or more features (see docs/CONVENTIONS.md).
 
 mod branch_row;
+mod combo_box;
+mod combo_menu;
 mod diff_display_options;
 mod diff_stat;
 mod field_row;
@@ -16,6 +18,7 @@ mod suggestion_card;
 mod text_field;
 
 pub use branch_row::BranchRow;
+pub use combo_box::{ComboBox, ComboEntry, ComboPicked};
 pub use diff_display_options::DiffDisplayOptions;
 pub use diff_stat::DiffStat;
 pub use field_row::FieldRow;
