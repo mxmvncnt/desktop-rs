@@ -132,6 +132,27 @@ impl Repository {
             ));
         }
         let before = self.stash_top();
+        // git can't stash intent-to-add entries (`git add -N`): stage them for
+        // real first. Index-vs-worktree additions are exactly those entries.
+        let ita = self
+            .git()
+            .args([
+                "--literal-pathspecs",
+                "diff",
+                "--name-only",
+                "-z",
+                "--diff-filter=A",
+                "--",
+            ])
+            .args(paths.iter().map(String::as_str))
+            .run()?;
+        let ita: Vec<_> = ita.split('\0').filter(|p| !p.is_empty()).collect();
+        if !ita.is_empty() {
+            self.git()
+                .args(["--literal-pathspecs", "add", "--"])
+                .args(ita)
+                .exec()?;
+        }
         // `--literal-pathspecs` breaks `-u` cleanup of untracked files when no
         // pathspec is given, so only pass it for the pathspec form.
         let mut g = self.git();

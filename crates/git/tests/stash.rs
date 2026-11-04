@@ -225,3 +225,30 @@ fn stash() {
     assert!(repo.stash_drop(&d).is_err());
     println!("stash smoke OK ({} left)", list.len());
 }
+
+#[test]
+fn stash_intent_to_add() {
+    let tmp = common::tempdir();
+    let dir = tmp.path().join("repo");
+    let repo = Repository::init(&dir).unwrap();
+    sh(&dir, &["config", "user.name", "Test"]);
+    sh(&dir, &["config", "user.email", "t@example.com"]);
+    std::fs::write(dir.join("a.txt"), "a\n").unwrap();
+    repo.commit("init", "", &["a.txt".into()]).unwrap();
+
+    std::fs::write(dir.join("new.txt"), "new\n").unwrap();
+    sh(&dir, &["add", "-N", "new.txt"]);
+    let s = repo.stash_push("", &[]).unwrap();
+    assert!(repo.status().unwrap().files.is_empty());
+    repo.stash_pop(&s).unwrap();
+    let files = repo.status().unwrap().files;
+    assert_eq!(files.len(), 1);
+    assert_eq!(
+        (files[0].path.as_str(), files[0].status),
+        ("new.txt", FileStatus::New)
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("new.txt")).unwrap(),
+        "new\n"
+    );
+}
