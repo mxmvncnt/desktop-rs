@@ -1,6 +1,6 @@
 //! Branches: listing via `git for-each-ref`, checkout, create, rename, delete.
 
-use crate::{GitError, Repository, Result};
+use crate::{AheadBehind, GitError, Repository, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BranchKind {
@@ -15,8 +15,24 @@ pub struct Branch {
     pub kind: BranchKind,
     pub is_head: bool,
     pub upstream: Option<String>,
+    /// Commits ahead of / behind `upstream` as of the last fetch; `None`
+    /// without an upstream or when it is gone.
+    pub ahead_behind: Option<AheadBehind>,
     /// Committer date of the tip, unix seconds (for "recent" sorting).
     pub tip_time: i64,
+}
+
+/// `%(upstream:track,nobracket)`: "", "gone", "ahead 1", "behind 2" or "ahead 1, behind 2".
+fn parse_track(track: &str) -> Option<AheadBehind> {
+    let mut ab = AheadBehind::default();
+    for part in track.split(", ").filter(|p| !p.is_empty()) {
+        match part.split_once(' ')? {
+            ("ahead", n) => ab.ahead = n.parse().ok()?,
+            ("behind", n) => ab.behind = n.parse().ok()?,
+            _ => return None,
+        }
+    }
+    Some(ab)
 }
 
 impl Repository {
@@ -27,14 +43,14 @@ impl Repository {
             .args([
                 "for-each-ref",
                 "--sort=-committerdate",
-                "--format=%(refname)%00%(refname:short)%00%(HEAD)%00%(upstream:short)%00%(committerdate:unix)",
+                "--format=%(refname)%00%(refname:short)%00%(HEAD)%00%(upstream:short)%00%(upstream:track,nobracket)%00%(committerdate:unix)",
                 "refs/heads",
                 "refs/remotes",
             ])
             .run()?;
         let mut branches = Vec::new();
         for line in out.lines() {
-            let [refname, name, head, upstream, time] = line.split('\0').collect::<Vec<_>>()[..]
+            let [refname, name, head, upstream, track, time] = line.split('\0').collect::<Vec<_>>()[..]
             else {
                 return Err(GitError::Parse(line.into()));
             };
@@ -52,6 +68,7 @@ impl Repository {
                 kind,
                 is_head: head == "*",
                 upstream: (!upstream.is_empty()).then(|| upstream.into()),
+                ahead_behind: (!upstream.is_empty()).then(|| parse_track(track)).flatten(),
                 tip_time: time.parse().unwrap_or(0),
             });
         }

@@ -36,7 +36,7 @@ pub struct FileChange {
     pub status: FileStatus,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct AheadBehind {
     pub ahead: u32,
     pub behind: u32,

@@ -6,6 +6,7 @@ fn branch(name: &str, kind: BranchKind) -> Branch {
         kind,
         is_head: false,
         upstream: None,
+        ahead_behind: None,
         tip_time: 0,
     }
 }

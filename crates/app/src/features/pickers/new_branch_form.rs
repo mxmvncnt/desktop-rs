@@ -8,6 +8,7 @@ use gpui::{
 use gpui_elements::editable_text::{EditableTextState, actions::Enter};
 
 use super::new_branch_base::NewBranchBase;
+use super::stale_base_notice::StaleBaseNotice;
 use crate::components::text_field;
 use crate::workspace::Workspace;
 
@@ -39,6 +40,7 @@ impl RenderOnce for NewBranchForm {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let hint = self.hint();
+        let stale = StaleBaseNotice::new(&self.base);
         let (enter_ws, click_ws) = (self.ws.clone(), self.ws.clone());
         div()
             .flex()
@@ -58,6 +60,7 @@ impl RenderOnce for NewBranchForm {
             )
             .child(text_field("branch-name", &self.input, "Branch name", cx))
             .child(self.base)
+            .children(stale)
             .child(
                 div()
                     .text_size(px(12.0))

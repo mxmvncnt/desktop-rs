@@ -16,6 +16,7 @@ mod popover_layer;
 mod repo_picker;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
+mod stale_base_notice;
 mod store;
 
 pub use popover_layer::PopoverLayer;

@@ -293,6 +293,10 @@ needs `&mut Workspace` today). Not done.
   Background fetch task: first check at 10s, then wakes every 60s (also re-renders
   the relative-time caption); fetches when both last fetch and last attempt are >=30 min old.
   Failures are only logged.
+- Every `Branch` in `RepoModel.branches` carries `ahead_behind` vs its upstream (`%(upstream:track)` in the same
+  `for-each-ref`, `None` without upstream or when gone). It is as fresh as the last fetch: the background fetch
+  updates the remote refs, the watcher sees it and the Full refresh reloads `branches`. Read it from there
+  anywhere in the app instead of running git again (the new-branch `StaleBaseNotice` does).
 - Headless test (`cargo test -p desktop-rs --features snapshot watcher`, `tests/watcher_tests.test.rs`): the watcher debounces
   in wall-clock time, so use real sleeps and poll `run_until_parked`.
 
