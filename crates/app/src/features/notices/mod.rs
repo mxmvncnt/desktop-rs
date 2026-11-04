@@ -3,6 +3,8 @@
 
 mod handlers;
 mod notice_banner;
+#[cfg(feature = "snapshot")]
+pub mod snapshot;
 
 pub(crate) use handlers::observe_notices;
 pub use notice_banner::NoticeBanner;

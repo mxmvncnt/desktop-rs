@@ -28,8 +28,8 @@ use gpui::{AppContext as _, Context, HeadlessAppContext, Window, px, size};
 
 use crate::actions::SelectNext;
 use crate::features::{
-    accounts, branches, changes, ci, diff, force_push, history, menus, merge, pickers, pr_preview,
-    repo_settings, settings, stashes, toolbar,
+    accounts, branches, changes, ci, diff, force_push, history, menus, merge, notices, pickers,
+    pr_preview, repo_settings, settings, stashes, toolbar,
 };
 use crate::workspace::{NavList, Workspace};
 
@@ -40,7 +40,7 @@ pub struct View {
     pub steps: &'static [Step],
 }
 
-const FEATURES: [fn() -> &'static [View]; 15] = [
+const FEATURES: [fn() -> &'static [View]; 16] = [
     accounts::snapshot::views,
     branches::snapshot::views,
     changes::snapshot::views,
@@ -49,6 +49,7 @@ const FEATURES: [fn() -> &'static [View]; 15] = [
     history::snapshot::views,
     menus::snapshot::views,
     merge::snapshot::views,
+    notices::snapshot::views,
     pickers::snapshot::views,
     pr_preview::snapshot::views,
     repo_settings::snapshot::views,

@@ -3,9 +3,12 @@ use std::hash::{BuildHasher, BuildHasherDefault};
 
 use gd_ui::{Icon, Theme, icon, motion};
 use gpui::{
-    App, Entity, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
+    App, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement, RenderOnce,
+    SharedString, Styled, Window, div, px,
 };
 
+use crate::components::{drag_selection, selectable_line};
+use crate::features::diff::text_selection::model::TextSel;
 use crate::workspace::Workspace;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -19,6 +22,7 @@ pub struct NoticeBanner {
     ws: Entity<Workspace>,
     kind: NoticeKind,
     message: String,
+    sel: Option<TextSel>,
 }
 
 impl NoticeBanner {
@@ -36,10 +40,12 @@ impl NoticeBanner {
             (None, Some(n)) => (NoticeKind::Success, n),
             _ => return None,
         };
+        let sel = ws.commit_sel.on(&[message.clone(), String::new()]);
         Some(Self {
             ws: cx.entity(),
             kind,
             message,
+            sel,
         })
     }
 }
@@ -52,6 +58,16 @@ impl RenderOnce for NoticeBanner {
             "banner-{}",
             BuildHasherDefault::<DefaultHasher>::default().hash_one(&self.message)
         );
+        let texts = [self.message, String::new()];
+        let (message, layout) = selectable_line(
+            &self.ws,
+            &texts,
+            0,
+            self.sel,
+            theme.text,
+            FontWeight::NORMAL,
+            &theme,
+        );
         let ws = self.ws;
         div()
             .absolute()
@@ -61,10 +77,12 @@ impl RenderOnce for NoticeBanner {
             .child(motion::fade_in(
                 SharedString::from(key),
                 gd_ui::overlay_card(cx)
+                    .occlude()
                     .flex()
                     .items_center()
                     .gap(px(10.0))
                     .p(px(12.0))
+                    .on_mouse_move(drag_selection(ws.clone(), vec![layout]))
                     .child(
                         icon(if is_error { Icon::Warning } else { Icon::Check }).text_color(
                             if is_error {
@@ -74,14 +92,7 @@ impl RenderOnce for NoticeBanner {
                             },
                         ),
                     )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .text_size(px(12.5))
-                            .text_color(theme.text)
-                            .child(self.message),
-                    )
+                    .child(message.flex_1().min_w_0().text_size(px(12.5)))
                     .child(
                         gd_ui::icon_button("dismiss-banner", Icon::Close)
                             .compact()
