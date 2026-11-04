@@ -1,4 +1,4 @@
-# desktop-rs — Rust + GPUI-CE rewrite
+# desktop-rs
 
 A native rewrite of [GitHub Desktop](https://github.com/desktop/desktop) in Rust, using [GPUI Community Edition](https://github.com/gpui-ce/gpui-ce)
 
