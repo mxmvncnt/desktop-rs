@@ -124,6 +124,7 @@ fn branch_row(
         let b = b_menu.clone();
         ws_menu.update(cx, |this, cx| this.open_branch_menu(b, pos, w, cx))
     })
+    .children(BranchRow::ahead_behind(b.ahead_behind, cx))
     .child(BranchRow::tip_time(b.tip_time, cx))
     .into_any_element()
 }

@@ -1,7 +1,8 @@
-//! One branch: icon, name and trailing children (time, check, tags).
+//! One branch: icon, name and trailing children (push/pull counts, time, check, tags).
 
 use std::rc::Rc;
 
+use gd_git::AheadBehind;
 use gd_ui::{Callback, Icon, Theme, icon, pressable};
 use gpui::{
     AnyElement, App, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Point,
@@ -86,6 +87,31 @@ impl BranchRow {
             .text_size(px(11.0))
             .text_color(faint)
             .child(relative_time(tip_time))
+    }
+
+    /// Commits to pull (↓) and to push (↑) with the toolbar's arrows; `None` when in sync.
+    pub fn ahead_behind(ab: Option<AheadBehind>, cx: &App) -> Option<impl IntoElement + use<>> {
+        let ab = ab.filter(|ab| ab.ahead > 0 || ab.behind > 0)?;
+        let faint = Theme::of(cx).text_faint;
+        let count = |glyph, n: u32| {
+            (n > 0).then(|| {
+                div()
+                    .flex()
+                    .items_center()
+                    .child(icon(glyph).size(px(11.0)).text_color(faint))
+                    .child(n.to_string())
+            })
+        };
+        Some(
+            div()
+                .flex_none()
+                .flex()
+                .gap(px(4.0))
+                .text_size(px(11.0))
+                .text_color(faint)
+                .children(count(Icon::ArrowDown, ab.behind))
+                .children(count(Icon::ArrowUp, ab.ahead)),
+        )
     }
 }
 
