@@ -292,7 +292,8 @@ needs `&mut Workspace` today). Not done.
 - Last fetch = mtime of `<common git dir>/FETCH_HEAD` (read in each refresh).
   Background fetch task: first check at 10s, then wakes every 60s (also re-renders
   the relative-time caption); fetches when both last fetch and last attempt are >=30 min old.
-  Failures are only logged.
+  Failures are only logged. `RepoModel::fetch_if_older_than(max_age)` is the same fetch on demand: the
+  new-branch popover calls it on open with 60s.
 - Every `Branch` in `RepoModel.branches` carries `ahead_behind` vs its upstream (`%(upstream:track)` in the same
   `for-each-ref`, `None` without upstream or when gone). It is as fresh as the last fetch: the background fetch
   updates the remote refs, the watcher sees it and the Full refresh reloads `branches`. Read it from there

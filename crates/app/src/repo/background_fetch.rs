@@ -23,7 +23,7 @@ impl RepoModel {
             loop {
                 if this
                     .update(cx, |this, cx| {
-                        this.maybe_background_fetch(cx);
+                        this.fetch_if_older_than(BACKGROUND_FETCH_INTERVAL, cx);
                         cx.notify();
                     })
                     .is_err()
@@ -35,15 +35,17 @@ impl RepoModel {
         }));
     }
 
-    fn fetch_is_due(&self) -> bool {
-        let due = |t: Option<Duration>| t.is_none_or(|d| d >= BACKGROUND_FETCH_INTERVAL);
+    /// Neither the last fetch nor the last background attempt is younger than `max_age`.
+    fn fetch_is_due(&self, max_age: Duration) -> bool {
+        let due = |t: Option<Duration>| t.is_none_or(|d| d >= max_age);
         let since_fetch = self.sync.last_fetch.and_then(|t| t.elapsed().ok());
         let since_attempt = self.sync.last_background_fetch.map(|t| t.elapsed());
         due(since_fetch) && due(since_attempt)
     }
 
-    fn maybe_background_fetch(&mut self, cx: &mut Context<Self>) {
-        if self.remote_op.is_some() || !self.fetch_is_due() {
+    /// Fetch in the background unless a remote op runs or the last fetch is younger than `max_age`.
+    pub fn fetch_if_older_than(&mut self, max_age: Duration, cx: &mut Context<Self>) {
+        if self.remote_op.is_some() || !self.fetch_is_due(max_age) {
             return;
         }
         self.sync.last_background_fetch = Some(Instant::now());
