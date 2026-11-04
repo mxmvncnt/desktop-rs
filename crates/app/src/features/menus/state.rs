@@ -20,6 +20,7 @@ pub enum MenuAction {
     DiscardAll,
     DiscardRows,
     Ignore,
+    IgnoreDir,
     IgnoreExt,
     CopyPath,
     CopyRelPath,

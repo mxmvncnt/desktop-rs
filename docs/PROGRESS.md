@@ -147,7 +147,7 @@ Branch: `main`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
 ## Next rungs of the ladder (suggested order)
 
 1. ✅ Changes context menu: discard (with confirm dialog), copy path, reveal, ignore. Undo-last-commit UI.
-   - Right-click a file row: Discard changes… / Ignore file / Ignore all .ext files / Copy (relative) path / Reveal in file manager. Right-click the "N changed files" header: Discard all changes….
+   - Right-click a file row: Discard changes… / Ignore file / Ignore folder `dir/` (files in a subfolder) / Ignore all .ext files / Copy (relative) path / Reveal in file manager. Right-click the "N changed files" header: Discard all changes….
    - "Ignore file" is disabled for tracked files (ignoring them has no effect in git). Untracked files are deleted permanently on discard (Desktop moves them to the trash; no trash support yet).
    - Undo strip shows only for the commit made this session, on the same branch. Undo restores summary and description into the inputs.
    - Snapshot views: `context-menu`, `header-menu`, `discard-dialog`, `undo-strip`.

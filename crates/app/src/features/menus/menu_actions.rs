@@ -3,7 +3,7 @@
 use gd_git::{FileChange, escape_ignore};
 use gpui::{ClipboardItem, Context, Entity, Window};
 
-use super::menu_rows::extension;
+use super::menu_rows::{directory, extension};
 use super::state::{ConfirmDialog, MenuAction};
 use crate::repo::RepoModel;
 use crate::utils::paths::{copy_path, reveal};
@@ -55,9 +55,19 @@ impl Workspace {
                     cx,
                 )
             }),
+            MenuAction::IgnoreDir => ignore_directory(&c.path, repo, cx),
             MenuAction::IgnoreExt => ignore_extension(&c.path, repo, cx),
             _ => {}
         }
+    }
+}
+
+fn ignore_directory(path: &str, repo: &Entity<RepoModel>, cx: &mut gpui::App) {
+    if let Some(dir) = directory(path) {
+        let pattern = format!("{}/", escape_ignore(dir));
+        repo.update(cx, |r, cx| {
+            r.ignore(vec![pattern.clone()], format!("Ignored {pattern}"), cx)
+        })
     }
 }
 

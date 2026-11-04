@@ -12,6 +12,11 @@ pub fn extension(path: &str) -> Option<&str> {
     Path::new(path).extension().and_then(|e| e.to_str())
 }
 
+/// The folder holding `path`, relative to the root (`None` at the root).
+pub fn directory(path: &str) -> Option<&str> {
+    path.rsplit_once('/').map(|(dir, _)| dir)
+}
+
 pub fn header_rows() -> Vec<MenuRow<MenuAction>> {
     vec![
         MenuRow::item(MenuAction::StashAll, "Stash all changes…", Icon::Archive),
@@ -42,6 +47,13 @@ pub fn file_rows(change: &FileChange) -> Vec<MenuRow<MenuAction>> {
             .disabled(change.status != FileStatus::Untracked),
         ),
     ];
+    if let Some(dir) = directory(&change.path) {
+        v.push(MenuRow::item(
+            MenuAction::IgnoreDir,
+            format!("Ignore folder {dir}/"),
+            Icon::EyeClosed,
+        ));
+    }
     if let Some(ext) = extension(&change.path) {
         v.push(MenuRow::item(
             MenuAction::IgnoreExt,
