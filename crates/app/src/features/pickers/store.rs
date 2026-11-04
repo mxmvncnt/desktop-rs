@@ -1,11 +1,7 @@
 //! State of the toolbar popovers: keyboard cursor, inputs and the new-branch base.
 
-use gpui::{
-    App, AppContext, Context, Entity, Pixels, Point, ScrollStrategy, UniformListScrollHandle,
-};
+use gpui::{App, AppContext, Context, Entity, ScrollStrategy, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
-
-use crate::workspace::Popover;
 
 pub struct PopoverStore {
     pub selected: usize,
@@ -17,11 +13,6 @@ pub struct PopoverStore {
     pub new_branch_base: Option<String>,
     /// Whether the new-branch base list is expanded.
     pub new_branch_base_open: bool,
-    /// Popover the backdrop just dismissed, and where that press landed. The
-    /// backdrop doesn't occlude the toolbar, so the same press also clicks
-    /// the trigger underneath; this lets the trigger ignore that click
-    /// instead of reopening.
-    pub dismissed: Option<(Popover, Point<Pixels>)>,
 }
 
 impl PopoverStore {
@@ -36,7 +27,6 @@ impl PopoverStore {
             url_input: input(cx),
             new_branch_base: None,
             new_branch_base_open: false,
-            dismissed: None,
         }
     }
 

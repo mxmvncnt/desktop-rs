@@ -12,9 +12,8 @@ use std::time::{Duration, Instant};
 use gd_git::Commit;
 use gd_ui::Icon;
 use gpui::{
-    AppContext as _, ClickEvent, Focusable, HeadlessAppContext, Keystroke, MouseButton,
-    MouseClickEvent, MouseDownEvent, MouseUpEvent, PlatformInput, Window, WindowHandle, point, px,
-    size,
+    AppContext as _, Focusable, HeadlessAppContext, Keystroke, MouseButton, MouseDownEvent,
+    MouseUpEvent, PlatformInput, Window, WindowHandle, point, px, size,
 };
 
 use super::*;
@@ -189,6 +188,8 @@ impl Fixture {
                     Overlay::Stash(_) => "stash",
                     Overlay::Merge(_) => "merge",
                     Overlay::Branch(_) => "branch",
+                    Overlay::RepoSettings => "repo settings",
+                    Overlay::ForcePush => "force push",
                 })
                 .collect()
         })
@@ -307,36 +308,15 @@ fn esc_closes_a_menu_without_running_anything() {
 }
 
 #[test]
-fn backdrop_click_closes_the_picker_and_swallows_the_trigger_click_that_follows() {
+fn repeated_clicks_on_a_picker_trigger_toggle_it() {
     let mut f = fixture();
-    f.press(&format!("{SECONDARY}-b"));
-    // The picker trigger sits under the scrim: this press is what closes it.
+    f.click(320.0, 20.0);
+    assert_eq!(f.stack(), ["popover"]);
+    // The trigger sits under the occluding backdrop: this press closes through the backdrop only.
     f.click(320.0, 20.0);
     assert!(f.stack().is_empty());
-    let click = |x: f32, y: f32| {
-        let (position, modifiers) = (point(px(x), px(y)), Default::default());
-        let down = MouseDownEvent {
-            button: MouseButton::Left,
-            position,
-            modifiers,
-            click_count: 1,
-            first_mouse: false,
-        };
-        let up = MouseUpEvent {
-            button: MouseButton::Left,
-            position,
-            modifiers,
-            click_count: 1,
-        };
-        ClickEvent::Mouse(MouseClickEvent { down, up })
-    };
-    f.with(|ws, w, cx| ws.click_popover_trigger(Popover::Branches, &click(320.0, 20.0), w, cx));
-    assert!(
-        f.stack().is_empty(),
-        "same press as the dismissal: stays closed"
-    );
-    f.with(|ws, w, cx| ws.click_popover_trigger(Popover::Branches, &click(320.0, 20.0), w, cx));
-    assert_eq!(f.stack(), ["popover"], "a later click toggles again");
+    f.click(320.0, 20.0);
+    assert_eq!(f.stack(), ["popover"], "the third click opens it again");
 }
 
 #[test]

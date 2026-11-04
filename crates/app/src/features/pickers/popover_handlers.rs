@@ -1,29 +1,10 @@
 //! `impl Workspace`: opening, toggling and closing the toolbar popovers.
 
-use gpui::{ClickEvent, Context, Focusable, Window};
+use gpui::{Context, Focusable, Window};
 
 use crate::workspace::{Overlay, Popover, Workspace};
 
 impl Workspace {
-    /// Toolbar trigger click: toggles `p`, unless this press is the one that
-    /// just closed it through the backdrop.
-    pub(crate) fn click_popover_trigger(
-        &mut self,
-        p: Popover,
-        ev: &ClickEvent,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let dismissed = self.pickers.update(cx, |p, _| p.dismissed.take());
-        if let (Some((was, at)), ClickEvent::Mouse(m)) = (dismissed, ev)
-            && popover_trigger(was) == p
-            && at == m.down.position
-        {
-            return;
-        }
-        self.toggle_popover(p, window, cx)
-    }
-
     pub fn toggle_popover(&mut self, p: Popover, window: &mut Window, cx: &mut Context<Self>) {
         if self.popover() == Some(p) {
             self.close_overlay(window, cx);
@@ -82,13 +63,5 @@ impl Workspace {
             .iter()
             .position(|&i| r.branches.get(i).is_some_and(|b| b.is_head))
             .unwrap_or(0)
-    }
-}
-
-/// The toolbar button that owns a popover.
-fn popover_trigger(p: Popover) -> Popover {
-    match p {
-        Popover::Repositories | Popover::Clone => Popover::Repositories,
-        Popover::Branches | Popover::NewBranch => Popover::Branches,
     }
 }

@@ -57,12 +57,6 @@ impl RenderOnce for PopoverLayer {
             content.child(self.content),
         )
         .scrim(0.18)
-        .on_dismiss(move |ev, window, cx| {
-            ws.update(cx, |this, cx| {
-                let dismissed = this.popover().map(|p| (p, ev.position));
-                this.pickers.update(cx, |p, _| p.dismissed = dismissed);
-                this.close_overlay(window, cx)
-            })
-        })
+        .on_dismiss(move |_, window, cx| ws.update(cx, |this, cx| this.close_overlay(window, cx)))
     }
 }

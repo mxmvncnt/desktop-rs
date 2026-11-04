@@ -435,8 +435,8 @@ needs `&mut Workspace` today). Not done.
   `handoff`) is the base of `ContextMenu` (positioned at the mouse, clamped to the window; icon/danger/disabled
   items, separators, `.selected(ix)`), `PopoverLayer` and `DiffOptionsMenu`. `Dialog` (scrim + `dialog_in` card,
   Cancel + confirm, Enter/Esc captured while an input is focused) and `modal(card, on_cancel, instant)` (the scrim + centered card used by the settings modal).
-  The `popover_dismissed` workaround (a backdrop click must not re-trigger the toolbar button) stays on
-  `Workspace` because it needs to know which popover the trigger opens.
+  The backdrop `occlude()`s, so the press that dismisses a popover never reaches the toolbar trigger
+  under it; triggers just toggle.
 - App-side components used by 2+ features are in `app/src/components/` (see CONVENTIONS.md).
 - `assets.rs`: embedded Solar icons and Geist fonts. To add an icon, copy the
   SVG from `.ref/zeron/crates/ui/assets/icons/` into `crates/ui/assets/icons/`

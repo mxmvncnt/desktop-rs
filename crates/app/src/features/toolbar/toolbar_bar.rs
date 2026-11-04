@@ -166,5 +166,5 @@ fn trigger_click(
     ws: Entity<Workspace>,
     p: Popover,
 ) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
-    move |ev, window, cx| ws.update(cx, |this, cx| this.click_popover_trigger(p, ev, window, cx))
+    move |_, window, cx| ws.update(cx, |this, cx| this.toggle_popover(p, window, cx))
 }
