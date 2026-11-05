@@ -138,11 +138,6 @@ impl RenderOnce for AppearancePage {
             .child(div().h(px(8.0)))
             .child(title("Window background"))
             .child(self.background_select())
-            .child(caption(if self.blur_supported {
-                "Transparent and Blurred show the desktop through the theme's surfaces."
-            } else {
-                "Transparent shows the desktop through the theme's surfaces. Blurred needs a compositor with background blur (ext-background-effect-v1)."
-            }))
             .child(div().h(px(8.0)))
             .child(title("Color theme"))
             .child(self.theme_grid(cx))
