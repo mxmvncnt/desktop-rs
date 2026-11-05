@@ -23,5 +23,5 @@ use gpui::App;
 pub fn init(cx: &mut App) {
     assets::load_fonts(cx);
     cx.set_global(themes::ColorThemes::builtin());
-    cx.set_global(Theme::for_family(themes::DEFAULT_THEME, false, cx));
+    cx.set_global(Theme::for_family(themes::DEFAULT_THEME, false, false, cx));
 }

@@ -2,7 +2,7 @@
 
 use gpui::{Context, Window};
 
-use super::{SettingsPage, ThemeMode};
+use super::{SettingsPage, ThemeMode, WindowBackground};
 use crate::snapshot::View;
 use crate::workspace::{Overlay, Workspace};
 
@@ -31,6 +31,14 @@ pub fn views() -> &'static [View] {
         View {
             name: "changes-light",
             steps: &[page],
+        },
+        View {
+            name: "settings-background-menu",
+            steps: &[page],
+        },
+        View {
+            name: "transparent*",
+            steps: &[transparent],
         },
     ]
 }
@@ -67,6 +75,16 @@ fn page(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Wo
     match view {
         "settings-diff" => ws.settings_page = SettingsPage::Diff,
         "settings-about" => ws.settings_page = SettingsPage::About,
+        "settings-background-menu" => ws.background_menu = true,
         _ => {}
+    }
+}
+
+/// `transparent[-light][-settings]`: the Transparent window background (the harness paints black behind the window).
+fn transparent(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Workspace>) {
+    ws.settings.window_background = WindowBackground::Transparent;
+    page(ws, view, window, cx);
+    if view.ends_with("settings") {
+        ws.overlays.push(Overlay::Settings);
     }
 }

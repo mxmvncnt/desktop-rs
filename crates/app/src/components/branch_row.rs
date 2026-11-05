@@ -23,6 +23,7 @@ pub struct BranchRow {
     height: f32,
     selected: bool,
     bright: bool,
+    disabled: bool,
     trailing: Vec<AnyElement>,
     on_click: Callback,
     on_right_click: Option<RightClick>,
@@ -43,6 +44,7 @@ impl BranchRow {
             height: 30.0,
             selected: false,
             bright: false,
+            disabled: false,
             trailing: Vec::new(),
             on_click: Rc::new(on_click),
             on_right_click: None,
@@ -68,6 +70,12 @@ impl BranchRow {
     /// Brighter name and icon (current or chosen branch).
     pub fn bright(mut self, bright: bool) -> Self {
         self.bright = bright;
+        self
+    }
+
+    /// Greyed out and not clickable.
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
         self
     }
 
@@ -125,7 +133,12 @@ impl RenderOnce for BranchRow {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let on_click = self.on_click;
-        let mut row = pressable((self.id, self.ix), self.selected, cx)
+        let base = if self.disabled {
+            div().id((self.id, self.ix)).opacity(0.4)
+        } else {
+            pressable((self.id, self.ix), self.selected, cx)
+        };
+        let mut row = base
             .flex()
             .items_center()
             .gap(px(10.0))
@@ -151,8 +164,10 @@ impl RenderOnce for BranchRow {
                     })
                     .child(self.name),
             )
-            .children(self.trailing)
-            .on_click(move |_, w, cx| on_click(w, cx));
+            .children(self.trailing);
+        if !self.disabled {
+            row = row.on_click(move |_, w, cx| on_click(w, cx));
+        }
         if let Some(f) = self.on_right_click {
             row = row.on_mouse_down(MouseButton::Right, move |e, w, cx| f(e.position, w, cx));
         }

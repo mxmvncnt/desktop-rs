@@ -1398,6 +1398,7 @@ dependencies = [
  "notify-debouncer-full",
  "oauth2",
  "oo7",
+ "raw-window-handle",
  "serde",
  "serde_json",
  "smol",
@@ -1407,6 +1408,8 @@ dependencies = [
  "ureq",
  "url",
  "uuid",
+ "wayland-client",
+ "wayland-protocols",
 ]
 
 [[package]]

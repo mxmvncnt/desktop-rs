@@ -108,6 +108,44 @@ pub struct Palette {
     /// Types without a color get a neutral pill.
     #[serde(default)]
     pub commit_types: BTreeMap<String, Hex>,
+    /// Opacity of each surface when the window background is Transparent or Blurred.
+    #[serde(default)]
+    pub opacity: SurfaceOpacity,
+}
+
+/// Opacity (0 to 1) of the surfaces painted with the palette colors of the same name.
+/// Ignored when the window background is Opaque. A missing key takes its default.
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, JsonSchema)]
+#[serde(default)]
+pub struct SurfaceOpacity {
+    /// Diff plane, welcome screen and CI page. Default 1 (text must stay readable).
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub bg: f32,
+    /// Toolbar and sidebar. Default 0.88.
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub surface: f32,
+    /// Cards and panels. Default 1.
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub card: f32,
+    /// Popovers, menus, dialogs and tooltips. Default 1: they sit over the app, which the
+    /// compositor does not blur.
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub overlay: f32,
+    /// Opaque chips and pills. Default 1.
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub raised: f32,
+}
+
+impl Default for SurfaceOpacity {
+    fn default() -> Self {
+        Self {
+            bg: 1.0,
+            surface: 0.88,
+            card: 1.0,
+            overlay: 1.0,
+            raised: 1.0,
+        }
+    }
 }
 
 /// A color theme family: one palette per appearance.
@@ -192,13 +230,20 @@ impl ColorThemes {
 
 impl Theme {
     /// Theme for a family id (unknown ids fall back to default) and resolved appearance.
-    pub fn for_family(id: &str, light: bool, cx: &App) -> Self {
+    /// `translucent` applies the palette's surface opacities (Transparent or Blurred window).
+    pub fn for_family(id: &str, light: bool, translucent: bool, cx: &App) -> Self {
         let family = ColorThemes::of(cx).get(id);
-        Self::from_palette(if light { &family.light } else { &family.dark }, light)
+        Self::from_palette(
+            if light { &family.light } else { &family.dark },
+            light,
+            translucent,
+        )
     }
 
-    fn from_palette(p: &Palette, light: bool) -> Self {
+    fn from_palette(p: &Palette, light: bool, translucent: bool) -> Self {
         let c = |v: Hex| rgb_to_hsla(rgb(v.0));
+        let alpha = |a: f32| if translucent { a.clamp(0.0, 1.0) } else { 1.0 };
+        let op = p.opacity;
         let (accent, danger, success) = (c(p.accent), c(p.danger), c(p.success));
         // Translucent washes: white on dark, black on light.
         let (wash, hover, active, border, border_strong) = if light {
@@ -230,12 +275,12 @@ impl Theme {
         let del_bg = o(p.diff_del_bg, danger.opacity(add_wash));
         Self {
             light,
-            bg: c(p.bg),
-            surface: c(p.surface),
-            surface_raised: c(p.raised),
-            surface_raised_hover: mix(p.raised.0, p.text.0, 0.10),
-            surface_card: c(p.card),
-            surface_overlay: c(p.overlay),
+            bg: c(p.bg).opacity(alpha(op.bg)),
+            surface: c(p.surface).opacity(alpha(op.surface)),
+            surface_raised: c(p.raised).opacity(alpha(op.raised)),
+            surface_raised_hover: mix(p.raised.0, p.text.0, 0.10).opacity(alpha(op.raised)),
+            surface_card: c(p.card).opacity(alpha(op.card)),
+            surface_overlay: c(p.overlay).opacity(alpha(op.overlay)),
             element_hover: hsla(0.0, 0.0, if light { 0.0 } else { 0.92 }, hover),
             element_active: hsla(0.0, 0.0, if light { 0.0 } else { 0.92 }, active),
             border: hsla(0.0, 0.0, wash, border),

@@ -102,7 +102,7 @@ fn syntax_colors_ignore_the_theme() {
     let themes = ColorThemes::builtin();
     for light in [false, true] {
         let syntax = |t: &ColorTheme| {
-            Theme::from_palette(if light { &t.light } else { &t.dark }, light).syntax
+            Theme::from_palette(if light { &t.light } else { &t.dark }, light, false).syntax
         };
         let reference = syntax(themes.get(DEFAULT_THEME));
         for other in themes.iter() {
@@ -140,7 +140,7 @@ fn diff_overrides_are_applied() {
         diff_gutter: Some(Hex(0x959da5)),
         ..default_palette()
     };
-    let t = Theme::from_palette(&p, true);
+    let t = Theme::from_palette(&p, true, false);
     assert_eq!(t.diff_add_bg, rgb_to_hsla(rgb(0xe6ffed)));
     assert_eq!(t.diff_add_gutter_bg, rgb_to_hsla(rgb(0xcdffd8)));
     assert_eq!(t.diff_hunk_gutter_bg, rgb_to_hsla(rgb(0xdbedff)));
@@ -152,7 +152,7 @@ fn diff_overrides_are_applied() {
 fn absent_diff_overrides_keep_derived_colors() {
     for light in [false, true] {
         let p = default_palette();
-        let t = Theme::from_palette(&p, light);
+        let t = Theme::from_palette(&p, light, false);
         assert_eq!(t.diff_add_gutter_bg, t.diff_add_bg);
         assert_eq!(t.diff_del_gutter_bg, t.diff_del_bg);
         assert_eq!(t.diff_gutter_bg, t.diff_empty_bg);
@@ -167,6 +167,28 @@ fn partial_diff_override_keeps_other_gutters_following_line_bg() {
         diff_del_bg: Some(Hex(0xffeef0)),
         ..default_palette()
     };
-    let t = Theme::from_palette(&p, true);
+    let t = Theme::from_palette(&p, true, false);
     assert_eq!(t.diff_del_gutter_bg, rgb_to_hsla(rgb(0xffeef0)));
+}
+
+#[test]
+fn surface_opacity_applies_only_when_translucent() {
+    let mut p = default_palette();
+    p.opacity.surface = 0.5;
+    assert_eq!(Theme::from_palette(&p, false, false).surface.alpha, 1.0);
+    let t = Theme::from_palette(&p, false, true);
+    assert_eq!(t.surface.alpha, 0.5);
+    assert_eq!(t.bg.alpha, SurfaceOpacity::default().bg);
+}
+
+#[test]
+fn missing_opacity_keys_take_defaults() {
+    let o: SurfaceOpacity = serde_json::from_str(r#"{"bg": 0.4}"#).unwrap();
+    assert_eq!(
+        o,
+        SurfaceOpacity {
+            bg: 0.4,
+            ..SurfaceOpacity::default()
+        }
+    );
 }

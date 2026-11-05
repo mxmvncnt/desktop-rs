@@ -223,6 +223,10 @@
           "additionalProperties": {
             "$ref": "#/$defs/Hex"
           }
+        },
+        "opacity": {
+          "description": "Opacity of each surface when the window background is Transparent or Blurred.",
+          "$ref": "#/$defs/SurfaceOpacity"
         }
       },
       "required": [
@@ -246,6 +250,52 @@
       "description": "A `#rrggbb` color from JSON.",
       "type": "string",
       "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "SurfaceOpacity": {
+      "description": "Opacity (0 to 1) of the surfaces painted with the palette colors of the same name.\nIgnored when the window background is Opaque. A missing key takes its default.",
+      "type": "object",
+      "properties": {
+        "bg": {
+          "description": "Diff plane, welcome screen and CI page. Default 1 (text must stay readable).",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 1.0
+        },
+        "surface": {
+          "description": "Toolbar and sidebar. Default 0.88.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.8799999952316284
+        },
+        "card": {
+          "description": "Cards and panels. Default 1.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 1.0
+        },
+        "overlay": {
+          "description": "Popovers, menus, dialogs and tooltips. Default 1: they sit over the app, which the\ncompositor does not blur.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 1.0
+        },
+        "raised": {
+          "description": "Opaque chips and pills. Default 1.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 1.0
+        }
+      }
     }
   }
 }

@@ -50,6 +50,29 @@ impl ThemeMode {
     }
 }
 
+/// What shows through the window's surfaces (see the theme's `opacity`).
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WindowBackground {
+    Transparent,
+    /// Transparent, with the desktop behind the window blurred.
+    Blurred,
+    #[default]
+    Opaque,
+}
+
+impl WindowBackground {
+    pub const ALL: [WindowBackground; 3] = [Self::Transparent, Self::Blurred, Self::Opaque];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Transparent => "Transparent",
+            Self::Blurred => "Blurred",
+            Self::Opaque => "Opaque",
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -66,6 +89,7 @@ pub struct Settings {
     pub sidebar_width: Option<f32>,
     /// Color theme family id (`gd_ui::themes::ColorThemes`).
     pub color_theme: String,
+    pub window_background: WindowBackground,
 }
 
 impl Settings {

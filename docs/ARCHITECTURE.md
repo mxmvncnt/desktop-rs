@@ -449,7 +449,11 @@ still rebuilds that whole pane.
   User-facing format and folder: `docs/THEMES.md`. User themes in `<config dir>/themes/*.json` replace a built-in with
   the same `id`; a file that fails to parse is logged and skipped. `ColorThemes` (a GPUI global, built-ins in `gd_ui::init`, user themes added in `main.rs`)
   is the registry: `get(id)` falls back to default. Persisted as `color_theme=<id>`; `Workspace::apply_theme` calls
-  `Theme::for_family(id, light, cx)`. Snapshot view `theme:<id>:<dark|light>[:settings]` (built-ins only).
+  `Theme::for_family(id, light, translucent, cx)`. `translucent` (window background not Opaque) applies the palette's
+  `opacity` to `bg`, `surface`, `surface_card`, `surface_overlay` and `surface_raised`. Surfaces must not stack, or the
+  alphas multiply: the workspace root paints no background; the toolbar and sidebar slot paint `surface`, the main pane slot,
+  welcome screen, CI page and in-progress banner paint `bg` (`workspace/render.rs`), and each slot rounds its own window corner.
+  Fades (`fade_quick`) sit inside those slots so the desktop never shows through mid-fade. Snapshot view `theme:<id>:<dark|light>[:settings]` (built-ins only).
 - `motion.rs`: the zeron motion catalog (`fade_in` 500ms ease-out-quint with 4px rise,
   `fade_quick`, `menu_in`, `dialog_in`).
   Overlay hand-off: overlays call `motion::handoff(id, cx)` (and `Workspace::render` calls
@@ -476,7 +480,7 @@ still rebuilds that whole pane.
 
 OS-specific code lives in `platform/linux/` and `platform/macos/`; `platform/mod.rs`
 re-exports the one for the target. Both expose the same surface: `Chrome`,
-`caption_buttons`, `titlebar_drag`, `frame`, `configure_window`,
+`caption_buttons`, `titlebar_drag`, `frame`, `configure_window`, `Backdrop`,
 and the shortcut constants `SECONDARY` (ctrl/cmd), `SECONDARY_LABEL`, `REFRESH_KEY`,
 `QUIT_KEY`. Keep OS `cfg`s out of the rest of the app; add to both modules instead.
 The config dir comes from the `dirs` crate (`dirs::config_dir()`) in `features/settings/model.rs`.
@@ -487,6 +491,18 @@ Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Carg
   lights, the empty toolbar space is a `WindowControlArea::Drag`, no caption buttons or CSD
   frame. Shortcuts use cmd (Refresh is cmd-r, Quit cmd-q); config is in
   `~/Library/Application Support/desktop-rs`.
+
+## Window background (`platform/*/backdrop.rs`)
+
+- `Workspace::backdrop` (`Backdrop::new(window)`), `update(appearance, chrome, window)` on every workspace render; it only
+  talks to the OS on a change. `Workspace::background_appearance` resolves the setting (Blurred without support is Transparent).
+- macOS: `window.set_background_appearance` (gpui adds an `NSVisualEffectView` for Blurred).
+- Linux: the window stays `LinuxWindowBackground::Transparent` (the CSD frame needs it). gpui-ce only binds KDE's
+  `org_kde_kwin_blur`, so `backdrop.rs` wraps gpui's `wl_display` (`Backend::from_foreign_display`, from the raw display handle)
+  in its own `Connection` and event queue, binds `wl_compositor` and `ext_background_effect_manager_v1` there (two roundtrips at
+  startup), and wraps gpui's `wl_surface` (`ObjectId::from_ptr`). The blur region is the window minus the shadow inset, with the
+  rounded corners cut out row by row; it is double-buffered, so gpui's next frame commits it. Capability changes are read with
+  `dispatch_pending` on each update. X11 and headless windows have no blur.
 
 ## Window chrome / CSD (`app/src/platform/linux/chrome.rs`)
 
