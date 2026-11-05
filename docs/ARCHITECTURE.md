@@ -276,10 +276,11 @@ the amend notice + commit button. It observes the `RepoModel` itself (`attach` o
 Typing now notifies only `CommitBox`, never `Workspace` (test: `typing_does_not_notify_workspace`,
 `cargo test --features snapshot`). **But `Workspace::render` still runs once per keystroke**, measured
 in that test: gpui-ce re-renders the (uncached) window root on every draw, and `cx.notify()` on a view
-also dirties all its ancestors, so even a cached `Workspace` root re-renders (tried; no change). The
-only lever left is to skip the layout/prepaint/paint of heavy siblings with `Entity::cached(style)`,
-which needs a definite size and the diff pane / file lists as entities of their own (the diff renderer
-needs `&mut Workspace` today). Not done.
+also dirties all its ancestors, so even a cached `Workspace` root re-renders (tried; no change). What
+helps is skipping the layout/prepaint/paint of heavy siblings: the sidebar and main pane are cached
+`PaneView`s (`workspace/pane_view.rs`) that render their slice through `ws.update`, so a keystroke or a
+scroll in the sidebar reuses the main pane (and the diff) from the last frame. A scroll inside a pane
+still rebuilds that whole pane.
 
 ## File watcher and refresh coalescing
 
@@ -502,10 +503,14 @@ Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Carg
   start time in `request_layout`, so after one reused frame every animation inside the view
   replays (the diff fades in again, the undo strip re-slides). `div` state (scroll offset,
   hover, click, `.transitions`) is also touched in prepaint and survives. Still the case on
-  gpui-ce `main` (Oct 2026). Also: a cached view only re-renders when its own entity (or a view
-  inside it) is notified, never because a model it read changed, so it must `cx.observe` every
-  model it reads. Caching the sidebar and main pane as separate views made commit-list scrolling
-  cheap but hit the animation bug, so it was not merged (branch `perf/cached-panes`).
+  gpui-ce `main` (Oct 2026). The sidebar and main pane are cached views (`workspace/pane_view.rs`),
+  so animations inside them use `motion::progress_since` / `fade_quick_since` / `fade_in_since`
+  with a start `Instant` kept in app state (`DiffView::shown`, `LastCommit::at`, ...), never
+  `with_animation`. Also: a cached view only re-renders when its own entity (or a view inside it)
+  is notified, never because a model it read changed. The panes observe the workspace, so a
+  model a pane reads must make the workspace notify (`cx.observe(&model, .. cx.notify())`), and
+  a text input in a pane is observed rather than only subscribed to `TextChanged`, so caret and
+  selection moves redraw.
 - **`AssetSource::list("")` must enumerate every asset.** GPUI-CE builds its
   `AssetRegistry` from it once at startup. If an asset isn't listed, `svg()`
   silently draws nothing.

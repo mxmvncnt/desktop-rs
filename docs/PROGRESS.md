@@ -230,10 +230,9 @@ echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new 
       (`features/pickers/popover_layer.rs`) extracted as components. `repo.rs` became `repo/` (see ARCHITECTURE).
 - Verified pixel-identical: ~175 snapshots (all views, CSD, hover, `watch`) before/after.
 - Next steps (candidates, not done, behavior-changing):
-  - Commit box is now its own `CommitBox` entity (done). `Workspace::render` still runs on every draw (see
-    ARCHITECTURE, "Commit box"); skipping the diff/file-list work needs `DiffView`+`diff_select`+`diff_scroll` as a
-    `DiffPane` entity embedded with `Entity::cached(style)`. Esc/Enter routing in `workspace/overlay.rs` reads many
-    of these fields and must be reworked first.
+  - Commit box is now its own `CommitBox` entity (done). The sidebar and main pane are cached views (done, see
+    ARCHITECTURE, "Commit box"), so sidebar work no longer redraws the diff. Scrolling the diff itself still
+    costs ~5.5 ms at 2560x1440 (ARCHITECTURE, "Measuring scroll cost"): the rows have too many elements.
   - Move `select_change` and the other `RepoModel` selection methods into `features/changes/ops.rs` / `features/history`
     by widening the diff loader's visibility.
   - `RepoModel::new` still lists every field; group them into sub-structs (done for `ChangesState`, `HistoryLog`, `RefreshState`).

@@ -4,14 +4,14 @@
 use gd_ui::{Theme, motion};
 use gpui::{
     AnyElement, Context, DragMoveEvent, InteractiveElement, IntoElement, MouseButton,
-    NavigationDirection, ParentElement, Render, Styled, Window, div, px,
+    NavigationDirection, ParentElement, Render, StyleRefinement, Styled, Window, div, px,
 };
 
 use super::{actions, overlay::Overlay, state::Workspace};
 use crate::actions::{WORKSPACE, WORKSPACE_MENU};
 use crate::components::MenuView;
 use crate::features::branches::BranchDialogView;
-use crate::features::changes::{Sidebar, SidebarResize};
+use crate::features::changes::SidebarResize;
 use crate::features::ci::CiPage;
 use crate::features::diff::DiffOptionsMenu;
 use crate::features::history::HistoryDialogView;
@@ -25,7 +25,6 @@ use crate::features::stashes::StashDialogView;
 use crate::features::toolbar::Toolbar;
 use crate::features::welcome::WelcomeScreen;
 use crate::platform::Chrome;
-use crate::repo::Tab;
 
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -90,9 +89,9 @@ impl Render for Workspace {
 impl Workspace {
     /// Sidebar + main pane for the open repo, or the welcome screen.
     fn body(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let Some(repo) = self.repo.clone() else {
+        if self.repo.is_none() {
             return WelcomeScreen { ws: cx.entity() }.into_any_element();
-        };
+        }
         // Opening and closing the CI page swap the body: whichever appears fades in (the one that goes is gone at once).
         if self.ci.read(cx).open {
             let page = div().flex_1().min_h_0().flex().flex_col().child(CiPage {
@@ -101,20 +100,18 @@ impl Workspace {
             });
             return motion::fade_quick("ci-page-in", page).into_any_element();
         }
-        let (tab, pr_open) = {
-            let r = repo.read(cx);
-            (r.tab, r.pr.open)
-        };
+        // Cached so a scroll in one pane doesn't rebuild the other (see `pane_view.rs`).
+        let sidebar = StyleRefinement::default()
+            .flex_none()
+            .w(px(self.sidebar_width()))
+            .h_full();
+        let main = StyleRefinement::default().flex_1().min_w_0().h_full();
         let body = div()
             .flex()
             .flex_1()
             .min_h_0()
-            .child(Sidebar::new(self, &repo, cx))
-            .child(match tab {
-                _ if pr_open => self.render_pr_preview(&repo, cx).into_any_element(),
-                Tab::Changes => self.render_changes_main(&repo, cx).into_any_element(),
-                Tab::History => self.render_history_main(&repo, cx).into_any_element(),
-            });
+            .child(self.sidebar_pane.clone().cached(sidebar))
+            .child(self.main_pane.clone().cached(main));
         motion::fade_quick("body-in", body).into_any_element()
     }
 

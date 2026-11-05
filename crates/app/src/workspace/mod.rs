@@ -9,13 +9,15 @@
 //! └───────────────────────────┴─────────────────────────────────────────┘
 //! ```
 //!
-//! `state.rs` has the `Workspace` struct, `render.rs` the root template, and
-//! the other files are `impl Workspace` handlers grouped by concern.
+//! `state.rs` has the `Workspace` struct, `render.rs` the root template,
+//! `pane_view.rs` the cached sidebar / main pane views, and the other files
+//! are `impl Workspace` handlers grouped by concern.
 
 mod actions;
 mod init;
 mod navigation;
 mod overlay;
+mod pane_view;
 mod render;
 mod repo_commands;
 mod repos;

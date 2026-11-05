@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 
 use gd_git::{Commit, ResetMode};
 use gpui::{AppContext, Context, Entity, Subscription};
-use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
+use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use crate::repo::LoadSlot;
 use crate::workspace::Workspace;
@@ -60,7 +60,9 @@ impl HistoryUi {
         let (msg_summary, msg_desc, name, search) = (mk(cx), mk(cx), mk(cx), mk(cx));
         let subs = [&msg_summary, &msg_desc, &name, &search]
             .into_iter()
-            .map(|i| cx.subscribe(i, |_: &mut Workspace, _, _: &TextChanged, cx| cx.notify()))
+            // Observe, not `TextChanged`: the search box sits in a cached pane, so caret
+            // and selection moves must re-render it too.
+            .map(|i| cx.observe(i, |_: &mut Workspace, _, cx| cx.notify()))
             .collect();
         Self {
             msg_summary,

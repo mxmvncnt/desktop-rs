@@ -50,7 +50,11 @@ impl Workspace {
         model.update(cx, |m, _| {
             m.diff_options.ignore_whitespace = self.settings.diff_ignore_whitespace
         });
-        self.repo_sub = Some(cx.observe(&model, observe_notices));
+        // The panes are cached views that observe the workspace, not the repo.
+        self.repo_sub = Some(cx.observe(&model, |this, model, cx| {
+            observe_notices(this, model, cx);
+            cx.notify();
+        }));
         self.commit_box.update(cx, |b, cx| b.attach(&model, cx));
         self.repo_event_sub = Some(cx.subscribe(&model, |this, _, ev: &RepoEvent, cx| {
             this.on_repo_event(ev, cx)

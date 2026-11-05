@@ -14,7 +14,7 @@ use gpui::{
     AppContext, Context, Entity, IntoElement, ParentElement, Render, StatefulInteractiveElement,
     Styled, Subscription, WeakEntity, Window, div, px,
 };
-use gpui_elements::editable_text::{EditableTextState, StringStorage, TextChanged};
+use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::amend_notice::AmendNotice;
 use super::state::{CommitButton, SelectionSummary};
@@ -45,7 +45,9 @@ pub struct CommitBox {
 impl CommitBox {
     pub fn new(ws: WeakEntity<Workspace>, cx: &mut Context<Self>) -> Self {
         let message = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
-        let _input_sub = cx.subscribe(&message, |_, _, _: &TextChanged, cx| cx.notify());
+        // Observe, not `TextChanged`: caret and selection moves must re-render too,
+        // since the commit box sits in a cached pane.
+        let _input_sub = cx.observe(&message, |_, _, cx| cx.notify());
         Self {
             message,
             amend: None,

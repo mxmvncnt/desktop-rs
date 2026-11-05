@@ -8,6 +8,7 @@ use gpui::{
 };
 use gpui_elements::editable_text::{EditableTextState, TextChanged};
 
+use super::pane_view::{PaneView, Part};
 use super::state::Workspace;
 use crate::components::ComboPicked;
 use crate::features::accounts::AccountsStore;
@@ -28,6 +29,8 @@ impl Workspace {
     pub fn new(open_path: Option<PathBuf>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let ws = cx.weak_entity();
         let commit_box = cx.new(|cx| CommitBox::new(ws.clone(), cx));
+        let sidebar_pane = cx.new(|_| PaneView::new(ws.clone(), Part::Sidebar));
+        let main_pane = cx.new(|_| PaneView::new(ws.clone(), Part::Main));
         let pickers = cx.new(|cx| PopoverStore::new(ws, cx));
         let p = pickers.read(cx);
         let inputs = [p.filter.clone(), p.name_input.clone(), p.url_input.clone()];
@@ -78,6 +81,8 @@ impl Workspace {
             corner_radius: 0.0,
             commit_box,
             no_changes_shown: None,
+            sidebar_pane,
+            main_pane,
             nav_list: None,
             changes_scroll: UniformListScrollHandle::new(),
             history_scroll: UniformListScrollHandle::new(),
