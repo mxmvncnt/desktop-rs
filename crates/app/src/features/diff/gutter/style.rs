@@ -14,8 +14,11 @@ pub fn line_selected_bg() -> Hsla {
     gpui::rgb_to_hsla(gpui::rgb(0x1447e6))
 }
 
+/// Size of the check mark (also painted directly by the number cell's canvas).
+pub const CHECK_MARK: f32 = 11.0;
+
 pub fn check_mark(color: Hsla) -> impl IntoElement {
-    icon(Icon::Check).size(px(11.0)).text_color(color)
+    icon(Icon::Check).size(px(CHECK_MARK)).text_color(color)
 }
 
 /// Width of a number cell holding `numbers` numbers.

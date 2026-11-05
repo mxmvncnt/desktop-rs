@@ -3,14 +3,17 @@
 //! docs/CONVENTIONS.md).
 
 use gd_git::{Diff, DiffLineKind};
-use gd_ui::{Theme, theme::DIFF_ROW_HEIGHT};
+use gd_ui::{Icon, Theme, theme::DIFF_ROW_HEIGHT};
 use gpui::{
-    AnyElement, Div, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels, Styled,
-    div, prelude::*, px,
+    AnyElement, App, Bounds, Div, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    Pixels, Styled, TextAlign, Window, canvas, div, point, prelude::*, px, size,
 };
 
 use super::block_handle::RowSelect;
-use super::style::{CHECK_W, check_mark, line_selected_bg};
+use super::style::{CHECK_MARK, CHECK_W, line_selected_bg, number_cell_w};
+
+/// Right padding of each line number.
+const NUMBER_PAD: f32 = 8.0;
 use crate::features::diff::state::GutterDrag;
 use crate::repo::RepoModel;
 
@@ -48,6 +51,11 @@ pub fn number_cell(
 /// Top-aligned so numbers stay on the first line of a wrapped row. No
 /// `h_full`: a percentage can't resolve in an auto-height (wrapped) row,
 /// and it would stop the cell from stretching to the row's height.
+///
+/// The check and numbers are painted by one canvas, where they used to be five
+/// small elements: laying those out in every visible row was the largest part of
+/// a diff scroll frame (docs/ARCHITECTURE.md, "Measuring scroll cost"). The
+/// canvas places them exactly where the flex layout did.
 fn cell_shell(
     has_select: bool,
     included: bool,
@@ -55,36 +63,66 @@ fn cell_shell(
     num_w: Pixels,
     theme: &Theme,
 ) -> Div {
+    let check_w = if has_select { px(CHECK_W) } else { px(0.0) };
+    let check = (has_select && included).then_some(theme.on_accent);
+    let width = number_cell_w(num_w, numbers.len() as f32, has_select);
+    let numbers = numbers.to_vec();
+    let paint = move |bounds: Bounds<Pixels>, _, window: &mut Window, cx: &mut App| {
+        if let Some(color) = check {
+            let mark = px(CHECK_MARK);
+            let origin = bounds.origin
+                + point(
+                    (px(CHECK_W) - mark) / 2.0,
+                    (px(DIFF_ROW_HEIGHT) - mark) / 2.0,
+                );
+            let at = Bounds::new(origin, size(mark, mark));
+            let path = Icon::Check.path().into();
+            window
+                .paint_svg(at, path, None, Default::default(), color, cx)
+                .ok();
+        }
+        let style = window.text_style();
+        let font_size = style.font_size.to_pixels(window.rem_size());
+        let line_height = window.pixel_snap(
+            style
+                .line_height
+                .to_pixels(font_size.into(), window.rem_size()),
+        );
+        // Snapped like gpui's layout: lengths to the nearest device pixel, a measured
+        // text width up to the next one.
+        let (check_w, num_w, pad) = (
+            window.pixel_snap(check_w),
+            window.pixel_snap(num_w),
+            window.pixel_snap(px(NUMBER_PAD)),
+        );
+        let scale = window.scale_factor();
+        for (i, n) in numbers.iter().enumerate() {
+            let Some(n) = n else { continue };
+            let text = n.to_string();
+            let runs = [style.to_run(text.len())];
+            let Some(shaped) = window
+                .text_system()
+                .shape_text(text, font_size, &runs, None, None)
+                .ok()
+            else {
+                continue;
+            };
+            let width = px((shaped.size(line_height).width.as_f32() * scale).ceil() / scale);
+            let right = bounds.left() + check_w + num_w * (i + 1) as f32 - pad;
+            let origin = point(right - width, bounds.top());
+            shaped
+                .paint(origin, line_height, TextAlign::Left, None, window, cx)
+                .ok();
+        }
+    };
     div()
         .flex()
         .flex_none()
         .items_start()
         .text_color(theme.diff_gutter)
-        // Keep numbers aligned with selectable rows' check slot.
-        .when(has_select, |d| {
-            d.child(
-                div()
-                    .flex()
-                    .flex_none()
-                    .w(px(CHECK_W))
-                    .h(px(DIFF_ROW_HEIGHT))
-                    .items_center()
-                    .justify_center()
-                    .when(included, |d| d.child(check_mark(theme.on_accent))),
-            )
-        })
-        .children(numbers.iter().map(|n| {
-            div()
-                .flex()
-                .flex_none()
-                .w(num_w)
-                .pr(px(8.0))
-                .justify_end()
-                .child(n.map(|n| n.to_string()).unwrap_or_default())
-        }))
+        .child(canvas(|_, _, _| {}, paint).w(width).h(px(DIFF_ROW_HEIGHT)))
 }
 
-/// Click toggles row `ix`; dragging from it extends the (de)selection.
 fn selectable_cell(
     cell: Div,
     sel: &RowSelect,
