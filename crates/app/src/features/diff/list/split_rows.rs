@@ -155,7 +155,7 @@ impl SplitRows<'_> {
         };
         let text = self
             .tsel
-            .bind_text(text_cell(text, self.flow), target.clone());
+            .bind_text(text_cell(text, fg, self.flow), target.clone());
         (
             cell.bg(bg)
                 .child(marker_cell(marker, marker_color, None))

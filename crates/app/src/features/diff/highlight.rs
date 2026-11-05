@@ -107,32 +107,20 @@ pub fn runs_for(
 /// The text element for one diff row: syntax colors (`spans`, may be empty)
 /// plus a background wash over the word-level `emphasis` ranges and the
 /// selected byte range. Plain rows (no spans, emphasis or selection) stay a
-/// cheap single-run text. Also returns the text layout for hit-testing.
-///
-/// The text sits in a flex column: a block parent (the default display) would
-/// collect it into its own inline paragraph, and then the `StyledText` is never
-/// measured itself and its layout can't hit-test (GPUI-CE panics).
+/// cheap single-run text in the inherited style, which `text_cell` colors `fg`.
+/// Also returns the text layout for hit-testing.
 pub fn line_text(
     line: &DiffLine,
     spans: &[Span],
     selected: Option<(Range<usize>, Hsla)>,
     fg: Hsla,
     theme: &Theme,
-) -> (gpui::AnyElement, gpui::TextLayout) {
-    use gpui::{IntoElement, ParentElement, Styled};
+) -> (gpui::StyledText, gpui::TextLayout) {
     let (text, emphasis) = (line.text.as_str(), line.emphasis.as_slice());
     if text.is_empty() || (spans.is_empty() && emphasis.is_empty() && selected.is_none()) {
         let styled = gpui::StyledText::new(text.to_string());
         let layout = styled.layout().clone();
-        return (
-            gpui::div()
-                .flex()
-                .flex_col()
-                .text_color(fg)
-                .child(styled)
-                .into_any_element(),
-            layout,
-        );
+        return (styled, layout);
     }
     let mut runs = runs_for(
         text,
@@ -154,14 +142,7 @@ pub fn line_text(
     }
     let styled = gpui::StyledText::new(text.to_string()).with_runs(runs);
     let layout = styled.layout().clone();
-    (
-        gpui::div()
-            .flex()
-            .flex_col()
-            .child(styled)
-            .into_any_element(),
-        layout,
-    )
+    (styled, layout)
 }
 
 /// Split `runs` at range edges and set `background_color` (and `fg`, when given) inside them.

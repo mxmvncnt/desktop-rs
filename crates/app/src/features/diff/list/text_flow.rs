@@ -3,7 +3,7 @@
 
 use gd_ui::theme::DIFF_ROW_HEIGHT;
 use gpui::{
-    AnyElement, Bounds, Div, Hsla, IntoElement, PaintQuad, ParentElement, Pixels, Styled, canvas,
+    Bounds, Div, Hsla, IntoElement, PaintQuad, ParentElement, Pixels, Styled, StyledText, canvas,
     div, point, px, size,
 };
 
@@ -30,15 +30,30 @@ pub fn row_box(flow: TextFlow) -> Div {
     }
 }
 
-/// The text part of a row (after the marker), see [`TextFlow`].
-pub fn text_cell(text: AnyElement, flow: TextFlow) -> Div {
+/// The text part of a row (after the marker), see [`TextFlow`]. `fg` colors a
+/// plain line; highlighted runs carry their own colors.
+///
+/// The text's parent is a flex column: a block parent (the default display) would
+/// collect it into its own inline paragraph, and then the `StyledText` is never
+/// measured itself and its layout can't hit-test (GPUI-CE panics).
+pub fn text_cell(text: StyledText, fg: Hsla, flow: TextFlow) -> Div {
     let cell = div().flex_1().min_w_0();
     match flow {
-        TextFlow::Scroll(x) => cell
-            .h_full()
-            .overflow_hidden()
-            .child(div().relative().left(-x).child(text)),
-        TextFlow::Wrap => cell.whitespace_normal().child(text),
+        TextFlow::Scroll(x) => cell.h_full().overflow_hidden().child(
+            div()
+                .relative()
+                .left(-x)
+                .flex()
+                .flex_col()
+                .text_color(fg)
+                .child(text),
+        ),
+        TextFlow::Wrap => cell
+            .whitespace_normal()
+            .flex()
+            .flex_col()
+            .text_color(fg)
+            .child(text),
     }
 }
 

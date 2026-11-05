@@ -4,7 +4,9 @@
 
 use gd_git::{Diff, DiffLineKind};
 use gd_ui::Theme;
-use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, prelude::*, px};
+use gpui::{
+    AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, StyledText, prelude::*, px,
+};
 
 use super::text_flow::{TextFlow, marker_cell, row_box, text_cell};
 use crate::features::diff::expand::{Expander, header_hunk, trailing_row};
@@ -83,7 +85,7 @@ impl UnifiedRows<'_> {
         let (text, layout) = self.text(ix, look.fg);
         match header_hunk(self.diff, ix) {
             // Hunk headers carry the expand buttons in their gutter.
-            Some(h) => self.header_row(row, h, text, look.marker_color),
+            Some(h) => self.header_row(row, h, text, &look),
             None if hunk => self.line_row(row, ix, text, &look, None),
             None => {
                 let target = TextTarget {
@@ -102,7 +104,7 @@ impl UnifiedRows<'_> {
         }
     }
 
-    fn text(&self, ix: usize, fg: Hsla) -> (AnyElement, gpui::TextLayout) {
+    fn text(&self, ix: usize, fg: Hsla) -> (StyledText, gpui::TextLayout) {
         let theme = self.theme;
         let line = &self.diff.lines[ix];
         let spans = self.hl.map(|h| h.row(ix)).unwrap_or(&[]);
@@ -119,14 +121,14 @@ impl UnifiedRows<'_> {
         )
     }
 
-    fn header_row(&self, row: Div, h: usize, text: AnyElement, marker_color: Hsla) -> AnyElement {
+    fn header_row(&self, row: Div, h: usize, text: StyledText, look: &LineLook) -> AnyElement {
         row.child(
             Expander::gutter(self.exp, self.diff, h, self.gutter_w(), self.theme)
                 .border_r_1()
                 .border_color(self.theme.border),
         )
-        .child(marker_cell("", marker_color, None))
-        .child(text_cell(text, self.flow))
+        .child(marker_cell("", look.marker_color, None))
+        .child(text_cell(text, look.fg, self.flow))
         .into_any_element()
     }
 
@@ -134,7 +136,7 @@ impl UnifiedRows<'_> {
         &self,
         row: Div,
         ix: usize,
-        text: AnyElement,
+        text: StyledText,
         look: &LineLook,
         target: Option<TextTarget>,
     ) -> AnyElement {
@@ -173,8 +175,8 @@ impl UnifiedRows<'_> {
                 Some(theme.border),
             ))
             .child(match target {
-                Some(t) => self.tsel.bind_text(text_cell(text, self.flow), t),
-                None => text_cell(text, self.flow),
+                Some(t) => self.tsel.bind_text(text_cell(text, look.fg, self.flow), t),
+                None => text_cell(text, look.fg, self.flow),
             })
             .into_any_element()
     }
