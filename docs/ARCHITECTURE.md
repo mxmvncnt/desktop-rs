@@ -261,9 +261,16 @@ and prints the p50/p90/max CPU time of `window.draw` (render, layout, prepaint, 
 Use a repo with a long changed file. A 165 Hz monitor gives a frame 6.06 ms; a frame over budget
 misses a vblank and the rate halves (82 fps), which is what a "not smooth" scroll feels like.
 On Wayland, `WAYLAND_DEBUG=client` shows it live: the gap between `wl_callback.done` and the
-next `wl_surface.commit` is the app's frame time. Measured (Nov 2026, 2560x1440, ~68 visible
-highlighted rows): ~5.6-6.5 ms per diff scroll frame, under 0.5 ms of it building elements and
-the rest gpui laying out and painting ~14 elements per row.
+next `wl_surface.commit` is the app's frame time.
+
+What a diff scroll frame costs (Nov 2026, 2560x1440, ~68 visible highlighted rows): building
+the elements is under 0.5 ms; the rest is gpui laying out and painting them. Every element in a
+row costs ~0.35 ms per frame across the visible rows (a plain box included), and every line of
+text ~22 us (shaping lookups plus one sprite per glyph), so a hot row keeps its element count
+low: labels (line numbers, `+`/`-`) are painted by a canvas (`diff/cell_text.rs`) and decorative
+lines are painted rather than given a box. To find what to cut, temporarily drop parts of a row
+behind an env var and compare bench runs (noise is about +-0.3 ms). After that work: unified
+~3.7 ms, wrapped ~3.4 ms, split ~6.5 ms (two texts and ~17 elements per row) per frame.
 
 ### Commit box (`features/changes/commit_box.rs`)
 

@@ -231,8 +231,9 @@ echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new 
 - Verified pixel-identical: ~175 snapshots (all views, CSD, hover, `watch`) before/after.
 - Next steps (candidates, not done, behavior-changing):
   - Commit box is now its own `CommitBox` entity (done). The sidebar and main pane are cached views (done, see
-    ARCHITECTURE, "Commit box"), so sidebar work no longer redraws the diff. Scrolling the diff itself still
-    costs ~5.5 ms at 2560x1440 (ARCHITECTURE, "Measuring scroll cost"): the rows have too many elements.
+    ARCHITECTURE, "Commit box"), so sidebar work no longer redraws the diff. Diff rows were flattened (numbers,
+    marker and gutter border painted): a unified diff scroll frame went from ~6.0 to ~3.7 ms at 2560x1440. Split
+    view is still ~6.5 ms, over a 165 Hz budget (ARCHITECTURE, "Measuring scroll cost").
   - Move `select_change` and the other `RepoModel` selection methods into `features/changes/ops.rs` / `features/history`
     by widening the diff loader's visibility.
   - `RepoModel::new` still lists every field; group them into sub-structs (done for `ChangesState`, `HistoryLog`, `RefreshState`).
