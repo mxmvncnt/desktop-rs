@@ -254,6 +254,17 @@ Don't measure with raw CPU ticks on a live desktop: pointer movement over the
 window legitimately re-renders (hover transitions), which made one session chase
 a phantom regression.
 
+Measuring scroll cost: the snapshot harness times scrolled frames headlessly.
+`GD_SNAPSHOT_SIZE=2560,1440 GD_SNAPSHOT_MOUSE=1500,700 GD_SNAPSHOT_BENCH=300 cargo run --release
+--features snapshot -- --snapshot out.png <repo> changes` sends 300 wheel steps at the pointer
+and prints the p50/p90/max CPU time of `window.draw` (render, layout, prepaint, paint; no GPU).
+Use a repo with a long changed file. A 165 Hz monitor gives a frame 6.06 ms; a frame over budget
+misses a vblank and the rate halves (82 fps), which is what a "not smooth" scroll feels like.
+On Wayland, `WAYLAND_DEBUG=client` shows it live: the gap between `wl_callback.done` and the
+next `wl_surface.commit` is the app's frame time. Measured (Nov 2026, 2560x1440, ~68 visible
+highlighted rows): ~5.6-6.5 ms per diff scroll frame, under 0.5 ms of it building elements and
+the rest gpui laying out and painting ~14 elements per row.
+
 ### Commit box (`features/changes/commit_box.rs`)
 
 `Workspace::commit_box: Entity<CommitBox>` owns the message input, the amend state (`amend` root), the
@@ -485,6 +496,16 @@ Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Carg
 
 ## GPUI-CE gotchas (learned the hard way)
 
+- **`Entity::cached(style)` drops element state set in `request_layout`.** A cached view that
+  re-renders lays its children out before its prepaint range, and a later frame that reuses
+  the view only carries over element state touched inside that range. `with_animation` keeps its
+  start time in `request_layout`, so after one reused frame every animation inside the view
+  replays (the diff fades in again, the undo strip re-slides). `div` state (scroll offset,
+  hover, click, `.transitions`) is also touched in prepaint and survives. Still the case on
+  gpui-ce `main` (Oct 2026). Also: a cached view only re-renders when its own entity (or a view
+  inside it) is notified, never because a model it read changed, so it must `cx.observe` every
+  model it reads. Caching the sidebar and main pane as separate views made commit-list scrolling
+  cheap but hit the animation bug, so it was not merged (branch `perf/cached-panes`).
 - **`AssetSource::list("")` must enumerate every asset.** GPUI-CE builds its
   `AssetRegistry` from it once at startup. If an asset isn't listed, `svg()`
   silently draws nothing.

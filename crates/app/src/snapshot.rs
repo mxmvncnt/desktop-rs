@@ -19,10 +19,13 @@
 //!
 //! Env (logical window px): `GD_SNAPSHOT_MOUSE=x,y` parks the pointer there to capture hover
 //! states; `GD_SNAPSHOT_DRAG=x1,y1,x2,y2` drags with the left button, e.g. to select diff text.
+//! `GD_SNAPSHOT_SIZE=w,h` sets the window size (default 1280,820). `GD_SNAPSHOT_BENCH=n` sends n
+//! wheel steps at the `GD_SNAPSHOT_MOUSE` position and prints how long each draw took (CPU side:
+//! render, layout, prepaint, paint), to measure scrolling cost; profile it with `samply record`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gpui::{AppContext as _, Context, HeadlessAppContext, Window, px, size};
 
@@ -151,8 +154,9 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
     } else {
         repo
     };
+    let (width, height) = env_pair("GD_SNAPSHOT_SIZE").unwrap_or((1280.0, 820.0));
     let window = cx
-        .open_window(size(px(1280.0), px(820.0)), |window, cx| {
+        .open_window(size(px(width), px(height)), |window, cx| {
             cx.new(|cx| Workspace::new(repo, window, cx))
         })
         .expect("open headless window");
@@ -176,10 +180,8 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
     }
     cx.run_until_parked();
     // `GD_SNAPSHOT_MOUSE=x,y` (window px): park the pointer there to capture hover states.
-    if let Some((x, y)) = std::env::var("GD_SNAPSHOT_MOUSE").ok().and_then(|v| {
-        v.split_once(',')
-            .and_then(|(x, y)| Some((x.parse::<f32>().ok()?, y.parse::<f32>().ok()?)))
-    }) {
+    let mouse = env_pair("GD_SNAPSHOT_MOUSE");
+    if let Some((x, y)) = mouse {
         cx.run_until_parked();
         for _ in 0..2 {
             cx.update_window(window.into(), |_, window, cx| {
@@ -265,8 +267,47 @@ pub fn run(out: PathBuf, repo: Option<PathBuf>, view: &str) {
             .ok();
         cx.run_until_parked();
     }
+    if let (Some(steps), Some((x, y))) = (
+        std::env::var("GD_SNAPSHOT_BENCH")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok()),
+        mouse,
+    ) {
+        let mut times: Vec<Duration> = (0..steps)
+            .filter_map(|_| {
+                cx.update_window(window.into(), |_, window, cx| {
+                    let wheel = gpui::PlatformInput::ScrollWheel(gpui::ScrollWheelEvent {
+                        position: gpui::point(px(x), px(y)),
+                        delta: gpui::ScrollDelta::Pixels(gpui::point(px(0.0), px(-12.0))),
+                        modifiers: Default::default(),
+                        touch_phase: gpui::TouchPhase::Moved,
+                    });
+                    let start = Instant::now();
+                    window.dispatch_event(wheel, cx);
+                    window.draw(cx).clear(cx);
+                    start.elapsed()
+                })
+                .ok()
+            })
+            .collect();
+        times.sort();
+        let at = |q: usize| times[(times.len() - 1) * q / 100].as_secs_f64() * 1000.0;
+        println!(
+            "scroll draw ms over {steps} steps: p50 {:.2}  p90 {:.2}  max {:.2}",
+            at(50),
+            at(90),
+            at(100)
+        );
+    }
 
     let image = cx.capture_screenshot(window.into()).expect("capture");
     image.save(&out).expect("save png");
     println!("wrote {}", out.display());
+}
+
+/// `"x,y"` from an env var, in logical window px.
+fn env_pair(name: &str) -> Option<(f32, f32)> {
+    let v = std::env::var(name).ok()?;
+    let (x, y) = v.split_once(',')?;
+    Some((x.parse().ok()?, y.parse().ok()?))
 }
