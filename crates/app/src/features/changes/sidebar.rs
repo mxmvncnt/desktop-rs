@@ -17,7 +17,6 @@ use crate::workspace::Workspace;
 pub struct Sidebar {
     tabs: SidebarTabs,
     body: AnyElement,
-    corner_radius: f32,
     width: f32,
     handle: ResizeHandle<SidebarResize>,
 }
@@ -43,7 +42,6 @@ impl Sidebar {
                 repo: repo.clone(),
             },
             body,
-            corner_radius: ws.corner_radius,
             width: ws.sidebar_width(),
             handle: ResizeHandle::right_edge("sidebar-handle", SidebarResize).on_reset({
                 let ws = cx.entity();
@@ -63,8 +61,6 @@ impl RenderOnce for Sidebar {
             .relative()
             .w(px(self.width))
             .h_full()
-            .bg(theme.surface)
-            .rounded_bl(px(self.corner_radius))
             .border_r_1()
             .border_color(theme.border)
             .child(div().p(px(8.0)).child(self.tabs))

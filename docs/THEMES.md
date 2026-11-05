@@ -37,6 +37,24 @@ descriptions):
 - `diff_empty_bg`: split view placeholder opposite an added or deleted line
 - `diff_gutter`: line number text (default `faint`)
 
+## Surface opacity
+
+When Settings > Appearance > Window background is Transparent or Blurred, the desktop shows
+through the app. A palette sets how much with `opacity`, from 0 (invisible) to 1 (opaque), per
+surface rather than per color. Every key is optional; these are the defaults:
+
+```json
+"opacity": { "bg": 0.8, "surface": 0.7, "card": 0.85, "overlay": 0.95, "raised": 0.9 }
+```
+
+- `bg`: diff plane, welcome screen and CI page
+- `surface`: toolbar and sidebar
+- `card`: cards and panels
+- `overlay`: popovers, menus, dialogs and tooltips
+- `raised`: chips and pills
+
+Opaque ignores these values. Hover washes, diff colors and other tints keep their own alpha.
+
 ## Commit type pills
 
 Commit titles that follow the conventional commit format show their type (`feat`, `fix`, ...)

@@ -223,6 +223,10 @@
           "additionalProperties": {
             "$ref": "#/$defs/Hex"
           }
+        },
+        "opacity": {
+          "description": "Opacity of each surface when the window background is Transparent or Blurred.",
+          "$ref": "#/$defs/SurfaceOpacity"
         }
       },
       "required": [
@@ -246,6 +250,52 @@
       "description": "A `#rrggbb` color from JSON.",
       "type": "string",
       "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "SurfaceOpacity": {
+      "description": "Opacity (0 to 1) of the surfaces painted with the palette colors of the same name.\nIgnored when the window background is Opaque. A missing key takes its default.",
+      "type": "object",
+      "properties": {
+        "bg": {
+          "description": "Diff plane, welcome screen and CI page. Default 0.8.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.800000011920929
+        },
+        "surface": {
+          "description": "Toolbar and sidebar. Default 0.7.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.699999988079071
+        },
+        "card": {
+          "description": "Cards and panels. Default 0.85.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.8500000238418579
+        },
+        "overlay": {
+          "description": "Popovers, menus, dialogs and tooltips. Default 0.95.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.949999988079071
+        },
+        "raised": {
+          "description": "Opaque chips and pills. Default 0.9.",
+          "type": "number",
+          "format": "float",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.8999999761581421
+        }
+      }
     }
   }
 }

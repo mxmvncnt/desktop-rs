@@ -1,5 +1,18 @@
 # Progress
 
+## Window transparency and blur (branch `feat/window-transparency`, 2026-11-05)
+
+- [x] Settings > Appearance > "Window background" select: Transparent, Blurred, Opaque (default), persisted as `window_background`.
+      Themes set the opacity of surfaces, not colors: optional `opacity` per palette (`bg`, `surface`, `card`, `overlay`, `raised`,
+      defaults 0.8 / 0.7 / 0.85 / 0.95 / 0.9), applied only when the background is not Opaque. Washes, diff colors and other
+      translucent tints are left as they are (too fine-grained to theme).
+- [x] Blur: macOS through gpui's native `NSVisualEffectView`; Linux/Wayland through `ext_background_effect_manager_v1`
+      (`platform/linux/backdrop.rs`). Without that global or its blur capability (GNOME, X11, snapshots), Blurred is greyed out in the
+      select and a saved Blurred falls back to Transparent. Snapshot views `settings-background-menu`, `transparent[-light][-settings]`.
+- The shared `components::Select` (from the account type dropdown) now also serves this; `BranchRow::disabled` greys a row.
+- Not verified: blur on a compositor that has the protocol (KWin 6.5+), macOS (never compiled), Windows (there is no
+  `platform/windows` module yet; gpui's `set_background_appearance` is the native path once one exists).
+
 ## Remote button dropdown (2026-11-03)
 
 - [x] When the toolbar remote button offers push / pull / force push / publish, a chevron beside it opens a menu with "Fetch <remote>",

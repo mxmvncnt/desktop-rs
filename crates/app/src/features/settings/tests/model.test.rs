@@ -25,3 +25,13 @@ fn round_trips_and_tolerates_missing_keys() {
         "default"
     );
 }
+
+#[test]
+fn window_background_defaults_to_opaque() {
+    assert_eq!(
+        Settings::default().window_background,
+        WindowBackground::Opaque
+    );
+    let s: Settings = toml::from_str("window_background = \"blurred\"").unwrap();
+    assert_eq!(s.window_background, WindowBackground::Blurred);
+}

@@ -11,6 +11,6 @@ mod settings_modal;
 pub mod snapshot;
 mod state;
 
-pub use model::{Settings, ThemeMode, config_dir, themes_dir};
+pub use model::{Settings, ThemeMode, WindowBackground, config_dir, themes_dir};
 pub use settings_modal::SettingsModal;
 pub use state::SettingsPage;

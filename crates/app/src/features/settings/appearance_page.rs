@@ -6,7 +6,8 @@ use gpui::{
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 
-use super::{ThemeMode, themes_dir};
+use super::{ThemeMode, WindowBackground, themes_dir};
+use crate::components::Select;
 use crate::utils::paths::file_url;
 use crate::workspace::Workspace;
 
@@ -14,6 +15,9 @@ use crate::workspace::Workspace;
 pub struct AppearancePage {
     pub mode: ThemeMode,
     pub color_theme: String,
+    pub background: WindowBackground,
+    pub background_menu: bool,
+    pub blur_supported: bool,
     pub ws: Entity<Workspace>,
 }
 
@@ -37,11 +41,34 @@ impl AppearancePage {
         div().w(px(300.0)).child(tabs)
     }
 
+    fn background_select(&self) -> impl IntoElement {
+        let toggle = self.ws.clone();
+        WindowBackground::ALL.iter().fold(
+            Select::new(
+                "window-background",
+                self.background.label(),
+                self.background_menu,
+                move |_, cx| toggle.update(cx, |this, cx| this.toggle_background_menu(cx)),
+            ),
+            |select, b| {
+                let (ws, b) = (self.ws.clone(), *b);
+                let (icon, enabled) = match b {
+                    WindowBackground::Transparent => (Icon::Eye, true),
+                    WindowBackground::Blurred => (Icon::EyeClosed, self.blur_supported),
+                    WindowBackground::Opaque => (Icon::Document, true),
+                };
+                select.option(b.label(), icon, enabled, move |window, cx| {
+                    ws.update(cx, |this, cx| this.set_window_background(b, window, cx))
+                })
+            },
+        )
+    }
+
     fn theme_grid(&self, cx: &App) -> impl IntoElement {
         let current = Theme::of(cx).clone();
         let light = current.light;
         let cards = ColorThemes::of(cx).iter().map(|t| {
-            let preview = Theme::for_family(&t.id, light, cx);
+            let preview = Theme::for_family(&t.id, light, false, cx);
             let ws = self.ws.clone();
             let id = t.id.clone();
             let selected = t.id == self.color_theme;
@@ -108,6 +135,14 @@ impl RenderOnce for AppearancePage {
             .child(caption(
                 "System follows your operating system's light/dark setting.",
             ))
+            .child(div().h(px(8.0)))
+            .child(title("Window background"))
+            .child(self.background_select())
+            .child(caption(if self.blur_supported {
+                "Transparent and Blurred show the desktop through the theme's surfaces."
+            } else {
+                "Transparent shows the desktop through the theme's surfaces. Blurred needs a compositor with background blur (ext-background-effect-v1)."
+            }))
             .child(div().h(px(8.0)))
             .child(title("Color theme"))
             .child(self.theme_grid(cx))

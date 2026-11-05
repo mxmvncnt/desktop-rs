@@ -1,6 +1,8 @@
 //! Linux (Wayland + X11): client-side decorations.
 
+mod backdrop;
 mod chrome;
+pub use backdrop::Backdrop;
 pub use chrome::*;
 
 use gpui::WindowOptions;

@@ -51,6 +51,9 @@ tempfile = "3"
 gpui_platform = { workspace = true, features = ["wayland", "x11"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+raw-window-handle = "0.6"
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 oo7 = { version = "0.6", default-features = false, features = ["async-std", "native_crypto"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
