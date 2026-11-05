@@ -2,6 +2,7 @@
 //! stashes) calls to show a diff.
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use gd_git::Diff;
 use gd_ui::{Theme, motion};
@@ -104,7 +105,7 @@ impl Workspace {
             }
         };
         DiffFrame {
-            key,
+            shown: self.diff_view.shown,
             list,
             truncated,
             flow,
@@ -128,6 +129,7 @@ impl Workspace {
             self.diff_view.hscroll = px(0.0);
             self.diff_select = DiffSelectUi::default();
             self.diff_view.text_sel = None;
+            self.diff_view.shown = Instant::now();
         }
         new_key
     }
@@ -202,7 +204,7 @@ impl Workspace {
 
 #[derive(IntoElement)]
 pub struct DiffFrame {
-    pub key: SharedString,
+    pub shown: Instant,
     pub list: AnyElement,
     pub truncated: bool,
     pub flow: TextFlow,
@@ -211,12 +213,12 @@ pub struct DiffFrame {
 }
 
 impl RenderOnce for DiffFrame {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let theme = Theme::of(cx);
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let theme = Theme::of(cx).clone();
         let wrap = self.flow == TextFlow::Wrap;
         let (ws, ws_wheel) = (self.ws.clone(), self.ws);
-        motion::fade_quick(
-            self.key,
+        motion::fade_quick_since(
+            self.shown,
             div()
                 .flex()
                 .flex_col()
@@ -246,7 +248,9 @@ impl RenderOnce for DiffFrame {
                         })
                         .child(self.list),
                 )
-                .when(self.truncated, |d| d.child(truncated_warning(theme))),
+                .when(self.truncated, |d| d.child(truncated_warning(&theme))),
+            window,
+            cx,
         )
     }
 }

@@ -15,10 +15,9 @@ pub struct StashState {
     pub all_branches: bool,
     /// Panel expanded (kept for the session, per repository); collapsed by default.
     pub expanded: bool,
-    /// Body height before the user collapsed, expanded or filtered the panel: it slides from there instead of snapping.
-    pub slide_from: Option<f32>,
-    /// Bumped on every slide so the animation restarts.
-    pub slides: usize,
+    /// Body height before the user collapsed, expanded or filtered the panel, and when: it
+    /// slides from there instead of snapping (see `motion::progress_since`).
+    pub slide_from: Option<(f32, std::time::Instant)>,
     /// The main pane shows the selected stash instead of the working diff.
     pub viewing: bool,
     /// Sha of the selected stash (indices shift, shas don't).

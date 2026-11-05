@@ -65,6 +65,7 @@ fn undo_strip(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Work
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0),
+            at: std::time::Instant::now(),
         });
         cx.notify();
     });

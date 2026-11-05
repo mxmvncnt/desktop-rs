@@ -1,6 +1,8 @@
 //! Desktop's "Your changes will modify your most recent commit" notice, with
 //! a "Stop amending" link and a force-push warning for pushed commits.
 
+use std::time::Instant;
+
 use gd_ui::{Icon, Theme, icon, motion};
 use gpui::{
     App, InteractiveElement, IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement,
@@ -13,10 +15,11 @@ use super::commit_box::CommitBox;
 pub struct AmendNotice {
     pub pushed: bool,
     pub commit_box: gpui::Entity<CommitBox>,
+    pub shown: Instant,
 }
 
 impl RenderOnce for AmendNotice {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let pushed = self.pushed;
         let commit_box = self.commit_box;
@@ -26,8 +29,8 @@ impl RenderOnce for AmendNotice {
         } else {
             theme.text_muted
         };
-        motion::fade_quick(
-            "amend-notice",
+        motion::fade_quick_since(
+            self.shown,
             div()
                 .flex()
                 .items_start()
@@ -65,6 +68,8 @@ impl RenderOnce for AmendNotice {
                                 }),
                         ),
                 ),
+            window,
+            cx,
         )
     }
 }

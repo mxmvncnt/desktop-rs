@@ -6,6 +6,7 @@
 //! dirties its ancestors. See ARCHITECTURE.md, "Commit box".)
 
 use std::path::PathBuf;
+use std::time::Instant;
 
 use gd_git::Commit;
 use gd_ui::{Button, Icon, Theme};
@@ -37,6 +38,8 @@ pub struct CommitBox {
     ws: WeakEntity<Workspace>,
     _input_sub: Subscription,
     repo_sub: Option<Subscription>,
+    /// When the amend notice appeared, for its fade (see `motion::progress_since`).
+    amend_shown: Option<Instant>,
 }
 
 impl CommitBox {
@@ -51,6 +54,7 @@ impl CommitBox {
             ws,
             _input_sub,
             repo_sub: None,
+            amend_shown: None,
         }
     }
 
@@ -130,9 +134,11 @@ impl Render for CommitBox {
         let summary_typed = !self.text(cx).0.is_empty();
         let r = repo.read(cx);
         let b = CommitButton::of(r, SelectionSummary::of(r).included, amending, summary_typed);
-        let amend_notice = amending.then(|| AmendNotice {
+        self.amend_shown = amending.then(|| self.amend_shown.unwrap_or_else(Instant::now));
+        let amend_notice = self.amend_shown.map(|shown| AmendNotice {
             pushed: b.head_pushed,
             commit_box: cx.entity(),
+            shown,
         });
         let commit = Button::new("commit")
             .primary()

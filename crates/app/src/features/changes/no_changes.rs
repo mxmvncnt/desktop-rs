@@ -1,6 +1,7 @@
 //! "No local changes" pane with push / pull / open-folder suggestions.
 
 use std::path::Path;
+use std::time::Instant;
 
 use gd_ui::{Icon, Theme, motion};
 use gpui::{App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
@@ -16,10 +17,11 @@ pub struct NoChanges {
     root: String,
     /// Commits ahead / behind; only known when the branch has an upstream.
     ahead_behind: Option<(u32, u32)>,
+    shown: Instant,
 }
 
 impl NoChanges {
-    pub fn new(r: &RepoModel) -> Self {
+    pub fn new(r: &RepoModel, shown: Instant) -> Self {
         let ahead_behind = r
             .work
             .status
@@ -27,6 +29,7 @@ impl NoChanges {
             .filter(|s| s.upstream.is_some())
             .map(|s| (s.ahead_behind.ahead, s.ahead_behind.behind));
         Self {
+            shown,
             name: r.repo.name(),
             root: r.repo.root().display().to_string(),
             ahead_behind,
@@ -89,7 +92,7 @@ impl NoChanges {
 }
 
 impl RenderOnce for NoChanges {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let heading = div()
             .flex()
@@ -111,8 +114,8 @@ impl RenderOnce for NoChanges {
             .flex()
             .items_center()
             .justify_center()
-            .child(motion::fade_in(
-                ("no-changes", self.name.len()),
+            .child(motion::fade_in_since(
+                self.shown,
                 div()
                     .flex()
                     .flex_col()
@@ -120,6 +123,8 @@ impl RenderOnce for NoChanges {
                     .gap(px(20.0))
                     .child(heading)
                     .child(self.suggestions()),
+                window,
+                cx,
             ))
     }
 }

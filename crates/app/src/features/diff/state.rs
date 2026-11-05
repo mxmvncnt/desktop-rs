@@ -1,6 +1,7 @@
 //! State of the diff viewer: the `Workspace::diff_view` field (split-row cache, horizontal scroll, wrap list) and the gutter pointer state.
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use gd_git::Diff;
 use gpui::{ListAlignment, ListState, Pixels, px};
@@ -23,6 +24,8 @@ pub struct DiffView {
     /// Text selection (see `text_selection.rs`) and whether it is being dragged.
     pub text_sel: Option<TextSel>,
     pub text_drag: bool,
+    /// When the current diff (`Workspace::diff_key`) appeared, for its fade-in.
+    pub shown: Instant,
 }
 
 impl Default for DiffView {
@@ -35,6 +38,7 @@ impl Default for DiffView {
             wrap_for: None,
             text_sel: None,
             text_drag: false,
+            shown: Instant::now(),
         }
     }
 }

@@ -17,13 +17,13 @@ pub struct UndoStrip {
 }
 
 impl RenderOnce for UndoStrip {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let c = self.commit;
         let ws = self.ws;
         let dismiss = ws.clone();
-        motion::fade_quick(
-            ("undo-strip", c.time as usize),
+        motion::fade_quick_since(
+            c.at,
             div()
                 .group("undo-strip")
                 .flex()
@@ -87,6 +87,8 @@ impl RenderOnce for UndoStrip {
                         .label("Undo")
                         .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.undo_commit(cx))),
                 ),
+            window,
+            cx,
         )
     }
 }

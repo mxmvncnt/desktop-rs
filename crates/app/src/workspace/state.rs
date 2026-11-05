@@ -58,6 +58,8 @@ pub struct Workspace {
 
     /// Commit message input, amend mode and commit button (features/changes).
     pub commit_box: Entity<CommitBox>,
+    /// When the "No local changes" pane appeared, for its fade (see `motion::progress_since`).
+    pub no_changes_shown: Option<std::time::Instant>,
 
     /// List that ↑/↓ act on: the one last clicked (None = the tab's main list).
     pub nav_list: Option<super::navigation::NavList>,

@@ -11,10 +11,11 @@
 //! Animations are one-shot: nothing here schedules frames once settled, which
 //! matters for idle CPU (see docs/ARCHITECTURE.md §Performance).
 
-use std::{collections::HashSet, time::Duration};
+use std::collections::HashSet;
+use std::time::{Duration, Instant};
 
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, ElementId, Global, IntoElement, Styled,
+    Animation, AnimationExt, AnyElement, App, ElementId, Global, IntoElement, Styled, Window,
     ease_out_quint, px,
 };
 
@@ -46,6 +47,30 @@ pub fn fade_quick<E: IntoElement + Styled + 'static>(
         Animation::new(FADE_QUICK).with_easing(ease_out_quint()),
         |el, t| el.opacity(t),
     )
+}
+
+/// Eased progress (0..=1) of an animation of `duration` that started at `start`, asking for
+/// the next frame until it is done. For content inside the workspace panes, which are cached
+/// views: there `with_animation` loses its start time and replays (see docs/ARCHITECTURE.md,
+/// GPUI-CE gotchas), so the owner keeps `start` in its own state instead.
+pub fn progress_since(start: Instant, duration: Duration, window: &mut Window, cx: &App) -> f32 {
+    let t = start.elapsed().as_secs_f32() / duration.as_secs_f32();
+    if t >= 1.0 || cx.reduce_motion() {
+        return 1.0;
+    }
+    window.request_animation_frame();
+    ease_out_quint()(t)
+}
+
+/// `fade_quick` driven by a start time kept in app state (see [`progress_since`]).
+pub fn fade_quick_since<E: Styled>(start: Instant, el: E, window: &mut Window, cx: &App) -> E {
+    el.opacity(progress_since(start, FADE_QUICK, window, cx))
+}
+
+/// `fade_in` driven by a start time kept in app state (see [`progress_since`]).
+pub fn fade_in_since<E: Styled>(start: Instant, el: E, window: &mut Window, cx: &App) -> E {
+    let t = progress_since(start, FADE_IN, window, cx);
+    el.opacity(t).relative().top(px(4.0 * (1.0 - t)))
 }
 
 /// Which overlays were drawn last frame / this frame, to detect hand-offs.

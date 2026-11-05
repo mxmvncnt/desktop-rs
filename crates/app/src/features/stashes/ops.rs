@@ -46,8 +46,8 @@ impl RepoModel {
 
     /// Remember the current body height so the next render slides from it.
     fn start_stash_slide(&mut self) {
-        self.stashes.slide_from = Some(body_height(&self.stashes, self.current_branch()));
-        self.stashes.slides += 1;
+        let from = body_height(&self.stashes, self.current_branch());
+        self.stashes.slide_from = Some((from, std::time::Instant::now()));
     }
 
     pub fn toggle_stash_panel(&mut self, cx: &mut Context<Self>) {

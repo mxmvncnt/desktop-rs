@@ -77,6 +77,7 @@ impl Workspace {
             startup_error: None,
             corner_radius: 0.0,
             commit_box,
+            no_changes_shown: None,
             nav_list: None,
             changes_scroll: UniformListScrollHandle::new(),
             history_scroll: UniformListScrollHandle::new(),

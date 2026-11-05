@@ -1,10 +1,7 @@
 //! The collapsible "Stashes (N)" panel in the Changes sidebar.
 
-use gd_ui::Theme;
-use gpui::{
-    Animation, AnimationExt, App, Entity, IntoElement, RenderOnce, Window, div, ease_out_quint,
-    prelude::*, px,
-};
+use gd_ui::{Theme, motion};
+use gpui::{App, Entity, IntoElement, RenderOnce, Window, div, prelude::*, px};
 
 use super::stash_list::{StashList, list_height};
 use super::stash_panel_header::StashPanelHeader;
@@ -43,7 +40,7 @@ impl StashPanel {
 }
 
 impl RenderOnce for StashPanel {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::of(cx).clone();
         let r = self.repo.read(cx);
         let st = &r.stashes;
@@ -63,13 +60,10 @@ impl RenderOnce for StashPanel {
         };
         let body = div().overflow_hidden().flex_none().child(body);
         let body = match st.slide_from {
-            Some(from) => body
-                .with_animation(
-                    ("stash-body", st.slides),
-                    Animation::new(SLIDE).with_easing(ease_out_quint()),
-                    move |el, t| el.h(px(from + (target - from) * t)),
-                )
-                .into_any_element(),
+            Some((from, start)) => {
+                let t = motion::progress_since(start, SLIDE, window, cx);
+                body.h(px(from + (target - from) * t)).into_any_element()
+            }
             None => body.h(px(target)).into_any_element(),
         };
         div()

@@ -42,6 +42,8 @@ pub struct LastCommit {
     pub branch: String,
     /// Unix seconds.
     pub time: i64,
+    /// When this session recorded it, for the strip's fade (see `motion::progress_since`).
+    pub at: std::time::Instant,
 }
 
 /// Emitted for the workspace, which owns the commit text inputs.

@@ -211,6 +211,7 @@ impl RepoModel {
             description: head.body,
             branch: self.branch_name(),
             time: head.time,
+            at: std::time::Instant::now(),
         });
         self.undo_last_commit(cx);
     }

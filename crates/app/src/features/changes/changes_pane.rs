@@ -2,6 +2,8 @@
 //! renderer owns scroll state (`&mut Workspace`); the pieces around it are
 //! stateless components.
 
+use std::time::Instant;
+
 use gpui::{AnyElement, Context, Entity, IntoElement, ParentElement, SharedString, Styled, div};
 
 use super::file_header::FileHeader;
@@ -19,11 +21,14 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let r = repo.read(cx);
+        let empty = !r.stashes.viewing && r.selected_change_file().is_none();
+        self.no_changes_shown = empty.then(|| self.no_changes_shown.unwrap_or_else(Instant::now));
         if r.stashes.viewing {
             return self.render_stash_detail(repo, cx);
         }
         let Some(change) = r.selected_change_file().cloned() else {
-            return NoChanges::new(r).into_any_element();
+            return NoChanges::new(r, self.no_changes_shown.unwrap_or_else(Instant::now))
+                .into_any_element();
         };
         let diff = r.work.detail.diff.clone();
         let hl = r.work.detail.hl.clone();

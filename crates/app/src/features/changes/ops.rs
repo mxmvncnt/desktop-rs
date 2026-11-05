@@ -90,6 +90,7 @@ impl RepoModel {
                         .duration_since(std::time::UNIX_EPOCH)
                         .map(|d| d.as_secs() as i64)
                         .unwrap_or(0),
+                    at: std::time::Instant::now(),
                 });
                 this.notice = Some(format!("Committed {n} file{}", plural(n as u32)));
                 // Keep the selection: the status refresh moves it to the next
