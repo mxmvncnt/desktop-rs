@@ -6,7 +6,7 @@ use gd_git::{Diff, DiffLineKind};
 use gd_ui::{Icon, Theme, theme::DIFF_ROW_HEIGHT};
 use gpui::{
     AnyElement, App, Bounds, Div, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    Pixels, Styled, TextAlign, Window, canvas, div, point, prelude::*, px, size,
+    Pixels, Styled, Window, canvas, div, point, prelude::*, px, size,
 };
 
 use super::block_handle::RowSelect;
@@ -14,6 +14,7 @@ use super::style::{CHECK_MARK, CHECK_W, line_selected_bg, number_cell_w};
 
 /// Right padding of each line number.
 const NUMBER_PAD: f32 = 8.0;
+use crate::features::diff::cell_text::CellText;
 use crate::features::diff::state::GutterDrag;
 use crate::repo::RepoModel;
 
@@ -52,10 +53,8 @@ pub fn number_cell(
 /// `h_full`: a percentage can't resolve in an auto-height (wrapped) row,
 /// and it would stop the cell from stretching to the row's height.
 ///
-/// The check and numbers are painted by one canvas, where they used to be five
-/// small elements: laying those out in every visible row was the largest part of
-/// a diff scroll frame (docs/ARCHITECTURE.md, "Measuring scroll cost"). The
-/// canvas places them exactly where the flex layout did.
+/// The check and numbers are painted by one canvas (see `CellText`), where they
+/// used to be five small elements.
 fn cell_shell(
     has_select: bool,
     included: bool,
@@ -81,38 +80,18 @@ fn cell_shell(
                 .paint_svg(at, path, None, Default::default(), color, cx)
                 .ok();
         }
-        let style = window.text_style();
-        let font_size = style.font_size.to_pixels(window.rem_size());
-        let line_height = window.pixel_snap(
-            style
-                .line_height
-                .to_pixels(font_size.into(), window.rem_size()),
-        );
-        // Snapped like gpui's layout: lengths to the nearest device pixel, a measured
-        // text width up to the next one.
+        // Lengths snapped to the device pixel grid, like gpui's layout.
         let (check_w, num_w, pad) = (
             window.pixel_snap(check_w),
             window.pixel_snap(num_w),
             window.pixel_snap(px(NUMBER_PAD)),
         );
-        let scale = window.scale_factor();
         for (i, n) in numbers.iter().enumerate() {
-            let Some(n) = n else { continue };
-            let text = n.to_string();
-            let runs = [style.to_run(text.len())];
-            let Some(shaped) = window
-                .text_system()
-                .shape_text(text, font_size, &runs, None, None)
-                .ok()
-            else {
+            let Some(label) = n.and_then(|n| CellText::shape(n.to_string(), None, window)) else {
                 continue;
             };
-            let width = px((shaped.size(line_height).width.as_f32() * scale).ceil() / scale);
             let right = bounds.left() + check_w + num_w * (i + 1) as f32 - pad;
-            let origin = point(right - width, bounds.top());
-            shaped
-                .paint(origin, line_height, TextAlign::Left, None, window, cx)
-                .ok();
+            label.paint(point(right - label.width, bounds.top()), window, cx);
         }
     };
     div()

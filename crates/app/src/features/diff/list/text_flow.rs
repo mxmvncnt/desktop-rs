@@ -2,7 +2,11 @@
 //! shared by the unified and split row renderers.
 
 use gd_ui::theme::DIFF_ROW_HEIGHT;
-use gpui::{AnyElement, Div, Hsla, ParentElement, Pixels, Styled, div, px};
+use gpui::{
+    AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, canvas, div, point, px,
+};
+
+use crate::features::diff::cell_text::CellText;
 
 /// How row text is laid out. `Scroll` clips each text cell and shifts it
 /// left by the shared horizontal offset (the same value for both split
@@ -37,13 +41,21 @@ pub fn text_cell(text: AnyElement, flow: TextFlow) -> Div {
     }
 }
 
-/// The `+`/`-` marker column.
-pub fn marker_cell(marker: &'static str, color: Hsla) -> Div {
-    div()
-        .flex_none()
-        .w(px(MARKER_W))
-        .flex()
-        .justify_center()
-        .text_color(color)
-        .child(marker)
+/// The `+`/`-` marker column, painted (see `CellText`).
+pub fn marker_cell(marker: &'static str, color: Hsla) -> impl IntoElement {
+    canvas(
+        |_, _, _| {},
+        move |bounds, _, window, cx| {
+            if marker.trim().is_empty() {
+                return;
+            }
+            if let Some(label) = CellText::shape(marker.to_string(), Some(color), window) {
+                let x = label.centered_x(bounds.left(), px(MARKER_W), window);
+                label.paint(point(x, bounds.top()), window, cx);
+            }
+        },
+    )
+    .flex_none()
+    .w(px(MARKER_W))
+    .h(px(DIFF_ROW_HEIGHT))
 }

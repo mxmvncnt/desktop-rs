@@ -4,9 +4,11 @@
 //!
 //! - `view.rs`: `Workspace::render_diff`, the entry point of every pane; `state.rs`: `DiffView`, `DiffPane`;
 //!   `handlers.rs`: `impl Workspace` setters and scrolling; `highlight.rs`: syntax runs.
-//! - `list/` unified and split lists, `gutter/` numbers and line selection, `text_selection/`,
+//! - `list/` unified and split lists, `gutter/` numbers and line selection, `cell_text.rs` labels
+//!   painted on a canvas, `text_selection/`,
 //!   `expand/` hunk expansion, `options/` display options.
 
+mod cell_text;
 mod expand;
 mod gutter;
 mod handlers;
