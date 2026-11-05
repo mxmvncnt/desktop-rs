@@ -3,8 +3,8 @@
 
 use gd_ui::theme::DIFF_ROW_HEIGHT;
 use gpui::{
-    Bounds, Div, Hsla, IntoElement, PaintQuad, ParentElement, Pixels, Styled, StyledText, canvas,
-    div, point, px, size,
+    Div, Hsla, IntoElement, PaintQuad, ParentElement, Pixels, Styled, StyledText, canvas, div,
+    point, px,
 };
 
 use crate::features::diff::cell_text::CellText;
@@ -57,28 +57,25 @@ pub fn text_cell(text: StyledText, fg: Hsla, flow: TextFlow) -> Div {
     }
 }
 
-/// The `+`/`-` marker column, painted (see `CellText`). With `edge`, it also draws the
-/// gutter's right border as a 1px line on its left: the gutter then needs no wrapper box,
-/// and the line still lies over the row background like a border would.
-pub fn marker_cell(marker: &'static str, color: Hsla, edge: Option<Hsla>) -> impl IntoElement {
-    let edge_w = if edge.is_some() { px(1.0) } else { px(0.0) };
+/// The `+`/`-` marker column, painted (see `CellText`). With `bg` it also paints
+/// its strip of the line background, so a split side needs no box around it and
+/// its text cell (which paints the rest).
+pub fn marker_cell(marker: &'static str, color: Hsla, bg: Option<Hsla>) -> impl IntoElement {
     canvas(
         |_, _, _| {},
         move |bounds, _, window, cx| {
-            let edge_w = window.pixel_snap(edge_w);
-            if let Some(edge) = edge {
-                let line = Bounds::new(bounds.origin, size(edge_w, bounds.size.height));
-                window.paint_quad(PaintQuad::new(line).background(edge));
+            if let Some(bg) = bg {
+                window.paint_quad(PaintQuad::new(bounds).background(bg));
             }
             if marker.trim().is_empty() {
                 return;
             }
             if let Some(label) = CellText::shape(marker.to_string(), Some(color), window) {
-                let x = label.centered_x(bounds.left() + edge_w, px(MARKER_W), window);
+                let x = label.centered_x(bounds.left(), px(MARKER_W), window);
                 label.paint(point(x, bounds.top()), window, cx);
             }
         },
     )
     .flex_none()
-    .w(px(MARKER_W) + edge_w)
+    .w(px(MARKER_W))
 }

@@ -7,10 +7,10 @@ use gd_ui::Theme;
 use gpui::{AnyElement, Div, IntoElement, ParentElement, Pixels, Styled, div, prelude::*, px};
 
 use super::split_model::{NONE, SplitDiff, SplitRow};
-use super::text_flow::{TextFlow, marker_cell, row_box, text_cell};
+use super::text_flow::{MARKER_W, TextFlow, marker_cell, row_box, text_cell};
 use super::unified_rows::{LineLook, line_look};
 use crate::features::diff::expand::{Expander, header_hunk, trailing_row};
-use crate::features::diff::gutter::number_cell;
+use crate::features::diff::gutter::NumberCell;
 use crate::features::diff::gutter::{BlockRow, RowSelect};
 use crate::features::diff::highlight::{DiffHighlight, line_text};
 use crate::features::diff::text_selection::TextSide;
@@ -41,15 +41,12 @@ impl SplitRows<'_> {
         if row.left == row.right && diff.lines[row.left as usize].kind == DiffLineKind::Hunk {
             return self.header_row(ix, row);
         }
-        let (left, left_target) = self.side(row.left, TextSide::Left);
-        let (right, right_target) = self.side(row.right, TextSide::Right);
-        let targets = left_target.into_iter().chain(right_target).collect();
-        self.tsel
-            .bind_drag(row_box(self.flow), targets)
-            .child(left)
-            .child(self.gutter(ix, row))
-            .child(right)
-            .into_any_element()
+        // Sides and gutter go straight into the row, without a box each.
+        let mut targets = Vec::new();
+        let el = self.side(row_box(self.flow), row.left, TextSide::Left, &mut targets);
+        let el = self.gutter(el, ix, row);
+        let el = self.side(el, row.right, TextSide::Right, &mut targets);
+        self.tsel.bind_drag(el, targets).into_any_element()
     }
 
     /// Hunk headers span both columns and carry the expand buttons. They put
@@ -74,28 +71,27 @@ impl SplitRows<'_> {
     }
 
     /// Middle gutter. Only the number of the side that owns a change (deletes
-    /// left, adds right) is clickable.
-    fn gutter(&self, ix: usize, row: SplitRow) -> Div {
+    /// left, adds right) is clickable. Its two number cells paint its borders.
+    fn gutter(&self, el: Div, ix: usize, row: SplitRow) -> Div {
         let (diff, theme, sel) = (&self.split.diff, self.theme, self.sel);
         let some = |i: u32| (i != NONE).then_some(i as usize);
         let (left, right) = (some(row.left), some(row.right));
         let old_no = left.and_then(|i| diff.lines[i].old_line);
         let new_no = right.and_then(|i| diff.lines[i].new_line);
-        div()
-            .flex()
-            .flex_none()
-            .border_l_1()
-            .border_r_1()
-            .border_color(theme.border)
-            .child(number_cell(
-                sel,
+        let cell = |row, numbers, id, edges| {
+            NumberCell {
+                select: sel,
                 diff,
-                left,
-                &[old_no],
-                ("old-no", ix),
-                self.num_w,
+                row,
+                numbers,
+                id,
+                num_w: self.num_w,
+                edges,
                 theme,
-            ))
+            }
+            .build()
+        };
+        el.child(cell(left, &[old_no], ("old-no", ix), [true, false]))
             .when_some(sel, |d, (s, r)| {
                 // A paired row belongs to the block of its changed side(s).
                 let block = [left, right]
@@ -117,23 +113,22 @@ impl SplitRows<'_> {
                     theme,
                 ))
             })
-            .child(number_cell(
-                sel,
-                diff,
-                right,
-                &[new_no],
-                ("new-no", ix),
-                self.num_w,
-                theme,
-            ))
+            .child(cell(right, &[new_no], ("new-no", ix), [false, true]))
     }
 
-    /// One text side: change marker + line text, and its hit-test target.
-    fn side(&self, ix: u32, side: TextSide) -> (Div, Option<TextTarget>) {
+    /// One text side: change marker + line text, and its hit-test target. The
+    /// marker and the text cell each paint their part of the line background.
+    /// An empty side is one box as wide as a marker plus a text cell.
+    fn side(&self, el: Div, ix: u32, side: TextSide, targets: &mut Vec<TextTarget>) -> Div {
         let theme = self.theme;
-        let cell = div().flex().flex_1().min_w_0().overflow_hidden();
         if ix == NONE {
-            return (cell.bg(theme.diff_empty_bg), None);
+            return el.child(
+                div()
+                    .flex_1()
+                    .flex_basis(px(MARKER_W))
+                    .min_w_0()
+                    .bg(theme.diff_empty_bg),
+            );
         }
         let line = &self.split.diff.lines[ix as usize];
         let LineLook {
@@ -155,12 +150,9 @@ impl SplitRows<'_> {
         };
         let text = self
             .tsel
-            .bind_text(text_cell(text, fg, self.flow), target.clone());
-        (
-            cell.bg(bg)
-                .child(marker_cell(marker, marker_color, None))
-                .child(text),
-            Some(target),
-        )
+            .bind_text(text_cell(text, fg, self.flow).bg(bg), target.clone());
+        targets.push(target);
+        el.child(marker_cell(marker, marker_color, Some(bg)))
+            .child(text)
     }
 }

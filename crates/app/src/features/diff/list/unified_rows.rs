@@ -10,7 +10,7 @@ use gpui::{
 
 use super::text_flow::{TextFlow, marker_cell, row_box, text_cell};
 use crate::features::diff::expand::{Expander, header_hunk, trailing_row};
-use crate::features::diff::gutter::number_cell;
+use crate::features::diff::gutter::NumberCell;
 use crate::features::diff::gutter::{BlockRow, RowSelect};
 use crate::features::diff::gutter::{HANDLE_W, number_cell_w};
 use crate::features::diff::highlight::{DiffHighlight, line_text};
@@ -159,21 +159,20 @@ impl UnifiedRows<'_> {
                     theme,
                 ))
             })
-            .child(number_cell(
-                self.sel,
-                diff,
-                Some(ix),
-                &[line.old_line, line.new_line],
-                ("line-no", ix),
-                self.num_w,
-                theme,
-            ))
-            // Draws the number cell's right border too.
-            .child(marker_cell(
-                look.marker,
-                look.marker_color,
-                Some(theme.border),
-            ))
+            .child(
+                NumberCell {
+                    select: self.sel,
+                    diff,
+                    row: Some(ix),
+                    numbers: &[line.old_line, line.new_line],
+                    id: ("line-no", ix),
+                    num_w: self.num_w,
+                    edges: [false, true],
+                    theme,
+                }
+                .build(),
+            )
+            .child(marker_cell(look.marker, look.marker_color, None))
             .child(match target {
                 Some(t) => self.tsel.bind_text(text_cell(text, look.fg, self.flow), t),
                 None => text_cell(text, look.fg, self.flow),

@@ -1,105 +1,114 @@
-//! One line-number cell of a diff row. A plain fn, not a `RenderOnce`: it is
-//! built for every visible row every frame (hot-row exception, see
-//! docs/CONVENTIONS.md).
+//! One line-number cell of a diff row. Built for every visible row every frame
+//! (hot-row exception, see docs/CONVENTIONS.md), so not a `RenderOnce`.
 
 use gd_git::{Diff, DiffLineKind};
 use gd_ui::{Icon, Theme, theme::DIFF_ROW_HEIGHT};
 use gpui::{
-    AnyElement, App, Bounds, Div, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    Pixels, Styled, Window, canvas, div, point, prelude::*, px, size,
+    AnyElement, App, Bounds, Div, InteractiveElement, IntoElement, MouseButton, PaintQuad,
+    ParentElement, Pixels, Styled, Window, canvas, div, point, prelude::*, px, size,
 };
 
 use super::block_handle::RowSelect;
 use super::style::{CHECK_MARK, CHECK_W, line_selected_bg, number_cell_w};
-
-/// Right padding of each line number.
-const NUMBER_PAD: f32 = 8.0;
 use crate::features::diff::cell_text::CellText;
 use crate::features::diff::state::GutterDrag;
 use crate::repo::RepoModel;
+
+/// Right padding of each line number.
+const NUMBER_PAD: f32 = 8.0;
 
 /// One line-number cell holding `numbers` (one per column: two in unified
 /// view, one per side in split view). Without `select` (or for a line that
 /// can't be selected) it is plain; otherwise clicking toggles `row`, dragging
 /// extends, and an included row is solid blue with one check mark, like Desktop.
-pub fn number_cell(
-    select: Option<(&RowSelect, &RepoModel)>,
-    diff: &Diff,
-    row: Option<usize>,
-    numbers: &[Option<u32>],
-    id: (&'static str, usize),
-    num_w: Pixels,
-    theme: &Theme,
-) -> AnyElement {
-    let tint = match row.map(|ix| diff.lines[ix].kind) {
-        Some(DiffLineKind::Add) => theme.diff_add_gutter_bg,
-        Some(DiffLineKind::Delete) => theme.diff_del_gutter_bg,
-        Some(DiffLineKind::Hunk) => theme.diff_hunk_gutter_bg,
-        _ => theme.diff_gutter_bg,
-    };
-    let selectable = row.filter(|&ix| gd_git::selectable(diff, ix));
-    let included = select
-        .zip(selectable)
-        .is_some_and(|((_, r), ix)| r.row_included(ix));
-    let cell = cell_shell(select.is_some(), included, numbers, num_w, theme);
-    let (Some((sel, _)), Some(ix)) = (select, selectable) else {
-        return cell.bg(tint).into_any_element();
-    };
-    selectable_cell(cell, sel, ix, id, included, tint, theme)
+pub struct NumberCell<'a> {
+    pub select: Option<(&'a RowSelect, &'a RepoModel)>,
+    pub diff: &'a Diff,
+    pub row: Option<usize>,
+    pub numbers: &'a [Option<u32>],
+    pub id: (&'static str, usize),
+    pub num_w: Pixels,
+    /// The gutter's borders (left, right): 1px lines painted just outside the
+    /// cell, over the row background, so the gutter needs no box to draw them.
+    pub edges: [bool; 2],
+    pub theme: &'a Theme,
 }
 
-/// The cell box: optional check slot, then one right-aligned number per column.
-/// Top-aligned so numbers stay on the first line of a wrapped row. No
-/// `h_full`: a percentage can't resolve in an auto-height (wrapped) row,
-/// and it would stop the cell from stretching to the row's height.
-///
-/// The check and numbers are painted by one canvas (see `CellText`), where they
-/// used to be five small elements.
-fn cell_shell(
-    has_select: bool,
-    included: bool,
-    numbers: &[Option<u32>],
-    num_w: Pixels,
-    theme: &Theme,
-) -> Div {
-    let check_w = if has_select { px(CHECK_W) } else { px(0.0) };
-    let check = (has_select && included).then_some(theme.on_accent);
-    let width = number_cell_w(num_w, numbers.len() as f32, has_select);
-    let numbers = numbers.to_vec();
-    let paint = move |bounds: Bounds<Pixels>, _, window: &mut Window, cx: &mut App| {
-        if let Some(color) = check {
-            let mark = px(CHECK_MARK);
-            let origin = bounds.origin
-                + point(
-                    (px(CHECK_W) - mark) / 2.0,
-                    (px(DIFF_ROW_HEIGHT) - mark) / 2.0,
-                );
-            let at = Bounds::new(origin, size(mark, mark));
-            let path = Icon::Check.path().into();
-            window
-                .paint_svg(at, path, None, Default::default(), color, cx)
-                .ok();
-        }
-        // Lengths snapped to the device pixel grid, like gpui's layout.
-        let (check_w, num_w, pad) = (
-            window.pixel_snap(check_w),
-            window.pixel_snap(num_w),
-            window.pixel_snap(px(NUMBER_PAD)),
-        );
-        for (i, n) in numbers.iter().enumerate() {
-            let Some(label) = n.and_then(|n| CellText::shape(n.to_string(), None, window)) else {
-                continue;
-            };
-            let right = bounds.left() + check_w + num_w * (i + 1) as f32 - pad;
-            label.paint(point(right - label.width, bounds.top()), window, cx);
-        }
-    };
-    div()
-        .flex()
-        .flex_none()
-        .items_start()
-        .text_color(theme.diff_gutter)
-        .child(canvas(|_, _, _| {}, paint).w(width).h(px(DIFF_ROW_HEIGHT)))
+impl NumberCell<'_> {
+    pub fn build(self) -> AnyElement {
+        let (diff, theme) = (self.diff, self.theme);
+        let tint = match self.row.map(|ix| diff.lines[ix].kind) {
+            Some(DiffLineKind::Add) => theme.diff_add_gutter_bg,
+            Some(DiffLineKind::Delete) => theme.diff_del_gutter_bg,
+            Some(DiffLineKind::Hunk) => theme.diff_hunk_gutter_bg,
+            _ => theme.diff_gutter_bg,
+        };
+        let selectable = self.row.filter(|&ix| gd_git::selectable(diff, ix));
+        let included = self
+            .select
+            .zip(selectable)
+            .is_some_and(|((_, r), ix)| r.row_included(ix));
+        let cell = self.shell(included);
+        let (Some((sel, _)), Some(ix)) = (self.select, selectable) else {
+            return cell.bg(tint).into_any_element();
+        };
+        selectable_cell(cell, sel, ix, self.id, included, tint, theme)
+    }
+
+    /// The cell box: optional check slot, then one right-aligned number per
+    /// column, all painted by one canvas (see `CellText`) that stretches to the
+    /// row's height. Numbers stay on the first line of a wrapped row.
+    fn shell(&self, included: bool) -> Div {
+        let has_select = self.select.is_some();
+        let check_w = if has_select { px(CHECK_W) } else { px(0.0) };
+        let check = (has_select && included).then_some(self.theme.on_accent);
+        let width = number_cell_w(self.num_w, self.numbers.len() as f32, has_select);
+        let (numbers, num_w, [edge_l, edge_r]) = (self.numbers.to_vec(), self.num_w, self.edges);
+        let edge_color = self.theme.border;
+        let paint = move |bounds: Bounds<Pixels>, _, window: &mut Window, cx: &mut App| {
+            // Lengths snapped to the device pixel grid, like gpui's layout.
+            let edge = window.pixel_snap(px(1.0));
+            for (on, x) in [(edge_l, bounds.left() - edge), (edge_r, bounds.right())] {
+                if on {
+                    let line = Bounds::new(point(x, bounds.top()), size(edge, bounds.size.height));
+                    window.paint_quad(PaintQuad::new(line).background(edge_color));
+                }
+            }
+            if let Some(color) = check {
+                let mark = px(CHECK_MARK);
+                let origin = bounds.origin
+                    + point(
+                        (px(CHECK_W) - mark) / 2.0,
+                        (px(DIFF_ROW_HEIGHT) - mark) / 2.0,
+                    );
+                let at = Bounds::new(origin, size(mark, mark));
+                let path = Icon::Check.path().into();
+                window
+                    .paint_svg(at, path, None, Default::default(), color, cx)
+                    .ok();
+            }
+            let (check_w, num_w, pad) = (
+                window.pixel_snap(check_w),
+                window.pixel_snap(num_w),
+                window.pixel_snap(px(NUMBER_PAD)),
+            );
+            for (i, n) in numbers.iter().enumerate() {
+                let Some(label) = n.and_then(|n| CellText::shape(n.to_string(), None, window))
+                else {
+                    continue;
+                };
+                let right = bounds.left() + check_w + num_w * (i + 1) as f32 - pad;
+                label.paint(point(right - label.width, bounds.top()), window, cx);
+            }
+        };
+        div()
+            .flex()
+            .flex_none()
+            .when(edge_l, |d| d.ml(px(1.0)))
+            .when(edge_r, |d| d.mr(px(1.0)))
+            .text_color(self.theme.diff_gutter)
+            .child(canvas(|_, _, _| {}, paint).w(width))
+    }
 }
 
 fn selectable_cell(
