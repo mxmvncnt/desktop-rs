@@ -4,9 +4,7 @@
 
 use gd_git::{Diff, DiffLineKind};
 use gd_ui::Theme;
-use gpui::{
-    AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, div, prelude::*, px,
-};
+use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, prelude::*, px};
 
 use super::text_flow::{TextFlow, marker_cell, row_box, text_cell};
 use crate::features::diff::expand::{Expander, header_hunk, trailing_row};
@@ -127,7 +125,7 @@ impl UnifiedRows<'_> {
                 .border_r_1()
                 .border_color(self.theme.border),
         )
-        .child(marker_cell("", marker_color))
+        .child(marker_cell("", marker_color, None))
         .child(text_cell(text, self.flow))
         .into_any_element()
     }
@@ -159,23 +157,21 @@ impl UnifiedRows<'_> {
                     theme,
                 ))
             })
-            .child(
-                div()
-                    .flex()
-                    .flex_none()
-                    .border_r_1()
-                    .border_color(theme.border)
-                    .child(number_cell(
-                        self.sel,
-                        diff,
-                        Some(ix),
-                        &[line.old_line, line.new_line],
-                        ("line-no", ix),
-                        self.num_w,
-                        theme,
-                    )),
-            )
-            .child(marker_cell(look.marker, look.marker_color))
+            .child(number_cell(
+                self.sel,
+                diff,
+                Some(ix),
+                &[line.old_line, line.new_line],
+                ("line-no", ix),
+                self.num_w,
+                theme,
+            ))
+            // Draws the number cell's right border too.
+            .child(marker_cell(
+                look.marker,
+                look.marker_color,
+                Some(theme.border),
+            ))
             .child(match target {
                 Some(t) => self.tsel.bind_text(text_cell(text, self.flow), t),
                 None => text_cell(text, self.flow),

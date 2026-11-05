@@ -3,7 +3,8 @@
 
 use gd_ui::theme::DIFF_ROW_HEIGHT;
 use gpui::{
-    AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, canvas, div, point, px,
+    AnyElement, Bounds, Div, Hsla, IntoElement, PaintQuad, ParentElement, Pixels, Styled, canvas,
+    div, point, px, size,
 };
 
 use crate::features::diff::cell_text::CellText;
@@ -41,21 +42,28 @@ pub fn text_cell(text: AnyElement, flow: TextFlow) -> Div {
     }
 }
 
-/// The `+`/`-` marker column, painted (see `CellText`).
-pub fn marker_cell(marker: &'static str, color: Hsla) -> impl IntoElement {
+/// The `+`/`-` marker column, painted (see `CellText`). With `edge`, it also draws the
+/// gutter's right border as a 1px line on its left: the gutter then needs no wrapper box,
+/// and the line still lies over the row background like a border would.
+pub fn marker_cell(marker: &'static str, color: Hsla, edge: Option<Hsla>) -> impl IntoElement {
+    let edge_w = if edge.is_some() { px(1.0) } else { px(0.0) };
     canvas(
         |_, _, _| {},
         move |bounds, _, window, cx| {
+            let edge_w = window.pixel_snap(edge_w);
+            if let Some(edge) = edge {
+                let line = Bounds::new(bounds.origin, size(edge_w, bounds.size.height));
+                window.paint_quad(PaintQuad::new(line).background(edge));
+            }
             if marker.trim().is_empty() {
                 return;
             }
             if let Some(label) = CellText::shape(marker.to_string(), Some(color), window) {
-                let x = label.centered_x(bounds.left(), px(MARKER_W), window);
+                let x = label.centered_x(bounds.left() + edge_w, px(MARKER_W), window);
                 label.paint(point(x, bounds.top()), window, cx);
             }
         },
     )
     .flex_none()
-    .w(px(MARKER_W))
-    .h(px(DIFF_ROW_HEIGHT))
+    .w(px(MARKER_W) + edge_w)
 }

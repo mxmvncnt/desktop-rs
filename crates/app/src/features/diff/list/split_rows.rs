@@ -158,7 +158,7 @@ impl SplitRows<'_> {
             .bind_text(text_cell(text, self.flow), target.clone());
         (
             cell.bg(bg)
-                .child(marker_cell(marker, marker_color))
+                .child(marker_cell(marker, marker_color, None))
                 .child(text),
             Some(target),
         )
