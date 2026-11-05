@@ -4,8 +4,8 @@
 use gd_git::{Diff, DiffLineKind};
 use gd_ui::{Icon, Theme, theme::DIFF_ROW_HEIGHT};
 use gpui::{
-    AnyElement, App, Bounds, Div, InteractiveElement, IntoElement, MouseButton, PaintQuad,
-    ParentElement, Pixels, Styled, Window, canvas, div, point, prelude::*, px, size,
+    AnyElement, App, Bounds, Canvas, Div, Hsla, InteractiveElement, IntoElement, MouseButton,
+    PaintQuad, ParentElement, Pixels, Styled, Window, canvas, div, point, prelude::*, px, size,
 };
 
 use super::block_handle::RowSelect;
@@ -48,24 +48,41 @@ impl NumberCell<'_> {
             .select
             .zip(selectable)
             .is_some_and(|((_, r), ix)| r.row_included(ix));
-        let cell = self.shell(included);
+        let [edge_l, edge_r] = self.edges;
         let (Some((sel, _)), Some(ix)) = (self.select, selectable) else {
-            return cell.bg(tint).into_any_element();
+            // Not clickable: the canvas alone, painting the background too.
+            return self
+                .canvas(false, Some(tint))
+                .when(edge_l, |d| d.ml(px(1.0)))
+                .when(edge_r, |d| d.mr(px(1.0)))
+                .into_any_element();
         };
+        let cell = div()
+            .flex()
+            .flex_none()
+            .when(edge_l, |d| d.ml(px(1.0)))
+            .when(edge_r, |d| d.mr(px(1.0)))
+            .text_color(theme.diff_gutter)
+            .child(self.canvas(included, None));
         selectable_cell(cell, sel, ix, self.id, included, tint, theme)
     }
 
-    /// The cell box: optional check slot, then one right-aligned number per
-    /// column, all painted by one canvas (see `CellText`) that stretches to the
-    /// row's height. Numbers stay on the first line of a wrapped row.
-    fn shell(&self, included: bool) -> Div {
+    /// Optional check slot, then one right-aligned number per column, painted
+    /// (see `CellText`) on a canvas that stretches to the row's height. Numbers
+    /// stay on the first line of a wrapped row. With `plain_bg` the canvas is the
+    /// whole cell: it paints that background and colors the numbers itself.
+    fn canvas(&self, included: bool, plain_bg: Option<Hsla>) -> Canvas<()> {
         let has_select = self.select.is_some();
         let check_w = if has_select { px(CHECK_W) } else { px(0.0) };
         let check = (has_select && included).then_some(self.theme.on_accent);
         let width = number_cell_w(self.num_w, self.numbers.len() as f32, has_select);
         let (numbers, num_w, [edge_l, edge_r]) = (self.numbers.to_vec(), self.num_w, self.edges);
-        let edge_color = self.theme.border;
+        let (edge_color, number_color) =
+            (self.theme.border, plain_bg.map(|_| self.theme.diff_gutter));
         let paint = move |bounds: Bounds<Pixels>, _, window: &mut Window, cx: &mut App| {
+            if let Some(bg) = plain_bg {
+                window.paint_quad(PaintQuad::new(bounds).background(bg));
+            }
             // Lengths snapped to the device pixel grid, like gpui's layout.
             let edge = window.pixel_snap(px(1.0));
             for (on, x) in [(edge_l, bounds.left() - edge), (edge_r, bounds.right())] {
@@ -93,7 +110,8 @@ impl NumberCell<'_> {
                 window.pixel_snap(px(NUMBER_PAD)),
             );
             for (i, n) in numbers.iter().enumerate() {
-                let Some(label) = n.and_then(|n| CellText::shape(n.to_string(), None, window))
+                let Some(label) =
+                    n.and_then(|n| CellText::shape(n.to_string(), number_color, window))
                 else {
                     continue;
                 };
@@ -101,13 +119,7 @@ impl NumberCell<'_> {
                 label.paint(point(right - label.width, bounds.top()), window, cx);
             }
         };
-        div()
-            .flex()
-            .flex_none()
-            .when(edge_l, |d| d.ml(px(1.0)))
-            .when(edge_r, |d| d.mr(px(1.0)))
-            .text_color(self.theme.diff_gutter)
-            .child(canvas(|_, _, _| {}, paint).w(width))
+        canvas(|_, _, _| {}, paint).flex_none().w(width)
     }
 }
 
