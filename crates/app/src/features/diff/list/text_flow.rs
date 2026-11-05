@@ -39,6 +39,15 @@ pub fn row_box(flow: TextFlow) -> Div {
 pub fn text_cell(text: StyledText, fg: Hsla, flow: TextFlow) -> Div {
     let cell = div().flex_1().min_w_0();
     match flow {
+        // Not scrolled sideways (the usual case): the clip box holds the text
+        // itself, one box fewer per line.
+        TextFlow::Scroll(x) if x == px(0.0) => cell
+            .h_full()
+            .overflow_hidden()
+            .flex()
+            .flex_col()
+            .text_color(fg)
+            .child(text),
         TextFlow::Scroll(x) => cell.h_full().overflow_hidden().child(
             div()
                 .relative()
