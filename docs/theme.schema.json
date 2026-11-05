@@ -256,44 +256,44 @@
       "type": "object",
       "properties": {
         "bg": {
-          "description": "Diff plane, welcome screen and CI page. Default 0.8.",
+          "description": "Diff plane, welcome screen and CI page. Default 1 (text must stay readable).",
           "type": "number",
           "format": "float",
           "minimum": 0.0,
           "maximum": 1.0,
-          "default": 0.800000011920929
+          "default": 1.0
         },
         "surface": {
-          "description": "Toolbar and sidebar. Default 0.7.",
+          "description": "Toolbar and sidebar. Default 0.88.",
           "type": "number",
           "format": "float",
           "minimum": 0.0,
           "maximum": 1.0,
-          "default": 0.699999988079071
+          "default": 0.8799999952316284
         },
         "card": {
-          "description": "Cards and panels. Default 0.85.",
+          "description": "Cards and panels. Default 1.",
           "type": "number",
           "format": "float",
           "minimum": 0.0,
           "maximum": 1.0,
-          "default": 0.8500000238418579
+          "default": 1.0
         },
         "overlay": {
-          "description": "Popovers, menus, dialogs and tooltips. Default 0.95.",
+          "description": "Popovers, menus, dialogs and tooltips. Default 1: they sit over the app, which the\ncompositor does not blur.",
           "type": "number",
           "format": "float",
           "minimum": 0.0,
           "maximum": 1.0,
-          "default": 0.949999988079071
+          "default": 1.0
         },
         "raised": {
-          "description": "Opaque chips and pills. Default 0.9.",
+          "description": "Opaque chips and pills. Default 1.",
           "type": "number",
           "format": "float",
           "minimum": 0.0,
           "maximum": 1.0,
-          "default": 0.8999999761581421
+          "default": 1.0
         }
       }
     }

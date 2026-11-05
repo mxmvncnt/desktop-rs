@@ -118,19 +118,20 @@ pub struct Palette {
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, JsonSchema)]
 #[serde(default)]
 pub struct SurfaceOpacity {
-    /// Diff plane, welcome screen and CI page. Default 0.8.
+    /// Diff plane, welcome screen and CI page. Default 1 (text must stay readable).
     #[schemars(range(min = 0.0, max = 1.0))]
     pub bg: f32,
-    /// Toolbar and sidebar. Default 0.7.
+    /// Toolbar and sidebar. Default 0.88.
     #[schemars(range(min = 0.0, max = 1.0))]
     pub surface: f32,
-    /// Cards and panels. Default 0.85.
+    /// Cards and panels. Default 1.
     #[schemars(range(min = 0.0, max = 1.0))]
     pub card: f32,
-    /// Popovers, menus, dialogs and tooltips. Default 0.95.
+    /// Popovers, menus, dialogs and tooltips. Default 1: they sit over the app, which the
+    /// compositor does not blur.
     #[schemars(range(min = 0.0, max = 1.0))]
     pub overlay: f32,
-    /// Opaque chips and pills. Default 0.9.
+    /// Opaque chips and pills. Default 1.
     #[schemars(range(min = 0.0, max = 1.0))]
     pub raised: f32,
 }
@@ -138,11 +139,11 @@ pub struct SurfaceOpacity {
 impl Default for SurfaceOpacity {
     fn default() -> Self {
         Self {
-            bg: 0.8,
-            surface: 0.7,
-            card: 0.85,
-            overlay: 0.95,
-            raised: 0.9,
+            bg: 1.0,
+            surface: 0.88,
+            card: 1.0,
+            overlay: 1.0,
+            raised: 1.0,
         }
     }
 }

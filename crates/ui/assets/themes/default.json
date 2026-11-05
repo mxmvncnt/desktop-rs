@@ -18,11 +18,11 @@
     "success": "#00d492",
     "on_accent": "#fafafa",
     "opacity": {
-      "bg": 0.8,
-      "surface": 0.7,
-      "card": 0.85,
-      "overlay": 0.95,
-      "raised": 0.9
+      "bg": 1.0,
+      "surface": 0.88,
+      "card": 1.0,
+      "overlay": 1.0,
+      "raised": 1.0
     },
     "commit_types": {
       "feat": "#00d492",
@@ -50,11 +50,11 @@
     "success": "#009966",
     "on_accent": "#fafafa",
     "opacity": {
-      "bg": 0.8,
-      "surface": 0.7,
-      "card": 0.85,
-      "overlay": 0.95,
-      "raised": 0.9
+      "bg": 1.0,
+      "surface": 0.88,
+      "card": 1.0,
+      "overlay": 1.0,
+      "raised": 1.0
     },
     "commit_types": {
       "feat": "#009966",

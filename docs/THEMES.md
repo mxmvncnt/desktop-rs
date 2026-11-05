@@ -44,7 +44,7 @@ through the app. A palette sets how much with `opacity`, from 0 (invisible) to 1
 surface rather than per color. Every key is optional; these are the defaults:
 
 ```json
-"opacity": { "bg": 0.8, "surface": 0.7, "card": 0.85, "overlay": 0.95, "raised": 0.9 }
+"opacity": { "bg": 1.0, "surface": 0.88, "card": 1.0, "overlay": 1.0, "raised": 1.0 }
 ```
 
 - `bg`: diff plane, welcome screen and CI page
@@ -53,7 +53,10 @@ surface rather than per color. Every key is optional; these are the defaults:
 - `overlay`: popovers, menus, dialogs and tooltips
 - `raised`: chips and pills
 
-Opaque ignores these values. Hover washes, diff colors and other tints keep their own alpha.
+By default only the toolbar and sidebar let the desktop through, so content stays readable.
+Keep `overlay` at 1: menus and dialogs sit over the app itself, which the compositor does not
+blur. The blur strength is the compositor's (KDE: System Settings > Desktop Effects > Blur);
+the protocol has no radius. Opaque ignores these values. Hover washes, diff colors and other tints keep their own alpha.
 
 ## Commit type pills
 
