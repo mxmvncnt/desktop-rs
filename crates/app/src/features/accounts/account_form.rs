@@ -1,15 +1,12 @@
 //! Add / edit an account.
 
-use gd_ui::{Button, Icon, OptionRow, Theme, overlay_card};
-use gpui::{
-    App, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
-    StatefulInteractiveElement, Styled, Window, deferred, div, px,
-};
+use gd_ui::{Button, Icon, OptionRow, Theme};
+use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use super::model::{Provider, SignInMethod, normalize_host};
 use super::state::{AccountForm as FormState, AccountInputs, AccountsStore};
 use super::status_text::StatusText;
-use crate::components::{BranchRow, FieldRow};
+use crate::components::{FieldRow, Select};
 
 #[derive(IntoElement)]
 pub struct AccountForm {
@@ -18,58 +15,23 @@ pub struct AccountForm {
     pub store: Entity<AccountsStore>,
 }
 
-/// Width of the account type control and of its menu: fits "GitHub Enterprise" and the chevron.
-const SELECT_WIDTH: f32 = 220.0;
-const SELECT_ROW: f32 = 28.0;
-
 impl AccountForm {
-    /// Dropdown of the providers. Like a native select, the open menu puts the current choice over the control.
-    fn provider_select(&self, theme: &Theme, cx: &App) -> impl IntoElement + use<> {
-        let provider = self.form.provider;
+    fn provider_select(&self, theme: &Theme) -> impl IntoElement + use<> {
         let toggle = self.store.clone();
-        let menu = self.form.provider_menu.then(|| {
-            let rows = Provider::ALL.iter().enumerate().map(|(ix, p)| {
+        let select = Provider::ALL.iter().fold(
+            Select::new(
+                "account-provider",
+                self.form.provider.full_label(),
+                self.form.provider_menu,
+                move |_, cx| toggle.update(cx, |this, cx| this.toggle_provider_menu(cx)),
+            ),
+            |select, p| {
                 let (store, p) = (self.store.clone(), *p);
-                BranchRow::new("account-provider", ix, p.full_label(), move |_, cx| {
+                select.option(p.full_label(), Icon::Globe, true, move |_, cx| {
                     store.update(cx, |this, cx| this.set_account_provider(p, cx))
                 })
-                .icon(Icon::Globe)
-                .height(SELECT_ROW)
-                .selected(p == provider)
-            });
-            let ix = Provider::ALL
-                .iter()
-                .position(|p| *p == provider)
-                .unwrap_or(0);
-            let close = self.store.clone();
-            // The backdrop catches the click that dismisses the menu, wherever it lands (even on the control).
-            deferred(
-                div()
-                    .absolute()
-                    .top_0()
-                    .left_0()
-                    .child(
-                        div()
-                            .absolute()
-                            .top(px(-3000.0))
-                            .left(px(-3000.0))
-                            .size(px(6000.0))
-                            .occlude()
-                            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                                close.update(cx, |this, cx| this.toggle_provider_menu(cx))
-                            }),
-                    )
-                    .child(
-                        div()
-                            .absolute()
-                            .top(px(-(2.0 + ix as f32 * SELECT_ROW)))
-                            .left_0()
-                            .w(px(SELECT_WIDTH))
-                            .child(overlay_card(cx).occlude().p(px(4.0)).children(rows)),
-                    ),
-            )
-            .priority(2)
-        });
+            },
+        );
         div()
             .flex()
             .flex_col()
@@ -80,37 +42,7 @@ impl AccountForm {
                     .text_color(theme.text_muted)
                     .child("Account type"),
             )
-            .child(
-                div()
-                    .relative()
-                    .w(px(SELECT_WIDTH))
-                    .child(
-                        // Styled like the text fields: the value on the left, the chevron on the right.
-                        div()
-                            .id("account-provider")
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .h(px(32.0))
-                            .px(px(10.0))
-                            .rounded(px(gd_ui::theme::CONTROL_RADIUS + 1.0))
-                            .bg(theme.input_bg)
-                            .border_1()
-                            .border_color(theme.border)
-                            .cursor_pointer()
-                            .hover_style(|s| s.border_color(theme.text_faint))
-                            .child(provider.full_label())
-                            .child(
-                                gd_ui::icon(Icon::ChevronDown)
-                                    .size(px(14.0))
-                                    .text_color(theme.text_muted),
-                            )
-                            .on_click(move |_, _, cx| {
-                                toggle.update(cx, |this, cx| this.toggle_provider_menu(cx))
-                            }),
-                    )
-                    .children(menu),
-            )
+            .child(select)
     }
 
     fn host_field(&self) -> FieldRow {
@@ -434,7 +366,7 @@ impl RenderOnce for AccountForm {
                         "Add account"
                     }),
             )
-            .child(self.provider_select(&theme, cx))
+            .child(self.provider_select(&theme))
             .children(provider.fixed_host().is_none().then(|| self.host_field()))
             .children(editing.then(|| {
                 FieldRow::new(
