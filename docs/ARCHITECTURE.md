@@ -268,9 +268,12 @@ the elements is under 0.5 ms; the rest is gpui laying out and painting them. Eve
 row costs ~0.35 ms per frame across the visible rows (a plain box included), and every line of
 text ~22 us (shaping lookups plus one sprite per glyph), so a hot row keeps its element count
 low: labels (line numbers, `+`/`-`) are painted by a canvas (`diff/cell_text.rs`) and decorative
-lines are painted rather than given a box. To find what to cut, temporarily drop parts of a row
-behind an env var and compare bench runs (noise is about +-0.3 ms). After that work: unified
-~3.7 ms, wrapped ~3.4 ms, split ~6.5 ms (two texts and ~17 elements per row) per frame.
+lines and backgrounds are painted rather than given a box (`NumberCell` paints the gutter
+borders, a split side's marker paints its strip of the line background, a non-clickable number
+cell is a bare canvas). To find what to cut, temporarily drop parts of a row behind an env var
+and compare bench runs (noise is about +-0.3 ms). After that work (release build): unified
+~3.2 ms, wrapped ~2.9 ms, split ~4.7 ms, split wrapped ~4.8 ms per frame; a split row's two
+texts are now most of its cost.
 
 ### Commit box (`features/changes/commit_box.rs`)
 
