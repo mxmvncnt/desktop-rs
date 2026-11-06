@@ -1,5 +1,30 @@
 # Progress
 
+## Pull requests page (branch `feat/pull-requests`, 2026-11-06)
+
+- [x] Toolbar button (left of CI) + full page (`features/pulls/`), Cmd/Ctrl+Shift+R; the same account resolution, empty states
+      (`components::ProblemView`) and breadcrumbs (`components::Breadcrumbs`) as the CI page, which now share them. Opening one page closes the other.
+- [x] List with a GitHub-style search field (Enter applies it) and Open / Merged / Closed / All tabs that rewrite the query's state terms;
+      "Load more". The example `is:pr state:open archived:false sort:updated-desc (involves:@me OR user-review-requested:@me) -author:@me`
+      runs on GitHub's search API as typed, and is evaluated client-side on GitLab / Gitea / Forgejo (`@me` = the account's login);
+      qualifiers it can't evaluate are named under the field. Snapshot views `pulls[-light]`, `pulls-query[-error]`, `pulls-empty-account`.
+- [x] A pull request: summary (state, branches, labels, Check out, Open in browser, Refresh), Conversation (description, comments,
+      review verdicts, threads in time order, comment box), Commits (list + the selected commit's diff), Files changed (file list + diff).
+      The head is fetched into `refs/pull/N/head` (`refs/merge-requests/N/head` on GitLab), so diffs, highlighting, split view and
+      wrapping are the app's own. Snapshot views `pull-conversation`, `pull-commits`, `pull-files[-split]`, `pull-files-comment`.
+- [x] Comments: on the conversation, on lines (click a line number in Files changed, Shift-click to extend the range; Esc drops the pick),
+      and replies to threads, inline under their lines or from the Conversation tab. Gitea / Forgejo have no ranges (the comment goes on the
+      last line) and no threading in the API (a reply is a new comment on the thread's line).
+- [x] Check out: the head branch tracking the remote one, or `pr/N` for a fork; an existing branch fast-forwards, else it is only switched to.
+- Fixed on the way: the variable-height diff list (wrap mode) drew unhighlighted text in the UI font.
+- Unverified: no live server was used (API fixtures and snapshots only). Untested by hand: every click (line picks, posting, replies, check out),
+  GitHub `advanced_search` with OR/parentheses, GitLab range positions (`line_code`), the Gitea review-comment line fields.
+- Known gaps: comment bodies are plain text (no Markdown, no avatars, no editing / deleting / resolving), no review submission (approve /
+  request changes), no polling (Refresh only), outdated threads show only on the Conversation tab, `involves:` off GitHub means author,
+  assignee or requested reviewer (GitHub also counts commenters and mentions), GitHub search rows have no branch until opened.
+- The gpui headless tests (`cargo test -p desktop-rs --features snapshot`) panic on macOS ("Mac platform not created on main thread"):
+  `cargo test` runs tests off the main thread. They only run on Linux.
+
 ## Remote button dropdown (2026-11-03)
 
 - [x] When the toolbar remote button offers push / pull / force push / publish, a chevron beside it opens a menu with "Fetch <remote>",
@@ -197,7 +222,7 @@ Branch: `main`. Each entry: ✅ done · 🟡 partial · ⬜ todo.
    - Verified: `cargo test -p gd-git` (staged_text), `write_ops` test (real partial commit). Snapshot views
      `partial[@N]`, `partial-split[@N]`. Not yet clicked with a real mouse.
 8. 🟨 Split diff view and whitespace toggle done (gear button in both diff headers: Unified/Split + Hide whitespace changes, persisted in `settings.toml`, `-w` via `gd_git::DiffOptions`). Image diffs still open. Split view clips long lines (no horizontal scroll). Snapshot views: `split`, `split-ws`, `split-history`, `hide-ws`, `diff-options-menu`. Split row build: 0.36 ms for an 18k-line diff (cached per loaded diff), so toggling is instant.
-9. ⬜ Pull requests list (GitHub API); create PR; CI status.
+9. ✅ Pull requests page (see the top of this file); CI status. ⬜ create a PR in the app (the preview opens the browser).
 10. ✅ (branch `rust/history-ops`) History commit actions and push status:
 
 - Unpushed commits get an arrow-up icon with tooltip ("hasn't been pushed to the remote repository yet"); tags show as pills. Refreshed on every full refresh (push/fetch/commit/checkout).
@@ -220,6 +245,15 @@ for i in 1 2 3 4 5; do echo "line $i" >> file$i.txt; mkdir -p src/mod$i
   printf 'fn main() {\n    println!("hello %s");\n}\n' $i > src/mod$i/main.rs
   git add -A; git commit -qm "Add module $i with some changes" -m "Body text for commit $i"; done
 echo changed >> file1.txt; sed -i 's/hello/goodbye/' src/mod2/main.rs; echo new > untracked.md; git rm -q file5.txt
+```
+
+The `pull-*` snapshot views show the repository's `feature` branch against `main` as the pull request (README.md first, a thread on its line 3):
+
+```sh
+git stash -u -q; git checkout -q -b feature
+printf '# Test repo\n\nA small repository\nfor snapshots.\n\nIt has five modules.\n' > README.md
+sed -i 's/hello 1/hello, world/' src/mod1/main.rs; git add -A; git commit -qm "Add a README"
+echo x >> file2.txt; git commit -qam "Touch file2"; git checkout -q main; git stash pop -q
 ```
 
 ## Feature-folder refactor complete (branch `refactor/feature-folders`)

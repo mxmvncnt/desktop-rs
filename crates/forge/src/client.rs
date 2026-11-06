@@ -178,14 +178,9 @@ impl Client {
         }
     }
 
-    /// Pull requests, most recently updated first, `PAGE_SIZE` per page; `page` starts at 1. On GitHub and Gitea
-    /// a Closed or Merged filter leaves the other out of the page, so a page may be short with more after it.
-    pub fn pulls(
-        &self,
-        repo: &RepoRef,
-        filter: &PullFilter,
-        page: u32,
-    ) -> Result<Vec<PullRequest>> {
+    /// A page of pull requests, `PAGE_SIZE` read per page, most recently updated first unless the query sorts; `page` starts at 1.
+    /// GitHub runs the query itself; elsewhere the server filters on the state and `PullFilter::keep` does the rest.
+    pub fn pulls(&self, repo: &RepoRef, filter: &PullFilter, page: u32) -> Result<PullPage> {
         match self.forge {
             Forge::GitHub => github_pulls::pulls(self, repo, filter, page),
             Forge::GitLab => gitlab_pulls::pulls(self, repo, filter, page),

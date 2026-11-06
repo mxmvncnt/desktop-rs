@@ -36,3 +36,18 @@ fn replies_join_their_thread() {
         (Side::Left, None, Some(3))
     );
 }
+
+#[test]
+fn search_results_have_no_branches() {
+    let item: SearchItem = serde_json::from_str(
+        r#"{"number": 5, "title": "t", "body": null, "state": "closed", "draft": false,
+            "user": {"login": "ada"}, "labels": [], "assignees": [{"login": "grace"}], "comments": 2,
+            "pull_request": {"merged_at": "2025-04-10T12:00:00Z"},
+            "created_at": null, "updated_at": null, "html_url": "https://github.com/o/r/pull/5"}"#,
+    )
+    .unwrap();
+    let p = search_item(item);
+    assert_eq!((p.number, p.state), (5, PullState::Merged));
+    assert_eq!(p.assignees, ["grace"]);
+    assert_eq!(p.head_ref, None);
+}

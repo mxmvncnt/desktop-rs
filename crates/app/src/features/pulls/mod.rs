@@ -12,6 +12,7 @@ mod pull_row;
 mod pull_summary;
 mod pulls_header;
 mod pulls_page;
+mod query_text;
 mod review;
 mod review_notes;
 #[cfg(feature = "snapshot")]

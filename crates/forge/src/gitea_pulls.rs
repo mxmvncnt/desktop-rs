@@ -9,6 +9,7 @@ use crate::client::{Client, PAGE_SIZE};
 use crate::error::Result;
 use crate::model::User;
 use crate::pull_model::*;
+use crate::pull_query::SortKey;
 use crate::repo_ref::RepoRef;
 
 #[derive(Deserialize)]
@@ -46,6 +47,10 @@ pub(crate) struct Pull {
     base: Branch,
     #[serde(default)]
     labels: Vec<Label>,
+    #[serde(default)]
+    assignees: Option<Vec<UserJson>>,
+    #[serde(default)]
+    requested_reviewers: Option<Vec<UserJson>>,
     comments: Option<u32>,
     created_at: Option<DateTime<Utc>>,
     updated_at: Option<DateTime<Utc>>,
@@ -100,31 +105,33 @@ pub(crate) fn pulls(
     repo: &RepoRef,
     filter: &PullFilter,
     page: u32,
-) -> Result<Vec<PullRequest>> {
-    let state = match filter.state {
+) -> Result<PullPage> {
+    let state = match filter.state() {
         Some(PullState::Open) => "open",
         Some(PullState::Closed | PullState::Merged) => "closed",
         None => "all",
+    };
+    let sort = match filter.query.as_ref().and_then(|q| q.sort) {
+        Some((SortKey::Created, true)) => "newest",
+        Some((SortKey::Created, false)) => "oldest",
+        Some((SortKey::Updated, false)) => "leastupdate",
+        Some((SortKey::Comments, _)) => "mostcomment",
+        _ => "recentupdate",
     };
     let list: Vec<Pull> = c.get(
         &format!("/repos/{}/pulls", repo.full_path()),
         &[
             ("state", state.into()),
-            ("sort", "recentupdate".into()),
+            ("sort", sort.into()),
             ("limit", PAGE_SIZE.to_string()),
             ("page", page.to_string()),
         ],
     )?;
-    let wanted = filter.state;
-    Ok(list
-        .into_iter()
-        .map(pull_from)
-        .filter(|p| match wanted {
-            Some(PullState::Closed) => p.state == PullState::Closed,
-            Some(PullState::Merged) => p.state == PullState::Merged,
-            _ => true,
-        })
-        .collect())
+    let more = list.len() >= PAGE_SIZE as usize;
+    Ok(PullPage {
+        pulls: filter.keep(list.into_iter().map(pull_from).collect()),
+        more,
+    })
 }
 
 pub(crate) fn pull(c: &Client, repo: &RepoRef, number: u64) -> Result<PullRequest> {
@@ -248,6 +255,13 @@ pub(crate) fn pull_from(p: Pull) -> PullRequest {
         base_ref: Some(p.base.name),
         from_fork: p.head.repo_id != p.base.repo_id,
         labels: p.labels.into_iter().map(|l| l.name).collect(),
+        assignees: p.assignees.into_iter().flatten().map(|u| u.login).collect(),
+        reviewers: p
+            .requested_reviewers
+            .into_iter()
+            .flatten()
+            .map(|u| u.login)
+            .collect(),
         comments: p.comments,
         created_at: p.created_at,
         updated_at: p.updated_at,

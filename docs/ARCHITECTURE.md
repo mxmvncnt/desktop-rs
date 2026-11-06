@@ -7,7 +7,7 @@
 ├── Cargo.toml          workspace; GPUI-CE pinned by git rev
 ├── crates/
 │   ├── git/   (gd-git)  UI-agnostic git layer, shells out to `git`
-│   ├── forge/ (gd-forge) blocking CI API client for GitHub/GitLab/Gitea/Forgejo + job log parser, no GPUI
+│   ├── forge/ (gd-forge) blocking CI and pull request API client for GitHub/GitLab/Gitea/Forgejo + job log parser, no GPUI
 │   ├── syntax/ (gd-syntax) UI-agnostic tree-sitter highlighting
 │   ├── ui/    (gd-ui)   zeron-style design system: theme, motion, components, assets
 │   └── app/   (desktop-rs)  the binary: models + views
@@ -78,6 +78,20 @@ Enterprise -> `https://<host>/api/v3`, GitLab `/api/v4`, Gitea and Forgejo `/api
 | cancel job | no | yes | no | no |
 | play manual job | no | yes | no | no |
 | filter the list by user (`PipelineFilter::user`) | yes (`actor`) | yes (`username`) | yes (`actor`) | no (its runs list has only `ref`) |
+
+Pull requests (`pull_model.rs`, `github_pulls.rs`, `gitlab_pulls.rs`, `gitea_pulls.rs` for Gitea and Forgejo, `pull_query.rs`), in GitHub's
+vocabulary: `pulls(repo, &PullFilter, page) -> PullPage { pulls, more }`, `pull`, `conversation` (`Conversation { comments, threads }`: issue
+comments plus review summaries with a verdict; review comments grouped into `Thread`s by `in_reply_to_id` on GitHub, by discussion on GitLab
+(system notes dropped), by path + side + line on Gitea), `comment`, `line_comment(LineTarget)`, `reply(Thread)`. POSTs go through
+`Client::send` (JSON body), whole lists through `get_all` (100 per page, at most 10 pages; Gitea caps `limit` at 50, so only a page under
+50 ends it). A `LineTarget` is two `LinePos { old, new }` (a context line has both): GitHub sends `line`/`side` (+ `start_line`/`start_side`),
+GitLab a text `position` against the MR's `diff_refs` with a `line_range` whose ends are named by `sha1(path)_old_new`, Gitea a one-comment
+review with `new_position`/`old_position` (no ranges: `Capabilities::line_ranges`). `pull_ref(gitlab, n)` is where the forge keeps the head.
+- Search (`PullQuery::parse`): qualifiers, `-` negation, `OR`/`AND`, parentheses, quotes, free text, `sort:` (taken out of the expression).
+  GitHub: a query that is only a state goes to `/pulls` (rows have branches), anything else to `/search/issues?advanced_search=true` with
+  `repo:` added (`@me` is GitHub's). Elsewhere the server gets the state (GitLab: `closed` would drop the merged ones that `state:closed`
+  includes, so it asks for `all`), the sort and GitLab's `author_username`, and `PullFilter::keep` evaluates the query on the page; a page
+  may then be empty with `more` set, and the app reads up to 10 pages on. `unsupported()` lists qualifiers `matches` treats as matching.
 
 Logs (`log.rs`): `parse_log(raw) -> Log { lines, sections }`. A `Line` is a `String` plus `Span`s (byte ranges covering the whole text, with
 `Style { fg, bg: Option<Color::{Indexed, Rgb}>, bold, italic, underline }`) and the GitHub/Gitea timestamp if there was one. SGR is parsed with `vte`; other control
@@ -557,6 +571,11 @@ Wayland/X11 gpui features are enabled only for Linux targets in `crates/app/Carg
 - gpui-ce only scrolls an input to the caret on caret movement, so typing past the commit box's
   max height does not follow the caret (see the reverted `c22f88d`).
 
+- **`list` (variable height) lays each item out as its own root**, like `uniform_list`: items don't inherit the list element's text
+  style (font family, size, line height). `rows_list` gives each row of the wrap list the mono style itself.
+- On macOS the headless test platform must be created on the main thread, so the `--features snapshot` unit tests (which `cargo test` runs on
+  worker threads) panic there; the snapshot binary works.
+
 ## GPUI-CE pin
 
 `Cargo.toml` pins `rev = 9a82fba4…` (2026-10-18). To bump it, change the rev
@@ -661,10 +680,11 @@ is observed like the other stores; `attach_model` calls `sync_ci` when a reposit
 Opening and closing swap the body, and whichever appears fades in with `motion::fade_quick` (150ms; ids `ci-page-in` and `body-in`, so the animation
 plays again each time its element comes back); the one that goes is gone at once, as a fade-out would need the page kept alive after `open` is false.
 
-- `state.rs` (`CiStore`), `target.rs` (`Target` = forge + `RepoRef` + account; `Problem` = every empty state, `Problem::describe`; `forge_of(Provider)`),
+- `state.rs` (`CiStore`), `accounts/target.rs` (shared with the pull requests page: `Target` = forge + `RepoRef` + account; `Problem` = every
+  empty state, `Problem::describe(Subject)`; `forge_of(Provider)`),
   `ops.rs` (resolve, list, details), `polling.rs`, `handlers.rs` (`impl Workspace`: `toggle_ci`, `sync_ci`, `back_ci`).
-  Components: `ci_page`, `pipelines_header`, `problem_view`, `pipeline_row` (plain fn), `stage_dots`, `status_badge` (status -> label/icon/tone, tested), `duration`.
-  `breadcrumbs` is the one breadcrumb bar of the pipeline and job pages (fixed 56px high, so it does not move between them; the list header's top padding
+  Components: `ci_page`, `pipelines_header`, `components::ProblemView`, `pipeline_row` (plain fn), `stage_dots`, `status_badge` (status -> label/icon/tone, tested), `duration`.
+  `breadcrumbs` builds the trail of the pipeline and job pages on `components::Breadcrumbs` (fixed 56px high, so it does not move between them; the list header's top padding
   is set so its title is on the same line). Its "Pipelines" crumb is `CiStore::show_list`, the back arrow and the `#n` crumb are `back`.
 - Resolution (`CiStore::show`, background): `tracking_remote_url` -> `RepoRef::from_remote` -> `account_for_repo` -> `forge_of(provider)`.
   Bitbucket and Generic accounts are "not supported". Every request builds its `Client` with `accounts::fresh_token` on the background thread,
@@ -733,3 +753,31 @@ plays again each time its element comes back); the one that goes is gone at once
   "Retry failed" (failed or canceled) and "Cancel" (unfinished). `CiStore::run_action` runs on a background thread (one at a time, `acting` disables
   the buttons), then emits `CiEvent::Notice` / `CiEvent::Error`, which `Workspace::on_ci_event` turns into the usual banner, and refetches the pipeline
   and page 1 of the list. The server may still report the old status for a moment: the next poll corrects it (a pipeline or job screen polls even when finished).
+
+## Pull requests page (`features/pulls/`)
+
+The same shape as the CI page: a full page in `Workspace::body` while `PullsStore::open` (toolbar button, Cmd/Ctrl+Shift+R; opening one of the
+two pages closes the other), `Workspace::pulls: Entity<PullsStore>` observed and subscribed (`PullsEvent`), Esc / mouse Back = `back_pulls`
+(drops a line pick or an open reply box first), mouse Forward = `forward_pulls`. Account and repository come from `accounts::Target`
+(`target.rs`, moved out of `ci/`, `Problem::describe(Subject)` words the empty states per page); `components::ProblemView` and
+`components::Breadcrumbs` are shared with CI.
+
+- `state.rs` (`PullsStore`, `PullsView::{List, Pull(n)}`, `PullTab`, `Pick`, the four text boxes in `PullsInputs`), `ops.rs` (resolve, list,
+  open, tabs, picks, `post(Reply)`, `checkout`), `handlers.rs` (`impl Workspace`), `review.rs` (`impl RepoModel`: `show_review`,
+  `checkout_pull`), `review_notes.rs` (the `RowNotes` of the diff), `query_text.rs` (tabs rewrite the query). The page is
+  `Workspace::render_pulls_page` (`pulls_page.rs`), a method because Files and Commits draw diffs; the rest are components.
+- Opening a pull request loads `pull()` and then, on the same background task, `gd_git::Repository::fetch_pull` (the forge's head ref into the
+  same ref locally, the base branch into its remote-tracking branch, and the head branch for a same-repository PR so it can be checked out),
+  which returns a `PullHead` (head, merge base, commits oldest first, files). A git failure is kept as `head: Err` and shown under the summary;
+  the conversation (its own load) still shows. Files changed and a commit of the Commits tab emit `PullsEvent::Review { base, head }`, and
+  `RepoModel::show_review` fills `RepoModel::review`, the `DiffDetail` of `DiffPane::Review`: `DiffDetail::head` is what its files diff to
+  (`file_diff(.., head, ..)`), so the usual `FileList` / `render_file_diff_pane` / highlighting / split view work unchanged.
+- Line comments: `render_diff` asks `Workspace::review_notes` for `diff::RowNotes` in the review pane on the Files tab. A diff with notes
+  always uses the variable-height list (`DiffView::wrap_list_for`) so a row can carry blocks under it; `RowNotes::key` hashes the anchored
+  threads, the pick, the open reply and `posting`, and a new key `remeasure()`s the list. Line numbers become pick cells
+  (`RowNotes::pick_cell`, Shift extends within the file), picked rows get an accent wash, and `RowNotes::wrap` puts the threads of a line and
+  the comment box (under the last picked line) below its row. Threads anchor by side: a RIGHT line by its new number on a non-deleted line,
+  a LEFT one on a deleted line (`anchor`, tested); outdated threads (no `line`) are only on the Conversation tab. Picks are diff line indices;
+  `post_line_comment` turns them into a `LineTarget` with the numbers of those lines.
+- Text areas get a fixed width (`comment_box::BOX_W`, see the auto-height gotcha) and the Workspace observes the boxes so the Comment
+  buttons enable as you type. Posting runs one request at a time (`posting`), then reloads the conversation and clears the box.

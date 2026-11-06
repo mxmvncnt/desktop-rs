@@ -2,16 +2,19 @@
 
 use std::collections::HashSet;
 
-use gd_forge::{Forge, LineTarget, PullFilter, PullRequest, PullState, Thread, pull_ref};
+use gd_forge::{
+    Forge, LineTarget, PullFilter, PullQuery, PullRequest, PullState, Thread, pull_ref,
+};
 use gd_git::{PullCheckout, Repository};
 use gpui::{AppContext, Context};
 
+use super::query_text::with_state;
 use super::state::{Pick, PullTab, PullsEvent, PullsStore, PullsView};
 use crate::features::accounts::{Account, RepoAccounts, Target};
 use crate::repo::spawn_load;
 
-/// The forges answer 20 pull requests per page.
-const PAGE_SIZE: usize = 20;
+/// Pages read in one go while filtering leaves them empty.
+const MAX_EMPTY_PAGES: u32 = 10;
 
 /// What a comment is on.
 pub enum Reply {
@@ -94,21 +97,23 @@ impl PullsStore {
         if self.loading {
             return;
         }
-        let filter = PullFilter { state: self.state };
-        let page = if more { self.page + 1 } else { 1 };
+        let filter = PullFilter {
+            query: Some(self.query.clone()),
+            me: target.username.clone(),
+        };
+        let first = if more { self.page + 1 } else { 1 };
         self.loading = true;
         spawn_load(
             self,
             |s| &mut s.list_load,
             move || {
                 let client = target.client()?;
-                // A Closed or Merged filter on GitHub and Gitea drops the other from a page; read on until one is not empty.
-                let mut page = page;
+                // Filtering may leave a page empty: read on until one is not, or the list ends.
+                let mut page = first;
                 loop {
-                    let items = client.pulls(&target.repo, &filter, page)?;
-                    let full = items.len() >= PAGE_SIZE || needs_more(&target, filter.state);
-                    if !items.is_empty() || !full || page > 20 {
-                        return Ok::<_, gd_forge::Error>((items, page, full));
+                    let found = client.pulls(&target.repo, &filter, page)?;
+                    if !found.pulls.is_empty() || !found.more || page >= first + MAX_EMPTY_PAGES {
+                        return Ok::<_, gd_forge::Error>((found, page));
                     }
                     page += 1;
                 }
@@ -117,10 +122,11 @@ impl PullsStore {
                 this.loading = false;
                 this.refreshing = false;
                 match res {
-                    Ok((items, page, full)) => {
+                    Ok((found, page)) => {
+                        let items = found.pulls;
                         this.list_error = None;
                         this.page = page;
-                        this.more = full && !items.is_empty();
+                        this.more = found.more;
                         if !more {
                             this.pulls.clear();
                         }
@@ -145,10 +151,27 @@ impl PullsStore {
         self.load_list(false, cx);
     }
 
+    /// A state tab: its terms replace the query's.
     pub fn set_state(&mut self, state: Option<PullState>, cx: &mut Context<Self>) {
-        self.state = state;
-        self.pulls.clear();
-        self.reload_list(cx);
+        let text = with_state(&self.query.raw, state);
+        self.inputs.query.update(cx, |s, cx| s.emplace(&text, cx));
+        self.apply_query(text, cx);
+    }
+
+    /// Enter in the search field.
+    pub fn apply_query(&mut self, text: String, cx: &mut Context<Self>) {
+        match PullQuery::parse(&text) {
+            Ok(q) => {
+                self.query_error = None;
+                if q != self.query {
+                    self.query = q;
+                    self.pulls.clear();
+                    self.reload_list(cx);
+                }
+            }
+            Err(e) => self.query_error = Some(e),
+        }
+        cx.notify();
     }
 
     pub fn open_pull(&mut self, number: u64, cx: &mut Context<Self>) {
@@ -369,11 +392,6 @@ impl PullsStore {
             upstream,
         }));
     }
-}
-
-/// GitHub and Gitea have no Merged filter: the Closed and Merged lists are filtered from all closed pull requests.
-fn needs_more(target: &Target, state: Option<PullState>) -> bool {
-    target.forge != Forge::GitLab && matches!(state, Some(PullState::Closed | PullState::Merged))
 }
 
 /// Fetch the head of `pull` (and its branch when it is in this repository) and compare it with the base. Blocks on git.

@@ -8,6 +8,7 @@ use crate::client::{Client, PAGE_SIZE};
 use crate::error::Result;
 use crate::model::User;
 use crate::pull_model::*;
+use crate::pull_query::{PullQuery, SortKey};
 use crate::repo_ref::RepoRef;
 
 #[derive(Deserialize)]
@@ -48,11 +49,46 @@ pub(crate) struct Pull {
     base: Branch,
     #[serde(default)]
     labels: Vec<Label>,
+    #[serde(default)]
+    assignees: Vec<UserJson>,
+    #[serde(default)]
+    requested_reviewers: Vec<UserJson>,
     /// Detail only.
     comments: Option<u32>,
     created_at: Option<DateTime<Utc>>,
     updated_at: Option<DateTime<Utc>>,
     html_url: String,
+}
+
+#[derive(Deserialize)]
+struct SearchResults {
+    items: Vec<SearchItem>,
+}
+
+/// An issue search result: no branches nor reviewers.
+#[derive(Deserialize)]
+pub(crate) struct SearchItem {
+    number: u64,
+    title: String,
+    body: Option<String>,
+    state: String,
+    #[serde(default)]
+    draft: bool,
+    user: Option<UserJson>,
+    #[serde(default)]
+    labels: Vec<Label>,
+    #[serde(default)]
+    assignees: Vec<UserJson>,
+    comments: Option<u32>,
+    pull_request: Option<SearchPull>,
+    created_at: Option<DateTime<Utc>>,
+    updated_at: Option<DateTime<Utc>>,
+    html_url: String,
+}
+
+#[derive(Deserialize)]
+struct SearchPull {
+    merged_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Deserialize)]
@@ -99,8 +135,12 @@ pub(crate) fn pulls(
     repo: &RepoRef,
     filter: &PullFilter,
     page: u32,
-) -> Result<Vec<PullRequest>> {
-    let state = match filter.state {
+) -> Result<PullPage> {
+    if let Some(q) = filter.query.as_ref().filter(|q| !q.only_state()) {
+        return search(c, repo, q, page);
+    }
+    // No merged state here: a closed pull request with a merge time was merged; `keep` sorts them out.
+    let state = match filter.state() {
         Some(PullState::Open) => "open",
         Some(PullState::Closed | PullState::Merged) => "closed",
         None => "all",
@@ -115,17 +155,38 @@ pub(crate) fn pulls(
             ("page", page.to_string()),
         ],
     )?;
-    // GitHub has no "merged" state: a closed pull request with a merge time was merged.
-    let wanted = filter.state;
-    Ok(list
-        .into_iter()
-        .map(pull_from)
-        .filter(|p| match wanted {
-            Some(PullState::Closed) => p.state == PullState::Closed,
-            Some(PullState::Merged) => p.state == PullState::Merged,
-            _ => true,
-        })
-        .collect())
+    let more = list.len() >= PAGE_SIZE as usize;
+    Ok(PullPage {
+        pulls: filter.keep(list.into_iter().map(pull_from).collect()),
+        more,
+    })
+}
+
+/// The issue search, which runs GitHub's query syntax (`@me` included); `advanced_search` enables `OR` and parentheses.
+fn search(c: &Client, repo: &RepoRef, q: &PullQuery, page: u32) -> Result<PullPage> {
+    let mut query = vec![
+        ("q", format!("repo:{} is:pr {}", repo.full_path(), q.raw)),
+        ("advanced_search", "true".into()),
+        ("per_page", PAGE_SIZE.to_string()),
+        ("page", page.to_string()),
+    ];
+    let (key, desc) = q.sort.unwrap_or((SortKey::Updated, true));
+    query.push((
+        "sort",
+        match key {
+            SortKey::Created => "created",
+            SortKey::Updated => "updated",
+            SortKey::Comments => "comments",
+        }
+        .into(),
+    ));
+    query.push(("order", if desc { "desc" } else { "asc" }.into()));
+    let found: SearchResults = c.get("/search/issues", &query)?;
+    let more = found.items.len() >= PAGE_SIZE as usize;
+    Ok(PullPage {
+        pulls: found.items.into_iter().map(search_item).collect(),
+        more,
+    })
 }
 
 pub(crate) fn pull(c: &Client, repo: &RepoRef, number: u64) -> Result<PullRequest> {
@@ -240,10 +301,40 @@ pub(crate) fn pull_from(p: Pull) -> PullRequest {
         base_ref: Some(p.base.name),
         from_fork,
         labels: p.labels.into_iter().map(|l| l.name).collect(),
+        assignees: p.assignees.into_iter().map(|u| u.login).collect(),
+        reviewers: p.requested_reviewers.into_iter().map(|u| u.login).collect(),
         comments: p.comments,
         created_at: p.created_at,
         updated_at: p.updated_at,
         web_url: p.html_url,
+        diff_refs: None,
+    }
+}
+
+pub(crate) fn search_item(i: SearchItem) -> PullRequest {
+    let merged = i.pull_request.is_some_and(|p| p.merged_at.is_some());
+    PullRequest {
+        number: i.number,
+        title: i.title,
+        body: i.body.unwrap_or_default(),
+        state: match (i.state.as_str(), merged) {
+            (_, true) => PullState::Merged,
+            ("open", _) => PullState::Open,
+            _ => PullState::Closed,
+        },
+        draft: i.draft,
+        author: i.user.map(user),
+        head_ref: None,
+        head_sha: None,
+        base_ref: None,
+        from_fork: false,
+        labels: i.labels.into_iter().map(|l| l.name).collect(),
+        assignees: i.assignees.into_iter().map(|u| u.login).collect(),
+        reviewers: Vec::new(),
+        comments: i.comments,
+        created_at: i.created_at,
+        updated_at: i.updated_at,
+        web_url: i.html_url,
         diff_refs: None,
     }
 }

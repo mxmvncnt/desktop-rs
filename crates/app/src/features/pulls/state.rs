@@ -2,11 +2,12 @@
 
 use std::path::PathBuf;
 
-use gd_forge::{Conversation, PullRequest, PullState};
+use gd_forge::{Conversation, PullQuery, PullRequest, PullState};
 use gd_git::{PullCheckout, PullHead};
 use gpui::{App, AppContext as _, Entity, EventEmitter, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
+use super::query_text::DEFAULT_QUERY;
 use crate::features::accounts::{Problem, Target};
 use crate::repo::LoadSlot;
 
@@ -46,6 +47,8 @@ pub enum PullsEvent {
 
 /// The text boxes of the page.
 pub struct PullsInputs {
+    /// The search of the list.
+    pub query: Entity<EditableTextState>,
     /// A comment on the conversation.
     pub comment: Entity<EditableTextState>,
     /// A comment on the picked lines.
@@ -64,8 +67,9 @@ pub struct PullsStore {
     /// Screens left with Back, most recent last.
     pub(super) forward: Vec<PullsView>,
     pub tab: PullTab,
-    /// State tab of the list (`None` = all).
-    pub state: Option<PullState>,
+    /// The applied search, parsed; `query_error` says why the typed one could not be.
+    pub query: PullQuery,
+    pub query_error: Option<String>,
     pub pulls: Vec<PullRequest>,
     pub page: u32,
     pub more: bool,
@@ -111,7 +115,8 @@ impl PullsStore {
             view: PullsView::List,
             forward: Vec::new(),
             tab: PullTab::Conversation,
-            state: Some(PullState::Open),
+            query: PullQuery::parse(DEFAULT_QUERY).expect("the default query parses"),
+            query_error: None,
             pulls: Vec::new(),
             page: 1,
             more: false,
@@ -129,6 +134,11 @@ impl PullsStore {
             replying: None,
             posting: false,
             inputs: PullsInputs {
+                query: cx.new(|cx| {
+                    let mut s = EditableTextState::new(StringStorage::default(), cx);
+                    s.emplace(DEFAULT_QUERY, cx);
+                    s
+                }),
                 comment: input(cx),
                 line: input(cx),
                 reply: input(cx),
@@ -146,6 +156,11 @@ impl PullsStore {
     /// The resolved account and repository, if any.
     pub fn ready(&self) -> Option<&Target> {
         self.target.as_ref()?.as_ref().ok()
+    }
+
+    /// The state the query asks for, which its tab shows.
+    pub fn state(&self) -> Option<PullState> {
+        self.query.state()
     }
 
     /// The fetched head of the open pull request.

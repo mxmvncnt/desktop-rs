@@ -1,13 +1,16 @@
-//! Top of the pull requests list: title, the account in use, the state tabs and Refresh.
+//! Top of the pull requests list: title, the account in use, the search field, the state tabs and Refresh.
 
-use gd_forge::PullState;
+use gd_forge::{Forge, PullState};
 use gd_ui::{Button, Icon, Tabs, Theme};
 use gpui::{
     App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce,
     StatefulInteractiveElement, Styled, Window, div, prelude::*, px,
 };
 
+use gpui_elements::editable_text::actions::Enter;
+
 use super::state::PullsStore;
+use crate::components::text_field;
 use crate::workspace::Workspace;
 
 /// The state tabs, in order.
@@ -31,10 +34,28 @@ impl RenderOnce for PullsHeader {
         let target = pulls.ready();
         let selected = STATE_TABS
             .iter()
-            .position(|(_, s)| *s == pulls.state)
+            .position(|(_, s)| *s == pulls.state())
             .unwrap_or(0);
         let account = target.map(|t| format!("via {} · {}", t.account_name, t.host));
         let (ws, store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.ws.clone());
+        let (input, enter) = (pulls.inputs.query.clone(), self.store.clone());
+        // GitHub runs the query itself; elsewhere what `matches` can't tell is said.
+        let note = match (&pulls.query_error, target.map(|t| t.forge)) {
+            (Some(e), _) => Some((format!("Can't read the query: {e}"), theme.danger)),
+            (None, Some(f)) if f != Forge::GitHub => {
+                let unknown = pulls.query.unsupported();
+                (!unknown.is_empty()).then(|| {
+                    (
+                        format!(
+                            "Not understood here, so not filtered on: {}",
+                            unknown.join(" ")
+                        ),
+                        theme.warning,
+                    )
+                })
+            }
+            _ => None,
+        };
         div()
             .flex()
             .flex_col()
@@ -94,6 +115,30 @@ impl RenderOnce for PullsHeader {
             )
             .when(target.is_some(), |d| {
                 d.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(6.0))
+                        .child(
+                            div()
+                                .w(px(720.0))
+                                .capture_action(move |_: &Enter, _, cx| {
+                                    cx.stop_propagation();
+                                    let text = input.read(cx).as_str().to_string();
+                                    enter.update(cx, |s, cx| s.apply_query(text, cx))
+                                })
+                                .child(text_field(
+                                    "pulls-query",
+                                    &pulls.inputs.query,
+                                    "is:pr state:open author:@me",
+                                    cx,
+                                )),
+                        )
+                        .children(note.map(|(text, color)| {
+                            div().text_size(px(12.0)).text_color(color).child(text)
+                        })),
+                )
+                .child(
                     div().w(px(340.0)).child(
                         STATE_TABS
                             .iter()

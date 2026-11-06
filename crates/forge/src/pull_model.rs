@@ -3,6 +3,7 @@
 use chrono::{DateTime, Utc};
 
 use crate::model::User;
+use crate::pull_query::PullQuery;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PullState {
@@ -35,6 +36,10 @@ pub struct PullRequest {
     /// The head branch lives in another repository: it can't be checked out as a branch of this remote.
     pub from_fork: bool,
     pub labels: Vec<String>,
+    /// Logins.
+    pub assignees: Vec<String>,
+    /// Logins of the requested reviewers (not on GitHub search results).
+    pub reviewers: Vec<String>,
     /// Conversation comments, where the list reports them.
     pub comments: Option<u32>,
     pub created_at: Option<DateTime<Utc>>,
@@ -120,8 +125,37 @@ pub struct Conversation {
 
 #[derive(Debug, Clone, Default)]
 pub struct PullFilter {
-    /// `None` = every state.
-    pub state: Option<PullState>,
+    /// A search; `None` = the open ones.
+    pub query: Option<PullQuery>,
+    /// The login `@me` stands for.
+    pub me: String,
+}
+
+impl PullFilter {
+    pub(crate) fn state(&self) -> Option<PullState> {
+        match &self.query {
+            Some(q) => q.state(),
+            None => Some(PullState::Open),
+        }
+    }
+
+    /// Keep what the query matches (the server filtered on the state at most).
+    pub(crate) fn keep(&self, pulls: Vec<PullRequest>) -> Vec<PullRequest> {
+        pulls
+            .into_iter()
+            .filter(|p| match &self.query {
+                Some(q) => q.matches(p, &self.me),
+                None => p.state == PullState::Open,
+            })
+            .collect()
+    }
+}
+
+/// One page of the list. Filtering may leave a page short or empty with more after it.
+#[derive(Debug, Clone, Default)]
+pub struct PullPage {
+    pub pulls: Vec<PullRequest>,
+    pub more: bool,
 }
 
 /// The git ref a forge keeps the head of pull request `number` under, on the base repository (forks included).

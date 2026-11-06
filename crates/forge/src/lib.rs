@@ -15,6 +15,7 @@ mod gitlab_pulls;
 mod log;
 mod model;
 mod pull_model;
+mod pull_query;
 mod repo_ref;
 mod workflow;
 
@@ -23,5 +24,6 @@ pub use error::{Error, Result};
 pub use log::{Color, Line, Log, Section, Span, Style, parse_log};
 pub use model::*;
 pub use pull_model::*;
+pub use pull_query::{Expr, PullQuery, SortKey};
 pub use repo_ref::RepoRef;
 pub use workflow::stages_from_workflow;

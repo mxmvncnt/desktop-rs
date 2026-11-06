@@ -2,7 +2,9 @@
 //! files are the repository's `feature` branch against `main` (see the test repo recipe in docs/PROGRESS.md).
 
 use chrono::{Duration, Utc};
-use gd_forge::{Comment, Conversation, Forge, PullRequest, PullState, RepoRef, Side, Thread, User};
+use gd_forge::{
+    Comment, Conversation, Forge, PullQuery, PullRequest, PullState, RepoRef, Side, Thread, User,
+};
 use gpui::{Context, Window};
 
 use super::state::{Pick, PullTab, PullsEvent, PullsStore, PullsView};
@@ -24,7 +26,9 @@ pub fn views() -> &'static [View] {
     ]
 }
 
-/// `pulls[-light]`: the list; `pulls-empty-account`; `pull-conversation`, `pull-commits`, `pull-files`, `pull-files-comment`
+/// `pulls[-light]`: the list; `pulls-query`: the example query of docs/PROGRESS.md on a GitLab account (filtered here, as
+/// `PullFilter::keep` would), with a qualifier GitLab can't filter on; `pulls-query-error`: a query that doesn't parse;
+/// `pulls-empty-account`; `pull-conversation`, `pull-commits`, `pull-files`, `pull-files-comment`
 /// (lines picked, the comment box open), `pull-files-split`.
 fn pulls_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Workspace>) {
     ws.settings.theme = if view.ends_with("light") {
@@ -42,6 +46,24 @@ fn pulls_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Co
             return;
         }
         fill(p);
+        if view.starts_with("pulls-query") {
+            let text = if view.contains("error") {
+                "is:pr (involves:@me OR"
+            } else {
+                "is:pr state:open archived:false sort:updated-desc (involves:@me OR user-review-requested:@me) -author:@me milestone:v2"
+            };
+            if let Some(Ok(t)) = &mut p.target {
+                t.forge = Forge::GitLab;
+            }
+            p.inputs.query.update(cx, |s, cx| s.emplace(text, cx));
+            match PullQuery::parse(text) {
+                Ok(q) => {
+                    p.pulls.retain(|pull| q.matches(pull, "ada"));
+                    p.query = q;
+                }
+                Err(e) => p.query_error = Some(e),
+            }
+        }
         let Some(tab) = [
             ("pull-conversation", PullTab::Conversation),
             ("pull-commits", PullTab::Commits),
@@ -128,6 +150,8 @@ fn fill(p: &mut PullsStore) {
         base_ref: Some("main".into()),
         from_fork: number == 39,
         labels: labels.iter().map(|l| l.to_string()).collect(),
+        assignees: Vec::new(),
+        reviewers: if number == 41 { vec!["ada".into()] } else { Vec::new() },
         comments: Some(comments),
         created_at: Some(now - Duration::hours(hours + 30)),
         updated_at: Some(now - Duration::hours(hours)),

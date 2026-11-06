@@ -8,6 +8,7 @@ use crate::client::{Client, PAGE_SIZE};
 use crate::error::Result;
 use crate::model::User;
 use crate::pull_model::*;
+use crate::pull_query::SortKey;
 use crate::repo_ref::RepoRef;
 
 #[derive(Deserialize)]
@@ -40,6 +41,10 @@ pub(crate) struct Mr {
     target_project_id: u64,
     #[serde(default)]
     labels: Vec<String>,
+    #[serde(default)]
+    assignees: Vec<UserJson>,
+    #[serde(default)]
+    reviewers: Vec<UserJson>,
     user_notes_count: Option<u32>,
     created_at: Option<DateTime<Utc>>,
     updated_at: Option<DateTime<Utc>>,
@@ -101,24 +106,38 @@ pub(crate) fn pulls(
     repo: &RepoRef,
     filter: &PullFilter,
     page: u32,
-) -> Result<Vec<PullRequest>> {
-    let state = match filter.state {
+) -> Result<PullPage> {
+    // GitLab's `closed` leaves the merged ones out; GitHub's (the query's) has them.
+    let state = match filter.state() {
         Some(PullState::Open) => "opened",
-        Some(PullState::Closed) => "closed",
         Some(PullState::Merged) => "merged",
-        None => "all",
+        Some(PullState::Closed) | None => "all",
     };
+    let q = filter.query.as_ref();
+    let (order, desc) = match q.and_then(|q| q.sort) {
+        Some((SortKey::Created, desc)) => ("created_at", desc),
+        Some((_, desc)) => ("updated_at", desc),
+        None => ("updated_at", true),
+    };
+    let mut query = vec![
+        ("state", state.to_string()),
+        ("order_by", order.into()),
+        ("sort", if desc { "desc" } else { "asc" }.into()),
+        ("per_page", PAGE_SIZE.to_string()),
+        ("page", page.to_string()),
+    ];
+    if let Some(author) = q.and_then(|q| q.author(&filter.me)) {
+        query.push(("author_username", author));
+    }
     let list: Vec<Mr> = c.get(
         &format!("/projects/{}/merge_requests", repo.gitlab_id()),
-        &[
-            ("state", state.into()),
-            ("order_by", "updated_at".into()),
-            ("sort", "desc".into()),
-            ("per_page", PAGE_SIZE.to_string()),
-            ("page", page.to_string()),
-        ],
+        &query,
     )?;
-    Ok(list.into_iter().map(pull_from).collect())
+    let more = list.len() >= PAGE_SIZE as usize;
+    Ok(PullPage {
+        pulls: filter.keep(list.into_iter().map(pull_from).collect()),
+        more,
+    })
 }
 
 pub(crate) fn pull(c: &Client, repo: &RepoRef, number: u64) -> Result<PullRequest> {
@@ -251,6 +270,8 @@ pub(crate) fn pull_from(m: Mr) -> PullRequest {
         base_ref: Some(m.target_branch),
         from_fork: m.source_project_id != m.target_project_id,
         labels: m.labels,
+        assignees: m.assignees.into_iter().map(|u| u.username).collect(),
+        reviewers: m.reviewers.into_iter().map(|u| u.username).collect(),
         comments: m.user_notes_count,
         created_at: m.created_at,
         updated_at: m.updated_at,
