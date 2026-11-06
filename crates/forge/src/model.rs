@@ -177,6 +177,8 @@ pub struct Capabilities {
     pub stages: bool,
     /// The list can be filtered by who triggered the pipeline.
     pub filter_user: bool,
+    /// A review comment can span several lines.
+    pub line_ranges: bool,
 }
 
 /// Status of a stage from its jobs, like GitLab: failed jobs that are allowed to fail don't fail the stage.

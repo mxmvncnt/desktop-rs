@@ -1,0 +1,16 @@
+{
+  "number": 1347,
+  "title": "Amazing new feature",
+  "body": "Please pull these awesome changes in!",
+  "state": "closed",
+  "draft": false,
+  "merged_at": "2025-04-10T12:00:00Z",
+  "user": {"login": "octocat", "avatar_url": "https://github.com/images/error/octocat_happy.gif"},
+  "head": {"ref": "new-topic", "sha": "6dcb09b5b57875f334f61aebed695e2e4193db5e", "repo": {"full_name": "hubot/Hello-World"}},
+  "base": {"ref": "main", "sha": "7638417db6d59f3c431d3e1f261cc637155684cd", "repo": {"full_name": "octocat/Hello-World"}},
+  "labels": [{"name": "bug"}, {"name": "ui"}],
+  "comments": 10,
+  "created_at": "2025-04-01T19:01:12Z",
+  "updated_at": "2025-04-10T12:00:00Z",
+  "html_url": "https://github.com/octocat/Hello-World/pull/1347"
+}

@@ -5,11 +5,15 @@ use serde::de::DeserializeOwned;
 
 use crate::error::{Error, Result};
 use crate::model::*;
+use crate::pull_model::*;
 use crate::repo_ref::RepoRef;
-use crate::{actions, forgejo, gitlab};
+use crate::{actions, forgejo, gitea_pulls, github_pulls, gitlab, gitlab_pulls};
 
 pub(crate) const PAGE_SIZE: u32 = 20;
 const MAX_LOG_BYTES: u64 = 64 * 1024 * 1024;
+/// Page size of `get_all`, and the most pages it reads.
+const ALL_PAGE: u32 = 100;
+const MAX_PAGES: u32 = 10;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Forge {
@@ -32,6 +36,7 @@ impl Forge {
             steps: false,
             stages: false,
             filter_user: false,
+            line_ranges: false,
         };
         match self {
             Forge::GitHub => Capabilities {
@@ -39,6 +44,7 @@ impl Forge {
                 retry_job: true,
                 steps: true,
                 filter_user: true,
+                line_ranges: true,
                 ..none
             },
             Forge::Gitea => Capabilities {
@@ -55,6 +61,7 @@ impl Forge {
                 play_job: true,
                 stages: true,
                 filter_user: true,
+                line_ranges: true,
                 ..none
             },
             // Forgejo: runs, jobs with `needs`, logs and run cancel only; its runs list has no user filter.
@@ -171,6 +178,79 @@ impl Client {
         }
     }
 
+    /// Pull requests, most recently updated first, `PAGE_SIZE` per page; `page` starts at 1. On GitHub and Gitea
+    /// a Closed or Merged filter leaves the other out of the page, so a page may be short with more after it.
+    pub fn pulls(
+        &self,
+        repo: &RepoRef,
+        filter: &PullFilter,
+        page: u32,
+    ) -> Result<Vec<PullRequest>> {
+        match self.forge {
+            Forge::GitHub => github_pulls::pulls(self, repo, filter, page),
+            Forge::GitLab => gitlab_pulls::pulls(self, repo, filter, page),
+            Forge::Gitea | Forge::Forgejo => gitea_pulls::pulls(self, repo, filter, page),
+        }
+    }
+
+    /// One pull request, with what the list leaves out (GitLab `diff_refs`, GitHub comment count).
+    pub fn pull(&self, repo: &RepoRef, number: u64) -> Result<PullRequest> {
+        match self.forge {
+            Forge::GitHub => github_pulls::pull(self, repo, number),
+            Forge::GitLab => gitlab_pulls::pull(self, repo, number),
+            Forge::Gitea | Forge::Forgejo => gitea_pulls::pull(self, repo, number),
+        }
+    }
+
+    /// The comments and review threads of a pull request.
+    pub fn conversation(&self, repo: &RepoRef, number: u64) -> Result<Conversation> {
+        match self.forge {
+            Forge::GitHub => github_pulls::conversation(self, repo, number),
+            Forge::GitLab => gitlab_pulls::conversation(self, repo, number),
+            Forge::Gitea | Forge::Forgejo => gitea_pulls::conversation(self, repo, number),
+        }
+    }
+
+    /// A comment on the conversation.
+    pub fn comment(&self, repo: &RepoRef, number: u64, body: &str) -> Result<()> {
+        match self.forge {
+            Forge::GitHub => github_pulls::comment(self, repo, number, body),
+            Forge::GitLab => gitlab_pulls::comment(self, repo, number, body),
+            Forge::Gitea | Forge::Forgejo => gitea_pulls::comment(self, repo, number, body),
+        }
+    }
+
+    /// A review comment on lines of the diff of `pull`'s head. Without `Capabilities::line_ranges` it goes on the last line.
+    pub fn line_comment(
+        &self,
+        repo: &RepoRef,
+        pull: &PullRequest,
+        target: &LineTarget,
+        body: &str,
+    ) -> Result<()> {
+        match self.forge {
+            Forge::GitHub => github_pulls::line_comment(self, repo, pull, target, body),
+            Forge::GitLab => gitlab_pulls::line_comment(self, repo, pull, target, body),
+            Forge::Gitea | Forge::Forgejo => {
+                gitea_pulls::line_comment(self, repo, pull, target, body)
+            }
+        }
+    }
+
+    pub fn reply(
+        &self,
+        repo: &RepoRef,
+        pull: &PullRequest,
+        thread: &Thread,
+        body: &str,
+    ) -> Result<()> {
+        match self.forge {
+            Forge::GitHub => github_pulls::reply(self, repo, pull.number, thread, body),
+            Forge::GitLab => gitlab_pulls::reply(self, repo, pull.number, thread, body),
+            Forge::Gitea | Forge::Forgejo => gitea_pulls::reply(self, repo, pull, thread, body),
+        }
+    }
+
     pub(crate) fn call(
         &self,
         method: &str,
@@ -190,11 +270,41 @@ impl Client {
         for (key, value) in query {
             req = req.query(key, value);
         }
-        match req.call() {
-            Ok(resp) => Ok(resp),
-            Err(ureq::Error::Status(code, resp)) => Err(status_error(code, resp)),
-            Err(ureq::Error::Transport(t)) => Err(Error::Network(t.to_string())),
+        answer(req.call())
+    }
+
+    /// `method` with a JSON body; the answer is not read.
+    pub(crate) fn send(&self, method: &str, path: &str, body: serde_json::Value) -> Result<()> {
+        let req = self
+            .agent
+            .request(method, &format!("{}{path}", self.base))
+            .set("Authorization", &format!("Bearer {}", self.token))
+            .set("User-Agent", "desktop-rs")
+            .set("Accept", "application/vnd.github+json, application/json")
+            .set("X-GitHub-Api-Version", "2022-11-28");
+        answer(req.send_json(body)).map(drop)
+    }
+
+    /// Every page of a list, up to `MAX_PAGES` of `ALL_PAGE`. GitHub and GitLab read `per_page`, Gitea `limit`
+    /// (capped at 50 by default), so only a page under 50 or an empty one is known to be the last.
+    pub(crate) fn get_all<T: DeserializeOwned>(&self, path: &str) -> Result<Vec<T>> {
+        let mut all = Vec::new();
+        for page in 1..=MAX_PAGES {
+            let items: Vec<T> = self.get(
+                path,
+                &[
+                    ("per_page", ALL_PAGE.to_string()),
+                    ("limit", ALL_PAGE.to_string()),
+                    ("page", page.to_string()),
+                ],
+            )?;
+            let last = items.len() < 50;
+            all.extend(items);
+            if last {
+                break;
+            }
         }
+        Ok(all)
     }
 
     pub(crate) fn get<T: DeserializeOwned>(
@@ -215,6 +325,14 @@ impl Client {
             .read_to_end(&mut bytes)
             .map_err(|e| Error::Network(e.to_string()))?;
         Ok(String::from_utf8_lossy(&bytes).into_owned())
+    }
+}
+
+fn answer(res: std::result::Result<ureq::Response, ureq::Error>) -> Result<ureq::Response> {
+    match res {
+        Ok(resp) => Ok(resp),
+        Err(ureq::Error::Status(code, resp)) => Err(status_error(code, resp)),
+        Err(ureq::Error::Transport(t)) => Err(Error::Network(t.to_string())),
     }
 }
 
