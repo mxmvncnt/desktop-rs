@@ -1,11 +1,11 @@
-//! Which account and repository the CI page talks to, and why it can't.
+//! Which account and repository the CI and pull request pages talk to, and why they can't.
 
 use std::path::PathBuf;
 
 use gd_forge::{Client, Error, Forge, RepoRef};
 use gd_git::Repository;
 
-use crate::features::accounts::{Account, Provider, RepoAccounts, account_for_repo, fresh_token};
+use super::{Account, Provider, RepoAccounts, account_for_repo, fresh_token};
 
 /// The forge account serving the open repository.
 #[derive(Clone, Debug)]
@@ -18,6 +18,22 @@ pub struct Target {
     pub account_id: String,
     pub account_name: String,
     pub host: String,
+}
+
+/// What a page lists, for the wording of its empty states.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Subject {
+    Pipelines,
+    PullRequests,
+}
+
+impl Subject {
+    fn plural(self) -> &'static str {
+        match self {
+            Self::Pipelines => "pipelines",
+            Self::PullRequests => "pull requests",
+        }
+    }
 }
 
 /// Why there is nothing to show; each variant has its own empty state.
@@ -46,21 +62,27 @@ impl From<Error> for Problem {
 }
 
 impl Problem {
-    /// Title and explanation for the empty state.
-    pub fn describe(&self) -> (String, String) {
-        let (title, body) = match self {
+    /// Title and explanation for the empty state of a page listing `subject`.
+    pub fn describe(&self, subject: Subject) -> (String, String) {
+        let what = subject.plural();
+        match self {
             Self::NoRemote => (
                 "No remote".to_string(),
-                "This repository has no remote, so there are no pipelines to show.".to_string(),
+                format!("This repository has no remote, so there are no {what} to show."),
             ),
             Self::NoAccount(host) => (
                 format!("No account for {host}"),
                 format!("Add an account for {host} in Settings → Accounts."),
             ),
             Self::Unsupported(label) => (
-                "CI is not supported for this account type".into(),
+                match subject {
+                    Subject::Pipelines => "CI is not supported for this account type".into(),
+                    Subject::PullRequests => {
+                        "Pull requests are not supported for this account type".into()
+                    }
+                },
                 format!(
-                    "{label} accounts can't list pipelines. Pick another account in the repository settings."
+                    "{label} accounts can't list {what}. Pick another account in the repository settings."
                 ),
             ),
             Self::Unauthorized => (
@@ -75,13 +97,20 @@ impl Problem {
                         .unwrap_or_default()
                 ),
             ),
-            Self::NotFound => (
-                "No pipelines found".into(),
-                "CI is not enabled for this repository, or the account has no access to it.".into(),
-            ),
-            Self::Failed(message) => ("Couldn't load pipelines".into(), message.clone()),
-        };
-        (title, body)
+            Self::NotFound => match subject {
+                Subject::Pipelines => (
+                    "No pipelines found".into(),
+                    "CI is not enabled for this repository, or the account has no access to it."
+                        .into(),
+                ),
+                Subject::PullRequests => (
+                    "Repository not found".into(),
+                    "The account has no access to this repository, or it is not on this server."
+                        .into(),
+                ),
+            },
+            Self::Failed(message) => (format!("Couldn't load {what}"), message.clone()),
+        }
     }
 }
 

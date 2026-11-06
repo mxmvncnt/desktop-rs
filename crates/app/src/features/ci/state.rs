@@ -9,8 +9,8 @@ use gd_forge::{Job, JobId, Log, Pipeline, PipelineDetail, PipelineId, Status};
 use gpui::{App, AppContext as _, Entity, EventEmitter, Task, UniformListScrollHandle, WeakEntity};
 
 use super::filter_entries::{branch_entries, user_entries};
-use super::target::{Problem, Target};
 use crate::components::ComboBox;
+use crate::features::accounts::{Problem, Target};
 use crate::features::diff::text_selection::model::TextSel;
 use crate::repo::LoadSlot;
 use crate::workspace::Workspace;

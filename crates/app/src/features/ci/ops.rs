@@ -14,7 +14,7 @@ use gpui::{AppContext, Context, ScrollStrategy};
 use super::state::{
     CiStore, CiView, Field, LOG_ANIM, LogAnim, LogState, MAX_ANIM_ROWS, PipelineTab,
 };
-use super::target::Target;
+use crate::features::accounts::Target;
 use crate::features::accounts::{Account, RepoAccounts};
 use crate::repo::spawn_load;
 

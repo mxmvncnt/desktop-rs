@@ -10,9 +10,9 @@ use super::job_view::JobView;
 use super::pipeline_row::{ROW_HEIGHT, columns_header, pipeline_row};
 use super::pipeline_view::PipelineView;
 use super::pipelines_header::PipelinesHeader;
-use super::problem_view::ProblemView;
 use super::state::{CiStore, CiView};
-use crate::components::list;
+use crate::components::{ProblemView, list};
+use crate::features::accounts::Subject;
 use crate::workspace::Workspace;
 
 #[derive(IntoElement)]
@@ -28,10 +28,16 @@ impl RenderOnce for CiPage {
             None => empty_state("Looking for the account…", cx)
                 .flex_1()
                 .into_any_element(),
-            Some(Err(problem)) => ProblemView {
-                problem: problem.clone(),
-                ws: self.ws.clone(),
-            }
+            Some(Err(problem)) => ProblemView::new(
+                problem.clone(),
+                Subject::Pipelines,
+                ci.refreshing,
+                self.ws.clone(),
+                {
+                    let ws = self.ws.clone();
+                    move |_, cx| ws.update(cx, |ws, cx| ws.sync_ci(cx))
+                },
+            )
             .into_any_element(),
             Some(Ok(_)) => match ci.view {
                 CiView::List => self.pipelines(cx).into_any_element(),
@@ -75,10 +81,16 @@ impl CiPage {
         let count = ci.pipelines.len();
         if count == 0 {
             return match (&ci.list_error, ci.loading) {
-                (Some(problem), _) => ProblemView {
-                    problem: problem.clone(),
-                    ws: self.ws.clone(),
-                }
+                (Some(problem), _) => ProblemView::new(
+                    problem.clone(),
+                    Subject::Pipelines,
+                    ci.refreshing,
+                    self.ws.clone(),
+                    {
+                        let ws = self.ws.clone();
+                        move |_, cx| ws.update(cx, |ws, cx| ws.sync_ci(cx))
+                    },
+                )
                 .into_any_element(),
                 (None, true) => empty_state("Loading pipelines…", cx)
                     .flex_1()
@@ -153,7 +165,7 @@ impl CiPage {
             .flex_col()
             .px(px(18.0))
             .children(ci.list_error.as_ref().map(|problem| {
-                let (title, body) = problem.describe();
+                let (title, body) = problem.describe(Subject::Pipelines);
                 div()
                     .px(px(10.0))
                     .py(px(6.0))

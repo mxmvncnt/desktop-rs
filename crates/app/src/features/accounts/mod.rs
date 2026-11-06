@@ -21,6 +21,7 @@ mod secrets;
 pub mod snapshot;
 mod state;
 mod status_text;
+mod target;
 mod token;
 
 pub use accounts_page::AccountsPage;
@@ -29,4 +30,5 @@ pub use repo_account::{RepoAccounts, account_for_repo};
 pub use repo_account_block::RepoAccountBlock;
 pub use repo_identity::RepoIdentity;
 pub use state::AccountsStore;
+pub use target::{Problem, Subject, Target};
 pub use token::fresh_token;

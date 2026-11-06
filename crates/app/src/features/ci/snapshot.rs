@@ -11,7 +11,7 @@ use gpui::{Context, ScrollStrategy, Window};
 
 use super::ops::visible_lines;
 use super::state::{CiStore, CiView, PipelineTab};
-use super::target::{Problem, Target};
+use crate::features::accounts::{Problem, Target};
 use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
 use crate::features::settings::ThemeMode;
 use crate::snapshot::View;

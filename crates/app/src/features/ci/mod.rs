@@ -19,14 +19,12 @@ mod pipeline_row;
 mod pipeline_view;
 mod pipelines_header;
 mod polling;
-mod problem_view;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
 mod stage_column;
 mod stage_dots;
 mod state;
 mod status_badge;
-mod target;
 
 pub use ci_page::CiPage;
 pub use state::{CiEvent, CiInputs, CiStore, Field};

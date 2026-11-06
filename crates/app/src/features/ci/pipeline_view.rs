@@ -8,13 +8,14 @@ use gpui::{
 };
 
 use super::actions::CiAction;
-use super::breadcrumbs::Breadcrumbs;
+use super::breadcrumbs::breadcrumbs;
 use super::duration::duration_text;
 use super::jobs_table::JobsTable;
-use super::problem_view::ProblemView;
 use super::stage_column::stage_column;
 use super::state::{CiStore, PipelineTab};
 use super::status_badge::status_badge;
+use crate::components::ProblemView;
+use crate::features::accounts::Subject;
 use crate::utils::text::relative_time;
 use crate::workspace::Workspace;
 
@@ -31,11 +32,17 @@ impl RenderOnce for PipelineView {
         let ci = self.store.read(cx);
         let Some(detail) = ci.details.get(&self.id).cloned() else {
             return match &ci.detail_error {
-                Some(problem) => ProblemView {
-                    problem: problem.clone(),
-                    ws: self.ws,
+                Some(problem) => {
+                    let ws = self.ws.clone();
+                    ProblemView::new(
+                        problem.clone(),
+                        Subject::Pipelines,
+                        ci.refreshing,
+                        self.ws,
+                        move |_, cx| ws.update(cx, |ws, cx| ws.sync_ci(cx)),
+                    )
+                    .into_any_element()
                 }
-                .into_any_element(),
                 None => empty_state("Loading pipeline…", cx)
                     .flex_1()
                     .into_any_element(),
@@ -193,11 +200,7 @@ impl RenderOnce for PipelineView {
             .min_h_0()
             .flex()
             .flex_col()
-            .child(Breadcrumbs {
-                store: store.clone(),
-                pipeline: p.number,
-                job: None,
-            })
+            .child(breadcrumbs(&store, p.number, None))
             .child(
                 div()
                     .flex()

@@ -15,6 +15,7 @@ use gpui::{
 use super::ansi::ansi_color;
 use super::duration::format_duration;
 use super::state::{CiStore, LOG_ANIM};
+use crate::features::accounts::Subject;
 use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
 use crate::workspace::Workspace;
 
@@ -39,7 +40,7 @@ impl RenderOnce for LogView {
         let state = &ci.log;
         let body = match (&state.log, &state.error) {
             (None, Some(problem)) => {
-                let (title, text) = problem.describe();
+                let (title, text) = problem.describe(Subject::Pipelines);
                 let store = self.store.clone();
                 let job = self.job;
                 div()

@@ -5,7 +5,7 @@ use gd_ui::{Theme, empty_state};
 use gpui::{App, Entity, IntoElement, ParentElement, RenderOnce, Styled, Window, div};
 
 use super::actions::job_actions;
-use super::breadcrumbs::Breadcrumbs;
+use super::breadcrumbs::breadcrumbs;
 use super::job_sidebar::JobSidebar;
 use super::log_view::LogView;
 use super::state::CiStore;
@@ -44,11 +44,7 @@ impl RenderOnce for JobView {
             .min_h_0()
             .flex()
             .flex_col()
-            .child(Breadcrumbs {
-                store: self.store.clone(),
-                pipeline: number,
-                job: Some(job.name.clone()),
-            })
+            .child(breadcrumbs(&self.store, number, Some(job.name.clone())))
             .child(
                 div()
                     .flex_1()
