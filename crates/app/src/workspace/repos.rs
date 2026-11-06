@@ -65,6 +65,9 @@ impl Workspace {
         if self.ci.read(cx).open {
             self.sync_ci(cx);
         }
+        if self.pulls.read(cx).open {
+            self.sync_pulls(cx);
+        }
     }
 
     fn on_repo_event(&mut self, ev: &RepoEvent, cx: &mut Context<Self>) {

@@ -10,6 +10,7 @@ pub mod merge;
 pub mod notices;
 pub mod pickers;
 pub mod pr_preview;
+pub mod pulls;
 pub mod repo_settings;
 pub mod settings;
 pub mod stashes;

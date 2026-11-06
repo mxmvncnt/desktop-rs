@@ -10,6 +10,7 @@ use crate::features::diff::{DiffSelectUi, DiffView};
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
 use crate::features::pickers::PopoverStore;
+use crate::features::pulls::PullsStore;
 use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::settings::{Settings, SettingsPage};
 use crate::features::stashes::StashUi;
@@ -36,6 +37,8 @@ pub struct Workspace {
     pub ci: Entity<CiStore>,
     /// The filter inputs of the pipelines list.
     pub ci_inputs: CiInputs,
+    /// The pull requests page (features/pulls); replaces the body while `open`.
+    pub pulls: Entity<PullsStore>,
     pub repo: Option<Entity<RepoModel>>,
     /// Open menus, dialogs, popovers and the settings modal (`overlay.rs`).
     pub overlays: Vec<Overlay>,

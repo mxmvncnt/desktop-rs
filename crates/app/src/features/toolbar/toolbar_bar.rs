@@ -19,6 +19,7 @@ pub struct Toolbar {
     remote: RemoteButton,
     popover: Option<Popover>,
     ci_open: bool,
+    pulls_open: bool,
 }
 
 impl Toolbar {
@@ -36,6 +37,7 @@ impl Toolbar {
             remote: RemoteButton::for_repo(repo),
             popover: ws.popover(),
             ci_open: ws.ci.read(cx).open,
+            pulls_open: ws.pulls.read(cx).open,
         }
     }
 }
@@ -74,6 +76,7 @@ impl RenderOnce for Toolbar {
                 div().id("titlebar-drag").flex_1().h_full(),
                 chrome,
             ))
+            .child(self.pulls_button())
             .child(self.ci_button())
             .child(self.settings_button())
             .children(
@@ -143,6 +146,21 @@ impl Toolbar {
                 ws.update(cx, |this, cx| this.open_remote_menu(x, w, cx))
             }),
         )
+    }
+
+    fn pulls_button(&self) -> impl IntoElement + use<> {
+        let ws = self.ws.clone();
+        div()
+            .id("toolbar-pulls-wrap")
+            .tooltip(gd_ui::tooltip(format!(
+                "Pull requests ({}+Shift+R)",
+                crate::platform::SECONDARY_LABEL
+            )))
+            .child(
+                icon_button("toolbar-pulls", Icon::PullRequest)
+                    .selected(self.pulls_open)
+                    .on_click(move |_, _, cx| ws.update(cx, |this, cx| this.toggle_pulls(cx))),
+            )
     }
 
     fn ci_button(&self) -> impl IntoElement + use<> {

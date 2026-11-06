@@ -17,6 +17,8 @@ pub struct Target {
     pub branch: Option<String>,
     pub account_id: String,
     pub account_name: String,
+    /// The account's login, what `@me` stands for.
+    pub username: String,
     pub host: String,
 }
 
@@ -144,6 +146,7 @@ impl Target {
             branch,
             account_id: account.id.clone(),
             account_name: account.name.clone(),
+            username: account.username.clone(),
         })
     }
 }

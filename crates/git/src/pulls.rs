@@ -24,7 +24,7 @@ pub struct PullCheckout {
     pub pull_ref: String,
     /// Local branch to create or switch to.
     pub branch: String,
-    /// The head branch on the remote, tracked by `branch`; `None` for a fork (nothing to track here).
+    /// The head branch on the tracking remote, which `branch` tracks; `None` for a fork (nothing to track here).
     pub upstream: Option<String>,
 }
 
@@ -82,9 +82,18 @@ impl Repository {
     /// else it is only switched to, so local commits on it are kept.
     pub fn checkout_pull(&self, c: &PullCheckout) -> Result<()> {
         let local = format!("refs/heads/{}", c.branch);
+        let upstream = match &c.upstream {
+            Some(branch) => {
+                let remote = self
+                    .tracking_remote()
+                    .ok_or_else(|| GitError::Invalid("This repository has no remote.".into()))?;
+                Some(format!("{remote}/{branch}"))
+            }
+            None => None,
+        };
         if self.rev_parse(&local).is_err() {
             let cmd = self.git().args(["checkout", "-q", "-b", &c.branch]);
-            return match &c.upstream {
+            return match &upstream {
                 Some(upstream) => cmd.args(["--track", upstream]),
                 None => cmd.args(["--no-track", &c.pull_ref]),
             }
@@ -99,7 +108,7 @@ impl Repository {
             self.git()
                 .args(["checkout", "-q", "-B", &c.branch, &c.pull_ref])
                 .exec()?;
-            if let Some(upstream) = &c.upstream {
+            if let Some(upstream) = &upstream {
                 self.git()
                     .args(["branch", "-q", "--set-upstream-to", upstream, &c.branch])
                     .exec()?;

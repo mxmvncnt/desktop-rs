@@ -22,6 +22,8 @@ pub struct DiffDetail {
     /// The commit or stash sha, or PR merge base, that `files` belong to. Lags
     /// behind the selection while a load is in flight, so a pane switches in one go.
     pub base: Option<String>,
+    /// What `files` lead to from `base` in the review pane (a pull request head or commit); the others diff to HEAD or need none.
+    pub head: Option<String>,
     pub diff: Option<Arc<Diff>>,
     /// Path of the file `diff` was loaded for.
     pub path: Option<String>,
@@ -39,6 +41,7 @@ impl DiffDetail {
         self.selected = None;
         self.stats = LineStats::default();
         self.base = None;
+        self.head = None;
         self.diff = None;
         self.path = None;
         self.hl = None;
@@ -48,11 +51,12 @@ impl DiffDetail {
 }
 
 impl DiffPane {
-    /// Diff of `file` within `base` (commit or stash sha, PR merge base).
+    /// Diff of `file` within `base` (commit or stash sha, PR merge base), to `head` in the review pane.
     pub(crate) fn file_diff(
         self,
         repo: &Repository,
         base: &str,
+        head: Option<&str>,
         file: &FileChange,
         opts: DiffOptions,
     ) -> gd_git::Result<Diff> {
@@ -60,7 +64,9 @@ impl DiffPane {
             Self::Changes => repo.working_diff(file, opts),
             Self::Commit => repo.commit_diff(base, file, opts),
             Self::Stash => repo.stash_diff(base, file),
-            Self::Pr | Self::ForcePush => repo.compare_file_diff(base, "HEAD", file, opts),
+            Self::Pr | Self::ForcePush | Self::Review => {
+                repo.compare_file_diff(base, head.unwrap_or("HEAD"), file, opts)
+            }
         }
     }
 }
@@ -73,6 +79,7 @@ impl RepoModel {
             DiffPane::Stash => &self.stashes.detail,
             DiffPane::Pr => &self.pr.detail,
             DiffPane::ForcePush => &self.force_push.detail,
+            DiffPane::Review => &self.review,
         }
     }
 
@@ -83,6 +90,7 @@ impl RepoModel {
             DiffPane::Stash => &mut self.stashes.detail,
             DiffPane::Pr => &mut self.pr.detail,
             DiffPane::ForcePush => &mut self.force_push.detail,
+            DiffPane::Review => &mut self.review,
         }
     }
 
@@ -150,7 +158,7 @@ impl RepoModel {
                     _ => (repo.commit_files(&sha)?, repo.commit_stats(&sha)?),
                 };
                 let first = match files.first() {
-                    Some(f) => Some((pane.file_diff(repo, &sha, f, opts)?, f.path.clone())),
+                    Some(f) => Some((pane.file_diff(repo, &sha, None, f, opts)?, f.path.clone())),
                     None => None,
                 };
                 Ok((files, stats, first))
@@ -168,11 +176,17 @@ impl RepoModel {
         let (Some(base), Some(file)) = (detail.base.clone(), detail.files.get(ix).cloned()) else {
             return;
         };
+        let head = detail.head.clone();
         detail.selected = Some(ix);
         let opts = self.diff_options;
         self.load(
             move |this| &mut this.detail_mut(pane).load,
-            move |repo| Ok((pane.file_diff(repo, &base, &file, opts)?, file.path)),
+            move |repo| {
+                Ok((
+                    pane.file_diff(repo, &base, head.as_deref(), &file, opts)?,
+                    file.path,
+                ))
+            },
             move |this, d, cx| this.show_diff(pane, Some(d), cx),
             cx,
         );

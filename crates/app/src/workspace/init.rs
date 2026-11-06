@@ -18,6 +18,7 @@ use crate::features::ci::{CiEvent, CiInputs, CiStore, Field};
 use crate::features::history::HistoryUi;
 use crate::features::merge::MergeUi;
 use crate::features::pickers::PopoverStore;
+use crate::features::pulls::{PullsEvent, PullsStore};
 use crate::features::repo_settings::RepoSettingsStore;
 use crate::features::settings::{Settings, ThemeMode};
 use crate::features::stashes::StashUi;
@@ -59,6 +60,16 @@ impl Workspace {
                 },
             ));
         }
+        let pulls = cx.new(|cx| PullsStore::new(cx));
+        subs.push(cx.observe(&pulls, |_, _, cx| cx.notify()));
+        subs.push(cx.subscribe(&pulls, |this, _, ev: &PullsEvent, cx| {
+            this.on_pulls_event(ev, cx)
+        }));
+        // The comment buttons are enabled by what the boxes hold.
+        let i = &pulls.read(cx).inputs;
+        for input in [i.comment.clone(), i.line.clone(), i.reply.clone()] {
+            subs.push(cx.observe(&input, |_, _, cx| cx.notify()));
+        }
         subs.extend(window_subscriptions(window, cx));
 
         let mut this = Self {
@@ -69,6 +80,7 @@ impl Workspace {
             repo_settings,
             ci,
             ci_inputs,
+            pulls,
             repo: None,
             overlays: Vec::new(),
             overlay_gen: 0,

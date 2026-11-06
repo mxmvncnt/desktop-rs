@@ -18,7 +18,7 @@ impl RepoModel {
                 let preview = repo.force_push_preview()?;
                 let first = match preview.files.first() {
                     Some(f) => Some((
-                        DiffPane::ForcePush.file_diff(&repo, &preview.remote_tip, f, opts)?,
+                        DiffPane::ForcePush.file_diff(&repo, &preview.remote_tip, None, f, opts)?,
                         f.path.clone(),
                     )),
                     None => None,

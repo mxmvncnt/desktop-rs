@@ -14,6 +14,7 @@ mod gutter;
 mod handlers;
 mod highlight;
 mod list;
+mod notes;
 mod options;
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
@@ -23,5 +24,6 @@ mod view;
 
 pub use gutter::LineSelection;
 pub use highlight::{DiffHighlight, HighlightCache, highlight_diff};
+pub use notes::RowNotes;
 pub use options::{DiffOptionsButton, DiffOptionsMenu};
 pub use state::{DiffPane, DiffSelectUi, DiffView};

@@ -2,8 +2,8 @@
 
 use gd_ui::{Theme, theme::DIFF_ROW_HEIGHT};
 use gpui::{
-    AnyElement, App, InteractiveElement, IntoElement, ListState, SharedString, Styled,
-    UniformListScrollHandle, list, px, uniform_list,
+    AnyElement, App, InteractiveElement, IntoElement, ListState, ParentElement, SharedString,
+    Styled, UniformListScrollHandle, div, list, px, uniform_list,
 };
 
 /// A `uniform_list` when rows are one line tall, or (`wrap`) a `list` whose
@@ -17,12 +17,17 @@ pub fn rows_list(
     render: impl Fn(usize, &Theme, &App) -> AnyElement + 'static,
 ) -> AnyElement {
     match wrap {
-        Some(state) => list(state, move |ix, _w, cx| render(ix, Theme::of(cx), cx))
-            .size_full()
-            .font_family(mono)
-            .text_size(px(12.0))
-            .line_height(px(DIFF_ROW_HEIGHT))
-            .into_any_element(),
+        // `list` lays each row out as its own root, so the rows don't inherit its text style: each gets it itself.
+        Some(state) => list(state, move |ix, _w, cx| {
+            div()
+                .font_family(mono.clone())
+                .text_size(px(12.0))
+                .line_height(px(DIFF_ROW_HEIGHT))
+                .child(render(ix, Theme::of(cx), cx))
+                .into_any_element()
+        })
+        .size_full()
+        .into_any_element(),
         None => {
             let mut list = uniform_list(id, n, move |range, _w, cx| {
                 let theme = Theme::of(cx);

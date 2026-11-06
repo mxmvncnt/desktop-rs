@@ -117,6 +117,7 @@ fn fill(ci: &mut CiStore, view: &str) {
         branch: Some("main".into()),
         account_id: "1".into(),
         account_name: "Work".into(),
+        username: "ada".into(),
         host: "gitlab.example.com".into(),
     }));
     let details = sample_pipelines();

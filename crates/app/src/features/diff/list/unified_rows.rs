@@ -14,6 +14,7 @@ use crate::features::diff::gutter::NumberCell;
 use crate::features::diff::gutter::{BlockRow, RowSelect};
 use crate::features::diff::gutter::{HANDLE_W, number_cell_w};
 use crate::features::diff::highlight::{DiffHighlight, line_text};
+use crate::features::diff::notes::RowNotes;
 use crate::features::diff::text_selection::TextSide;
 use crate::features::diff::text_selection::{TextSelect, TextTarget};
 use crate::repo::RepoModel;
@@ -27,6 +28,7 @@ pub struct UnifiedRows<'a> {
     pub num_w: Pixels,
     pub flow: TextFlow,
     pub tsel: &'a TextSelect,
+    pub notes: Option<&'a RowNotes>,
     pub theme: &'a Theme,
 }
 
@@ -159,8 +161,8 @@ impl UnifiedRows<'_> {
                     theme,
                 ))
             })
-            .child(
-                NumberCell {
+            .child({
+                let cell = NumberCell {
                     select: self.sel,
                     diff,
                     row: Some(ix),
@@ -170,8 +172,12 @@ impl UnifiedRows<'_> {
                     edges: [false, true],
                     theme,
                 }
-                .build(),
-            )
+                .build();
+                match self.notes {
+                    Some(n) if line.kind != DiffLineKind::Hunk => n.pick_cell(ix, cell),
+                    _ => cell,
+                }
+            })
             .child(marker_cell(look.marker, look.marker_color, None))
             .child(match target {
                 Some(t) => self.tsel.bind_text(text_cell(text, look.fg, self.flow), t),

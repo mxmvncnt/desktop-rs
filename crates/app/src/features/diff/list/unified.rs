@@ -1,5 +1,6 @@
 //! The virtualized list of a unified diff.
 
+use std::rc::Rc;
 use std::sync::Arc;
 
 use gd_git::Diff;
@@ -13,6 +14,7 @@ use super::unified_rows::UnifiedRows;
 use crate::features::diff::expand::Expander;
 use crate::features::diff::gutter::RowSelect;
 use crate::features::diff::highlight::DiffHighlight;
+use crate::features::diff::notes::RowNotes;
 use crate::features::diff::text_selection::TextSelect;
 
 #[derive(IntoElement)]
@@ -28,6 +30,7 @@ pub struct UnifiedList {
     pub wrap: Option<ListState>,
     pub flow: TextFlow,
     pub tsel: TextSelect,
+    pub notes: Option<Rc<RowNotes>>,
     pub mono: SharedString,
 }
 
@@ -44,6 +47,7 @@ impl RenderOnce for UnifiedList {
             wrap,
             flow,
             tsel,
+            notes,
             mono,
         } = self;
         rows_list(
@@ -54,7 +58,7 @@ impl RenderOnce for UnifiedList {
             mono,
             move |ix, theme, cx| {
                 let sel = select.as_ref().map(|s| (s, s.repo.read(cx)));
-                UnifiedRows {
+                let row = UnifiedRows {
                     diff: &diff,
                     hl: hl.as_deref(),
                     sel,
@@ -62,9 +66,14 @@ impl RenderOnce for UnifiedList {
                     num_w,
                     flow,
                     tsel: &tsel,
+                    notes: notes.as_deref(),
                     theme,
                 }
-                .row(ix)
+                .row(ix);
+                match &notes {
+                    Some(n) if ix < diff.lines.len() => n.wrap(row, &[ix], cx),
+                    _ => row,
+                }
             },
         )
     }

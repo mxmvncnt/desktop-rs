@@ -13,6 +13,7 @@ use crate::features::diff::expand::{Expander, header_hunk, trailing_row};
 use crate::features::diff::gutter::NumberCell;
 use crate::features::diff::gutter::{BlockRow, RowSelect};
 use crate::features::diff::highlight::{DiffHighlight, line_text};
+use crate::features::diff::notes::RowNotes;
 use crate::features::diff::text_selection::TextSide;
 use crate::features::diff::text_selection::{TextSelect, TextTarget};
 use crate::repo::RepoModel;
@@ -28,6 +29,7 @@ pub struct SplitRows<'a> {
     pub exp_w: Pixels,
     pub flow: TextFlow,
     pub tsel: &'a TextSelect,
+    pub notes: Option<&'a RowNotes>,
     pub theme: &'a Theme,
 }
 
@@ -78,8 +80,8 @@ impl SplitRows<'_> {
         let (left, right) = (some(row.left), some(row.right));
         let old_no = left.and_then(|i| diff.lines[i].old_line);
         let new_no = right.and_then(|i| diff.lines[i].new_line);
-        let cell = |row, numbers, id, edges| {
-            NumberCell {
+        let cell = |row: Option<usize>, numbers, id, edges| {
+            let cell = NumberCell {
                 select: sel,
                 diff,
                 row,
@@ -89,7 +91,11 @@ impl SplitRows<'_> {
                 edges,
                 theme,
             }
-            .build()
+            .build();
+            match (self.notes, row) {
+                (Some(n), Some(line)) => n.pick_cell(line, cell),
+                _ => cell,
+            }
         };
         el.child(cell(left, &[old_no], ("old-no", ix), [true, false]))
             .when_some(sel, |d, (s, r)| {

@@ -61,7 +61,10 @@ impl Render for Workspace {
             )
             .on_mouse_up(
                 MouseButton::Navigate(NavigationDirection::Forward),
-                cx.listener(|this, _, _, cx| this.forward_ci(cx)),
+                cx.listener(|this, _, _, cx| {
+                    this.forward_ci(cx);
+                    this.forward_pulls(cx);
+                }),
             )
             .key_context(match self.overlays.last() {
                 None | Some(Overlay::Popover(_)) => WORKSPACE,
@@ -99,6 +102,15 @@ impl Workspace {
                 ws: cx.entity(),
             });
             return motion::fade_quick("ci-page-in", page).into_any_element();
+        }
+        if self.pulls.read(cx).open {
+            let page = div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(self.render_pulls_page(cx));
+            return motion::fade_quick("pulls-page-in", page).into_any_element();
         }
         // Cached so a scroll in one pane doesn't rebuild the other (see `pane_view.rs`).
         let sidebar = StyleRefinement::default()

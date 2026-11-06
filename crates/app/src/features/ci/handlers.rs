@@ -12,6 +12,7 @@ impl Workspace {
             self.ci.update(cx, |ci, cx| ci.close(cx));
         } else {
             self.overlays.clear();
+            self.pulls.update(cx, |p, cx| p.close(cx));
             self.sync_ci(cx);
         }
         cx.notify();

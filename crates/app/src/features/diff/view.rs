@@ -1,6 +1,7 @@
 //! `Workspace::render_diff`: the entry point every pane (changes, history,
 //! stashes) calls to show a diff.
 
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -57,10 +58,21 @@ impl Workspace {
         let split = self.settings.diff_split.then(|| self.split_for(&diff));
         let trailing = usize::from(exp.is_some() && Expander::has_trailing(&diff));
         let n = split.as_ref().map_or(diff.lines.len(), |s| s.rows.len()) + trailing;
-        let wrap_list = wrap.then(|| {
+        let notes = (pane == DiffPane::Review)
+            .then(|| self.review_notes(&diff, cx))
+            .flatten()
+            .map(Rc::new);
+        // Rows with notes grow by their blocks: only the variable-height list can draw them.
+        let wrap_list = (wrap || notes.is_some()).then(|| {
             self.diff_view
                 .wrap_list_for(&diff, split.is_some(), n, new_key)
         });
+        if let (Some(list), Some(n)) = (&wrap_list, &notes)
+            && self.diff_view.notes_key != Some(n.key)
+        {
+            self.diff_view.notes_key = Some(n.key);
+            list.remeasure();
+        }
         let truncated = diff.truncated;
         let mono = theme.font_mono.clone();
         let scroll = self.diff_scroll.clone();
@@ -82,6 +94,7 @@ impl Workspace {
                     wrap: wrap_list,
                     flow,
                     tsel,
+                    notes,
                     mono,
                 }
                 .into_any_element()
@@ -99,6 +112,7 @@ impl Workspace {
                     wrap: wrap_list,
                     flow,
                     tsel,
+                    notes,
                     mono,
                 }
                 .into_any_element()

@@ -150,6 +150,8 @@ pub struct RepoModel {
     /// Pull-request preview (see `features/pr_preview`).
     pub pr: crate::features::pr_preview::PrPreviewState,
     pub force_push: crate::features::force_push::ForcePushState,
+    /// Files and diff of the pull request open on the pull requests page (`DiffPane::Review`).
+    pub review: super::DiffDetail,
     /// Merge / rebase / conflict state (see `features/merge/`).
     pub merge: crate::features::merge::MergeState,
 }
@@ -188,6 +190,7 @@ impl RepoModel {
             stashes: Default::default(),
             pr: Default::default(),
             force_push: Default::default(),
+            review: Default::default(),
             merge: Default::default(),
         }
     }

@@ -40,6 +40,7 @@ fn bind_commands(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<D
             cx.listener(|this, _: &OpenRepositorySettings, _, cx| this.open_repo_settings(cx)),
         )
         .on_action(cx.listener(|this, _: &ToggleCi, _, cx| this.toggle_ci(cx)))
+        .on_action(cx.listener(|this, _: &TogglePulls, _, cx| this.toggle_pulls(cx)))
         .on_action(cx.listener(|this, _: &Refresh, _, cx| this.refresh(cx)))
         .on_action(cx.listener(|this, _: &Commit, w, cx| this.commit(w, cx)))
         .on_action(cx.listener(|this, _: &CopyDiffText, _, cx| this.copy_diff_text(cx)))
@@ -70,10 +71,11 @@ fn bind_menu_keys(root: Stateful<Div>, cx: &mut Context<Workspace>) -> Stateful<
 }
 
 impl Workspace {
-    /// Esc and the mouse Back button: close the top overlay, else go back in the CI page, else leave the pull request preview.
+    /// Esc and the mouse Back button: close the top overlay, else go back in the CI or pull requests page, else leave the
+    /// pull request preview.
     pub(super) fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.overlays.is_empty() {
-            if !self.back_ci(cx) {
+            if !self.back_ci(cx) && !self.back_pulls(cx) {
                 self.close_pr_preview_key(cx);
             }
         } else {

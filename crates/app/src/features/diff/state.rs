@@ -26,6 +26,8 @@ pub struct DiffView {
     pub text_drag: bool,
     /// When the current diff (`Workspace::diff_key`) appeared, for its fade-in.
     pub shown: Instant,
+    /// `RowNotes::key` of the rows last measured.
+    pub(super) notes_key: Option<u64>,
 }
 
 impl Default for DiffView {
@@ -39,6 +41,7 @@ impl Default for DiffView {
             text_sel: None,
             text_drag: false,
             shown: Instant::now(),
+            notes_key: None,
         }
     }
 }
@@ -143,4 +146,6 @@ pub enum DiffPane {
     Pr,
     /// Force push preview (remote tip -> HEAD): view only.
     ForcePush,
+    /// A pull request of the forge (`DiffDetail::head` against its merge base), or one of its commits: lines can be commented.
+    Review,
 }

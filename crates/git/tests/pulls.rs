@@ -74,7 +74,7 @@ fn fetch_and_checkout_a_pull_request() {
     repo.checkout_pull(&PullCheckout {
         pull_ref: "refs/pull/7/head".into(),
         branch: "topic".into(),
-        upstream: Some("origin/topic".into()),
+        upstream: Some("topic".into()),
     })
     .unwrap();
     assert_eq!(
@@ -91,7 +91,7 @@ fn fetch_and_checkout_a_pull_request() {
     repo.checkout_pull(&PullCheckout {
         pull_ref: "refs/pull/7/head".into(),
         branch: "topic".into(),
-        upstream: Some("origin/topic".into()),
+        upstream: Some("topic".into()),
     })
     .unwrap();
     assert_eq!(sh(&work, &["rev-parse", "HEAD"]), local);

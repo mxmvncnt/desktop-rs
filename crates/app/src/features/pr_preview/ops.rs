@@ -82,7 +82,7 @@ impl RepoModel {
                 let cmp = repo.compare(&b, "HEAD")?;
                 let first = match cmp.files.first() {
                     Some(f) => Some((
-                        DiffPane::Pr.file_diff(&repo, &cmp.merge_base, f, opts)?,
+                        DiffPane::Pr.file_diff(&repo, &cmp.merge_base, None, f, opts)?,
                         f.path.clone(),
                     )),
                     None => None,
