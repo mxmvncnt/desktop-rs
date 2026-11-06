@@ -122,6 +122,16 @@ impl Repository {
 
     /// Fetch URL of the current branch's remote (else `origin`, else the first remote).
     pub fn tracking_remote_url(&self) -> Option<String> {
+        let name = self.tracking_remote()?;
+        let remotes = self.remotes().ok()?;
+        remotes
+            .into_iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, u)| u)
+    }
+
+    /// The remote of the current branch's upstream, else `origin`, else the first remote.
+    pub fn tracking_remote(&self) -> Option<String> {
         let remotes = self.remotes().ok()?;
         let upstream_remote = self
             .git()
@@ -133,7 +143,7 @@ impl Repository {
             .and_then(|n| remotes.iter().find(|(r, _)| *r == n))
             .or_else(|| remotes.iter().find(|(n, _)| n == "origin"))
             .or(remotes.first())
-            .map(|(_, u)| u.clone())
+            .map(|(n, _)| n.clone())
     }
 
     // ---- operation state --------------------------------------------------
