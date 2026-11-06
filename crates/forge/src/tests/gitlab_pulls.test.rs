@@ -21,7 +21,10 @@ fn discussions_split_into_comments_and_threads() {
     assert_eq!(c.threads.len(), 1);
     let t = &c.threads[0];
     assert_eq!((t.id.as_str(), t.path.as_str()), ("d3", "src/lib.rs"));
-    assert_eq!((t.side, t.line, t.start_line), (Side::Right, Some(40), Some(38)));
+    assert_eq!(
+        (t.side, t.line, t.start_line),
+        (Side::Right, Some(40), Some(38))
+    );
     assert!(t.resolved);
     assert_eq!(t.comments.len(), 2);
 }
@@ -49,7 +52,10 @@ fn range_position_names_its_ends_by_line_code() {
     assert_eq!(pos["new_line"], 5);
     assert!(pos.get("old_line").is_none());
     let file = sha1_smol::Sha1::from("a.rs").hexdigest();
-    assert_eq!(pos["line_range"]["start"]["line_code"], format!("{file}_3_3"));
+    assert_eq!(
+        pos["line_range"]["start"]["line_code"],
+        format!("{file}_3_3")
+    );
     assert_eq!(pos["line_range"]["start"]["type"], serde_json::Value::Null);
     assert_eq!(pos["line_range"]["end"]["line_code"], format!("{file}__5"));
     assert_eq!(pos["line_range"]["end"]["type"], "new");

@@ -208,9 +208,9 @@ pub(crate) fn reply(
     thread: &Thread,
     body: &str,
 ) -> Result<()> {
-    let line = thread.line.ok_or(crate::Error::Unsupported(
-        "replying to an outdated thread",
-    ))?;
+    let line = thread
+        .line
+        .ok_or(crate::Error::Unsupported("replying to an outdated thread"))?;
     let pos = match thread.side {
         Side::Left => LinePos {
             old: Some(line),

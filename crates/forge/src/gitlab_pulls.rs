@@ -283,7 +283,11 @@ pub(crate) fn conversation_from(discussions: Vec<Discussion>) -> Conversation {
         let line = pos.new_line.or(pos.old_line);
         out.threads.push(Thread {
             id: d.id,
-            path: pos.new_path.clone().or(pos.old_path.clone()).unwrap_or_default(),
+            path: pos
+                .new_path
+                .clone()
+                .or(pos.old_path.clone())
+                .unwrap_or_default(),
             side,
             line,
             start_line: start
