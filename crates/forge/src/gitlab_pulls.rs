@@ -50,6 +50,24 @@ pub(crate) struct Mr {
     updated_at: Option<DateTime<Utc>>,
     web_url: String,
     diff_refs: Option<RefsJson>,
+    milestone: Option<MilestoneJson>,
+    detailed_merge_status: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct MilestoneJson {
+    title: String,
+}
+
+#[derive(Deserialize)]
+struct Approvals {
+    #[serde(default)]
+    approved_by: Vec<Approver>,
+}
+
+#[derive(Deserialize)]
+struct Approver {
+    user: UserJson,
 }
 
 #[derive(Deserialize)]
@@ -148,11 +166,18 @@ pub(crate) fn pull(c: &Client, repo: &RepoRef, number: u64) -> Result<PullReques
 }
 
 pub(crate) fn conversation(c: &Client, repo: &RepoRef, number: u64) -> Result<Conversation> {
-    let discussions: Vec<Discussion> = c.get_all(&format!(
-        "/projects/{}/merge_requests/{number}/discussions",
-        repo.gitlab_id()
-    ))?;
-    Ok(conversation_from(discussions))
+    let mr = format!("/projects/{}/merge_requests/{number}", repo.gitlab_id());
+    let discussions: Vec<Discussion> = c.get_all(&format!("{mr}/discussions"))?;
+    // Approvals are not in every edition's API; without them the reviewers have no verdict.
+    let approvals = c.get::<Approvals>(&format!("{mr}/approvals"), &[]).ok();
+    let mut out = conversation_from(discussions);
+    out.reviews = latest_verdicts(
+        approvals
+            .into_iter()
+            .flat_map(|a| a.approved_by)
+            .map(|a| (user(a.user), Verdict::Approved)),
+    );
+    Ok(out)
 }
 
 pub(crate) fn comment(c: &Client, repo: &RepoRef, number: u64, body: &str) -> Result<()> {
@@ -277,6 +302,21 @@ pub(crate) fn pull_from(m: Mr) -> PullRequest {
         updated_at: m.updated_at,
         web_url: m.web_url,
         diff_refs,
+        milestone: m.milestone.map(|m| m.title),
+        merge: (state == PullState::Open).then(|| {
+            match (m.draft, m.detailed_merge_status.as_deref()) {
+                (true, _) | (_, Some("draft_status")) => MergeStatus::Draft,
+                (_, Some("mergeable")) => MergeStatus::Mergeable,
+                (_, Some("conflict" | "broken_status")) => MergeStatus::Conflicts,
+                (_, Some("ci_must_pass" | "ci_still_running")) => MergeStatus::ChecksPending,
+                (_, Some("need_rebase")) => MergeStatus::Behind,
+                (_, Some("checking" | "unchecked" | "preparing" | "approvals_syncing") | None) => {
+                    MergeStatus::Checking
+                }
+                // not_approved, discussions_not_resolved, blocked_status, jira, …
+                _ => MergeStatus::Blocked,
+            }
+        }),
     }
 }
 

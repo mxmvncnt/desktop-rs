@@ -27,6 +27,8 @@ fn pull(author: &str, reviewers: &[&str], state: PullState) -> PullRequest {
         updated_at: None,
         web_url: String::new(),
         diff_refs: None,
+        milestone: None,
+        merge: None,
     }
 }
 

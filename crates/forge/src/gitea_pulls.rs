@@ -12,7 +12,7 @@ use crate::pull_model::*;
 use crate::pull_query::SortKey;
 use crate::repo_ref::RepoRef;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 struct UserJson {
     login: String,
     full_name: Option<String>,
@@ -55,6 +55,13 @@ pub(crate) struct Pull {
     created_at: Option<DateTime<Utc>>,
     updated_at: Option<DateTime<Utc>>,
     html_url: String,
+    milestone: Option<Milestone>,
+    mergeable: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct Milestone {
+    title: String,
 }
 
 #[derive(Deserialize)]
@@ -152,6 +159,15 @@ pub(crate) fn conversation(c: &Client, repo: &RepoRef, number: u64) -> Result<Co
             &[],
         )?);
     }
+    let verdicts = latest_verdicts(reviews.iter().filter_map(|r| {
+        let verdict = match r.state.as_str() {
+            "APPROVED" => Verdict::Approved,
+            "REQUEST_CHANGES" => Verdict::ChangesRequested,
+            "COMMENT" => Verdict::Commented,
+            _ => return None,
+        };
+        Some((user(r.user.clone()?), verdict))
+    }));
     let mut comments: Vec<Comment> = issue
         .into_iter()
         .map(|i| Comment {
@@ -167,6 +183,7 @@ pub(crate) fn conversation(c: &Client, repo: &RepoRef, number: u64) -> Result<Co
     Ok(Conversation {
         comments,
         threads: threads(lines),
+        reviews: verdicts,
     })
 }
 
@@ -267,6 +284,13 @@ pub(crate) fn pull_from(p: Pull) -> PullRequest {
         updated_at: p.updated_at,
         web_url: p.html_url,
         diff_refs: None,
+        milestone: p.milestone.map(|m| m.title),
+        merge: (state == PullState::Open).then_some(match (p.draft, p.mergeable) {
+            (true, _) => MergeStatus::Draft,
+            (_, Some(true)) => MergeStatus::Mergeable,
+            (_, Some(false)) => MergeStatus::Conflicts,
+            (_, None) => MergeStatus::Checking,
+        }),
     }
 }
 

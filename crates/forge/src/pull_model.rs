@@ -47,6 +47,54 @@ pub struct PullRequest {
     pub web_url: String,
     /// GitLab detail only.
     pub diff_refs: Option<DiffRefs>,
+    pub milestone: Option<String>,
+    /// Whether it can be merged; detail only (the lists don't compute it).
+    pub merge: Option<MergeStatus>,
+}
+
+/// What stands between an open pull request and its merge, as the forge reports it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MergeStatus {
+    Mergeable,
+    Conflicts,
+    /// Required reviews or other branch rules are missing.
+    Blocked,
+    /// Checks are failing or still running.
+    ChecksPending,
+    /// The base moved on: the head must be updated first.
+    Behind,
+    Draft,
+    /// Still being computed.
+    Checking,
+}
+
+/// A reviewer's latest say.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Verdict {
+    Approved,
+    ChangesRequested,
+    Commented,
+    Dismissed,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Review {
+    pub user: User,
+    pub verdict: Verdict,
+}
+
+/// The latest verdict of each reviewer from their reviews in time order. A comment after an approval
+/// or a change request doesn't undo it, like on GitHub.
+pub(crate) fn latest_verdicts(reviews: impl IntoIterator<Item = (User, Verdict)>) -> Vec<Review> {
+    let mut out: Vec<Review> = Vec::new();
+    for (user, verdict) in reviews {
+        match out.iter_mut().find(|r| r.user.username == user.username) {
+            Some(r) if verdict == Verdict::Commented && r.verdict != Verdict::Dismissed => {}
+            Some(r) => r.verdict = verdict,
+            None => out.push(Review { user, verdict }),
+        }
+    }
+    out
 }
 
 /// The side of a diff a review comment is on: the old file (deleted lines) or the new one.
@@ -121,6 +169,8 @@ pub struct Conversation {
     /// Oldest first.
     pub comments: Vec<Comment>,
     pub threads: Vec<Thread>,
+    /// One per reviewer who reviewed (GitLab: who approved).
+    pub reviews: Vec<Review>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -166,3 +216,7 @@ pub fn pull_ref(gitlab: bool, number: u64) -> String {
         format!("refs/pull/{number}/head")
     }
 }
+
+#[cfg(test)]
+#[path = "tests/pull_model.test.rs"]
+mod tests;

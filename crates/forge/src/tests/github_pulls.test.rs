@@ -51,3 +51,24 @@ fn search_results_have_no_branches() {
     assert_eq!(p.assignees, ["grace"]);
     assert_eq!(p.head_ref, None);
 }
+
+#[test]
+fn open_pull_merge_status() {
+    let mut json: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/github_pull.json")).unwrap();
+    json["merged_at"] = serde_json::Value::Null;
+    json["state"] = "open".into();
+    json["milestone"] = serde_json::json!({"title": "v2"});
+    for (state, status) in [
+        ("clean", MergeStatus::Mergeable),
+        ("dirty", MergeStatus::Conflicts),
+        ("blocked", MergeStatus::Blocked),
+        ("unstable", MergeStatus::ChecksPending),
+        ("unknown", MergeStatus::Checking),
+    ] {
+        json["mergeable_state"] = state.into();
+        let p = pull_from(serde_json::from_value(json.clone()).unwrap());
+        assert_eq!(p.merge, Some(status), "{state}");
+        assert_eq!(p.milestone.as_deref(), Some("v2"));
+    }
+}

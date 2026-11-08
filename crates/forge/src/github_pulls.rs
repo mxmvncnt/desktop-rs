@@ -11,7 +11,7 @@ use crate::pull_model::*;
 use crate::pull_query::{PullQuery, SortKey};
 use crate::repo_ref::RepoRef;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub(crate) struct UserJson {
     login: String,
     avatar_url: Option<String>,
@@ -36,6 +36,11 @@ struct Label {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct Milestone {
+    title: String,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct Pull {
     number: u64,
     title: String,
@@ -55,6 +60,8 @@ pub(crate) struct Pull {
     requested_reviewers: Vec<UserJson>,
     /// Detail only.
     comments: Option<u32>,
+    milestone: Option<Milestone>,
+    mergeable_state: Option<String>,
     created_at: Option<DateTime<Utc>>,
     updated_at: Option<DateTime<Utc>>,
     html_url: String,
@@ -201,6 +208,16 @@ pub(crate) fn conversation(c: &Client, repo: &RepoRef, number: u64) -> Result<Co
     let issue: Vec<IssueComment> = c.get_all(&format!("/repos/{path}/issues/{number}/comments"))?;
     let reviews: Vec<Review> = c.get_all(&format!("/repos/{path}/pulls/{number}/reviews"))?;
     let lines: Vec<ReviewComment> = c.get_all(&format!("/repos/{path}/pulls/{number}/comments"))?;
+    let verdicts = latest_verdicts(reviews.iter().filter_map(|r| {
+        let verdict = match r.state.as_str() {
+            "APPROVED" => Verdict::Approved,
+            "CHANGES_REQUESTED" => Verdict::ChangesRequested,
+            "COMMENTED" => Verdict::Commented,
+            "DISMISSED" => Verdict::Dismissed,
+            _ => return None,
+        };
+        Some((user(r.user.clone()?), verdict))
+    }));
     let mut comments: Vec<Comment> = issue
         .into_iter()
         .map(|i| Comment {
@@ -216,6 +233,7 @@ pub(crate) fn conversation(c: &Client, repo: &RepoRef, number: u64) -> Result<Co
     Ok(Conversation {
         comments,
         threads: threads(lines),
+        reviews: verdicts,
     })
 }
 
@@ -308,6 +326,17 @@ pub(crate) fn pull_from(p: Pull) -> PullRequest {
         updated_at: p.updated_at,
         web_url: p.html_url,
         diff_refs: None,
+        milestone: p.milestone.map(|m| m.title),
+        merge: match (state, p.draft, p.mergeable_state.as_deref()) {
+            (PullState::Open, true, _) => Some(MergeStatus::Draft),
+            (PullState::Open, _, Some("clean" | "has_hooks")) => Some(MergeStatus::Mergeable),
+            (PullState::Open, _, Some("dirty")) => Some(MergeStatus::Conflicts),
+            (PullState::Open, _, Some("blocked")) => Some(MergeStatus::Blocked),
+            (PullState::Open, _, Some("unstable")) => Some(MergeStatus::ChecksPending),
+            (PullState::Open, _, Some("behind")) => Some(MergeStatus::Behind),
+            (PullState::Open, _, Some(_)) => Some(MergeStatus::Checking),
+            _ => None,
+        },
     }
 }
 
@@ -336,6 +365,8 @@ pub(crate) fn search_item(i: SearchItem) -> PullRequest {
         updated_at: i.updated_at,
         web_url: i.html_url,
         diff_refs: None,
+        milestone: None,
+        merge: None,
     }
 }
 
