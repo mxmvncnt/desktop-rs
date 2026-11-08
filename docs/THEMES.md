@@ -37,6 +37,27 @@ descriptions):
 - `diff_empty_bg`: split view placeholder opposite an added or deleted line
 - `diff_gutter`: line number text (default `faint`)
 
+## Surface opacity
+
+When Settings > Appearance > Window background is Transparent or Blurred, the desktop shows
+through the app. A palette sets how much with `opacity`, from 0 (invisible) to 1 (opaque), per
+surface rather than per color. Every key is optional; these are the defaults:
+
+```json
+"opacity": { "bg": 1.0, "surface": 0.88, "card": 1.0, "overlay": 1.0, "raised": 1.0 }
+```
+
+- `bg`: diff plane, welcome screen and CI page
+- `surface`: toolbar and sidebar
+- `card`: cards and panels
+- `overlay`: popovers, menus, dialogs and tooltips
+- `raised`: chips and pills
+
+By default only the toolbar and sidebar let the desktop through, so content stays readable.
+Keep `overlay` at 1: menus and dialogs sit over the app itself, which the compositor does not
+blur. The blur strength is the compositor's (KDE: System Settings > Desktop Effects > Blur);
+the protocol has no radius. Opaque ignores these values. Hover washes, diff colors and other tints keep their own alpha.
+
 ## Commit type pills
 
 Commit titles that follow the conventional commit format show their type (`feat`, `fix`, ...)

@@ -9,7 +9,7 @@ use gpui::{Context, Entity, IntoElement, RenderOnce};
 use super::about_page::AboutPage;
 use super::appearance_page::AppearancePage;
 use super::diff_page::DiffPage;
-use super::{SettingsPage, ThemeMode};
+use super::{SettingsPage, ThemeMode, WindowBackground};
 use crate::components::{NavItem, SettingsShell};
 use crate::features::accounts::{AccountsPage, AccountsStore};
 use crate::workspace::Workspace;
@@ -19,6 +19,9 @@ pub struct SettingsModal {
     page: SettingsPage,
     theme: ThemeMode,
     color_theme: String,
+    background: WindowBackground,
+    background_menu: bool,
+    blur_supported: bool,
     ws: Entity<Workspace>,
     accounts: Entity<AccountsStore>,
 }
@@ -30,6 +33,9 @@ impl SettingsModal {
             page: ws.settings_page,
             theme: s.theme,
             color_theme: s.color_theme_id(ColorThemes::of(cx)).to_string(),
+            background: s.window_background,
+            background_menu: ws.background_menu,
+            blur_supported: ws.backdrop.blur_supported(),
             ws: cx.entity(),
             accounts: ws.accounts.clone(),
         }
@@ -54,6 +60,9 @@ impl RenderOnce for SettingsModal {
             SettingsPage::Appearance => AppearancePage {
                 mode: self.theme,
                 color_theme: self.color_theme.clone(),
+                background: self.background,
+                background_menu: self.background_menu,
+                blur_supported: self.blur_supported,
                 ws: self.ws.clone(),
             }
             .into_any_element(),

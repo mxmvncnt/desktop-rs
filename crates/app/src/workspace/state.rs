@@ -29,6 +29,8 @@ pub struct Workspace {
     /// Sidebar width changed by a drag and not yet saved.
     pub(crate) sidebar_width_dirty: bool,
     pub settings_page: SettingsPage,
+    /// The window background select of Settings > Appearance is open.
+    pub background_menu: bool,
     /// Git identity + provider accounts (features/accounts).
     pub accounts: Entity<AccountsStore>,
     /// The repository settings modal (features/repo_settings).
@@ -57,6 +59,8 @@ pub struct Workspace {
     /// Window corner radius for this frame (0 unless floating under CSD);
     /// layers touching a window corner round their own background with it.
     pub corner_radius: f32,
+    /// Transparent / blurred window background (platform code).
+    pub backdrop: crate::platform::Backdrop,
     /// Error shown when no repository is open (e.g. bad path on startup).
     pub startup_error: Option<String>,
 

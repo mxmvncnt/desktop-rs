@@ -1,7 +1,9 @@
 //! macOS: native window frame with a transparent titlebar, so the toolbar
 //! doubles as the titlebar and the traffic lights sit inside it.
 
+mod backdrop;
 mod chrome;
+pub use backdrop::Backdrop;
 pub use chrome::*;
 
 use gd_ui::theme::TOOLBAR_HEIGHT;

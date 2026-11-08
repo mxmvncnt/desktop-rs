@@ -157,6 +157,8 @@ fn fill(p: &mut PullsStore) {
         updated_at: Some(now - Duration::hours(hours)),
         web_url: format!("https://github.com/octo/repo/pull/{number}"),
         diff_refs: None,
+        milestone: None,
+        merge: None,
     }
     };
     p.pulls = vec![
@@ -235,6 +237,7 @@ fn conversation() -> Conversation {
                 ..comment(2, "linus", "", 3)
             },
         ],
+        reviews: Vec::new(),
         threads: vec![Thread {
             id: "10".into(),
             path: "README.md".into(),

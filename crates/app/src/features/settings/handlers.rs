@@ -3,9 +3,9 @@
 
 use gd_ui::Theme;
 use gd_ui::themes::ColorThemes;
-use gpui::{Context, Window};
+use gpui::{Context, Window, WindowBackgroundAppearance};
 
-use super::{SettingsPage, ThemeMode};
+use super::{SettingsPage, ThemeMode, WindowBackground};
 use crate::workspace::{Overlay, Workspace};
 
 impl Workspace {
@@ -44,7 +44,9 @@ impl Workspace {
         use gpui::WindowAppearance as A;
         let system_light = matches!(window.appearance(), A::Light | A::VibrantLight);
         let light = self.settings.theme.is_light(system_light);
-        let theme = Theme::for_family(self.settings.color_theme_id(ColorThemes::of(cx)), light, cx);
+        let translucent = self.background_appearance() != WindowBackgroundAppearance::Opaque;
+        let id = self.settings.color_theme_id(ColorThemes::of(cx));
+        let theme = Theme::for_family(id, light, translucent, cx);
         cx.set_global(theme);
         cx.notify();
     }
@@ -53,6 +55,34 @@ impl Workspace {
         self.settings.color_theme = id.to_string();
         self.settings.save();
         self.apply_theme(window, cx);
+    }
+
+    /// The window background in effect: Blurred falls back to Transparent where blur is unavailable.
+    pub fn background_appearance(&self) -> WindowBackgroundAppearance {
+        match self.settings.window_background {
+            WindowBackground::Opaque => WindowBackgroundAppearance::Opaque,
+            WindowBackground::Blurred if self.backdrop.blur_supported() => {
+                WindowBackgroundAppearance::Blurred
+            }
+            _ => WindowBackgroundAppearance::Transparent,
+        }
+    }
+
+    pub(super) fn set_window_background(
+        &mut self,
+        background: WindowBackground,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.settings.window_background = background;
+        self.background_menu = false;
+        self.settings.save();
+        self.apply_theme(window, cx);
+    }
+
+    pub(super) fn toggle_background_menu(&mut self, cx: &mut Context<Self>) {
+        self.background_menu = !self.background_menu;
+        cx.notify();
     }
 
     pub(super) fn set_theme_mode(

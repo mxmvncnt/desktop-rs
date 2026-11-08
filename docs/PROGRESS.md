@@ -25,6 +25,20 @@
 - The gpui headless tests (`cargo test -p desktop-rs --features snapshot`) panic on macOS ("Mac platform not created on main thread"):
   `cargo test` runs tests off the main thread. They only run on Linux.
 
+## Window transparency and blur (branch `feat/window-transparency`, 2026-11-05)
+
+- [x] Settings > Appearance > "Window background" select: Transparent, Blurred, Opaque (default), persisted as `window_background`.
+      Themes set the opacity of surfaces, not colors: optional `opacity` per palette (`bg`, `surface`, `card`, `overlay`, `raised`,
+      defaults 1 / 0.88 / 1 / 1 / 1: only the toolbar and sidebar are see-through, menus stay opaque since
+      in-app layers can't be blurred; the blur radius is up to the compositor), applied only when the background is not Opaque. Washes, diff colors and other
+      translucent tints are left as they are (too fine-grained to theme).
+- [x] Blur: macOS through gpui's native `NSVisualEffectView`; Linux/Wayland through `ext_background_effect_manager_v1`
+      (`platform/linux/backdrop.rs`). Without that global or its blur capability (GNOME, X11, snapshots), Blurred is greyed out in the
+      select and a saved Blurred falls back to Transparent. Snapshot views `settings-background-menu`, `transparent[-light][-settings]`.
+- The shared `components::Select` (from the account type dropdown) now also serves this; `BranchRow::disabled` greys a row.
+- Not verified: blur on a compositor that has the protocol (KWin 6.5+), macOS (never compiled), Windows (there is no
+  `platform/windows` module yet; gpui's `set_background_appearance` is the native path once one exists).
+
 ## Remote button dropdown (2026-11-03)
 
 - [x] When the toolbar remote button offers push / pull / force push / publish, a chevron beside it opens a menu with "Fetch <remote>",
@@ -72,7 +86,7 @@
 - [x] Seamless sign-in: built-in client ids in source, Gitea/Forgejo preregistered app, "Create token" fallback for GHE / self-managed GitLab, custom client id under "Advanced". github.com and gitlab.com have their built-in apps (`BUILTIN_CLIENT_IDS` in `accounts/model.rs`); own apps on codeberg.org / gitea.com are optional.
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
       (the per-repo override and account pick moved to repository settings), provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
-      add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the secret store (`accounts/secrets.rs`: `oo7` Secret Service on Linux, `keyring` native backends on macOS/Windows; if the store is unavailable they go to `<config>/secrets.toml`, 0600, and the page warns). Token input is not masked (gpui-ce
+      add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the secret store (`accounts/secrets.rs`: `oo7` Secret Service on Linux, one `keyring` item on macOS; if the store is unavailable they go to `<config>/secrets.toml`, 0600, and the page warns). Token input is not masked (gpui-ce
       `text_input` has no masking) and tokens are not validated online (no HTTP client dependency).
 - [x] Credentials wired: `gd_git::set_credentials` registers tokens; every `.network()` git command gets per-host
       `credential.https://<host>.helper` via `GIT_CONFIG_COUNT/KEY/VALUE` env (secret only in the child env). HTTPS only; SSH untouched.

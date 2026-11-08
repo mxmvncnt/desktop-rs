@@ -33,6 +33,8 @@ impl Render for Workspace {
         gd_ui::motion::begin_frame(cx);
         let chrome = Chrome::detect(window);
         self.corner_radius = chrome.radius();
+        self.backdrop
+            .update(self.background_appearance(), chrome, window);
         let body = self.body(cx);
         let overlays = self.overlays(cx);
         let in_progress = InProgressBanner::open(self, cx);
@@ -76,13 +78,12 @@ impl Render for Workspace {
             .flex()
             .flex_col()
             .relative()
-            .bg(theme.bg)
             .font_family(theme.font_sans.clone())
             .text_size(px(13.0))
             .text_color(theme.text)
             .rounded(px(chrome.radius()))
             .child(toolbar)
-            .children(in_progress)
+            .children(in_progress.map(|b| div().bg(theme.bg).child(b)))
             .child(body)
             .children(overlays);
         crate::platform::frame(root.into_any_element(), chrome, window, cx)
@@ -90,10 +91,22 @@ impl Render for Workspace {
 }
 
 impl Workspace {
-    /// Sidebar + main pane for the open repo, or the welcome screen.
+    /// Sidebar + main pane for the open repo, or the welcome screen. Each plane paints its own
+    /// background and none sits on another, so translucent surfaces (theme `opacity`) don't stack.
     fn body(&mut self, cx: &mut Context<Self>) -> AnyElement {
+        let theme = Theme::of(cx);
+        let radius = px(self.corner_radius);
+        let plane = div()
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .bg(theme.bg)
+            .rounded_b(radius);
         if self.repo.is_none() {
-            return WelcomeScreen { ws: cx.entity() }.into_any_element();
+            return plane
+                .child(WelcomeScreen { ws: cx.entity() })
+                .into_any_element();
         }
         // Opening and closing the CI page swap the body: whichever appears fades in (the one that goes is gone at once).
         if self.ci.read(cx).open {
@@ -101,7 +114,9 @@ impl Workspace {
                 store: self.ci.clone(),
                 ws: cx.entity(),
             });
-            return motion::fade_quick("ci-page-in", page).into_any_element();
+            return plane
+                .child(motion::fade_quick("ci-page-in", page))
+                .into_any_element();
         }
         if self.pulls.read(cx).open {
             let page = div()
@@ -110,21 +125,44 @@ impl Workspace {
                 .flex()
                 .flex_col()
                 .child(self.render_pulls_page(cx));
-            return motion::fade_quick("pulls-page-in", page).into_any_element();
+            return plane
+                .child(motion::fade_quick("pulls-page-in", page))
+                .into_any_element();
         }
         // Cached so a scroll in one pane doesn't rebuild the other (see `pane_view.rs`).
-        let sidebar = StyleRefinement::default()
+        // The backgrounds stay outside the fades, so the desktop never shows through mid-fade.
+        let full = || StyleRefinement::default().size_full();
+        let sidebar = div()
             .flex_none()
             .w(px(self.sidebar_width()))
-            .h_full();
-        let main = StyleRefinement::default().flex_1().min_w_0().h_full();
-        let body = div()
+            .h_full()
+            .bg(theme.surface)
+            .rounded_bl(radius)
+            .child(motion::fade_quick(
+                "sidebar-in",
+                div()
+                    .size_full()
+                    .child(self.sidebar_pane.clone().cached(full())),
+            ));
+        let main = div()
+            .flex_1()
+            .min_w_0()
+            .h_full()
+            .bg(theme.bg)
+            .rounded_br(radius)
+            .child(motion::fade_quick(
+                "main-in",
+                div()
+                    .size_full()
+                    .child(self.main_pane.clone().cached(full())),
+            ));
+        div()
             .flex()
             .flex_1()
             .min_h_0()
-            .child(self.sidebar_pane.clone().cached(sidebar))
-            .child(self.main_pane.clone().cached(main));
-        motion::fade_quick("body-in", body).into_any_element()
+            .child(sidebar)
+            .child(main)
+            .into_any_element()
     }
 
     /// Notice banner, then the open overlays in stack order (last paints on top).
