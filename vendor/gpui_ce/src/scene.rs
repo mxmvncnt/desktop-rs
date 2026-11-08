@@ -180,6 +180,11 @@ impl Scene {
                 .flatten()
                 .unwrap_or_else(|| self.primitive_bounds.insert(clipped_bounds))
         };
+        self.push_primitive(primitive, order);
+    }
+
+    /// Stores `primitive` with its draw `order` and records it for replay.
+    fn push_primitive(&mut self, mut primitive: Primitive, order: DrawOrder) {
         match &mut primitive {
             Primitive::Shadow(shadow) => {
                 shadow.order = order;
@@ -240,7 +245,61 @@ impl Scene {
     }
 
     pub fn replay(&mut self, range: Range<usize>, prev_scene: &Scene) {
-        for operation in &prev_scene.paint_operations[range] {
+        let operations = &prev_scene.paint_operations[range.clone()];
+        // A range recorded outside layers and filter groups keeps its draw orders, shifted above
+        // whatever this frame already painted under it: overlapping primitives inside it keep
+        // their stacking, and one entry for its bounds orders later primitives above it. This
+        // replaces a bounds-tree insert per primitive and per text line.
+        let shiftable = self.layer_stack.last().copied().flatten().is_none()
+            && !self.is_in_filter_group()
+            && operations.iter().all(|op| {
+                !matches!(
+                    op,
+                    PaintOperation::Primitive(
+                        Primitive::FilterBoundary(_) | Primitive::BackdropFilter(_)
+                    )
+                )
+            });
+        if shiftable {
+            let mut bounds: Option<Bounds<ScaledPixels>> = None;
+            let (mut min_order, mut max_order) = (DrawOrder::MAX, 0);
+            for operation in operations {
+                let op_bounds = match operation {
+                    PaintOperation::Primitive(primitive) => {
+                        min_order = min_order.min(primitive.order());
+                        max_order = max_order.max(primitive.order());
+                        primitive
+                            .bounds()
+                            .intersect(&primitive.content_mask().bounds)
+                    }
+                    PaintOperation::StartLayer(layer) => *layer,
+                    PaintOperation::EndLayer => continue,
+                };
+                bounds = Some(bounds.map_or(op_bounds, |b| b.union(&op_bounds)));
+            }
+            let Some(bounds) = bounds else {
+                return;
+            };
+            self.is_finished = false;
+            let base = self
+                .primitive_bounds
+                .insert_span(bounds, max_order.saturating_sub(min_order));
+            for operation in operations {
+                match operation {
+                    PaintOperation::Primitive(primitive) => self.push_primitive(
+                        primitive.clone(),
+                        base + primitive.order().saturating_sub(min_order),
+                    ),
+                    PaintOperation::StartLayer(layer) => {
+                        self.paint_operations.push(PaintOperation::StartLayer(*layer))
+                    }
+                    PaintOperation::EndLayer => self.paint_operations.push(PaintOperation::EndLayer),
+                }
+            }
+            return;
+        }
+
+        for operation in operations {
             match operation {
                 PaintOperation::Primitive(primitive) => self.insert_primitive(primitive.clone()),
                 PaintOperation::StartLayer(bounds) => self.push_layer(*bounds),
@@ -431,6 +490,21 @@ impl Primitive {
             Primitive::Surface(surface) => &surface.content_mask,
             Primitive::BackdropFilter(filter) => &filter.content_mask,
             Primitive::FilterBoundary(boundary) => &boundary.content_mask,
+        }
+    }
+
+    pub fn order(&self) -> DrawOrder {
+        match self {
+            Primitive::Shadow(shadow) => shadow.order,
+            Primitive::Quad(quad) => quad.order,
+            Primitive::Path(path) => path.order,
+            Primitive::Underline(underline) => underline.order,
+            Primitive::MonochromeSprite(sprite) => sprite.order,
+            Primitive::SubpixelSprite(sprite) => sprite.order,
+            Primitive::PolychromeSprite(sprite) => sprite.order,
+            Primitive::Surface(surface) => surface.order,
+            Primitive::BackdropFilter(filter) => filter.order,
+            Primitive::FilterBoundary(boundary) => boundary.order,
         }
     }
 }

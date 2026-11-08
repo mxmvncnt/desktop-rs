@@ -163,6 +163,20 @@ where
         ordering
     }
 
+    /// Reserves `span + 1` consecutive orderings above everything intersecting `new_bounds`
+    /// (and the floor), records `new_bounds` with the highest one, and returns the lowest.
+    /// Used to replay a recorded block of primitives without inserting each of them.
+    pub fn insert_span(&mut self, new_bounds: Bounds<U>, span: u32) -> u32 {
+        let base = (self.find_max_ordering(&new_bounds) + 1).max(self.order_floor);
+        let top = base + span;
+        let new_leaf_idx = self.insert_leaf(new_bounds, top);
+        self.max_leaf = match self.max_leaf {
+            Some(old_idx) if self.nodes[old_idx].max_order >= top => Some(old_idx),
+            _ => Some(new_leaf_idx),
+        };
+        base
+    }
+
     /// Finds the maximum ordering among all bounds that intersect with the query.
     fn find_max_ordering(&mut self, query: &Bounds<U>) -> u32 {
         let Some(root_idx) = self.root else {
