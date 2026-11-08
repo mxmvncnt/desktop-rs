@@ -1,9 +1,10 @@
-//! One comment: author, time, verdict and body. A plain fn: it is also drawn inside diff rows.
+//! One comment: author, time, verdict and body (Markdown). A plain fn: it is also drawn inside diff rows.
 
 use gd_forge::Comment;
 use gd_ui::Theme;
 use gpui::{Div, FontWeight, ParentElement, Styled, div, prelude::*, px};
 
+use crate::components::markdown;
 use crate::utils::text::relative_time;
 
 pub fn comment_card(c: &Comment, theme: &Theme) -> Div {
@@ -39,11 +40,10 @@ pub fn comment_card(c: &Comment, theme: &Theme) -> Div {
         )
         .when(!c.body.trim().is_empty(), |d| {
             d.child(
-                div()
+                markdown(&c.id.to_string(), &c.body, theme)
                     .text_size(px(13.0))
                     .line_height(px(19.0))
-                    .text_color(theme.text)
-                    .child(c.body.trim().to_string()),
+                    .text_color(theme.text),
             )
         })
 }

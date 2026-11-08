@@ -22,8 +22,11 @@
 - Fixed on the way: the variable-height diff list (wrap mode) drew unhighlighted text in the UI font.
 - Unverified: no live server was used (API fixtures and snapshots only). Untested by hand: every click (line picks, posting, replies, check out),
   GitHub `advanced_search` with OR/parentheses, GitLab range positions (`line_code`), the Gitea review-comment line fields.
-- Known gaps: comment bodies are plain text (no Markdown, no avatars, no editing / deleting / resolving), no review submission (approve /
-  request changes), no polling (Refresh only), outdated threads show only on the Conversation tab, `involves:` off GitHub means author,
+- Comments: Markdown bodies; threads minimize (resolved and outdated start minimized, toggles per thread, Collapse/Expand all on the
+      Conversation tab); outdated threads show at the top of their file in the diff; selecting diff text offers "Comment on lines N–M";
+      line numbers have a hover tint and tooltip. Snapshot view `pull-files-select`.
+- Known gaps: no avatars, no editing / deleting / resolving), no review submission (approve /
+  request changes), no polling (Refresh only), outdated threads are not placed inside the diff, `involves:` off GitHub means author,
   assignee or requested reviewer (GitHub also counts commenters and mentions), GitHub search rows have no branch until opened.
 - The gpui headless tests (`cargo test -p desktop-rs --features snapshot`) panic on macOS ("Mac platform not created on main thread"):
   `cargo test` runs tests off the main thread. They only run on Linux.

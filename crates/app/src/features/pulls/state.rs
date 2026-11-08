@@ -1,10 +1,11 @@
 //! Pull requests page state: what is shown, the list loaded so far, and the open pull request with its conversation and head.
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 
-use gd_forge::{Conversation, Pipeline, PullQuery, PullRequest, PullState};
+use gd_forge::{Conversation, Pipeline, PullQuery, PullRequest, PullState, Thread};
 use gd_git::{PullCheckout, PullHead};
-use gpui::{App, AppContext as _, Entity, EventEmitter, UniformListScrollHandle};
+use gpui::{App, AppContext as _, Context, Entity, EventEmitter, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
 
 use super::query_text::DEFAULT_QUERY;
@@ -89,6 +90,8 @@ pub struct PullsStore {
     /// Commit shown on the Commits tab (index into `PullHead::commits`).
     pub commit: Option<usize>,
     pub pick: Option<Pick>,
+    /// Ids of the threads the user minimized or expanded against their default (resolved and outdated start minimized).
+    pub toggled: HashSet<String>,
     /// Id of the thread whose reply box is open.
     pub replying: Option<String>,
     /// A comment is being sent: the buttons are disabled.
@@ -135,6 +138,7 @@ impl PullsStore {
             head: None,
             commit: None,
             pick: None,
+            toggled: HashSet::new(),
             replying: None,
             posting: false,
             inputs: PullsInputs {
@@ -166,6 +170,30 @@ impl PullsStore {
     /// The state the query asks for, which its tab shows.
     pub fn state(&self) -> Option<PullState> {
         self.query.state()
+    }
+
+    /// Whether `thread` shows as one line.
+    pub fn collapsed(&self, thread: &Thread) -> bool {
+        (thread.resolved || thread.line.is_none()) != self.toggled.contains(&thread.id)
+    }
+
+    pub fn toggle_thread(&mut self, id: &str, cx: &mut Context<Self>) {
+        if !self.toggled.remove(id) {
+            self.toggled.insert(id.into());
+        }
+        cx.notify();
+    }
+
+    /// Minimize (or expand) every thread of the conversation.
+    pub fn collapse_threads(&mut self, collapse: bool, cx: &mut Context<Self>) {
+        let threads = self.conversation.iter().flat_map(|c| &c.threads);
+        let flips: Vec<_> = threads
+            .filter(|t| self.collapsed(t) != collapse)
+            .map(|t| t.id.clone())
+            .collect();
+        for id in flips {
+            self.toggle_thread(&id, cx);
+        }
     }
 
     /// The fetched head of the open pull request.

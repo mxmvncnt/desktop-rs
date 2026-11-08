@@ -796,7 +796,7 @@ two pages closes the other), `Workspace::pulls: Entity<PullsStore>` observed and
   threads, the pick, the open reply and `posting`, and a new key `remeasure()`s the list. Line numbers become pick cells
   (`RowNotes::pick_cell`, Shift extends within the file), picked rows get an accent wash, and `RowNotes::wrap` puts the threads of a line and
   the comment box (under the last picked line) below its row. Threads anchor by side: a RIGHT line by its new number on a non-deleted line,
-  a LEFT one on a deleted line (`anchor`, tested); outdated threads (no `line`) are only on the Conversation tab. Picks are diff line indices;
+  a LEFT one on a deleted line (`anchor`, tested); outdated threads (no `line`) go in one block under the first row (the hunk header), labelled "Outdated · line N". Picks are diff line indices;
   `post_line_comment` turns them into a `LineTarget` with the numbers of those lines.
 - Conversation sidebar (`pull_sidebar.rs`, 290px, scrolls on its own, beside `ConversationView`): merge status (`PullRequest::merge`, "Merged" /
   "Closed" by state), checks, reviewers (requested = pending, plus `Conversation::reviews`), assignees, labels, milestone, changes
@@ -805,5 +805,12 @@ two pages closes the other), `Workspace::pulls: Entity<PullsStore>` observed and
   an error or no CI leaves `checks` empty ("No checks"). `ci::status_badge` is exported for the pill.
 - Filters button (`pulls_header.rs`, `Workspace::open_pulls_filters`): a `Menu` of `query_text::PRESETS` under the button; a row calls
   `PullsStore::set_query` (emplace into the field + `apply_query`, which the state tabs share). Rows aren't marked: `MenuRow` has no check state.
+- Comment bodies are Markdown (`components::markdown`, in `comment_card`). Threads have a header (`thread_header.rs`, a plain fn used
+  on the Conversation tab and in the diff) with a chevron: `PullsStore::toggled` holds the ids the user flipped; `collapsed(thread)` =
+  (resolved or outdated) != toggled, like the CI log sections. The collapsed state is in `RowNotes::key`. "Collapse all / Expand all"
+  sit above the Conversation timeline (`collapse_threads`).
+- A finished text selection in the review diff (`text_sel`, not `text_drag`; `diff_text_drag_end` notifies on release) shows a
+  `SelectionBar` under its last line: "Comment on line N / lines N–M" sets the `Pick` to those lines and clears the selection. The
+  selection is hashed into `RowNotes::key`. Pick cells have an accent hover overlay and a tooltip.
 - Text areas get a fixed width (`comment_box::BOX_W`, see the auto-height gotcha) and the Workspace observes the boxes so the Comment
   buttons enable as you type. Posting runs one request at a time (`posting`), then reloads the conversation and clears the box.
