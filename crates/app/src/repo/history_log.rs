@@ -65,13 +65,16 @@ impl RepoModel {
         // selection at the same index but on a different (new) sha: reload it.
         let sha_changed =
             ix.and_then(|i| self.log.commits.get(i)).map(|c| &c.sha) != selected_sha.as_ref();
-        if ix != self.log.selected || self.log.detail.files.is_empty() || sha_changed {
+        if sha_changed || self.log.detail.files.is_empty() {
             self.log.selected = None;
             if let Some(ix) = ix {
                 self.select_commit(ix, cx);
             } else {
                 self.log.detail.clear();
             }
+        } else {
+            // Same commit, moved down by new ones on top: keep its file and diff.
+            self.log.selected = ix;
         }
     }
 
