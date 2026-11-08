@@ -28,3 +28,4 @@ mod status_badge;
 
 pub use ci_page::CiPage;
 pub use state::{CiEvent, CiInputs, CiStore, Field};
+pub use status_badge::status_badge;

@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use gd_forge::{Conversation, PullQuery, PullRequest, PullState};
+use gd_forge::{Conversation, Pipeline, PullQuery, PullRequest, PullState};
 use gd_git::{PullCheckout, PullHead};
 use gpui::{App, AppContext as _, Entity, EventEmitter, UniformListScrollHandle};
 use gpui_elements::editable_text::{EditableTextState, StringStorage};
@@ -82,6 +82,8 @@ pub struct PullsStore {
     pub detail_error: Option<Problem>,
     pub conversation: Option<Conversation>,
     pub conversation_error: Option<Problem>,
+    /// The latest pipeline of its head, if the forge has one.
+    pub checks: Option<Pipeline>,
     /// Its head fetched into the repository; `Err` when git could not fetch it (the conversation still shows).
     pub head: Option<Result<PullHead, String>>,
     /// Commit shown on the Commits tab (index into `PullHead::commits`).
@@ -100,6 +102,7 @@ pub struct PullsStore {
     pub(super) list_load: LoadSlot,
     pub(super) detail_load: LoadSlot,
     pub(super) conversation_load: LoadSlot,
+    pub(super) checks_load: LoadSlot,
 }
 
 impl EventEmitter<PullsEvent> for PullsStore {}
@@ -128,6 +131,7 @@ impl PullsStore {
             detail_error: None,
             conversation: None,
             conversation_error: None,
+            checks: None,
             head: None,
             commit: None,
             pick: None,
@@ -150,6 +154,7 @@ impl PullsStore {
             list_load: LoadSlot::default(),
             detail_load: LoadSlot::default(),
             conversation_load: LoadSlot::default(),
+            checks_load: LoadSlot::default(),
         }
     }
 
