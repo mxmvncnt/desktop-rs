@@ -1330,6 +1330,7 @@ pub(crate) fn text_layout_fits(
         && layout.platform_layout.size().width <= width + px(0.01)
 }
 
+#[derive(Clone)]
 pub(crate) struct TruncationCandidate {
     pub text: SharedString,
     pub runs: Vec<TextRun>,

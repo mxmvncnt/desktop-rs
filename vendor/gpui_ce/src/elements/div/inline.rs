@@ -9,11 +9,12 @@ use crate::{
     Window, WindowTextSystem, place_inline_layout, size,
 };
 
-use collections::FxHashMap;
+use collections::{FxHashMap, FxHasher};
 use gpui_util::ResultExt;
 use smallvec::SmallVec;
 use std::{
     cell::{Ref, RefCell},
+    hash::{Hash, Hasher},
     ops::Range,
     rc::Rc,
     sync::Arc,
@@ -44,6 +45,26 @@ struct InlineSpan {
     box_range: Range<usize>,
     direction: crate::taffy::LayoutDirectionHandle,
     unicode_bidi: UnicodeBidi,
+}
+
+/// Entries kept before the truncation cache is emptied; the rows on screen refill it next frame.
+const TRUNCATIONS_CAPACITY: usize = 4096;
+
+thread_local! {
+    /// Truncation outcome per laid-out text and width, kept across frames: a scrolled list lays
+    /// out the same rows every frame, and finding the cut measures the text many times. `None`
+    /// means the text fit. The text is kept to rule out hash collisions.
+    static TRUNCATIONS: RefCell<FxHashMap<u64, (String, Option<Rc<TruncationCandidate>>)>> =
+        RefCell::default();
+}
+
+fn remember_truncation(key: u64, text: &str, candidate: Option<Rc<TruncationCandidate>>) {
+    TRUNCATIONS.with_borrow_mut(|cache| {
+        if cache.len() >= TRUNCATIONS_CAPACITY {
+            cache.clear();
+        }
+        cache.insert(key, (text.to_string(), candidate));
+    });
 }
 
 #[derive(Default)]
@@ -88,10 +109,41 @@ impl InlineDocument {
             },
             ..request
         };
+        let layout_candidate = |candidate: &TruncationCandidate| {
+            let document = self.truncated(candidate);
+            let bidi_scopes = document.bidi_scopes();
+            let layout = text_system.layout_inline(InlineLayoutRequest {
+                text: &document.text,
+                runs: &document.runs,
+                text_styles: &document.text_styles,
+                bidi_scopes: &bidi_scopes,
+                ..request
+            });
+            (Rc::new(document), layout)
+        };
+
+        let key = {
+            let mut hasher = FxHasher::default();
+            (request, max_lines, width, &truncation.affix, truncation.source).hash(&mut hasher);
+            hasher.finish()
+        };
+        let cached = TRUNCATIONS.with_borrow(|cache| {
+            cache
+                .get(&key)
+                .filter(|(text, _)| *text == self.text)
+                .map(|(_, candidate)| candidate.clone())
+        });
+        match cached {
+            Some(None) => return (self.clone(), text_system.layout_inline(request)),
+            Some(Some(candidate)) => return layout_candidate(&candidate),
+            None => {}
+        }
+
         let probe = text_system.layout_inline(request);
         let fits = |layout: &InlineLayout| text_layout_fits(&layout.layout, width, max_lines);
 
         if fits(&probe) {
+            remember_truncation(key, &self.text, None);
             return (self.clone(), probe);
         }
 
@@ -101,7 +153,7 @@ impl InlineDocument {
             .map(|(index, _grapheme)| index)
             .chain(std::iter::once(self.text.len()));
 
-        let (_candidate, measurement) = truncate_with_measured_candidates(
+        let (candidate, measurement) = truncate_with_measured_candidates(
             &self.text,
             boundaries,
             None,
@@ -109,20 +161,12 @@ impl InlineDocument {
             &self.runs,
             truncation.source,
             |candidate| {
-                let document = self.truncated(candidate);
-                let bidi_scopes = document.bidi_scopes();
-                let layout = text_system.layout_inline(InlineLayoutRequest {
-                    text: &document.text,
-                    runs: &document.runs,
-                    text_styles: &document.text_styles,
-                    bidi_scopes: &bidi_scopes,
-                    ..request
-                });
-                let fits = fits(&layout);
-
-                ((Rc::new(document), layout), fits)
+                let measured = layout_candidate(candidate);
+                let fits = fits(&measured.1);
+                (measured, fits)
             },
         );
+        remember_truncation(key, &self.text, Some(Rc::new(candidate)));
 
         measurement
     }
