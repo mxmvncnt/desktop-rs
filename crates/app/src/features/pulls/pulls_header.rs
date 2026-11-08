@@ -4,7 +4,7 @@ use gd_forge::{Forge, PullState};
 use gd_ui::{Button, Icon, Tabs, Theme};
 use gpui::{
     App, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    StatefulInteractiveElement, Styled, Window, div, prelude::*, px,
+    StatefulInteractiveElement, Styled, Window, div, point, prelude::*, px,
 };
 
 use gpui_elements::editable_text::actions::Enter;
@@ -37,7 +37,12 @@ impl RenderOnce for PullsHeader {
             .position(|(_, s)| *s == pulls.state())
             .unwrap_or(0);
         let account = target.map(|t| format!("via {} · {}", t.account_name, t.host));
-        let (ws, store, refresh_ws) = (self.ws.clone(), self.store.clone(), self.ws.clone());
+        let (ws, store, refresh_ws, filters_ws) = (
+            self.ws.clone(),
+            self.store.clone(),
+            self.ws.clone(),
+            self.ws.clone(),
+        );
         let (input, enter) = (pulls.inputs.query.clone(), self.store.clone());
         // GitHub runs the query itself; elsewhere what `matches` can't tell is said.
         let note = match (&pulls.query_error, target.map(|t| t.forge)) {
@@ -121,18 +126,36 @@ impl RenderOnce for PullsHeader {
                         .gap(px(6.0))
                         .child(
                             div()
-                                .w(px(720.0))
-                                .capture_action(move |_: &Enter, _, cx| {
-                                    cx.stop_propagation();
-                                    let text = input.read(cx).as_str().to_string();
-                                    enter.update(cx, |s, cx| s.apply_query(text, cx))
-                                })
-                                .child(text_field(
-                                    "pulls-query",
-                                    &pulls.inputs.query,
-                                    "is:pr state:open author:@me",
-                                    cx,
-                                )),
+                                .flex()
+                                .items_center()
+                                .gap(px(8.0))
+                                .child(
+                                    Button::new("pulls-filters")
+                                        .icon(Icon::ChevronDown)
+                                        .label("Filters")
+                                        .on_click(move |e, w, cx| {
+                                            // Just under the button.
+                                            let position = e.position() + point(px(0.0), px(16.0));
+                                            filters_ws.update(cx, |ws, cx| {
+                                                ws.open_pulls_filters(position, w, cx)
+                                            })
+                                        }),
+                                )
+                                .child(
+                                    div()
+                                        .w(px(720.0))
+                                        .capture_action(move |_: &Enter, _, cx| {
+                                            cx.stop_propagation();
+                                            let text = input.read(cx).as_str().to_string();
+                                            enter.update(cx, |s, cx| s.apply_query(text, cx))
+                                        })
+                                        .child(text_field(
+                                            "pulls-query",
+                                            &pulls.inputs.query,
+                                            "is:pr state:open author:@me",
+                                            cx,
+                                        )),
+                                ),
                         )
                         .children(note.map(|(text, color)| {
                             div().text_size(px(12.0)).text_color(color).child(text)

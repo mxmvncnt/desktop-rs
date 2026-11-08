@@ -303,7 +303,7 @@ pub(crate) fn pull_from(m: Mr) -> PullRequest {
         web_url: m.web_url,
         diff_refs,
         milestone: m.milestone.map(|m| m.title),
-        merge: (state == PullState::Open).then(|| {
+        merge: (state == PullState::Open).then_some(
             match (m.draft, m.detailed_merge_status.as_deref()) {
                 (true, _) | (_, Some("draft_status")) => MergeStatus::Draft,
                 (_, Some("mergeable")) => MergeStatus::Mergeable,
@@ -315,8 +315,8 @@ pub(crate) fn pull_from(m: Mr) -> PullRequest {
                 }
                 // not_approved, discussions_not_resolved, blocked_status, jira, …
                 _ => MergeStatus::Blocked,
-            }
-        }),
+            },
+        ),
     }
 }
 

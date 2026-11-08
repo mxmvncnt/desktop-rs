@@ -9,6 +9,7 @@ use gpui::{AnyElement, Context, Entity, IntoElement, ParentElement, Styled, div,
 use super::commits_list::CommitsList;
 use super::conversation_view::ConversationView;
 use super::pull_row::{ROW_HEIGHT, pull_row};
+use super::pull_sidebar::PullSidebar;
 use super::pull_summary::PullSummary;
 use super::pulls_header::PullsHeader;
 use super::state::{PullTab, PullsStore, PullsView};
@@ -170,11 +171,19 @@ impl Workspace {
             });
         let body =
             match (tab, head) {
-                (PullTab::Conversation, _) => ConversationView {
-                    store: store.clone(),
-                    pull: pull.clone(),
-                }
-                .into_any_element(),
+                (PullTab::Conversation, _) => div()
+                    .flex()
+                    .flex_1()
+                    .min_h_0()
+                    .child(ConversationView {
+                        store: store.clone(),
+                        pull: pull.clone(),
+                    })
+                    .child(PullSidebar {
+                        store: store.clone(),
+                        pull: pull.clone(),
+                    })
+                    .into_any_element(),
                 (_, None) => empty_state(
                     if pulls.head.is_none() {
                         "Fetching the pull request…"

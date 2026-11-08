@@ -9,6 +9,7 @@ mod conversation_view;
 mod handlers;
 mod ops;
 mod pull_row;
+mod pull_sidebar;
 mod pull_summary;
 mod pulls_header;
 mod pulls_page;

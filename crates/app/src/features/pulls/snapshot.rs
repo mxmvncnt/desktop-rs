@@ -3,9 +3,10 @@
 
 use chrono::{Duration, Utc};
 use gd_forge::{
-    Comment, Conversation, Forge, PullQuery, PullRequest, PullState, RepoRef, Side, Thread, User,
+    Comment, Conversation, Forge, MergeStatus, Pipeline, PipelineId, PullQuery, PullRequest,
+    PullState, RepoRef, Review, Side, Status, Thread, User, Verdict,
 };
-use gpui::{Context, Window};
+use gpui::{Context, Window, point, px};
 
 use super::state::{Pick, PullTab, PullsEvent, PullsStore, PullsView};
 use crate::features::accounts::{Problem, Target};
@@ -26,7 +27,7 @@ pub fn views() -> &'static [View] {
     ]
 }
 
-/// `pulls[-light]`: the list; `pulls-query`: the example query of docs/PROGRESS.md on a GitLab account (filtered here, as
+/// `pulls[-light]`: the list; `pulls-filters`: the same with the Filters menu open; `pulls-query`: the example query of docs/PROGRESS.md on a GitLab account (filtered here, as
 /// `PullFilter::keep` would), with a qualifier GitLab can't filter on; `pulls-query-error`: a query that doesn't parse;
 /// `pulls-empty-account`; `pull-conversation`, `pull-commits`, `pull-files`, `pull-files-comment`
 /// (lines picked, the comment box open), `pull-files-split`.
@@ -76,6 +77,23 @@ fn pulls_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Co
         p.view = PullsView::Pull(42);
         p.detail = p.pulls.first().cloned();
         p.conversation = Some(conversation());
+        p.checks = Some(Pipeline {
+            id: PipelineId(7),
+            number: 7,
+            title: Some("Add a README".into()),
+            workflow: Some("CI".into()),
+            workflow_path: None,
+            git_ref: "feature".into(),
+            sha: "abc1234".into(),
+            source: Some("pull_request".into()),
+            status: Status::Success,
+            user: None,
+            created_at: None,
+            started_at: None,
+            finished_at: None,
+            duration: None,
+            web_url: "https://github.com/octo/repo/actions/runs/7".into(),
+        });
         p.head = Some(
             root.ok_or("no repository".to_string())
                 .and_then(|r| r.pull_head("feature", "main").map_err(|e| e.to_string())),
@@ -103,6 +121,9 @@ fn pulls_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Co
         }
         cx.notify();
     });
+    if view == "pulls-filters" {
+        ws.open_pulls_filters(point(px(24.0), px(166.0)), window, cx);
+    }
 }
 
 fn user(name: &str) -> Option<User> {
@@ -146,19 +167,23 @@ fn fill(p: &mut PullsStore) {
         draft,
         author: user(author),
         head_ref: Some(head.into()),
-        head_sha: None,
+        head_sha: Some("abc1234".into()),
         base_ref: Some("main".into()),
         from_fork: number == 39,
         labels: labels.iter().map(|l| l.to_string()).collect(),
-        assignees: Vec::new(),
-        reviewers: if number == 41 { vec!["ada".into()] } else { Vec::new() },
+        assignees: if number == 42 { vec!["ada".into()] } else { Vec::new() },
+        reviewers: match number {
+            41 => vec!["ada".into()],
+            42 => vec!["grace".into()],
+            _ => Vec::new(),
+        },
         comments: Some(comments),
         created_at: Some(now - Duration::hours(hours + 30)),
         updated_at: Some(now - Duration::hours(hours)),
         web_url: format!("https://github.com/octo/repo/pull/{number}"),
         diff_refs: None,
-        milestone: None,
-        merge: None,
+        milestone: (number == 42).then(|| "v2.0".to_string()),
+        merge: (state == PullState::Open).then_some(MergeStatus::Blocked),
     }
     };
     p.pulls = vec![
@@ -237,7 +262,16 @@ fn conversation() -> Conversation {
                 ..comment(2, "linus", "", 3)
             },
         ],
-        reviews: Vec::new(),
+        reviews: vec![
+            Review {
+                user: user("linus").expect("a user"),
+                verdict: Verdict::Approved,
+            },
+            Review {
+                user: user("margaret").expect("a user"),
+                verdict: Verdict::ChangesRequested,
+            },
+        ],
         threads: vec![Thread {
             id: "10".into(),
             path: "README.md".into(),

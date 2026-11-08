@@ -798,5 +798,12 @@ two pages closes the other), `Workspace::pulls: Entity<PullsStore>` observed and
   the comment box (under the last picked line) below its row. Threads anchor by side: a RIGHT line by its new number on a non-deleted line,
   a LEFT one on a deleted line (`anchor`, tested); outdated threads (no `line`) are only on the Conversation tab. Picks are diff line indices;
   `post_line_comment` turns them into a `LineTarget` with the numbers of those lines.
+- Conversation sidebar (`pull_sidebar.rs`, 290px, scrolls on its own, beside `ConversationView`): merge status (`PullRequest::merge`, "Merged" /
+  "Closed" by state), checks, reviewers (requested = pending, plus `Conversation::reviews`), assignees, labels, milestone, changes
+  (`pull_head().stats`) and participants (distinct authors of description, comments and thread comments). Checks: `PullsStore::load_checks`
+  runs when the detail arrives, `Client::pipelines` filtered on `head_ref` (not for forks), the first pipeline whose `sha == head_sha` else the first;
+  an error or no CI leaves `checks` empty ("No checks"). `ci::status_badge` is exported for the pill.
+- Filters button (`pulls_header.rs`, `Workspace::open_pulls_filters`): a `Menu` of `query_text::PRESETS` under the button; a row calls
+  `PullsStore::set_query` (emplace into the field + `apply_query`, which the state tabs share). Rows aren't marked: `MenuRow` has no check state.
 - Text areas get a fixed width (`comment_box::BOX_W`, see the auto-height gotcha) and the Workspace observes the boxes so the Comment
   buttons enable as you type. Posting runs one request at a time (`posting`), then reloads the conversation and clears the box.
