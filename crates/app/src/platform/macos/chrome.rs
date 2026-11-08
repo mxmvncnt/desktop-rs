@@ -9,6 +9,8 @@ use gpui::{
 
 /// Width the toolbar leaves free for the traffic lights.
 const TRAFFIC_LIGHTS_WIDTH: f32 = 78.0;
+/// Side of a caption button (none are drawn here; the toolbar reads it).
+pub const CAPTION_SIZE: f32 = 26.0;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Chrome {

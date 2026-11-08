@@ -46,23 +46,35 @@ impl RenderOnce for Toolbar {
         let captions = chrome.buttons(window, cx);
         let maximized = chrome.maximized;
         let theme = Theme::of(cx).clone();
+        let left = captions.and_then(|c| crate::platform::caption_buttons(&c.left, maximized, cx));
+        let right =
+            captions.and_then(|c| crate::platform::caption_buttons(&c.right, maximized, cx));
+        // Each side is inset as far as its edge item sits from the top: caption
+        // buttons are shorter than the toolbar buttons, so they sit further in.
+        let caption_inset = (TOOLBAR_HEIGHT - crate::platform::CAPTION_SIZE) / 2.0;
 
         div()
             .flex()
             .flex_none()
             .items_center()
             .h(px(TOOLBAR_HEIGHT))
-            .pl(px(EDGE_GAP + chrome.leading_inset()))
-            .pr(px(EDGE_GAP))
-            .py(px(6.0))
+            .pl(px(if left.is_some() {
+                caption_inset
+            } else {
+                EDGE_GAP + chrome.leading_inset()
+            }))
+            .pr(px(if right.is_some() {
+                caption_inset
+            } else {
+                EDGE_GAP
+            }))
+            .py(px(EDGE_GAP))
             .gap(px(4.0))
             .bg(theme.surface)
             .rounded_t(px(chrome.radius()))
             .border_b_1()
             .border_color(theme.border)
-            .children(
-                captions.and_then(|c| crate::platform::caption_buttons(&c.left, maximized, cx)),
-            )
+            .children(left)
             .child(self.repo_button())
             .child(div().h(px(24.0)).child(vdivider(cx)))
             .child(self.branch_button())
@@ -76,9 +88,7 @@ impl RenderOnce for Toolbar {
             ))
             .child(self.ci_button())
             .child(self.settings_button())
-            .children(
-                captions.and_then(|c| crate::platform::caption_buttons(&c.right, maximized, cx)),
-            )
+            .children(right)
     }
 }
 

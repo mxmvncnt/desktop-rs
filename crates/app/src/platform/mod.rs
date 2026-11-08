@@ -1,7 +1,7 @@
 //! Per-OS code. Each submodule exposes the same small surface, and the
 //! rest of the app only talks to it through this module:
 //!
-//! - `Chrome`, `caption_buttons`, `titlebar_drag`, `frame`: window chrome
+//! - `Chrome`, `caption_buttons`, `CAPTION_SIZE`, `titlebar_drag`, `frame`: window chrome
 //! - `configure_window(&mut WindowOptions)`: platform window options
 //! - `Backdrop`: transparent / blurred window background
 //! - `SECONDARY`, `REFRESH_KEY`, `QUIT_KEY`: shortcut modifier and keys

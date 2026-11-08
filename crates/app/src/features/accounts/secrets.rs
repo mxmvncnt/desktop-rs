@@ -105,7 +105,9 @@ mod store {
         let out = f(&mut new);
         if new != map {
             let raw = serde_json::to_string(&new).unwrap_or_default();
-            entry(BUNDLE)?.set_password(&raw).map_err(|e| e.to_string())?;
+            entry(BUNDLE)?
+                .set_password(&raw)
+                .map_err(|e| e.to_string())?;
         }
         *cache = Some(new);
         Ok(out)

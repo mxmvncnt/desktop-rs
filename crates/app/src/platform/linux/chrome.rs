@@ -23,6 +23,8 @@ pub const SHADOW_INSET: f32 = 12.0;
 /// Width of the resize strips (they straddle the window edge).
 const RESIZE_EDGE: f32 = 8.0;
 const RESIZE_CORNER: f32 = 16.0;
+/// Side of a caption button.
+pub const CAPTION_SIZE: f32 = 26.0;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Chrome {
@@ -144,7 +146,7 @@ pub fn caption_buttons(
                 div()
                     .id(id)
                     .group(id)
-                    .size(px(26.0))
+                    .size(px(CAPTION_SIZE))
                     .flex()
                     .items_center()
                     .justify_center()
