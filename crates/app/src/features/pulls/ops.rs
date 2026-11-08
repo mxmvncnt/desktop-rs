@@ -3,7 +3,8 @@
 use std::collections::HashSet;
 
 use gd_forge::{
-    Forge, LineTarget, PullFilter, PullQuery, PullRequest, PullState, Thread, pull_ref,
+    Forge, LineTarget, PipelineFilter, PullFilter, PullQuery, PullRequest, PullState, Thread,
+    pull_ref,
 };
 use gd_git::{PullCheckout, Repository};
 use gpui::{AppContext, Context};
@@ -153,7 +154,11 @@ impl PullsStore {
 
     /// A state tab: its terms replace the query's.
     pub fn set_state(&mut self, state: Option<PullState>, cx: &mut Context<Self>) {
-        let text = with_state(&self.query.raw, state);
+        self.set_query(with_state(&self.query.raw, state), cx);
+    }
+
+    /// Write `text` into the search field and apply it (the Filters menu, the state tabs).
+    pub fn set_query(&mut self, text: String, cx: &mut Context<Self>) {
         self.inputs.query.update(cx, |s, cx| s.emplace(&text, cx));
         self.apply_query(text, cx);
     }
@@ -186,6 +191,7 @@ impl PullsStore {
             self.detail = None;
             self.conversation = None;
             self.head = None;
+            self.checks = None;
         }
         self.detail_error = None;
         self.conversation_error = None;
@@ -213,6 +219,7 @@ impl PullsStore {
             |this, res, cx| {
                 match res {
                     Ok((pull, head)) => {
+                        this.load_checks(&pull, cx);
                         this.detail = Some(pull);
                         this.head = Some(head);
                         this.show_tab_files(cx);
@@ -224,6 +231,32 @@ impl PullsStore {
             cx,
         );
         self.load_conversation(number, target, cx);
+    }
+
+    /// The latest pipeline of the head, for the sidebar. A forge without CI or a failed call leaves it empty.
+    fn load_checks(&mut self, pull: &PullRequest, cx: &mut Context<Self>) {
+        let Some(target) = self.ready().cloned() else {
+            return;
+        };
+        let (sha, from_fork) = (pull.head_sha.clone(), pull.from_fork);
+        let filter = PipelineFilter {
+            ref_name: pull.head_ref.clone().filter(|_| !from_fork),
+            ..Default::default()
+        };
+        spawn_load(
+            self,
+            |s| &mut s.checks_load,
+            move || {
+                let found = target.client()?.pipelines(&target.repo, &filter, 1)?;
+                let at_head = found.iter().position(|p| Some(&p.sha) == sha.as_ref());
+                Ok::<_, gd_forge::Error>(found.into_iter().nth(at_head.unwrap_or(0)))
+            },
+            |this, res, cx| {
+                this.checks = res.ok().flatten();
+                cx.notify();
+            },
+            cx,
+        );
     }
 
     fn load_conversation(&mut self, number: u64, target: Target, cx: &mut Context<Self>) {
