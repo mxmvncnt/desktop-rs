@@ -16,6 +16,9 @@
       and replies to threads, inline under their lines or from the Conversation tab. Gitea / Forgejo have no ranges (the comment goes on the
       last line) and no threading in the API (a reply is a new comment on the thread's line).
 - [x] Check out: the head branch tracking the remote one, or `pr/N` for a fork; an existing branch fast-forwards, else it is only switched to.
+- [x] Conversation sidebar (merge status, checks of the head's latest pipeline, reviewers with verdicts, assignees, labels, milestone, changes,
+      participants) and a Filters menu of GitHub's search presets left of the search field. Snapshot view `pulls-filters`; `pull-conversation`
+      shows the sidebar. The current preset is not marked (`MenuRow` has no check state). Checks, presets: untested against a live server.
 - Fixed on the way: the variable-height diff list (wrap mode) drew unhighlighted text in the UI font.
 - Unverified: no live server was used (API fixtures and snapshots only). Untested by hand: every click (line picks, posting, replies, check out),
   GitHub `advanced_search` with OR/parentheses, GitLab range positions (`line_code`), the Gitea review-comment line fields.

@@ -1,10 +1,13 @@
 //! `impl Workspace`: opening, closing and re-syncing the pull requests page, and what its events ask of the repository.
 
 use gd_forge::{LinePos, LineTarget};
-use gpui::Context;
+use gd_ui::Icon;
+use gpui::{Context, Pixels, Point, Window};
 
 use super::ops::Reply;
+use super::query_text::PRESETS;
 use super::state::{PullTab, PullsEvent};
+use crate::components::{Menu, MenuRow};
 use crate::workspace::Workspace;
 
 impl Workspace {
@@ -30,6 +33,23 @@ impl Workspace {
         };
         self.pulls
             .update(cx, |p, cx| p.show(repo, accounts, picks, cx));
+    }
+
+    /// The Filters button: presets that write their query into the search field and apply it.
+    pub(super) fn open_pulls_filters(
+        &mut self,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let rows = PRESETS
+            .iter()
+            .map(|(label, query)| MenuRow::item(*query, *label, Icon::PullRequest))
+            .collect();
+        let menu = Menu::new(position, rows, |ws, query, _, cx| {
+            ws.pulls.update(cx, |p, cx| p.set_query(query.into(), cx))
+        });
+        self.open_menu(menu, window, cx);
     }
 
     /// Esc: one screen back, then close the page. `false` when it is not open.

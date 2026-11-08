@@ -1,4 +1,5 @@
 use super::*;
+use gd_forge::PullQuery;
 
 #[test]
 fn tabs_replace_the_state_terms() {
@@ -13,4 +14,11 @@ fn tabs_replace_the_state_terms() {
         "state:closed is:unmerged label:x"
     );
     assert_eq!(with_state(DEFAULT_QUERY, None), "is:pr");
+}
+
+#[test]
+fn every_preset_parses() {
+    for (label, query) in PRESETS {
+        assert!(PullQuery::parse(query).is_ok(), "{label}: {query}");
+    }
 }

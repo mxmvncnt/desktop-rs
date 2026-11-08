@@ -5,6 +5,19 @@ use gd_forge::PullState;
 /// What the page starts with.
 pub const DEFAULT_QUERY: &str = "is:pr state:open";
 
+/// The Filters menu: a label and the query it writes, like GitHub's presets.
+pub const PRESETS: [(&str, &str); 6] = [
+    ("Open pull requests", "is:pr state:open"),
+    ("Your pull requests", "is:pr state:open author:@me"),
+    ("Review requests", "is:pr state:open review-requested:@me"),
+    ("Assigned to you", "is:pr state:open assignee:@me"),
+    ("Involving you", "is:pr state:open involves:@me"),
+    (
+        "Needs your attention",
+        "is:pr state:open archived:false sort:updated-desc (involves:@me OR user-review-requested:@me) -author:@me",
+    ),
+];
+
 /// `query` with its top-level state terms replaced by the ones of `state` (`None` = all).
 pub fn with_state(query: &str, state: Option<PullState>) -> String {
     let is_state = |t: &str| {
