@@ -1,0 +1,139 @@
+# Vendored from gpui-ce 9a82fba (crates/gpui) for scroll performance fixes; see docs/ARCHITECTURE.md
+# ("Vendored gpui"). Manifest generated from the gpui-ce workspace: sibling crates are git deps at
+# the same rev, dev-deps and examples dropped. Re-vendor when bumping the GPUI-CE pin.
+
+[package]
+name = "gpui-ce"
+version = "0.2.2"
+edition = "2024"
+authors = ["Nathan Sobo <nathan@zed.dev>"]
+description = "A community fork of Zed's GPU-accelerated UI framework"
+repository = "https://github.com/gpui-ce/gpui-ce"
+publish = false
+license = "Apache-2.0"
+homepage = "https://gpui-ce.github.io/"
+readme = "README.md"
+keywords = ["desktop", "gui", "immediate"]
+categories = ["gui"]
+rust-version = "1.95"
+autoexamples = false
+autotests = false
+autobenches = false
+
+[features]
+default = ["font-kit", "wayland", "x11", "windows-manifest", "image-default-formats"]
+"custom-gpu" = []
+"wgpu-surfaces" = []
+"test-support" = ["leak-detection", "collections/test-support", "wayland", "x11", "proptest"]
+"bench-support" = ["profiler", "dep:criterion"]
+bench = ["bench-support"]
+inspector = ["gpui_macros/inspector"]
+"leak-detection" = ["backtrace"]
+wayland = []
+x11 = []
+"screen-capture" = ["dep:windows-capture"]
+"windows-manifest" = ["dep:embed-resource"]
+profiler = ["dep:hdrhistogram"]
+stacker = ["dep:stacksafe"]
+"embedded-assets" = ["dep:rust-embed"]
+"hot-patching" = ["dep:dioxus-devtools", "dep:subsecond"]
+"image-default-formats" = ["image/default-formats"]
+
+[lib]
+name = "gpui"
+path = "src/gpui.rs"
+doctest = false
+
+[dependencies]
+accesskit = { version = "0.24.0", features = ["enumn"] }
+anyhow = { version = "1.0.86" }
+async-task = { version = "4.7" }
+backtrace = { version = "0.3", optional = true }
+bitflags = { version = "2.6.0" }
+collections = { package = "gpui_ce_collections", git = "https://github.com/gpui-ce/gpui-ce", rev = "9a82fba4e5f1f9194a5489b7a417d164083dd67a" }
+criterion = { version = "0.5", features = ["html_reports"], optional = true }
+ctor = { version = "1.0.6" }
+derive_more = { version = "2.1.1", features = ["add", "add_assign", "deref", "deref_mut", "display", "from_str", "mul", "mul_assign", "not"] }
+derive_setters = { version = "0.1.9" }
+etagere = { version = "0.2" }
+futures = { version = "0.3.32" }
+futures-concurrency = { version = "7.7.1" }
+gpui_macros = { package = "gpui_ce_macros", git = "https://github.com/gpui-ce/gpui-ce", rev = "9a82fba4e5f1f9194a5489b7a417d164083dd67a" }
+gpui_shared_string = { package = "gpui_ce_shared_string", git = "https://github.com/gpui-ce/gpui-ce", rev = "9a82fba4e5f1f9194a5489b7a417d164083dd67a" }
+http = { version = "1.3" }
+image = { version = "0.25.1", default-features = false, features = ["gif", "webp"] }
+inventory = { version = "0.3.19" }
+itertools = { version = "0.14.0" }
+log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
+num_cpus = { version = "1.13" }
+parking = { version = "2.0.0" }
+parking_lot = { version = "0.12.1" }
+palette = { version = "0.7.6", features = ["serializing"] }
+phf = { version = "0.13.1", features = ["macros"] }
+postage = { version = "0.5", features = ["futures-traits"] }
+proptest = { version = "1.10", features = ["attr-macro"], optional = true }
+chrono = { version = "0.4", features = ["serde"] }
+profiling = { version = "1" }
+rand = { version = "0.9.4" }
+raw-window-handle = { version = "0.6" }
+regex = { version = "1.5" }
+refineable = { package = "gpui_ce_refineable", git = "https://github.com/gpui-ce/gpui-ce", rev = "9a82fba4e5f1f9194a5489b7a417d164083dd67a" }
+scheduler = { package = "gpui_ce_scheduler", git = "https://github.com/gpui-ce/gpui-ce", rev = "9a82fba4e5f1f9194a5489b7a417d164083dd67a" }
+resvg = { version = "0.48.1", default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }
+rust-embed = { version = "8.12", optional = true }
+usvg = { version = "0.48.1", default-features = false }
+skrifa = { version = "0.44.0" }
+schemars = { version = "1.0", features = ["indexmap2"] }
+seahash = { version = "4.1" }
+serde = { version = "1.0.221", features = ["derive", "rc"] }
+serde_json = { version = "1.0.144", features = ["preserve_order", "raw_value"] }
+slotmap = { version = "1.0.6" }
+smallvec = { version = "1.6", features = ["union", "const_new"] }
+async-channel = { version = "2.5.0" }
+stacksafe = { version = "1.0", optional = true }
+strum = { version = "0.27.2", features = ["derive"] }
+sum_tree = { package = "gpui_ce_sum_tree", git = "https://github.com/gpui-ce/gpui-ce", rev = "9a82fba4e5f1f9194a5489b7a417d164083dd67a" }
+taffy = { version = "=0.13.0" }
+thiserror = { version = "2.0.12" }
+tracing = { version = "0.1.44", features = ["attributes"] }
+gpui_util = { package = "gpui_ce_util", git = "https://github.com/gpui-ce/gpui-ce", rev = "9a82fba4e5f1f9194a5489b7a417d164083dd67a" }
+unicode-segmentation = { version = "1.10" }
+unicode-bidi = { version = "0.3.18", default-features = false, features = ["hardcoded-data"] }
+hdrhistogram = { version = "7", optional = true }
+waker-fn = { version = "1.2.0" }
+lyon = { version = "1.0" }
+pin-project = { version = "1.1.10" }
+spin = { version = "0.10.0" }
+pollster = { version = "0.4.0" }
+url = { version = "2.2" }
+uuid = { version = "1.1.2", features = ["v4", "v5", "v7", "serde"] }
+web-time = { version = "1.1.0" }
+heapless = { version = "0.9.2" }
+
+[build-dependencies]
+embed-resource = { version = "3.0", optional = true }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+getrandom = { version = "0.3.4", features = ["wasm_js"] }
+uuid = { version = "1.1.2", features = ["v4", "v5", "v7", "serde", "js"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+dioxus-devtools = { version = "=0.7.10", features = ["serve"], optional = true }
+subsecond = { version = "=0.7.10", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-video = { version = "0.5.2", features = ["metal"] }
+core-text = { version = "21" }
+font-kit = { version = "0.14.1-zed", package = "zed-font-kit", optional = true }
+foreign-types = { version = "0.5" }
+log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
+objc2 = { version = "0.6", optional = true }
+objc2-metal = { version = "0.3", optional = true }
+
+[target.'cfg(target_os = "macos")'.build-dependencies]
+bindgen = { version = "0.72" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62.2", features = ["Foundation_Numerics", "Globalization_DateTimeFormatting", "Storage_Search", "Storage_Streams", "System_Threading", "UI_ViewManagement", "Wdk_System_SystemServices", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Direct3D_Fxc", "Win32_Graphics_Direct2D", "Win32_Graphics_Direct2D_Common", "Win32_Graphics_DirectComposition", "Win32_Graphics_DirectWrite", "Win32_Graphics_DirectManipulation", "Win32_Graphics_Dwm", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Gdi", "Win32_Graphics_Imaging", "Win32_Graphics_Hlsl", "Win32_Networking_WinSock", "Win32_Security", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Performance", "Win32_System_Pipes", "Win32_System_RestartManager", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Variant", "Win32_System_WinRT", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Shell", "Win32_UI_Shell_Common", "Win32_UI_Shell_PropertiesSystem", "Win32_UI_WindowsAndMessaging", "Win32_Media", "Data", "Data_Xml", "Data_Xml_Dom", "Win32_Storage_Packaging", "Win32_Storage_Packaging_Appx", "Win32_System_JobObjects", "UI_Notifications", "Win32_Foundation", "Win32_System_Power"] }
+windows-capture = { version = "1.5.0", optional = true }
+windows-061 = { package = "windows", version = "0.61.3", features = ["Win32_Graphics_Direct3D11"] }

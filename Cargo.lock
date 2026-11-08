@@ -2324,7 +2324,6 @@ dependencies = [
 [[package]]
 name = "gpui-ce"
 version = "0.2.2"
-source = "git+https://github.com/gpui-ce/gpui-ce?rev=9a82fba4e5f1f9194a5489b7a417d164083dd67a#9a82fba4e5f1f9194a5489b7a417d164083dd67a"
 dependencies = [
  "accesskit",
  "anyhow",
