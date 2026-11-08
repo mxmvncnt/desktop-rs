@@ -1,5 +1,6 @@
 //! Secret storage by account id: the OS secret store (Secret Service via `oo7` on
-//! Linux, `keyring` on macOS/Windows). When it is unavailable (e.g. no Secret
+//! Linux, one `keyring` item for all accounts on macOS).
+//! When it is unavailable (e.g. no Secret
 //! Service agent running) secrets go to `<config dir>/secrets.toml` in plain text
 //! and the Accounts page warns about it.
 
@@ -66,13 +67,23 @@ mod store {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+/// macOS asks for the keychain password per item an app reads, so every secret lives in
+/// one item (a JSON map by account id), read once per run.
+#[cfg(target_os = "macos")]
 mod store {
+    use std::collections::BTreeMap;
+    use std::sync::Mutex;
+
+    const BUNDLE: &str = "secrets";
+
+    /// The map as last read or written.
+    static CACHE: Mutex<Option<BTreeMap<String, String>>> = Mutex::new(None);
+
     fn entry(id: &str) -> Result<keyring::Entry, String> {
         keyring::Entry::new(super::SERVICE, id).map_err(|e| e.to_string())
     }
 
-    pub fn get(id: &str) -> Result<Option<String>, String> {
+    fn read(id: &str) -> Result<Option<String>, String> {
         match entry(id)?.get_password() {
             Ok(s) => Ok(Some(s)),
             Err(keyring::Error::NoEntry) => Ok(None),
@@ -80,11 +91,43 @@ mod store {
         }
     }
 
+    /// Run `f` on the map, loading it on first use and saving it when `f` changed it.
+    /// The lock is held across the keychain calls so concurrent first reads prompt once.
+    fn update<T>(f: impl FnOnce(&mut BTreeMap<String, String>) -> T) -> Result<T, String> {
+        let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+        let map = match &*cache {
+            Some(map) => map.clone(),
+            None => read(BUNDLE)?
+                .map(|raw| serde_json::from_str(&raw).unwrap_or_default())
+                .unwrap_or_default(),
+        };
+        let mut new = map.clone();
+        let out = f(&mut new);
+        if new != map {
+            let raw = serde_json::to_string(&new).unwrap_or_default();
+            entry(BUNDLE)?.set_password(&raw).map_err(|e| e.to_string())?;
+        }
+        *cache = Some(new);
+        Ok(out)
+    }
+
+    pub fn get(id: &str) -> Result<Option<String>, String> {
+        if let Some(s) = update(|m| m.get(id).cloned())? {
+            return Ok(Some(s));
+        }
+        // Move a secret stored in its own item by earlier versions into the shared one.
+        let Some(s) = read(id)? else { return Ok(None) };
+        update(|m| m.insert(id.into(), s.clone()))?;
+        let _ = entry(id)?.delete_credential();
+        Ok(Some(s))
+    }
+
     pub fn set(id: &str, secret: &str) -> Result<(), String> {
-        entry(id)?.set_password(secret).map_err(|e| e.to_string())
+        update(|m| m.insert(id.into(), secret.into())).map(drop)
     }
 
     pub fn delete(id: &str) -> Result<(), String> {
+        update(|m| m.remove(id))?;
         match entry(id)?.delete_credential() {
             Err(keyring::Error::NoEntry) => Ok(()),
             r => r.map_err(|e| e.to_string()),

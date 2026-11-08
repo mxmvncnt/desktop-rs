@@ -61,7 +61,7 @@
 - [x] Seamless sign-in: built-in client ids in source, Gitea/Forgejo preregistered app, "Create token" fallback for GHE / self-managed GitLab, custom client id under "Advanced". github.com and gitlab.com have their built-in apps (`BUILTIN_CLIENT_IDS` in `accounts/model.rs`); own apps on codeberg.org / gitea.com are optional.
 - [x] Settings -> Accounts (`features/accounts/`): global `user.name/email` (git config via `gd-git/identity.rs`, background),
       (the per-repo override and account pick moved to repository settings), provider accounts (GitHub, Enterprise, GitLab, Bitbucket, Generic)
-      add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the secret store (`accounts/secrets.rs`: `oo7` Secret Service on Linux, `keyring` native backends on macOS/Windows; if the store is unavailable they go to `<config>/secrets.toml`, 0600, and the page warns). Token input is not masked (gpui-ce
+      add/edit/remove. Metadata in `<config>/accounts.toml`, tokens in the secret store (`accounts/secrets.rs`: `oo7` Secret Service on Linux, one `keyring` item on macOS; if the store is unavailable they go to `<config>/secrets.toml`, 0600, and the page warns). Token input is not masked (gpui-ce
       `text_input` has no masking) and tokens are not validated online (no HTTP client dependency).
 - [x] Credentials wired: `gd_git::set_credentials` registers tokens; every `.network()` git command gets per-host
       `credential.https://<host>.helper` via `GIT_CONFIG_COUNT/KEY/VALUE` env (secret only in the child env). HTTPS only; SSH untouched.

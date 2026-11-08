@@ -598,7 +598,10 @@ gotchas above.
 ## Secret storage (accounts)
 
 `features/accounts/secrets.rs` has `get/set/delete` by account id (blocking; `smol::block_on` around `oo7`
-on Linux, `keyring` with native backends only on macOS/Windows). If the store errors (no Secret Service agent),
+on Linux, `keyring` with the native backend only on macOS; Windows is out of scope). macOS prompts for the
+keychain password per item read, so there every secret lives in one item (`secrets`, a JSON map by id,
+cached in memory after the first read); older per-account items move into it on their first read. If the
+store errors (no Secret Service agent),
 it flips `PLAINTEXT` and uses `<config dir>/secrets.toml` (0600 on unix); `plaintext_path()` drives the
 warning in the Accounts list. Never add other fallbacks.
 
