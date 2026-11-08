@@ -22,6 +22,7 @@ use parley::{
     FontVariation as ParleyFontVariation, FontWeight, GenericFamily, InlineBox, InlineBoxKind,
     Layout, LayoutContext, Line, LineHeight, PositionedLayoutItem, Selection, StyleProperty,
 };
+use rustc_hash::FxHashMap;
 use skrifa::instance::NormalizedCoord;
 use std::{
     borrow::Cow,
@@ -78,14 +79,14 @@ struct ParagraphCacheKey {
 }
 
 struct BoundedCache<Key, Value, const CAPACITY: usize> {
-    entries: HashMap<Key, Value>,
+    entries: FxHashMap<Key, Value>,
     insertion_order: VecDeque<Key>,
 }
 
 impl<Key, Value, const CAPACITY: usize> Default for BoundedCache<Key, Value, CAPACITY> {
     fn default() -> Self {
         Self {
-            entries: HashMap::new(),
+            entries: FxHashMap::default(),
             insertion_order: VecDeque::new(),
         }
     }

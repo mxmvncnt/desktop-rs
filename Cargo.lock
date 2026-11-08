@@ -2589,6 +2589,7 @@ dependencies = [
  "gpui-ce",
  "parking_lot",
  "parley",
+ "rustc-hash 2.1.3",
  "skrifa",
  "swash",
  "unicode-segmentation",
