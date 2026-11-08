@@ -6,9 +6,10 @@ use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use gd_ui::Theme;
+use gd_ui::motion::HOVER_MS;
 use gpui::{
-    AnyElement, App, ColorExt, InteractiveElement, IntoElement, MouseButton, ParentElement, Styled,
-    Window, div, prelude::*,
+    AnyElement, App, ColorExt, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    StatefulInteractiveElement, Styled, Window, div, millis, prelude::*,
 };
 
 /// A line number was clicked: the line, and whether Shift was down.
@@ -28,18 +29,32 @@ pub struct RowNotes {
 }
 
 impl RowNotes {
-    /// A line-number cell of line `ix` that picks it.
-    pub(super) fn pick_cell(&self, ix: usize, cell: AnyElement) -> AnyElement {
+    /// A line-number cell of line `ix` that picks it; an accent tint on hover shows that it can be clicked.
+    pub(super) fn pick_cell(&self, ix: usize, cell: AnyElement, theme: &Theme) -> AnyElement {
         let on_pick = self.on_pick.clone();
+        let hover = theme.accent.opacity(0.35);
         div()
             .id(("note-pick", ix))
+            .relative()
+            .flex()
             .flex_none()
             .cursor_pointer()
+            .tooltip(gd_ui::tooltip(
+                "Comment on this line (Shift-click for a range)",
+            ))
             .on_mouse_down(MouseButton::Left, move |e, w, cx| {
                 cx.stop_propagation();
                 on_pick(ix, e.modifiers.shift, w, cx)
             })
             .child(cell)
+            .child(
+                div()
+                    .id(("note-pick-hover", ix))
+                    .absolute()
+                    .inset_0()
+                    .transitions(|t| t.bg(millis(HOVER_MS)))
+                    .hover_style(move |s| s.bg(hover)),
+            )
             .into_any_element()
     }
 

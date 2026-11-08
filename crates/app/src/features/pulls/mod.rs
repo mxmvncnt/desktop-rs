@@ -19,5 +19,6 @@ mod review_notes;
 pub mod snapshot;
 mod state;
 mod state_badge;
+mod thread_header;
 
 pub use state::{PullsEvent, PullsStore};

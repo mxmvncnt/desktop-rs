@@ -9,6 +9,7 @@ use gpui::{Context, Window};
 
 use super::state::{Pick, PullTab, PullsEvent, PullsStore, PullsView};
 use crate::features::accounts::{Problem, Target};
+use crate::features::diff::text_selection::model::{TextPos, TextSel, TextSide};
 use crate::features::settings::ThemeMode;
 use crate::snapshot::View;
 use crate::workspace::Workspace;
@@ -20,6 +21,10 @@ pub fn views() -> &'static [View] {
             steps: &[pulls_sample],
         },
         View {
+            name: "pull-files-select",
+            steps: &[pulls_sample, select_text],
+        },
+        View {
             name: "pull-*",
             steps: &[pulls_sample],
         },
@@ -29,7 +34,8 @@ pub fn views() -> &'static [View] {
 /// `pulls[-light]`: the list; `pulls-query`: the example query of docs/PROGRESS.md on a GitLab account (filtered here, as
 /// `PullFilter::keep` would), with a qualifier GitLab can't filter on; `pulls-query-error`: a query that doesn't parse;
 /// `pulls-empty-account`; `pull-conversation`, `pull-commits`, `pull-files`, `pull-files-comment`
-/// (lines picked, the comment box open), `pull-files-split`.
+/// (lines picked, the comment box open), `pull-files-split`, `pull-files-select` (text selected on README.md lines 4-6: the
+/// "Comment on lines" bar). The fixture has a resolved and an outdated thread (minimized) and a Markdown comment.
 fn pulls_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Context<Workspace>) {
     ws.settings.theme = if view.ends_with("light") {
         ThemeMode::Light
@@ -105,6 +111,16 @@ fn pulls_sample(ws: &mut Workspace, view: &str, window: &mut Window, cx: &mut Co
     });
 }
 
+/// `pull-files-select`: a finished text selection over the diff lines 4 to 6, once the diff is loaded.
+fn select_text(ws: &mut Workspace, _: &str, _: &mut Window, cx: &mut Context<Workspace>) {
+    ws.diff_view.text_sel = Some(TextSel {
+        anchor: TextPos { line: 4, col: 0 },
+        head: TextPos { line: 6, col: 4 },
+        side: TextSide::Unified,
+    });
+    cx.notify();
+}
+
 fn user(name: &str) -> Option<User> {
     Some(User {
         name: None,
@@ -157,6 +173,8 @@ fn fill(p: &mut PullsStore) {
         updated_at: Some(now - Duration::hours(hours)),
         web_url: format!("https://github.com/octo/repo/pull/{number}"),
         diff_refs: None,
+        milestone: None,
+        merge: None,
     }
     };
     p.pulls = vec![
@@ -235,18 +253,54 @@ fn conversation() -> Conversation {
                 ..comment(2, "linus", "", 3)
             },
         ],
-        threads: vec![Thread {
-            id: "10".into(),
-            path: "README.md".into(),
-            side: Side::Right,
-            line: Some(3),
-            start_line: None,
-            original_line: Some(3),
-            resolved: false,
-            comments: vec![
-                comment(10, "grace", "Maybe say what it is for?", 10),
-                comment(11, "ada", "Good idea, done in the next line.", 8),
-            ],
-        }],
+        threads: vec![
+            Thread {
+                id: "12".into(),
+                path: "README.md".into(),
+                side: Side::Right,
+                line: None,
+                start_line: None,
+                original_line: Some(2),
+                resolved: false,
+                comments: vec![comment(
+                    12,
+                    "linus",
+                    "This heading moved, is the title still right?",
+                    30,
+                )],
+            },
+            Thread {
+                id: "13".into(),
+                path: "README.md".into(),
+                side: Side::Right,
+                line: Some(5),
+                start_line: None,
+                original_line: Some(5),
+                resolved: true,
+                comments: vec![
+                    comment(13, "grace", "Typo here.", 12),
+                    comment(14, "ada", "Fixed.", 11),
+                ],
+            },
+            Thread {
+                id: "10".into(),
+                path: "README.md".into(),
+                side: Side::Right,
+                line: Some(3),
+                start_line: None,
+                original_line: Some(3),
+                resolved: false,
+                comments: vec![
+                    comment(10, "grace", "Maybe say what it is for?", 10),
+                    comment(
+                        11,
+                        "ada",
+                        "Good idea, **done** in `README.md`:\n\n- greets the world\n- links to the [docs](https://example.com)\n\n```suggestion\nHello, world!\n```",
+                        8,
+                    ),
+                ],
+            },
+        ],
+        reviews: Vec::new(),
     }
 }

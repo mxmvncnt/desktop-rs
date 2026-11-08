@@ -13,6 +13,7 @@ use super::comment_box::CommentBox;
 use super::comment_card::comment_card;
 use super::ops::Reply;
 use super::state::{PullTab, PullsStore};
+use super::thread_header::thread_header;
 
 #[derive(IntoElement)]
 pub struct ConversationView {
@@ -77,6 +78,11 @@ impl RenderOnce for ConversationView {
             (None, None) => vec![empty_state("Loading the conversation…", cx).into_any_element()],
         };
         let post = self.store.clone();
+        let has_threads = pulls
+            .conversation
+            .as_ref()
+            .is_some_and(|c| !c.threads.is_empty());
+        let (collapse, expand) = (self.store.clone(), self.store.clone());
         div()
             .id("pull-conversation")
             .flex_1()
@@ -92,6 +98,31 @@ impl RenderOnce for ConversationView {
                     .py(px(16.0))
                     .max_w(px(900.0))
                     .child(card(theme).child(comment_card(&description, theme)))
+                    .when(has_threads, |d| {
+                        d.child(
+                            div()
+                                .flex()
+                                .justify_end()
+                                .gap(px(8.0))
+                                .child(
+                                    Button::new("pull-collapse-threads")
+                                        .label("Collapse all")
+                                        .ghost()
+                                        .on_click(move |_, _, cx| {
+                                            collapse
+                                                .update(cx, |p, cx| p.collapse_threads(true, cx))
+                                        }),
+                                )
+                                .child(
+                                    Button::new("pull-expand-threads")
+                                        .label("Expand all")
+                                        .ghost()
+                                        .on_click(move |_, _, cx| {
+                                            expand.update(cx, |p, cx| p.collapse_threads(false, cx))
+                                        }),
+                                ),
+                        )
+                    })
                     .children(timeline)
                     .child(
                         CommentBox {
@@ -127,64 +158,56 @@ impl ConversationView {
         };
         let files = self.store.clone();
         let (reply, thread) = (self.store.clone(), t.clone());
+        let collapsed = pulls.collapsed(t);
         card(theme)
             .child(
                 div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.0))
+                    .id(ElementId::Name(format!("pull-thread-file-{}", t.id).into()))
+                    .cursor_pointer()
+                    .font_family(theme.font_mono.clone())
                     .text_size(px(12.0))
-                    .child(
-                        div()
-                            .id(ElementId::Name(format!("pull-thread-file-{}", t.id).into()))
-                            .cursor_pointer()
-                            .font_family(theme.font_mono.clone())
-                            .text_color(theme.accent)
-                            .hover_style(|s| s.underline())
-                            .child(format!("{} {lines}", t.path))
-                            .on_click(move |_, _, cx| {
-                                files.update(cx, |p, cx| p.set_tab(PullTab::Files, cx))
-                            }),
-                    )
-                    .when(t.line.is_none(), |d| {
-                        d.child(div().text_color(theme.text_faint).child("Outdated"))
-                    })
-                    .when(t.resolved, |d| {
-                        d.child(div().text_color(theme.text_faint).child("Resolved"))
+                    .text_color(theme.accent)
+                    .hover_style(|s| s.underline())
+                    .child(format!("{} {lines}", t.path))
+                    .on_click(move |_, _, cx| {
+                        files.update(cx, |p, cx| p.set_tab(PullTab::Files, cx))
                     }),
             )
-            .children(t.comments.iter().map(|c| comment_card(c, theme)))
-            .child(if open {
-                let (post, cancel) = (self.store.clone(), self.store.clone());
-                CommentBox {
-                    id: "pull-reply",
-                    input: pulls.inputs.reply.clone(),
-                    placeholder: "Reply…".into(),
-                    action: "Reply",
-                    posting: pulls.posting,
-                    on_post: Rc::new(move |_, cx| {
-                        let thread = thread.clone();
-                        post.update(cx, |p, cx| p.post(Reply::Thread(thread), cx))
-                    }),
-                    on_cancel: Some(Rc::new(move |_, cx| {
-                        cancel.update(cx, |p, cx| p.start_reply(None, cx))
-                    })),
-                }
-                .build(cx)
-                .into_any_element()
-            } else {
-                div()
-                    .flex()
-                    .child(
-                        Button::new(ElementId::Name(format!("pull-reply-{}", t.id).into()))
-                            .label("Reply")
-                            .ghost()
-                            .on_click(move |_, _, cx| {
-                                let id = thread.id.clone();
-                                reply.update(cx, |p, cx| p.start_reply(Some(id), cx))
+            .child(thread_header(t, collapsed, &self.store, theme))
+            .when(!collapsed, |d| {
+                d.children(t.comments.iter().map(|c| comment_card(c, theme)))
+                    .child(if open {
+                        let (post, cancel) = (self.store.clone(), self.store.clone());
+                        CommentBox {
+                            id: "pull-reply",
+                            input: pulls.inputs.reply.clone(),
+                            placeholder: "Reply…".into(),
+                            action: "Reply",
+                            posting: pulls.posting,
+                            on_post: Rc::new(move |_, cx| {
+                                let thread = thread.clone();
+                                post.update(cx, |p, cx| p.post(Reply::Thread(thread), cx))
                             }),
-                    )
-                    .into_any_element()
+                            on_cancel: Some(Rc::new(move |_, cx| {
+                                cancel.update(cx, |p, cx| p.start_reply(None, cx))
+                            })),
+                        }
+                        .build(cx)
+                        .into_any_element()
+                    } else {
+                        div()
+                            .flex()
+                            .child(
+                                Button::new(ElementId::Name(format!("pull-reply-{}", t.id).into()))
+                                    .label("Reply")
+                                    .ghost()
+                                    .on_click(move |_, _, cx| {
+                                        let id = thread.id.clone();
+                                        reply.update(cx, |p, cx| p.start_reply(Some(id), cx))
+                                    }),
+                            )
+                            .into_any_element()
+                    })
             })
     }
 }

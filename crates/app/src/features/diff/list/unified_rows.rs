@@ -174,7 +174,7 @@ impl UnifiedRows<'_> {
                 }
                 .build();
                 match self.notes {
-                    Some(n) if line.kind != DiffLineKind::Hunk => n.pick_cell(ix, cell),
+                    Some(n) if line.kind != DiffLineKind::Hunk => n.pick_cell(ix, cell, theme),
                     _ => cell,
                 }
             })

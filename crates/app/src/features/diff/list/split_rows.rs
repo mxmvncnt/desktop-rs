@@ -93,7 +93,7 @@ impl SplitRows<'_> {
             }
             .build();
             match (self.notes, row) {
-                (Some(n), Some(line)) => n.pick_cell(line, cell),
+                (Some(n), Some(line)) => n.pick_cell(line, cell, self.theme),
                 _ => cell,
             }
         };

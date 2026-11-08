@@ -39,8 +39,11 @@ impl Workspace {
         cx.notify();
     }
 
-    pub fn diff_text_drag_end(&mut self) {
-        self.diff_view.text_drag = false;
+    /// The button went up; redraw so what depends on a finished selection (the review diff's comment bar) shows.
+    pub fn diff_text_drag_end(&mut self, cx: &mut Context<Self>) {
+        if std::mem::take(&mut self.diff_view.text_drag) {
+            cx.notify();
+        }
     }
 
     /// Select all text of the shown diff (of the side last used in split view).
