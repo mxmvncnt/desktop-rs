@@ -40,6 +40,8 @@ pub struct DiffSource {
     pub old: String,
     /// New content (working tree / commit blob), exactly as stored.
     pub new: String,
+    /// Lines in `new`, counted once: the UI asks for it on every frame.
+    pub new_line_count: usize,
 }
 
 /// One logical line of a text, without its terminator.
@@ -189,6 +191,7 @@ pub fn diff_texts(old: &str, new: &str, opts: DiffOptions) -> Diff {
     diff.source = Some(Arc::new(DiffSource {
         old: old.to_string(),
         new: new.to_string(),
+        new_line_count: new_lines.len(),
     }));
     log::debug!(
         "diff_texts: {} rows ({}+ {}-) in {:?}",

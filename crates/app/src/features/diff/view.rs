@@ -184,11 +184,11 @@ impl Workspace {
 
     /// Records the horizontal layout of a unified diff; returns the number column width.
     fn set_unified_extent(&mut self, diff: &Arc<Diff>, has_select: bool) -> gpui::Pixels {
-        let digits = diff
-            .lines
-            .iter()
-            .filter_map(|l| l.new_line.max(l.old_line))
-            .max()
+        // Line numbers grow down the diff, so the widest are the last ones (found
+        // from the end: this runs every frame).
+        let rows = diff.lines.iter().rev();
+        let digits = (rows.clone().find_map(|l| l.new_line))
+            .max(rows.clone().find_map(|l| l.old_line))
             .unwrap_or(1)
             .to_string()
             .len()

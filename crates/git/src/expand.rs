@@ -45,7 +45,7 @@ pub fn gap_below(diff: &Diff, h: usize) -> usize {
         None => diff
             .source
             .as_ref()
-            .map_or(0, |s| split_lines(&s.new).len())
+            .map_or(0, |s| s.new_line_count)
             .saturating_sub(end),
     }
 }
