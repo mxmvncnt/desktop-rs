@@ -196,20 +196,39 @@ impl RepoModel {
         self.set_rows_included(rows, include, cx);
     }
 
-    /// A freshly loaded diff of `path`: keep its partial selection only if
-    /// the file contents are unchanged (line keys refer to them).
-    pub(crate) fn reconcile_selection(&mut self, path: &str, diff: &Diff) {
-        if self.diff_options.ignore_whitespace {
-            // A `-w` diff has different rows; keep the selection for later.
+    /// A freshly loaded (non `-w`) diff of `path`: move its deselected lines
+    /// onto it by content. Lines that are gone drop out and new lines start
+    /// included. The selection then refers to `diff`, so the commit stages
+    /// exactly what the gutter shows.
+    pub(crate) fn remap_selection(&mut self, path: &str, diff: Arc<Diff>) {
+        let Some(sel) = self.work.partial.get(path) else {
+            return;
+        };
+        let (Some(from), Some(to)) = (&sel.diff.source, &diff.source) else {
+            self.work.partial.remove(path);
+            return;
+        };
+        if from == to {
             return;
         }
-        if self
-            .work
-            .partial
-            .get(path)
-            .is_some_and(|sel| sel.diff.source != diff.source)
-        {
-            self.work.partial.remove(path);
+        let adds = gd_git::map_lines(&from.new, &to.new);
+        let deletes = gd_git::map_lines(&from.old, &to.old);
+        let all: HashSet<LineKey> = (0..diff.lines.len())
+            .filter_map(|i| line_key(&diff, i))
+            .collect();
+        let excluded: HashSet<LineKey> = sel
+            .excluded
+            .iter()
+            .filter_map(|&(add, n)| Some((add, *if add { &adds } else { &deletes }.get(&n)?)))
+            .filter(|k| all.contains(k))
+            .collect();
+        self.work.partial.remove(path);
+        if excluded.len() == all.len() {
+            self.work.excluded.insert(path.to_string());
+        } else if !excluded.is_empty() {
+            self.work
+                .partial
+                .insert(path.to_string(), LineSelection { diff, excluded });
         }
     }
 
@@ -240,3 +259,7 @@ impl RepoModel {
             .any(|c| !self.work.excluded.contains(&c.path))
     }
 }
+
+#[cfg(all(test, feature = "snapshot"))]
+#[path = "tests/line_selection_store.test.rs"]
+mod tests;

@@ -27,7 +27,7 @@ pub const MAX_BYTES: usize = 8 * 1024 * 1024;
 pub const CONTEXT: usize = 3;
 /// Give up on an optimal diff after this long (similar falls back to a
 /// coarser but still correct result).
-const DEADLINE: Duration = Duration::from_millis(800);
+pub(crate) const DEADLINE: Duration = Duration::from_millis(800);
 /// Word emphasis is skipped for very long lines (minified files) and when
 /// most of the line changed (highlighting everything is just noise).
 const EMPHASIS_MAX_LINE: usize = 1_000;

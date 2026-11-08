@@ -45,7 +45,7 @@ pub use expand::{EXPANSION_STEP, Expansion, expand, expandable, gap_above, gap_b
 pub use history_ops::{ForcePushPreview, ResetMode};
 pub use log::{CoAuthor, Commit, parse_co_authors};
 pub use merge::{MergePreview, default_squash_summary};
-pub use partial::{PartialFile, selectable, staged_text};
+pub use partial::{PartialFile, map_lines, selectable, staged_text};
 pub use pr_preview::{Comparison, compare_url};
 pub use progress::{InProgress, OpOutcome};
 pub use refs::{Branch, BranchKind};

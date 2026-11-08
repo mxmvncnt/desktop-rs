@@ -139,8 +139,10 @@ endpoints and answer `NotFound`): GitHub REST 2022-11-28 (Enterprise Server 3.x)
   on unix, else HEAD's). Renames also `--force-remove` the old path.
 - App state: `RepoModel.work.partial: HashMap<path, LineSelection { diff: Arc<Diff>, excluded: HashSet<row> }>` next to
   `excluded` (whole file off). `set_rows_included` normalizes: all rows off → `excluded`, none off → entry removed, so
-  `partial` only holds mixed files. A reloaded diff keeps the selection only if `lines` are identical
-  (`reconcile_selection`); `-w` diffs are ignored there. `partial` is cleared after a successful commit/amend.
+  `partial` only holds mixed files. When a file changes on disk, `remap_selection` moves the deselected lines onto the
+  new diff by content (`gd_git::map_lines`, per side); gone lines drop out, new lines start included. The shown file
+  remaps from its own reload (not `-w` diffs), the other `partial` files from `load_partial_diffs` on each status
+  refresh, so a commit stages what the gutter shows. `partial` is cleared after a successful commit/amend.
 - UI: `render_diff(.., select: Option<Entity<RepoModel>>, ..)`. `gutter/number_cell.rs` has `number_cell` (one cell
   holding 1 or 2 numbers; plain, or clickable/drag-extending with the blue+check included style) and
   `RowSelect::handle_cell` in `gutter/block_handle.rs` (one cell of a change block's handle), shared by the unified list and the split list's
@@ -164,7 +166,7 @@ endpoints and answer `NotFound`): GitHub REST 2022-11-28 (Enterprise Server 3.x)
 - `RepoModel::expand_diff(pane, e)` swaps `detail(pane).diff` and re-highlights in the background.
   `change_diff_key` (path + options) lets `load_change_diff` keep the expanded diff when a reload returns the same
   source texts. Line selection is keyed by `LineKey = (is_add, line number)` instead of row index, so it survives
-  row shifts; `reconcile_selection` drops it only when the source texts change.
+  row shifts; `remap_selection` follows the lines when the source texts change.
 - `render_diff(.., pane: DiffPane, ..)` (`diff/view.rs`): `Changes` (select + expand), `Commit` (expand), `Stash` and `Pr` (view only). `DiffPane` also names the `DiffDetail` (`RepoModel::detail(pane)`).
   Header rows render `Expander::gutter` instead of number cells; an extra trailing list row (index == rows) holds
   the last Expand Down. Buttons use `group` + `group_hover_style` so the svg icon recolors on hover.

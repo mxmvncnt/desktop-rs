@@ -103,6 +103,8 @@ pub struct ChangesState {
     /// What `detail.diff` was loaded for, so a reload of the same unchanged
     /// file keeps the (possibly expanded) diff on screen.
     pub diff_key: Option<(String, DiffOptions)>,
+    /// Reload of the other `partial` files (see `load_partial_diffs`).
+    pub(super) partial_load: LoadSlot,
 }
 
 /// The paged commit log and the selected commit.

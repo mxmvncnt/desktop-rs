@@ -7,9 +7,13 @@
 //! selected adds/deletes, and [`Repository::stage_partial`] writes that blob
 //! with `hash-object -w` and points the index at it with `update-index`.
 
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 
-use crate::engine::DiffSource;
+use similar::{Algorithm, DiffOp, capture_diff_slices_deadline};
+
+use crate::engine::{DEADLINE, DiffSource};
 use crate::{Diff, DiffLineKind, GitError, Repository, Result, Side};
 
 /// One file committed with only some of its lines.
@@ -84,6 +88,30 @@ pub fn staged_text(diff: &Diff, include: impl Fn(usize) -> bool) -> Option<Strin
     }
     copy_old(&mut out, &old, &mut next_old, old.len());
     Some(out)
+}
+
+/// Where each line of `from` that is unchanged in `to` went there (1-based
+/// line numbers), so a line selection can follow edits around its lines.
+pub fn map_lines(from: &str, to: &str) -> HashMap<u32, u32> {
+    let from: Vec<&str> = from.split_inclusive('\n').collect();
+    let to: Vec<&str> = to.split_inclusive('\n').collect();
+    capture_diff_slices_deadline(
+        Algorithm::Myers,
+        &from,
+        &to,
+        Some(Instant::now() + DEADLINE),
+    )
+    .into_iter()
+    .filter_map(|op| match op {
+        DiffOp::Equal {
+            old_index,
+            new_index,
+            len,
+        } => Some((old_index, new_index, len)),
+        _ => None,
+    })
+    .flat_map(|(o, n, len)| (1..=len).map(move |i| ((o + i) as u32, (n + i) as u32)))
+    .collect()
 }
 
 impl Repository {

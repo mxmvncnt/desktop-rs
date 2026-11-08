@@ -65,3 +65,11 @@ fn discard_rows_reverts_only_picked_lines() {
         "a\nB\nc\n"
     );
 }
+
+#[test]
+fn map_lines_follows_edits_around() {
+    let m = map_lines("a\nb\nc\n", "new\na\nB\nc\n");
+    assert_eq!(m.get(&1), Some(&2));
+    assert_eq!(m.get(&2), None);
+    assert_eq!(m.get(&3), Some(&4));
+}

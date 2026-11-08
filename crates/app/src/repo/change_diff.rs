@@ -1,7 +1,9 @@
 //! Working-tree diff of the selected change. `change_detail.load` drops results
 //! of older loads (the user clicked another file meanwhile).
 
-use gd_git::{Diff, DiffOptions};
+use std::sync::Arc;
+
+use gd_git::{Diff, DiffOptions, FileChange};
 use gpui::Context;
 
 use super::state::RepoModel;
@@ -46,15 +48,63 @@ impl RepoModel {
         cx: &mut Context<Self>,
     ) {
         let key = (path.clone(), opts);
+        // Compare the texts, not the rows: the shown diff may be expanded.
         let unchanged = self.work.diff_key.as_ref() == Some(&key)
-            && self.work.detail.diff.as_ref().is_some_and(|c| **c == d);
+            && self
+                .work
+                .detail
+                .diff
+                .as_ref()
+                .is_some_and(|c| match (&c.source, &d.source) {
+                    (Some(a), Some(b)) => a == b,
+                    _ => **c == d,
+                });
         if unchanged {
             // Same file, same contents: keep the expansion and highlight.
             return;
         }
-        self.reconcile_selection(&path, &d);
         self.work.diff_key = Some(key);
-        self.show_diff(DiffPane::Changes, Some((d, path)), cx);
+        self.show_diff(DiffPane::Changes, Some((d, path.clone())), cx);
+        // A `-w` diff has other rows: `load_partial_diffs` remaps instead.
+        if !opts.ignore_whitespace
+            && let Some(d) = self.work.detail.diff.clone()
+        {
+            self.remap_selection(&path, d);
+        }
+    }
+
+    /// Reload the other partially selected files and move their selections
+    /// onto what is on disk now, so committing them stages what their diffs
+    /// show (`stage_partial` refuses anything older).
+    pub(super) fn load_partial_diffs(&mut self, cx: &mut Context<Self>) {
+        let files: Vec<FileChange> = self
+            .changes()
+            .iter()
+            .filter(|c| self.work.partial.contains_key(&c.path))
+            .cloned()
+            .collect();
+        self.load(
+            |this| &mut this.work.partial_load,
+            move |repo| {
+                files
+                    .into_iter()
+                    .map(|c| Ok((repo.working_diff(&c, DiffOptions::default())?, c.path)))
+                    .collect::<gd_git::Result<Vec<_>>>()
+            },
+            |this, diffs, _| {
+                // Without `-w` the shown file follows its own diff, so the
+                // gutter and the selection always share one version.
+                let shown = this
+                    .selected_path()
+                    .filter(|_| !this.diff_options.ignore_whitespace);
+                for (d, path) in diffs {
+                    if shown.as_ref() != Some(&path) {
+                        this.remap_selection(&path, Arc::new(d));
+                    }
+                }
+            },
+            cx,
+        );
     }
 
     /// Change how diffs are produced and reload the visible ones. Uses the

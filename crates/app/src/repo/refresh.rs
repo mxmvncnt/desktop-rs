@@ -183,5 +183,6 @@ impl RepoModel {
         // list identical but changes the diff. `apply_change_diff` drops
         // results equal to what is shown, keeping expansion/highlight.
         self.load_change_diff(cx);
+        self.load_partial_diffs(cx);
     }
 }
