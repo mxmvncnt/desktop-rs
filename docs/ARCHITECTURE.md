@@ -474,9 +474,10 @@ still rebuilds that whole pane.
   The backdrop `occlude()`s, so the press that dismisses a popover never reaches the toolbar trigger
   under it; triggers just toggle.
 - App-side components used by 2+ features are in `app/src/components/` (see CONVENTIONS.md).
-- `assets.rs`: embedded Solar icons and Geist fonts. To add an icon, copy the
-  SVG from `.ref/zeron/crates/ui/assets/icons/` into `crates/ui/assets/icons/`
-  and add a line to the `icons!` macro. `rust-embed` embeds the folder.
+- `assets.rs`: embedded Solar icons and Geist fonts. To add an icon, copy an
+  SVG in the same Solar style into `crates/ui/assets/icons/` (the original
+  reference set is not in this checkout) and add a line to the `icons!` macro.
+  `rust-embed` embeds the folder.
 
 ## Platform code (`app/src/platform/`)
 
