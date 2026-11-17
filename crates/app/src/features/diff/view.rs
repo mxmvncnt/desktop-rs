@@ -4,8 +4,8 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use gd_git::Diff;
-use gd_ui::{Theme, motion};
+use gd_git::{Diff, MAX_RENDER_LINE_CHARS, MAX_RENDER_ROWS};
+use gd_ui::{Button, Theme, motion};
 use gpui::{
     AnyElement, App, Context, Entity, InteractiveElement, IntoElement, ParentElement, RenderOnce,
     SharedString, Styled, Window, div, point, prelude::*, px,
@@ -44,6 +44,29 @@ impl Workspace {
                 .justify_center()
                 .text_color(theme.text_faint)
                 .child(message)
+                .into_any_element();
+        }
+        if !self.diff_view.show_large && diff_too_large(&diff) {
+            let ws = cx.entity();
+            return div()
+                .flex_1()
+                .flex()
+                .flex_col()
+                .items_center()
+                .justify_center()
+                .gap(px(10.0))
+                .text_color(theme.text_faint)
+                .child(too_large_message(&diff))
+                .child(
+                    Button::new("show-large-diff")
+                        .label("Show anyway")
+                        .on_click(move |_, _, cx| {
+                            ws.update(cx, |w, cx| {
+                                w.diff_view.show_large = true;
+                                cx.notify();
+                            });
+                        }),
+                )
                 .into_any_element();
         }
         let note = WhitespaceNote::new(self.settings.diff_ignore_whitespace);
@@ -129,6 +152,7 @@ impl Workspace {
             self.diff_view.hscroll = px(0.0);
             self.diff_select = DiffSelectUi::default();
             self.diff_view.text_sel = None;
+            self.diff_view.show_large = false;
             self.diff_view.shown = Instant::now();
         }
         new_key
@@ -146,7 +170,6 @@ impl Workspace {
             Some("No content changes (mode change or empty file)")
         }
     }
-
     /// Line selection and hunk expansion available in `pane`.
     fn pane_parts(
         &self,
@@ -253,6 +276,34 @@ impl RenderOnce for DiffFrame {
             cx,
         )
     }
+}
+
+/// The diff isn't rendered: more rows than [`MAX_RENDER_ROWS`], or a single
+/// row over [`MAX_RENDER_LINE_CHARS`] (a minified file is one huge row;
+/// rendering it costs seconds of shaping per frame and freezes the app).
+fn diff_too_large(diff: &Diff) -> bool {
+    let longest = longest_row_chars(diff);
+    diff.lines.len() > MAX_RENDER_ROWS || longest > MAX_RENDER_LINE_CHARS
+}
+
+/// Message shown on the "too large" screen, with the size for context.
+fn too_large_message(diff: &Diff) -> String {
+    let n = diff.lines.len();
+    let longest = longest_row_chars(diff);
+    let detail = if longest > MAX_RENDER_LINE_CHARS {
+        format!(
+            "{n} lines, largest line {:.1} MB",
+            longest as f64 / (1024.0 * 1024.0)
+        )
+    } else {
+        format!("{n} lines")
+    };
+    format!("This diff is very large ({detail}); displaying it may cause performance issues.")
+}
+
+/// Characters of the row with the most of them (`Diff::longest_line`).
+fn longest_row_chars(diff: &Diff) -> usize {
+    diff.lines.get(diff.longest_line).map_or(0, |l| l.text.len())
 }
 
 fn truncated_warning(theme: &Theme) -> impl IntoElement {

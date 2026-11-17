@@ -27,6 +27,10 @@ use lru::LruCache;
 /// Above this many rows or bytes of text we skip highlighting entirely.
 pub const MAX_LINES: usize = 20_000;
 pub const MAX_BYTES: usize = 2 * 1024 * 1024;
+/// A line longer than this skips highlighting: a minified row would get
+/// tens of thousands of spans, and that many text runs per draw freezes
+/// the render loop (measured: 346 KB on one row → 66k spans).
+pub const MAX_LINE_BYTES: usize = 4_000;
 /// Entries in the per-repository result cache.
 const CACHE_CAP: NonZeroUsize = NonZeroUsize::new(8).unwrap();
 
@@ -234,7 +238,12 @@ pub fn highlight_diff(
     }
     language_for_path(path)?;
     let bytes: usize = diff.lines.iter().map(|l| l.text.len() + 1).sum();
-    if bytes > MAX_BYTES {
+    if bytes > MAX_BYTES
+        || diff
+            .lines
+            .iter()
+            .any(|l| l.text.len() > MAX_LINE_BYTES)
+    {
         return None;
     }
     let key = cache_key(diff, path);

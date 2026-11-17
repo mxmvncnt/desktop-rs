@@ -24,6 +24,9 @@ pub struct DiffView {
     /// Text selection (see `text_selection.rs`) and whether it is being dragged.
     pub text_sel: Option<TextSel>,
     pub text_drag: bool,
+    /// The current diff was too large to render and the user asked to show it
+    /// anyway. Reset when another file/commit is selected (`diff_key`).
+    pub show_large: bool,
     /// When the current diff (`Workspace::diff_key`) appeared, for its fade-in.
     pub shown: Instant,
 }
@@ -38,6 +41,7 @@ impl Default for DiffView {
             wrap_for: None,
             text_sel: None,
             text_drag: false,
+            show_large: false,
             shown: Instant::now(),
         }
     }

@@ -38,6 +38,8 @@ pub use identity::{
 pub use info::RepoInfo;
 pub use remotes::Remote;
 
+pub use engine::{MAX_RENDER_LINE_CHARS, MAX_RENDER_ROWS};
+
 pub use diff::{Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions, Side};
 pub use diff_summary::LineStats;
 pub use exec::GitError;

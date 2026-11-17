@@ -21,6 +21,12 @@ use crate::diff::{Diff, DiffHunk, DiffLine, DiffLineKind, DiffOptions};
 
 /// Rows beyond this are dropped (`Diff::truncated`).
 pub const MAX_LINES: usize = 50_000;
+/// Rows above this the UI refuses to render (`Show anyway` opts in).
+pub const MAX_RENDER_ROWS: usize = 10_000;
+/// Characters in ONE row above which the UI refuses to render: a minified
+/// line this long costs seconds of text shaping per frame and freezes the
+/// app.
+pub const MAX_RENDER_LINE_CHARS: usize = 100_000;
 /// Files larger than this aren't diffed at all (`Diff::too_large`).
 pub const MAX_BYTES: usize = 8 * 1024 * 1024;
 /// Lines of context around each change, like git's default `-U3`.
