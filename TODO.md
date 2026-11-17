@@ -9,6 +9,7 @@
     - An arrow on on the left or between each branch to show which goes in which with the last one being the main branch
   - compatibility for github and gitlab PR stacks
   - Change the settings menu for a hamburger dropdown which includes all the stuff
+- Git worktrees support
 - Fix the auto fetch stuff
   - when creating a new branch, the fetch should be done automatically when opening the menu
   - when merging a branch into the current one, we should suggest to pull in from origin instead
